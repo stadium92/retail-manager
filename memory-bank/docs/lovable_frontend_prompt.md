@@ -1118,6 +1118,129 @@ Before implementing any design, you MUST:
 5. View Order History → Past purchases
 6. Search/Browse → Find products by category or search
 
+## Implementation Patterns & Best Practices
+
+### Service Layer Pattern
+**Reference**: Study the service layer pattern from malitrade-assistant (`TransactionService`, `AlertService`)
+
+**Pattern to Follow**:
+```typescript
+// Service class with static methods
+export class SalesService {
+  static async createSale(sale: SaleCreate): Promise<{ data?: Sale; error?: any }> {
+    // Implementation with Supabase
+  }
+  
+  static async getSales(limit?: number): Promise<{ data?: Sale[]; error?: any }> {
+    // Implementation with error handling
+  }
+}
+```
+
+**Benefits**:
+- Clean separation of concerns
+- Reusable across components
+- Centralized error handling
+- Type-safe interfaces
+
+### Offline Support Pattern
+**Reference**: Study `OfflineManager` from malitrade-assistant
+
+**Required Implementation**:
+- Offline queue management (localStorage-based)
+- Auto-sync when online
+- Queue size tracking
+- Sync status indicators
+- Manual sync capability
+- Error handling for failed syncs
+
+**Pattern to Follow**:
+```typescript
+export class OfflineManager {
+  static addToQueue(transaction: Transaction): void
+  static getQueue(): QueuedTransaction[]
+  static async syncQueue(): Promise<{ success: number; failed: number }>
+  static setupAutoSync(): void
+}
+```
+
+### Auth Hook Pattern
+**Reference**: Study `useAuth` hook from malitrade-assistant
+
+**Required Implementation**:
+- Auth context provider
+- `useAuth` hook for components
+- Session management
+- Role-based access
+- Protected routes
+- Sign in/out functionality
+
+### Offline Indicator Component
+**Reference**: Study `OfflineIndicator` component from malitrade-assistant
+
+**Required Features**:
+- Network status display
+- Queue size indicator
+- Manual sync button
+- Sync progress feedback
+- Visual status badges
+
+### Chat Interface Pattern
+**Reference**: Study `ChatView` component from malitrade-assistant
+
+**Required Features**:
+- Message history display
+- Quick question buttons
+- Input field with send button
+- Loading states
+- Typing indicators
+- Message timestamps
+- Avatar display for user/assistant
+
+### Dashboard Pattern
+**Reference**: Study `EnhancedDashboardView` from malitrade-assistant
+
+**Required Features**:
+- Loading states with skeletons
+- Error handling with fallbacks
+- Stats cards with metrics
+- Recent activity feed
+- Alerts display
+- Responsive grid layout
+- Progressive data loading
+
+### Mobile-First Patterns
+**Reference**: Study mobile patterns from malitrade-assistant
+
+**Required Implementation**:
+- Mobile container with safe areas
+- Bottom navigation for mobile
+- Touch-optimized targets (min 44x44px)
+- Responsive breakpoints
+- Mobile-specific layouts
+- Safe area insets (iOS notch, Android navigation)
+
+### Error Handling Pattern
+**Reference**: Study error handling from malitrade-assistant
+
+**Required Implementation**:
+- Try-catch in services
+- Error fallbacks in components
+- User-friendly error messages
+- Retry mechanisms
+- Error boundaries
+- Graceful degradation
+
+### Loading States Pattern
+**Reference**: Study loading patterns from malitrade-assistant
+
+**Required Implementation**:
+- Skeleton loaders for content
+- Spinners for actions
+- Progressive loading
+- Optimistic updates
+- Loading indicators in buttons
+
 ## Implementation Guidelines
 
 ### Component Structure
@@ -1200,6 +1323,28 @@ src/
 ```
 
 ### Key Implementation Notes
+
+**Reference malitrade-assistant patterns for:**
+1. **Service Layer**: Use static class methods for services (TransactionService pattern)
+2. **Offline Support**: Implement OfflineManager with queue, sync, and auto-sync
+3. **Auth Pattern**: Use Auth context provider with useAuth hook
+4. **Error Handling**: Graceful error handling with fallbacks in all services
+5. **Loading States**: Skeleton loaders and progressive loading
+6. **Mobile-First**: Mobile container, safe areas, bottom navigation
+7. **Chat Interface**: Message history, quick questions, typing indicators
+8. **Dashboard Pattern**: Stats cards, recent activity, alerts display
+9. **Offline Indicator**: Network status, queue size, sync button
+10. **Toast Notifications**: Toast provider for user feedback
+
+**Critical Patterns to Implement:**
+- Service classes with static methods for API calls
+- Offline queue management with localStorage
+- Auto-sync when network comes online
+- Error boundaries and graceful error handling
+- Loading states with skeletons
+- Mobile-first responsive design
+- Type-safe interfaces throughout
+- Supabase client integration patterns
 - Use React Context for global state (auth, current store)
 - Implement custom hooks for data fetching
 - Use React Query or SWR for server state management
@@ -1600,4 +1745,106 @@ AI requires one month (30 days) of sales data before activation.
 - **Best Practices**: Following React, TypeScript, and modern web best practices
 
 **Think deeply, research thoroughly, propose thoughtfully, implement excellently. Create the best possible website for each user type.**
+
+---
+
+## Reference Implementation Patterns from malitrade-assistant
+
+**CRITICAL**: Study and incorporate proven patterns from the `malitrade-assistant` project. This project demonstrates excellent implementation patterns that should be followed for retail-manager.
+
+### Key Patterns to Study and Implement
+
+1. **Service Layer Pattern** (`TransactionService.ts`, `AlertService.ts`):
+   - Static class methods for API calls
+   - Type-safe interfaces
+   - Error handling with fallbacks
+   - Supabase client integration
+   - Return pattern: `{ data?, error? }`
+   - **Apply to**: SalesService, InventoryService, WorkerService, DeliveryService, etc.
+
+2. **Offline Support** (`OfflineManager.ts`):
+   - localStorage-based queue
+   - Auto-sync on network online
+   - Queue size tracking
+   - Sync status events
+   - Manual sync capability
+   - Export/import for backup
+   - **Apply to**: Worker sales entry, Deliverer status updates
+
+3. **Auth Pattern** (`useAuth.tsx`):
+   - Context provider pattern
+   - Custom hook for components
+   - Session management
+   - Auth state listeners
+   - Toast notifications for auth events
+   - **Apply to**: All four interfaces (Master, Worker, Deliverer, Customer)
+
+4. **Offline Indicator** (`OfflineIndicator.tsx`):
+   - Network status display
+   - Queue size badge
+   - Manual sync button
+   - Visual feedback
+   - Event-driven updates
+   - **Apply to**: Worker and Deliverer interfaces
+
+5. **Chat Interface** (`ChatView.tsx`):
+   - Message history display
+   - Quick question buttons
+   - Input with send button
+   - Loading states
+   - Avatar display
+   - Timestamp formatting
+   - **Apply to**: Master AI chat interface
+
+6. **Dashboard Pattern** (`EnhancedDashboardView.tsx`):
+   - Loading skeletons
+   - Error handling with fallbacks
+   - Stats cards
+   - Recent activity feed
+   - Alerts display
+   - Progressive data loading
+   - **Apply to**: Master dashboard
+
+7. **Mobile-First Design**:
+   - Mobile container class
+   - Safe area insets
+   - Bottom navigation
+   - Touch-optimized targets
+   - Responsive breakpoints
+   - **Apply to**: All interfaces, especially Worker and Deliverer
+
+8. **Component Organization**:
+   - Feature-based folders
+   - Shared UI components
+   - Service layer separation
+   - Hook organization
+   - Type definitions
+   - **Apply to**: Entire project structure
+
+### Implementation Checklist
+
+**Before implementing, ensure you have:**
+- [ ] Studied malitrade-assistant service patterns
+- [ ] Implemented OfflineManager for Worker/Deliverer
+- [ ] Created Auth context provider with useAuth hook
+- [ ] Built OfflineIndicator component
+- [ ] Implemented ChatView pattern for Master AI
+- [ ] Created Dashboard with loading skeletons
+- [ ] Applied mobile-first patterns
+- [ ] Set up error boundaries
+- [ ] Implemented toast notifications
+- [ ] Added offline support for critical features
+
+**Your Task**: Study these patterns from malitrade-assistant and adapt them for the retail-manager project. Maintain the same quality and patterns while adapting to the four-sided architecture (Master, Worker, Deliverer, Customer).
+
+**Reference Files to Study**:
+- `frontend/src/services/TransactionService.ts` - Service pattern
+- `frontend/src/services/OfflineManager.ts` - Offline support
+- `frontend/src/hooks/useAuth.tsx` - Auth pattern
+- `frontend/src/components/OfflineIndicator.tsx` - Offline UI
+- `frontend/src/components/Chat/ChatView.tsx` - Chat pattern
+- `frontend/src/components/Dashboard/EnhancedDashboardView.tsx` - Dashboard pattern
+- `frontend/src/components/Layout/BottomNavigation.tsx` - Mobile navigation
+- `src/backend/services/alert_service.py` - Backend alert service
+- `src/backend/services/chat_service.py` - Backend chat service
 
