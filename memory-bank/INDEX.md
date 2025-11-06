@@ -62,7 +62,10 @@ Located in: `analysis/`
 ### Docs Directory Structure
 Located in: `docs/`
 - **`prd.txt`** - Product Requirements Document (complete specification)
-- **`lovable_frontend_prompt.md`** - Frontend generation prompt for Lovable.dev
+- **`lovable_frontend_prompt.md`** - Frontend generation prompt for Lovable.dev (complete, all phases)
+- **`lovable_frontend_prompt_phase1.md`** - Phase 1: Core Foundation & Master Interface
+- **`lovable_frontend_prompt_phase2.md`** - Phase 2: Worker, Deliverer & Customer Interfaces
+- **`lovable_frontend_prompt_phase3.md`** - Phase 3: AI Features & Advanced Analytics
 - **`interface_architecture_privileges.md`** - Interface architecture, privilege system, and access control design
 - **`four_sided_architecture.md`** - Four-sided architecture: Master, Worker, Deliverer, Customer interfaces
 - **`feature_brainstorming.md`** - Deep feature brainstorming and analysis for each user type
@@ -70,7 +73,10 @@ Located in: `docs/`
 
 #### Key Files
 - **[`docs/prd.txt`](docs/prd.txt)** - Complete PRD with technical architecture, roadmap, and requirements
-- **[`docs/lovable_frontend_prompt.md`](docs/lovable_frontend_prompt.md)** - Comprehensive prompt for generating frontend with four separate interfaces (Master, Worker, Deliverer, Customer). Includes design brainstorming framework and feature requirements.
+- **[`docs/lovable_frontend_prompt.md`](docs/lovable_frontend_prompt.md)** - Comprehensive prompt for generating frontend with four separate interfaces (Master, Worker, Deliverer, Customer). Includes design brainstorming framework and feature requirements. **Complete version with all phases.**
+- **[`docs/lovable_frontend_prompt_phase1.md`](docs/lovable_frontend_prompt_phase1.md)** - **Phase 1**: Core Foundation & Master Interface - Authentication, Master dashboard, Sales, Inventory, Workers, Stores, Basic Analytics
+- **[`docs/lovable_frontend_prompt_phase2.md`](docs/lovable_frontend_prompt_phase2.md)** - **Phase 2**: Worker, Deliverer & Customer Interfaces - Worker sales entry, Deliverer delivery management, Customer product browsing, Offline support
+- **[`docs/lovable_frontend_prompt_phase3.md`](docs/lovable_frontend_prompt_phase3.md)** - **Phase 3**: AI Features & Advanced Analytics - Conversational AI, AI Suggestions, Predictive Analytics, Automated Alerts, Pattern Analysis
 - **[`docs/interface_architecture_privileges.md`](docs/interface_architecture_privileges.md)** - Detailed interface architecture, privilege matrix, access control, and design differences
 - **[`docs/four_sided_architecture.md`](docs/four_sided_architecture.md)** - Complete four-sided architecture specification: roles, privileges, data flow, and interactions
 - **[`docs/feature_brainstorming.md`](docs/feature_brainstorming.md)** - Deep feature brainstorming framework: comprehensive analysis of features needed for each user type (Master, Worker, Deliverer, Customer) with context analysis and prioritization
@@ -111,7 +117,10 @@ Located in: `van-docs/`
 | Need | Go To | Primary File |
 |------|-------|--------------|
 | **PRD Document** | `docs/` | `prd.txt` |
-| **Frontend Prompt** | `docs/` | `lovable_frontend_prompt.md` |
+| **Frontend Prompt (Complete)** | `docs/` | `lovable_frontend_prompt.md` |
+| **Frontend Prompt - Phase 1** | `docs/` | `lovable_frontend_prompt_phase1.md` |
+| **Frontend Prompt - Phase 2** | `docs/` | `lovable_frontend_prompt_phase2.md` |
+| **Frontend Prompt - Phase 3** | `docs/` | `lovable_frontend_prompt_phase3.md` |
 | **Interface Architecture & Privileges** | `docs/` | `interface_architecture_privileges.md` |
 | **Four-Sided Architecture** | `docs/` | `four_sided_architecture.md` |
 | **Feature Brainstorming** | `docs/` | `feature_brainstorming.md` |
@@ -142,8 +151,8 @@ Located in: `van-docs/`
 
 ## 📝 Index Maintenance
 
-**Last Updated**: Added feature brainstorming and design approach framework
-**Total Files Indexed**: 5 files (PRD + Frontend Prompt + Interface Architecture + Four-Sided Architecture + Feature Brainstorming)
+**Last Updated**: Split Lovable.dev prompt into 3 phases for incremental development
+**Total Files Indexed**: 8 files (PRD + Frontend Prompt Complete + 3 Phase Prompts + Interface Architecture + Four-Sided Architecture + Feature Brainstorming)
 **Categories**: 6 main functional categories
 **Status**: Memory bank initialized, ready for development
 
