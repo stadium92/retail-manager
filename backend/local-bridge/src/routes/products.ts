@@ -7,6 +7,10 @@ import { authenticateRequest } from './utils/auth.js';
 const listQuerySchema = z.object({
   store_id: z.string().optional(),
   product_id: z.string().optional(),
+  search: z.string().optional(),
+  page: z.string().transform(Number).optional(),
+  limit: z.string().transform(Number).optional(),
+  filter: z.enum(['in_stock', 'out_of_stock', 'low_stock']).optional(),
 });
 
 const productCreateSchema = z.object({
@@ -65,7 +69,7 @@ export async function registerProductRoutes(app: FastifyInstance) {
       });
     }
 
-    const { store_id, product_id } = parsed.data;
+    const { store_id, product_id, search, page = 1, limit = 50 } = parsed.data;
     if (product_id) {
       const product = db.getProductById(product_id);
       if (!product) {
@@ -87,24 +91,30 @@ export async function registerProductRoutes(app: FastifyInstance) {
       return reply.send([product]);
     }
 
-    if (store_id) {
-      const products = db.listProducts(store_id);
-      return reply.send(products);
+    if (claims.role === 'master' && !store_id) {
+       // Master listing all products across all stores (careful with size!)
+       // For now, let's keep it as is, or maybe restrict it.
+       return reply.send(db.listAllProducts());
     }
 
-    if (claims.role === 'master') {
-      return reply.send(db.listAllProducts());
-    }
-
-    const storeId = claims.store_id;
-    if (!storeId) {
+    const targetStoreId = store_id || claims.store_id;
+    if (!targetStoreId) {
       return reply.status(400).send({
         error: 'StoreRequired',
         message: 'No store specified for this request.',
       });
     }
 
-    const products = db.listProducts(storeId);
+    // If search or explicit pagination is requested, use the optimized search method
+    if (search !== undefined || parsed.data.page !== undefined || parsed.data.limit !== undefined || parsed.data.filter !== undefined) {
+       const offset = (page - 1) * limit;
+       const result = db.searchProducts(targetStoreId, search || '', limit, offset, parsed.data.filter);
+       return reply.send(result); // Returns { data: [...], total: N }
+    }
+
+    // Fallback to legacy behavior (fetch all) for backward compatibility
+    // until frontend is fully migrated.
+    const products = db.listProducts(targetStoreId);
     return reply.send(products);
   });
 

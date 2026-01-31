@@ -735,6 +735,67 @@ CREATE TABLE IF NOT EXISTS sale_items (
     return rows as LocalProduct[];
   }
 
+  searchProducts(
+    storeId: string,
+    query: string,
+    limit: number = 50,
+    offset: number = 0,
+    filter?: 'in_stock' | 'out_of_stock' | 'low_stock'
+  ): { data: LocalProduct[]; total: number } {
+    const searchQuery = query.trim().toLowerCase();
+    const likeQuery = `%${searchQuery}%`;
+    let filterClause = '';
+    
+    if (filter === 'in_stock') {
+        filterClause = 'AND quantity > 0';
+    } else if (filter === 'out_of_stock') {
+        filterClause = 'AND quantity <= 0';
+    } else if (filter === 'low_stock') {
+        // Assuming min_quantity defaults to 0 or 10 if null, but SQL needs explicit handling if column is nullable
+        // The table definition has DEFAULT 0 for min_quantity.
+        filterClause = 'AND quantity > 0 AND quantity <= COALESCE(min_quantity, 10)';
+    }
+
+    const countResult = this.db
+      .prepare(
+        `
+      SELECT COUNT(*) as count 
+      FROM products 
+      WHERE store_id = ? 
+      AND (
+        LOWER(name) LIKE ? OR 
+        LOWER(sku) LIKE ? OR 
+        LOWER(barcode) LIKE ?
+      )
+      ${filterClause}
+    `
+      )
+      .get(storeId, likeQuery, likeQuery, likeQuery) as { count: number };
+
+    const rows = this.db
+      .prepare(
+        `
+      SELECT * 
+      FROM products 
+      WHERE store_id = ? 
+      AND (
+        LOWER(name) LIKE ? OR 
+        LOWER(sku) LIKE ? OR 
+        LOWER(barcode) LIKE ?
+      )
+      ${filterClause}
+      ORDER BY name ASC
+      LIMIT ? OFFSET ?
+    `
+      )
+      .all(storeId, likeQuery, likeQuery, likeQuery, limit, offset);
+
+    return {
+      data: rows as LocalProduct[],
+      total: countResult.count,
+    };
+  }
+
   getProductById(productId: string): LocalProduct | undefined {
     const row = this.db.prepare('SELECT * FROM products WHERE id = ? LIMIT 1').get(productId);
     return row as LocalProduct | undefined;
