@@ -210,7 +210,26 @@ class LocalBridgeDatabase {
     }
 
     this.dbPath = path.join(env.dataDir, 'localbridge.sqlite');
-    this.db = new Database(this.dbPath);
+    
+    let options: Database.Options = {};
+    if ((process as any).pkg) {
+        const execDir = path.dirname(process.execPath);
+        // Look for the binding in the bundle resources (Contents/Resources/binaries/better_sqlite3.node)
+        const resourcePath = path.resolve(execDir, '../Resources/binaries/better_sqlite3.node');
+        // Fallback for development/flat buffers
+        const adjacentPath = path.join(execDir, 'better_sqlite3.node');
+
+        if (fs.existsSync(resourcePath)) {
+            options.nativeBinding = resourcePath;
+        } else if (fs.existsSync(adjacentPath)) {
+            options.nativeBinding = adjacentPath;
+        } else {
+            console.error('Could not find better_sqlite3.node in:', resourcePath, 'or', adjacentPath);
+            options.nativeBinding = adjacentPath; // try anyway
+        }
+    }
+    
+    this.db = new Database(this.dbPath, options);
     this.db.pragma('journal_mode = WAL');
     this.initialize();
   }

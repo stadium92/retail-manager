@@ -1,22 +1,43 @@
 # Retail Manager Tasks
 
 ## 🚀 DeepSearch Planning Audit Implementation
-- [ ] Implement Framework Migration (Electron -> Tauri v2)
-  - [ ] Bundle Node.js LocalBridge as a Sidecar in Tauri
-  - [ ] Optimize for Low-End Hardware (Dual Core / 2.5GB RAM)
+- [x] Implement Framework Migration (Electron -> Tauri v2)
+  - [x] Bundle Node.js LocalBridge as a Sidecar in Tauri
+  - [x] Optimize for Low-End Hardware (Dual Core / 2.5GB RAM)
 - [ ] Eliminate In-Memory State Bloat
-  - [ ] Refactor `useMasterDataStore` (Zustand) to Virtualized + SQLite Pagination approach
+  - [ ] Refactor `useMasterDataStore` (Zustand) to Virtualized + SQLite Pagination approach (FTS5)
   - [ ] Implement direct React to LocalDatabase async queries pattern
 - [ ] Backend Logic Centralization
   - [ ] Move Underlying Calculations (Prices, Taxes, Daily Totals) to LocalBridge
-  - [ ] Implement robust synchronization strategy for Sales data with conflict handling
+  - [ ] Implement robust synchronization strategy for Sales data with conflict handling (Delta-Based Sync)
+
+## 🛠️ Performance & UX Evolution (Optimization PRD)
+- [ ] Implementation of SQLite FTS5 for zero-memory catalog searching
+- [ ] Develop "Mutation Journal" for delta-based sync (conflict-resistant)
+- [ ] Implement "Vim-style" keyboard-first POS workflow
+- [ ] Build Proactive AI "Shadow Prompting" feed
+- [ ] Create "Rugged Market Mode" high-contrast UI theme
+- [ ] Implement Web Worker offloading for heavy arithmetic calculations
+
+## 🧹 Housekeeping & Cleanup
+- [x] **Electron Removal**:
+  - [x] Uninstall Electron dependencies (`electron`, `electron-builder`, etc.).
+  - [x] Delete `frontend/electron` directory.
+  - [x] Clean `frontend/package.json` (remove `build` config and `main` entry).
+  - [x] Remove obsolete docs (`ELECTRON_SETUP.md`).
+
+## 💼 Business Logic Implementation (Gestion & Stock)
+- [ ] **Gestion > Tableau de bord**: Replace CA template with real SQLite aggregation (Daily/Weekly/Monthly).
+- [ ] **Gestion > Statistiques**: Implement Top Products, Top Workers, and Hourly Heatmap queries.
+- [ ] **Stock > Valorisation**: Build module to show Total Cost vs Total Retail value of inventory.
+- [ ] **Stock > Régularisation**: Refactor UX for explicit "Adjustment" flow (Search -> Correct Qty -> Reason -> Save).
 - [ ] Security Audit Implementation
   - [ ] Secure local SQLite data against physical theft
   - [ ] Lock down LocalBridge API to ONLY Tauri localhost
 
 ## 🏗️ Offline + Hybrid Refactor Phase 1: Offline MVP (Remaining)
-- [ ] P1.3: Mirror Supabase `products`/`product_families` schema in Drizzle models
-- [ ] Finalize frontend store loading hooks for all modules
+- [x] P1.3: Mirror Supabase `products`/`product_families` schema (Implemented via Raw SQL in `db.ts`).
+- [ ] Finalize frontend store loading hooks for all modules (Still relies on mixed Zustand/Service calls).
 
 ## 🏗️ Offline + Hybrid Refactor Phase 3: Reliability & Packaging
 - [ ] P3.1: Create Windows Service wrapper (node-windows) to host LocalBridge

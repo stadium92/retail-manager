@@ -7,6 +7,14 @@ dist/
 build/
 out/
 .next/
+src-tauri/target/
+frontend/dist/
+
+# Ignore src-tauri except code
+src-tauri/*
+!src-tauri/src/
+!src-tauri/src/**
+
 
 # System
 .DS_Store
@@ -27,4 +35,5 @@ backup/
 scripts/
 docs/
 
-notes/
+notes
+release
