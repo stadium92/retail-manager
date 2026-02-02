@@ -7,17 +7,11 @@
 - [ ] Eliminate In-Memory State Bloat
   - [ ] Refactor `useMasterDataStore` (Zustand) to Virtualized + SQLite Pagination approach (FTS5)
   - [ ] Implement direct React to LocalDatabase async queries pattern
-- [ ] Backend Logic Centralization
-  - [ ] Move Underlying Calculations (Prices, Taxes, Daily Totals) to LocalBridge
-  - [ ] Implement robust synchronization strategy for Sales data with conflict handling (Delta-Based Sync)
-
-## 🛠️ Performance & UX Evolution (Optimization PRD)
-- [ ] Implementation of SQLite FTS5 for zero-memory catalog searching
-- [ ] Develop "Mutation Journal" for delta-based sync (conflict-resistant)
-- [ ] Implement "Vim-style" keyboard-first POS workflow
-- [ ] Build Proactive AI "Shadow Prompting" feed
-- [ ] Create "Rugged Market Mode" high-contrast UI theme
-- [ ] Implement Web Worker offloading for heavy arithmetic calculations
+- [x] Backend Logic Centralization
+  - [x] Basic CRUD Endpoints (Sales, Products, Sync) - implemented in `local-bridge`.
+  - [ ] Move Underlying Calculations (Prices, Taxes, Daily Totals) to LocalBridge (Currently relies on Frontend input).
+  - [x] Implement synchronization strategy (Push/Pull + Pending Mutations).
+  - [ ] Implement robust conflict handling (Delta-Based Sync).
 
 ## 🧹 Housekeeping & Cleanup
 - [x] **Electron Removal**:
@@ -25,15 +19,49 @@
   - [x] Delete `frontend/electron` directory.
   - [x] Clean `frontend/package.json` (remove `build` config and `main` entry).
   - [x] Remove obsolete docs (`ELECTRON_SETUP.md`).
+- [x] **Restore Loggings**: Implemented sidecar stdout/stderr capture in `lib.rs` and integrated `tauri-plugin-log`.
+- [x] **Routing Cleanup**: Delete `/master/workers`, keep `/master/team`.
+- [x] **Localization**: Fix `common.eneable`, `workers.accountStatus`, and force French default.
+- [x] **Inventory Translations**: Added missing keys for `inventory.itemsTitle`, `inventory.summary`, and flattened `inventory.status`.
+- [x] **Team Translations**: Added missing keys for `team.totalWorkers`, `team.totalDeliverers`, etc.
+
+## 🏗️ Reliability & Connection Resiliency
+- [x] **Heartbeat Monitor**: Implement a "LocalBridge Connection Status" indicator in the main UI.
+- [x] **Auto-Recovery**: Implement automatic token refresh logic in `OfflineAuthService`.
+- [x] **Crash Handling**: Add global error boundary to handle `fetch` failures when the sidecar is down.
+
+## 📦 "Achats" (Purchasing) Refinement
+- [x] **Auto-Validation Logic**: Implement "Perfect Match" button to auto-fill received quantities from ordered quantities.
+- [x] **Discrepancy Highlighting**: Visual indicators for quantity/price mismatches during reception.
+- [x] **Local Audit Trail**: Ensure every reception triggers a local `inventory_movements` record for offline accountability.
+
+## 🛠️ Performance & UX Evolution (Optimization PRD)
+- [x] **Inventaire Optimization**: Implement paged/virtualized loading for "Inventaire Stock" (Low-End Hardware).
+- [ ] Implementation of SQLite FTS5 for zero-memory catalog searching
+- [ ] Develop "Mutation Journal" for delta-based sync (conflict-resistant)
+- [ ] Implement "Vim-style" keyboard-first POS workflow
+- [ ] Build Proactive AI "Shadow Prompting" feed
+- [ ] Create "Rugged Market Mode" high-contrast UI theme
+- [ ] Implement Web Worker offloading for heavy arithmetic calculations
+
+## 💼 Business Logic & Module Fixes
+- [x] **Stock > Valorisation**: Fix broken submodule (Wire to `getStockValuation`).
+- [x] **Stock > Régularisation**: Fix "Rendered fewer hooks" crash by extracting component.
+- [ ] **Achats > Names**: Fix missing supplier names in "Réception" (Partially fixed via Master view, verify Worker view).
+
+## 📦 Smart Replenishment ("Produits à Commander") - PRD-004
+- [ ] **Phase 1 (Master View)**: Implement "Besoins & Alertes" tab in `Achats` module (Aggregates Low Stock + Requests).
+- [ ] **Phase 2 (Worker Input)**: Add "Signaler Besoin" (Report Need) button in Worker Stock views.
+- [ ] **Phase 3 (Automation)**: Implement "One-Click Order Generation" grouping by supplier.
+
+## 🛠️ Performance & UX Evolution (Optimization PRD)
+- [x] **Master > Achats Visibility**: Show worker purchases in Master dashboard (Deliveries/Purchases).
+- [x] **Shortcuts**: Resolve F2 conflict with Facturation.
+- [x] **Master > Inventaire**: Remove "Clé Supabase" from UI.
+- [x] **Master > Invitations**: Fix "Invite Worker" crash and label as "Offline Construction".
+- [x] **AI & Analytics**: Fix Chat crash and ensure Analytics page uses real data.
 
 ## 💼 Business Logic Implementation (Gestion & Stock)
-- [ ] **Gestion > Tableau de bord**: Replace CA template with real SQLite aggregation (Daily/Weekly/Monthly).
-- [ ] **Gestion > Statistiques**: Implement Top Products, Top Workers, and Hourly Heatmap queries.
-- [ ] **Stock > Valorisation**: Build module to show Total Cost vs Total Retail value of inventory.
-- [ ] **Stock > Régularisation**: Refactor UX for explicit "Adjustment" flow (Search -> Correct Qty -> Reason -> Save).
-- [ ] Security Audit Implementation
-  - [ ] Secure local SQLite data against physical theft
-  - [ ] Lock down LocalBridge API to ONLY Tauri localhost
 
 ## 🏗️ Offline + Hybrid Refactor Phase 1: Offline MVP (Remaining)
 - [x] P1.3: Mirror Supabase `products`/`product_families` schema (Implemented via Raw SQL in `db.ts`).

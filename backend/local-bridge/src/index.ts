@@ -10,6 +10,7 @@ import { registerTeamRoutes } from './routes/team.js';
 import { registerSalesRoutes } from './routes/sales.js';
 import { registerStoreRoutes } from './routes/stores.js';
 import { registerSyncRoutes } from './routes/sync.js';
+import { registerAnalyticsRoutes } from './routes/analytics.js';
 import { db } from './db.js';
 
 async function start() {
@@ -31,6 +32,7 @@ async function start() {
   await registerSalesRoutes(app);
   await registerStoreRoutes(app);
   await registerSyncRoutes(app);
+  await registerAnalyticsRoutes(app);
 
   try {
     await app.listen({ port: env.port, host: '0.0.0.0' });
@@ -42,3 +44,8 @@ async function start() {
 }
 
 start();
+ 
+ 
+ 
+ 
+ 

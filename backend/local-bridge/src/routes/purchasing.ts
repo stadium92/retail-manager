@@ -212,6 +212,24 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
     return reply.send({ message: 'Supplier deleted.' });
   });
 
+  app.get('/rest/v1/purchasing/needs', async (request, reply) => {
+    const claims = authenticateRequest(request, reply, ['master', 'worker']);
+    if (!claims) return;
+
+    const parsed = listSchema.safeParse(request.query ?? {});
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'ValidationFailed', details: parsed.error.flatten() });
+    }
+
+    const storeId = parsed.data.store_id ?? claims.store_id;
+    if (!storeId) {
+      return reply.status(400).send({ error: 'StoreRequired', message: 'Store is required.' });
+    }
+
+    const needs = db.getReplenishmentNeeds(storeId);
+    return reply.send(needs);
+  });
+
   app.get('/rest/v1/purchase_orders', async (request, reply) => {
     const claims = authenticateRequest(request, reply);
     if (!claims) return;

@@ -74,11 +74,21 @@ export interface LocalProduct {
   description?: string | null;
   cost_price?: number | null;
   unit_price?: number | null;
-  wholesale_price?: number | null;
+  wholesale_price?: number | null; // Deprecated/Generic
+  wholesale_price_ht?: number | null;
+  wholesale_price_ttc?: number | null;
   min_quantity?: number;
   quantity?: number;
   category?: string | null;
   image_url?: string | null;
+  // New fields
+  aisle?: string | null;
+  brand?: string | null;
+  unit_type?: string | null;
+  packaging?: string | null;
+  expiry_date?: string | null;
+  reorder_quantity?: number;
+  
   created_at: string;
   updated_at: string;
   created_by?: string | null;
@@ -200,6 +210,33 @@ export interface LocalPendingMutation {
   status: 'pending' | 'synced' | 'failed';
 }
 
+export interface LocalReplenishmentRequest {
+  id: string;
+  store_id: string;
+  product_id: string;
+  requested_by?: string | null;
+  quantity_requested?: number | null;
+  reason?: string | null;
+  status: 'pending' | 'ordered' | 'rejected';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReplenishmentNeed {
+  product_id: string;
+  product_name: string;
+  sku?: string;
+  current_stock: number;
+  min_stock: number;
+  supplier_id?: string;
+  supplier_name?: string;
+  source: 'low_stock' | 'worker_request';
+  suggested_qty: number;
+  request_id?: string;
+  request_reason?: string;
+  requester_name?: string;
+}
+
 class LocalBridgeDatabase {
   private readonly dbPath: string;
   private readonly db: Database.Database;
@@ -300,6 +337,12 @@ class LocalBridgeDatabase {
         quantity INTEGER DEFAULT 0,
         category TEXT,
         image_url TEXT,
+        aisle TEXT,
+        brand TEXT,
+        unit_type TEXT,
+        packaging TEXT,
+        expiry_date TEXT,
+        reorder_quantity INTEGER,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         created_by TEXT,
@@ -399,9 +442,17 @@ class LocalBridgeDatabase {
         updated_at TEXT NOT NULL
       );
 
-      
-
-      
+      CREATE TABLE IF NOT EXISTS replenishment_requests (
+        id TEXT PRIMARY KEY,
+        store_id TEXT NOT NULL,
+        product_id TEXT NOT NULL,
+        requested_by TEXT,
+        quantity_requested INTEGER,
+        reason TEXT,
+        status TEXT DEFAULT 'pending',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
 
       CREATE TABLE IF NOT EXISTS pending_mutations (
         id TEXT PRIMARY KEY,
@@ -453,6 +504,8 @@ CREATE TABLE IF NOT EXISTS sale_items (
       CREATE INDEX IF NOT EXISTS idx_inventory_movements_product ON inventory_movements(product_id);
       CREATE INDEX IF NOT EXISTS idx_pending_mutations_status ON pending_mutations(status);
       CREATE INDEX IF NOT EXISTS idx_pending_mutations_store ON pending_mutations(store_id);
+      CREATE INDEX IF NOT EXISTS idx_replenishment_requests_store ON replenishment_requests(store_id);
+      CREATE INDEX IF NOT EXISTS idx_replenishment_requests_status ON replenishment_requests(status);
     `);
 
     const ensureColumn = (table: string, column: string, ddl: string) => {
@@ -495,6 +548,16 @@ CREATE TABLE IF NOT EXISTS sale_items (
     ensureColumn('sales', 'notes', `ALTER TABLE sales ADD COLUMN notes TEXT`);
     ensureColumn('sales', 'invoice_number', `ALTER TABLE sales ADD COLUMN invoice_number TEXT`);
     ensureColumn('sale_items', 'discount', `ALTER TABLE sale_items ADD COLUMN discount REAL DEFAULT 0`);
+    
+    // New Product Fields
+    ensureColumn('products', 'aisle', `ALTER TABLE products ADD COLUMN aisle TEXT`);
+    ensureColumn('products', 'brand', `ALTER TABLE products ADD COLUMN brand TEXT`);
+    ensureColumn('products', 'unit_type', `ALTER TABLE products ADD COLUMN unit_type TEXT`);
+    ensureColumn('products', 'packaging', `ALTER TABLE products ADD COLUMN packaging TEXT`);
+    ensureColumn('products', 'expiry_date', `ALTER TABLE products ADD COLUMN expiry_date TEXT`);
+    ensureColumn('products', 'reorder_quantity', `ALTER TABLE products ADD COLUMN reorder_quantity INTEGER`);
+    ensureColumn('products', 'wholesale_price_ht', `ALTER TABLE products ADD COLUMN wholesale_price_ht REAL`);
+    ensureColumn('products', 'wholesale_price_ttc', `ALTER TABLE products ADD COLUMN wholesale_price_ttc REAL`);
   }
 
   get dbFile() {
@@ -744,9 +807,19 @@ CREATE TABLE IF NOT EXISTS sale_items (
 
   listProducts(storeId: string): LocalProduct[] {
     const rows = this.db
-      .prepare('SELECT * FROM products WHERE store_id = ? ORDER BY name ASC')
+      .prepare(`
+        SELECT p.*, pf.name as category_name 
+        FROM products p
+        LEFT JOIN product_families pf ON p.category = pf.id
+        WHERE p.store_id = ? 
+        ORDER BY p.name ASC
+      `)
       .all(storeId);
-    return rows as LocalProduct[];
+      
+    return rows.map((row: any) => ({
+      ...row,
+      category: row.category_name || row.category
+    })) as LocalProduct[];
   }
 
   listAllProducts(): LocalProduct[] {
@@ -794,23 +867,29 @@ CREATE TABLE IF NOT EXISTS sale_items (
     const rows = this.db
       .prepare(
         `
-      SELECT * 
-      FROM products 
-      WHERE store_id = ? 
+      SELECT p.*, pf.name as category_name
+      FROM products p
+      LEFT JOIN product_families pf ON p.category = pf.id
+      WHERE p.store_id = ? 
       AND (
-        LOWER(name) LIKE ? OR 
-        LOWER(sku) LIKE ? OR 
-        LOWER(barcode) LIKE ?
+        LOWER(p.name) LIKE ? OR 
+        LOWER(p.sku) LIKE ? OR 
+        LOWER(p.barcode) LIKE ?
       )
       ${filterClause}
-      ORDER BY name ASC
+      ORDER BY p.name ASC
       LIMIT ? OFFSET ?
     `
       )
       .all(storeId, likeQuery, likeQuery, likeQuery, limit, offset);
 
+    const mappedRows = rows.map((row: any) => ({
+      ...row,
+      category: row.category_name || row.category // Fallback to ID if name not found or null
+    }));
+
     return {
-      data: rows as LocalProduct[],
+      data: mappedRows as LocalProduct[],
       total: countResult.count,
     };
   }
@@ -833,10 +912,18 @@ CREATE TABLE IF NOT EXISTS sale_items (
           cost_price,
           unit_price,
           wholesale_price,
+          wholesale_price_ht,
+          wholesale_price_ttc,
           min_quantity,
           quantity,
           category,
           image_url,
+          aisle,
+          brand,
+          unit_type,
+          packaging,
+          expiry_date,
+          reorder_quantity,
           created_at,
           updated_at,
           created_by,
@@ -851,10 +938,18 @@ CREATE TABLE IF NOT EXISTS sale_items (
           @cost_price,
           @unit_price,
           @wholesale_price,
+          @wholesale_price_ht,
+          @wholesale_price_ttc,
           @min_quantity,
           @quantity,
           @category,
           @image_url,
+          @aisle,
+          @brand,
+          @unit_type,
+          @packaging,
+          @expiry_date,
+          @reorder_quantity,
           @created_at,
           @updated_at,
           @created_by,
@@ -869,10 +964,18 @@ CREATE TABLE IF NOT EXISTS sale_items (
         cost_price: product.cost_price ?? null,
         unit_price: product.unit_price ?? null,
         wholesale_price: product.wholesale_price ?? null,
+        wholesale_price_ht: product.wholesale_price_ht ?? null,
+        wholesale_price_ttc: product.wholesale_price_ttc ?? null,
         min_quantity: product.min_quantity ?? 0,
         quantity: product.quantity ?? 0,
         category: product.category ?? null,
         image_url: product.image_url ?? null,
+        aisle: product.aisle ?? null,
+        brand: product.brand ?? null,
+        unit_type: product.unit_type ?? null,
+        packaging: product.packaging ?? null,
+        expiry_date: product.expiry_date ?? null,
+        reorder_quantity: product.reorder_quantity ?? null,
         created_by: product.created_by ?? null,
         updated_by: product.updated_by ?? null,
       });
@@ -947,15 +1050,46 @@ CREATE TABLE IF NOT EXISTS sale_items (
   }
 
   // ===== Purchase Orders =====
-  listPurchaseOrders(storeId: string, status?: string): LocalPurchaseOrder[] {
+  listPurchaseOrders(storeId: string, status?: string): (LocalPurchaseOrder & { supplier?: LocalSupplier })[] {
+    let sql = `
+      SELECT po.*, 
+             s.id as s_id, s.name as s_name, s.phone as s_phone, s.email as s_email, s.address as s_address, s.balance as s_balance
+      FROM purchase_orders po
+      LEFT JOIN suppliers s ON po.supplier_id = s.id
+      WHERE po.store_id = ?
+    `;
+    
+    const params: any[] = [storeId];
     if (status) {
-      return this.db
-        .prepare('SELECT * FROM purchase_orders WHERE store_id = ? AND status = ? ORDER BY created_at DESC')
-        .all(storeId, status) as LocalPurchaseOrder[];
+      sql += ' AND po.status = ?';
+      params.push(status);
     }
-    return this.db
-      .prepare('SELECT * FROM purchase_orders WHERE store_id = ? ORDER BY created_at DESC')
-      .all(storeId) as LocalPurchaseOrder[];
+    
+    sql += ' ORDER BY po.created_at DESC';
+
+    const rows = this.db.prepare(sql).all(...params) as any[];
+    
+    return rows.map(row => ({
+      id: row.id,
+      store_id: row.store_id,
+      supplier_id: row.supplier_id,
+      status: row.status,
+      total_amount: row.total_amount,
+      notes: row.notes,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      supplier: row.s_id ? {
+        id: row.s_id,
+        store_id: row.store_id,
+        name: row.s_name,
+        phone: row.s_phone,
+        email: row.s_email,
+        address: row.s_address,
+        balance: row.s_balance,
+        created_at: '', // Not needed for display
+        updated_at: ''
+      } : undefined
+    }));
   }
 
   getPurchaseOrderById(orderId: string): LocalPurchaseOrder | undefined {
@@ -1015,11 +1149,30 @@ CREATE TABLE IF NOT EXISTS sale_items (
   }
 
   // ===== Purchase Items =====
-  listPurchaseItems(orderId: string): LocalPurchaseItem[] {
+  listPurchaseItems(orderId: string): (LocalPurchaseItem & { product?: { id: string; name: string } })[] {
     const rows = this.db
-      .prepare('SELECT * FROM purchase_items WHERE order_id = ? ORDER BY created_at ASC')
-      .all(orderId);
-    return rows as LocalPurchaseItem[];
+      .prepare(`
+        SELECT pi.*, p.id as p_id, p.name as p_name
+        FROM purchase_items pi
+        LEFT JOIN products p ON pi.product_id = p.id
+        WHERE pi.order_id = ?
+        ORDER BY pi.created_at ASC
+      `)
+      .all(orderId) as any[];
+      
+    return rows.map(row => ({
+      id: row.id,
+      order_id: row.order_id,
+      product_id: row.product_id,
+      quantity_ordered: row.quantity_ordered,
+      quantity_received: row.quantity_received,
+      unit_cost: row.unit_cost,
+      created_at: row.created_at,
+      product: row.p_id ? {
+        id: row.p_id,
+        name: row.p_name
+      } : undefined
+    }));
   }
 
   insertPurchaseItem(item: LocalPurchaseItem) {
@@ -1471,6 +1624,187 @@ CREATE TABLE IF NOT EXISTS sale_items (
       .prepare('SELECT * FROM worker_invitations WHERE token = ? LIMIT 1')
       .get(token);
     return row as LocalWorkerInvitation | undefined;
+  }
+
+  // ===== Analytics Aggregations =====
+  getDailyRevenue(storeId: string): number {
+    const row = this.db
+      .prepare(`
+        SELECT SUM(total_price) as total
+        FROM sales
+        WHERE store_id = ? AND date(created_at) = date('now')
+      `)
+      .get(storeId) as { total: number };
+    return row?.total ?? 0;
+  }
+
+  getWeeklyRevenue(storeId: string): { date: string; revenue: number }[] {
+    const rows = this.db
+      .prepare(`
+        SELECT date(created_at) as date, SUM(total_price) as revenue
+        FROM sales
+        WHERE store_id = ? AND created_at >= date('now', '-6 days')
+        GROUP BY date(created_at)
+        ORDER BY date(created_at) ASC
+      `)
+      .all(storeId) as { date: string; revenue: number }[];
+    return rows;
+  }
+
+  getTopProducts(storeId: string, limit = 5): { name: string; quantity: number; revenue: number }[] {
+    const rows = this.db
+      .prepare(`
+        SELECT 
+          si.product_name as name, 
+          SUM(si.quantity) as quantity, 
+          SUM(si.total) as revenue
+        FROM sale_items si
+        JOIN sales s ON s.id = si.sale_id
+        WHERE s.store_id = ?
+        GROUP BY si.product_name
+        ORDER BY quantity DESC
+        LIMIT ?
+      `)
+      .all(storeId, limit) as { name: string; quantity: number; revenue: number }[];
+    return rows;
+  }
+
+  getTopWorkers(storeId: string, limit = 5): { name: string; sales_count: number; revenue: number }[] {
+    const rows = this.db
+      .prepare(`
+        SELECT 
+          u.full_name as name, 
+          COUNT(s.id) as sales_count, 
+          SUM(s.total_price) as revenue
+        FROM sales s
+        LEFT JOIN users u ON s.worker_id = u.id
+        WHERE s.store_id = ?
+        GROUP BY u.full_name
+        ORDER BY revenue DESC
+        LIMIT ?
+      `)
+      .all(storeId, limit) as { name: string; sales_count: number; revenue: number }[];
+    return rows;
+  }
+
+  getStockValuation(storeId: string): { total_cost: number; total_retail: number; item_count: number } {
+    const row = this.db
+      .prepare(`
+        SELECT 
+          SUM(quantity * COALESCE(cost_price, 0)) as total_cost,
+          SUM(quantity * unit_price) as total_retail,
+          COUNT(*) as item_count
+        FROM products
+        WHERE store_id = ? AND quantity > 0
+      `)
+      .get(storeId) as { total_cost: number; total_retail: number; item_count: number };
+    return {
+      total_cost: row?.total_cost ?? 0,
+      total_retail: row?.total_retail ?? 0,
+      item_count: row?.item_count ?? 0,
+    };
+  }
+
+  // ===== Replenishment =====
+  listReplenishmentRequests(storeId: string): LocalReplenishmentRequest[] {
+    const rows = this.db
+      .prepare('SELECT * FROM replenishment_requests WHERE store_id = ? ORDER BY created_at DESC')
+      .all(storeId);
+    return rows as LocalReplenishmentRequest[];
+  }
+
+  insertReplenishmentRequest(request: LocalReplenishmentRequest) {
+    this.db
+      .prepare(
+        `
+        INSERT INTO replenishment_requests (
+          id, store_id, product_id, requested_by, quantity_requested, reason, status, created_at, updated_at
+        ) VALUES (
+          @id, @store_id, @product_id, @requested_by, @quantity_requested, @reason, @status, @created_at, @updated_at
+        )
+      `
+      )
+      .run({
+        ...request,
+        requested_by: request.requested_by ?? null,
+        quantity_requested: request.quantity_requested ?? null,
+        reason: request.reason ?? null,
+      });
+  }
+
+  getReplenishmentNeeds(storeId: string): ReplenishmentNeed[] {
+    // 1. Get Low Stock Products (quantity <= min_quantity)
+    const lowStockProducts = this.db
+      .prepare(`
+        SELECT p.*, pf.name as category_name
+        FROM products p
+        LEFT JOIN product_families pf ON p.category = pf.id
+        WHERE p.store_id = ? AND p.quantity <= COALESCE(p.min_quantity, 10)
+      `)
+      .all(storeId) as LocalProduct[];
+
+    // 2. Get Pending Requests
+    const pendingRequests = this.db
+      .prepare(`
+        SELECT rr.*, p.name as product_name, p.sku, p.quantity as current_stock, p.min_quantity,
+               u.full_name as requester_name
+        FROM replenishment_requests rr
+        JOIN products p ON rr.product_id = p.id
+        LEFT JOIN users u ON rr.requested_by = u.id
+        WHERE rr.store_id = ? AND rr.status = 'pending'
+      `)
+      .all(storeId) as (LocalReplenishmentRequest & {
+        product_name: string;
+        sku: string;
+        current_stock: number;
+        min_quantity: number;
+        requester_name?: string;
+      })[];
+
+    // 3. Merge Logic
+    const needsMap = new Map<string, ReplenishmentNeed>();
+
+    // Add Low Stock alerts
+    for (const p of lowStockProducts) {
+      needsMap.set(p.id, {
+        product_id: p.id,
+        product_name: p.name,
+        sku: p.sku || undefined,
+        current_stock: p.quantity || 0,
+        min_stock: p.min_quantity || 0,
+        source: 'low_stock',
+        suggested_qty: Math.max(10, (p.min_quantity || 10) * 2 - (p.quantity || 0)),
+      });
+    }
+
+    // Add Requests (override or add)
+    for (const req of pendingRequests) {
+      const existing = needsMap.get(req.product_id);
+      if (existing) {
+        // If exists, enrich with request info but keep source 'low_stock' as primary alert, or maybe 'worker_request' is more urgent?
+        // Let's mark as mixed or prioritize the higher qty.
+        existing.source = 'worker_request'; // Prioritize human signal
+        existing.request_id = req.id;
+        existing.request_reason = req.reason || undefined;
+        existing.requester_name = req.requester_name || undefined;
+        existing.suggested_qty = Math.max(existing.suggested_qty, req.quantity_requested || 0);
+      } else {
+        needsMap.set(req.product_id, {
+          product_id: req.product_id,
+          product_name: req.product_name,
+          sku: req.sku,
+          current_stock: req.current_stock,
+          min_stock: req.min_quantity || 0,
+          source: 'worker_request',
+          suggested_qty: req.quantity_requested || 10,
+          request_id: req.id,
+          request_reason: req.reason || undefined,
+          requester_name: req.requester_name || undefined,
+        });
+      }
+    }
+
+    return Array.from(needsMap.values());
   }
 
   insertInvitation(invitation: LocalWorkerInvitation) {

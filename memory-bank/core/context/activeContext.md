@@ -6,18 +6,16 @@ Evolving the project by integrating DeepSearch audit results and finalizing the 
 ## Current Blockers
 - **macOS Build Failure**: Attempts to launch the app on MacBook for backend verification are currently failing.
 - **Sidecar Synchronization**: Issues with the simultaneous launch of the Tauri frontend and the Node.js LocalBridge sidecar.
-- **Logging Deficiency**: System logs are currently non-functional, making it difficult to diagnose the root cause of the launch failures.
 
 ## Recent Changes
+- **Restored Loggings**: Implemented robust logging for both the Rust core and the Node.js sidecar using `tauri-plugin-log`. Sidecar stdout/stderr is now piped to Tauri logs.
 - Removed all Electron dependencies, configuration, and legacy documentation.
 - Migrated from Electron to Tauri v2 for improved performance on low-end hardware.
 - Bundled the Node.js LocalBridge as a standalone binary sidecar within Tauri.
 - Initialized Memory Bank core files (`tasks.md`, `activeContext.md`, `projectbrief.md`).
-- Integrated DeepSearch audit tasks into the main task list.
 
 ## Next Steps
-- **Debug macOS Launch**: Fix the orchestration between Tauri and the LocalBridge sidecar.
-- **Restore Loggings**: Implement robust logging for both the Rust core and the Node.js sidecar to facilitate troubleshooting.
+- **Debug macOS Launch**: Fix the orchestration between Tauri and the LocalBridge sidecar (now possible with logs).
 - Implement SQLite FTS5 for zero-memory catalog searching.
 - Refactor Zustand state to use SQLite-backed virtualization.
 
