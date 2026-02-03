@@ -312,6 +312,18 @@ export async function registerProductRoutes(app: FastifyInstance) {
       created_by: claims.sub,
     });
 
+    db.insertAuditLog({
+      id: crypto.randomUUID(),
+      timestamp: now,
+      user_id: claims.sub,
+      action_type: 'inventory_movement',
+      entity_affected: 'product',
+      entity_id: parsed.data.product_id,
+      old_value: String(product.quantity ?? 0),
+      new_value: String(Math.max(0, (product.quantity ?? 0) + appliedQuantityDelta)),
+      store_id: storeId,
+    });
+
     db.insertPendingMutation({
       id: crypto.randomUUID(),
       store_id: storeId,
@@ -571,6 +583,21 @@ export async function registerProductRoutes(app: FastifyInstance) {
       updated_at: new Date().toISOString(),
       updated_by: claims.sub,
     };
+
+    // Audit price changes
+    if (parsed.data.unit_price !== undefined && parsed.data.unit_price !== existing.unit_price) {
+      db.insertAuditLog({
+        id: crypto.randomUUID(),
+        timestamp: updates.updated_at,
+        user_id: claims.sub,
+        action_type: 'price_change',
+        entity_affected: 'product',
+        entity_id: productId,
+        old_value: String(existing.unit_price),
+        new_value: String(parsed.data.unit_price),
+        store_id: existing.store_id,
+      });
+    }
 
     const product = db.updateProduct(productId, updates);
     return reply.send(product);

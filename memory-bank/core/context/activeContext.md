@@ -1,25 +1,25 @@
 # Active Context - Retail Manager
 
 ## Current Focus
-Evolving the project by integrating DeepSearch audit results and finalizing the Offline-First/Hybrid refactor. The primary goal is ensuring performance on low-end hardware (Dual Core, 2.5GB RAM) and completing Phase 3 (Reliability & Packaging) of the refactor.
+The project has shifted from infrastructure migration (Tauri v2) to **v1.0 Stability and Feature Completion**. The current priority is fixing broken core logic (Stock Valuation, Invoices) and implementing the Keyboard-First POS workflow (PRD-013) and Licensing protection.
 
 ## Current Blockers
-- **macOS Build Failure**: Attempts to launch the app on MacBook for backend verification are currently failing.
-- **Sidecar Synchronization**: Issues with the simultaneous launch of the Tauri frontend and the Node.js LocalBridge sidecar.
+- **Stock Valuation**: Reports 0 total value despite available inventory; requires SQL/Logic fix.
+- **Audit Logs Loading**: Infinite loading/hang in the Master Dashboard logs view.
+- **Report Templates**: Several sub-modules in "Edition" and "Purchases" are non-functional templates.
 
 ## Recent Changes
-- **Restored Loggings**: Implemented robust logging for both the Rust core and the Node.js sidecar using `tauri-plugin-log`. Sidecar stdout/stderr is now piped to Tauri logs.
-- Removed all Electron dependencies, configuration, and legacy documentation.
-- Migrated from Electron to Tauri v2 for improved performance on low-end hardware.
-- Bundled the Node.js LocalBridge as a standalone binary sidecar within Tauri.
-- Initialized Memory Bank core files (`tasks.md`, `activeContext.md`, `projectbrief.md`).
+- **i18n Completion**: 100% UI coverage for English, French, and Bamanankan across all 4 interfaces (Master, Worker, Deliverer, Customer).
+- **PVG Labeling Fix**: Replaced hardcoded "PVG" with localized "Wholesale Price" strings in the Sales module.
+- **Licensing Core**: Developed the CLI License Key Generator (`RM-YYYY-SSSS-HHHH-VVVV`) and implemented Rust-side hardware fingerprinting.
+- **Roadmap Overhaul**: Reorganized `tasks.md` into a prioritized v1.0 roadmap (P0: Shortcuts/Licensing/BugFixes).
+- **PRD Documentation**: Created PRD-012 (System Intelligence) and PRD-013 (Keyboard Shortcuts).
 
 ## Next Steps
-- **Debug macOS Launch**: Fix the orchestration between Tauri and the LocalBridge sidecar (now possible with logs).
-- Implement SQLite FTS5 for zero-memory catalog searching.
-- Refactor Zustand state to use SQLite-backed virtualization.
+- **Critical Fixes**: Repair Stock Valuation SQL and implement functional Invoice/Purchase reports.
+- **Keyboard Engine**: Implement `ShortcutsContext` and the F1 Help Overlay.
+- **Licensing UI**: Build the "Activation Required" nag dialogs.
 
 ## Technical Decisions
-- **Migration to Tauri v2**: Decided for performance on low-end hardware.
-- **SQLite as Primary Local State**: Moving away from large in-memory Zustand stores.
-- **Node.js Sidecar**: Keeping LocalBridge as a sidecar for business logic centralization.
+- **English-Only Logs**: All technical/audit logs remain in English for developer debugging, regardless of UI locale.
+- **Retro DOS Aesthetic**: The Keyboard Help Overlay (F1) will mimic legacy DOS POS systems for rapid adoption in the Malian market.

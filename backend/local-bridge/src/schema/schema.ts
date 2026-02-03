@@ -163,16 +163,30 @@ export const deliveries = sqliteTable('deliveries', {
   updated_at: text('updated_at').notNull(),
 });
 
-export const worker_invitations = sqliteTable('worker_invitations', {
-  id: text('id').primaryKey(),
-  email: text('email').notNull(),
-  role: text('role').notNull(),
-  store_id: text('store_id'),
-  invited_by: text('invited_by'),
-  token: text('token').notNull(),
-  status: text('status').notNull().default('pending'),
-  expires_at: text('expires_at').notNull(),
-  accepted_at: text('accepted_at'),
   created_at: text('created_at').notNull(),
   updated_at: text('updated_at').notNull(),
+});
+
+export const inventory_movements = sqliteTable('inventory_movements', {
+  id: text('id').primaryKey(),
+  product_id: text('product_id').notNull(),
+  store_id: text('store_id').notNull(),
+  type: text('type').notNull(), // 'in', 'out', 'adjustment'
+  quantity: integer('quantity').notNull(),
+  reason: text('reason'),
+  user_id: text('user_id'),
+  created_at: text('created_at').notNull(),
+});
+
+export const audit_logs = sqliteTable('audit_logs', {
+  id: text('id').primaryKey(),
+  timestamp: text('timestamp').notNull(),
+  user_id: text('user_id'),
+  action_type: text('action_type').notNull(),
+  entity_affected: text('entity_affected'),
+  entity_id: text('entity_id'),
+  old_value: text('old_value'),
+  new_value: text('new_value'),
+  ip_address: text('ip_address'),
+  store_id: text('store_id'),
 });

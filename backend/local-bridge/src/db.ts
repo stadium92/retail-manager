@@ -222,6 +222,19 @@ export interface LocalReplenishmentRequest {
   updated_at: string;
 }
 
+export interface LocalAuditLog {
+  id: string;
+  timestamp: string;
+  user_id?: string | null;
+  action_type: string;
+  entity_affected?: string | null;
+  entity_id?: string | null;
+  old_value?: string | null;
+  new_value?: string | null;
+  ip_address?: string | null;
+  store_id?: string | null;
+}
+
 export interface ReplenishmentNeed {
   product_id: string;
   product_name: string;
@@ -463,6 +476,19 @@ class LocalBridgeDatabase {
         created_at TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'pending'
       );
+
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id TEXT PRIMARY KEY,
+        timestamp TEXT NOT NULL,
+        user_id TEXT,
+        action_type TEXT NOT NULL,
+        entity_affected TEXT,
+        entity_id TEXT,
+        old_value TEXT,
+        new_value TEXT,
+        ip_address TEXT,
+        store_id TEXT
+      );
 CREATE TABLE IF NOT EXISTS inventory_movements (
         id TEXT PRIMARY KEY,
         store_id TEXT NOT NULL,
@@ -506,6 +532,8 @@ CREATE TABLE IF NOT EXISTS sale_items (
       CREATE INDEX IF NOT EXISTS idx_pending_mutations_store ON pending_mutations(store_id);
       CREATE INDEX IF NOT EXISTS idx_replenishment_requests_store ON replenishment_requests(store_id);
       CREATE INDEX IF NOT EXISTS idx_replenishment_requests_status ON replenishment_requests(status);
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp);
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
     `);
 
     const ensureColumn = (table: string, column: string, ddl: string) => {
@@ -1231,35 +1259,48 @@ CREATE TABLE IF NOT EXISTS sale_items (
   }
 
   insertSupplierPayment(payment: LocalSupplierPayment) {
-    this.db
-      .prepare(
-        `
-        INSERT INTO supplier_payments (
-          id,
-          store_id,
-          supplier_id,
-          amount,
-          payment_method,
-          reference,
-          notes,
-          created_at
-        ) VALUES (
-          @id,
-          @store_id,
-          @supplier_id,
-          @amount,
-          @payment_method,
-          @reference,
-          @notes,
-          @created_at
-        )
-      `
+    const insertPayment = this.db.prepare(`
+      INSERT INTO supplier_payments (
+        id,
+        store_id,
+        supplier_id,
+        amount,
+        payment_method,
+        reference,
+        notes,
+        created_at
+      ) VALUES (
+        @id,
+        @store_id,
+        @supplier_id,
+        @amount,
+        @payment_method,
+        @reference,
+        @notes,
+        @created_at
       )
-      .run({
-        ...payment,
-        reference: payment.reference ?? null,
-        notes: payment.notes ?? null,
+    `);
+
+    const updateBalance = this.db.prepare(`
+      UPDATE suppliers
+      SET balance = balance - @amount, updated_at = @created_at
+      WHERE id = @supplier_id
+    `);
+
+    const transaction = this.db.transaction((paymentData) => {
+      insertPayment.run(paymentData);
+      updateBalance.run({
+        amount: paymentData.amount,
+        created_at: paymentData.created_at,
+        supplier_id: paymentData.supplier_id,
       });
+    });
+
+    transaction({
+      ...payment,
+      reference: payment.reference ?? null,
+      notes: payment.notes ?? null,
+    });
   }
 
 
@@ -1691,8 +1732,8 @@ CREATE TABLE IF NOT EXISTS sale_items (
     const row = this.db
       .prepare(`
         SELECT 
-          SUM(quantity * COALESCE(cost_price, 0)) as total_cost,
-          SUM(quantity * unit_price) as total_retail,
+          SUM(COALESCE(quantity, 0) * COALESCE(cost_price, 0)) as total_cost,
+          SUM(COALESCE(quantity, 0) * COALESCE(unit_price, 0)) as total_retail,
           COUNT(*) as item_count
         FROM products
         WHERE store_id = ? AND quantity > 0
@@ -1871,6 +1912,68 @@ CREATE TABLE IF NOT EXISTS sale_items (
       .prepare(`UPDATE worker_invitations SET ${updateAssignments} WHERE id = @id`)
       .run(payload);
     return this.getInvitationById(invitationId);
+  }
+
+  // ===== Audit Logs =====
+  insertAuditLog(log: LocalAuditLog) {
+    this.db
+      .prepare(
+        `
+        INSERT INTO audit_logs (
+          id, timestamp, user_id, action_type, entity_affected, entity_id, old_value, new_value, ip_address, store_id
+        ) VALUES (
+          @id, @timestamp, @user_id, @action_type, @entity_affected, @entity_id, @old_value, @new_value, @ip_address, @store_id
+        )
+      `
+      )
+      .run({
+        ...log,
+        user_id: log.user_id ?? null,
+        entity_affected: log.entity_affected ?? null,
+        entity_id: log.entity_id ?? null,
+        old_value: log.old_value ?? null,
+        new_value: log.new_value ?? null,
+        ip_address: log.ip_address ?? null,
+        store_id: log.store_id ?? null,
+      });
+  }
+
+  listAuditLogs(options: { 
+    store_id?: string; 
+    user_id?: string; 
+    action_type?: string; 
+    limit?: number; 
+    offset?: number 
+  }): { data: LocalAuditLog[]; total: number } {
+    let sql = 'SELECT * FROM audit_logs WHERE 1=1';
+    let countSql = 'SELECT COUNT(*) as count FROM audit_logs WHERE 1=1';
+    const params: any = {};
+
+    if (options.store_id) {
+      sql += ' AND store_id = @store_id';
+      countSql += ' AND store_id = @store_id';
+      params.store_id = options.store_id;
+    }
+    if (options.user_id) {
+      sql += ' AND user_id = @user_id';
+      countSql += ' AND user_id = @user_id';
+      params.user_id = options.user_id;
+    }
+    if (options.action_type) {
+      sql += ' AND action_type = @action_type';
+      countSql += ' AND action_type = @action_type';
+      params.action_type = options.action_type;
+    }
+
+    const total = (this.db.prepare(countSql).get(params) as { count: number }).count;
+
+    sql += ' ORDER BY timestamp DESC LIMIT @limit OFFSET @offset';
+    params.limit = options.limit ?? 50;
+    params.offset = options.offset ?? 0;
+
+    const rows = this.db.prepare(sql).all(params) as LocalAuditLog[];
+
+    return { data: rows, total };
   }
 }
 

@@ -188,6 +188,18 @@ export async function registerSalesRoutes(app: FastifyInstance) {
     }
 
     db.deleteSale(saleId);
+
+    db.insertAuditLog({
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+      user_id: claims.sub,
+      action_type: 'sale_deletion',
+      entity_affected: 'sale',
+      entity_id: saleId,
+      old_value: JSON.stringify({ total_price: existing.total_price, created_at: existing.created_at }),
+      store_id: existing.store_id,
+    });
+
     return reply.send({ message: 'Sale deleted.' });
   });
 

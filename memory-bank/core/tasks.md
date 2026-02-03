@@ -1,87 +1,103 @@
-# Retail Manager Tasks
+# Retail Manager - Implementation Roadmap v1.0 (Detailed)
 
-## 🚀 DeepSearch Planning Audit Implementation
-- [x] Implement Framework Migration (Electron -> Tauri v2)
-  - [x] Bundle Node.js LocalBridge as a Sidecar in Tauri
-  - [x] Optimize for Low-End Hardware (Dual Core / 2.5GB RAM)
-- [ ] Eliminate In-Memory State Bloat
-  - [ ] Refactor `useMasterDataStore` (Zustand) to Virtualized + SQLite Pagination approach (FTS5)
-  - [ ] Implement direct React to LocalDatabase async queries pattern
-- [x] Backend Logic Centralization
-  - [x] Basic CRUD Endpoints (Sales, Products, Sync) - implemented in `local-bridge`.
-  - [ ] Move Underlying Calculations (Prices, Taxes, Daily Totals) to LocalBridge (Currently relies on Frontend input).
-  - [x] Implement synchronization strategy (Push/Pull + Pending Mutations).
-  - [ ] Implement robust conflict handling (Delta-Based Sync).
+This document tracks granular progress toward the v1.0 release. All technical logs and internal data remain in English.
 
-## 🧹 Housekeeping & Cleanup
-- [x] **Electron Removal**:
-  - [x] Uninstall Electron dependencies (`electron`, `electron-builder`, etc.).
-  - [x] Delete `frontend/electron` directory.
-  - [x] Clean `frontend/package.json` (remove `build` config and `main` entry).
-  - [x] Remove obsolete docs (`ELECTRON_SETUP.md`).
-- [x] **Restore Loggings**: Implemented sidecar stdout/stderr capture in `lib.rs` and integrated `tauri-plugin-log`.
-- [x] **Routing Cleanup**: Delete `/master/workers`, keep `/master/team`.
-- [x] **Localization**: Fix `common.eneable`, `workers.accountStatus`, and force French default.
-- [x] **Inventory Translations**: Added missing keys for `inventory.itemsTitle`, `inventory.summary`, and flattened `inventory.status`.
-- [x] **Team Translations**: Added missing keys for `team.totalWorkers`, `team.totalDeliverers`, etc.
+---
 
-## 🏗️ Reliability & Connection Resiliency
-- [x] **Heartbeat Monitor**: Implement a "LocalBridge Connection Status" indicator in the main UI.
-- [x] **Auto-Recovery**: Implement automatic token refresh logic in `OfflineAuthService`.
-- [x] **Crash Handling**: Add global error boundary to handle `fetch` failures when the sidecar is down.
+## ✅ Recent Completed (P0)
 
-## 📦 "Achats" (Purchasing) Refinement
-- [x] **Auto-Validation Logic**: Implement "Perfect Match" button to auto-fill received quantities from ordered quantities.
-- [x] **Discrepancy Highlighting**: Visual indicators for quantity/price mismatches during reception.
-- [x] **Local Audit Trail**: Ensure every reception triggers a local `inventory_movements` record for offline accountability.
+### 0. Currency Support (Ghanaian Cedis)
+*   **Context:** Added support for GHS alongside XOF, EUR, USD.
+*   **Tasks:**
+    *   [x] **Store Implementation:** Created `useSettingsStore` to manage currency preferences.
+    *   [x] **Formatter Update:** Updated `utils/formatting.ts` to handle dynamic currency symbols and decimals.
+    *   [x] **UI Integration:** Added `CurrencySwitcher` to Master/Worker dashboards and Settings page.
+    *   [x] **Denomination Logic:** Implemented `currencyConfig.ts` for dynamic cash counting and quick payment amounts.
+    *   [x] **Refactoring:** Removed hardcoded "XAF" suffixes across POS, Inventory, and Reporting modules.
 
-## 🛠️ Performance & UX Evolution (Optimization PRD)
-- [x] **Inventaire Optimization**: Implement paged/virtualized loading for "Inventaire Stock" (Low-End Hardware).
-- [ ] Implementation of SQLite FTS5 for zero-memory catalog searching
-- [ ] Develop "Mutation Journal" for delta-based sync (conflict-resistant)
-- [ ] Implement "Vim-style" keyboard-first POS workflow
-- [ ] Build Proactive AI "Shadow Prompting" feed
-- [ ] Create "Rugged Market Mode" high-contrast UI theme
-- [ ] Implement Web Worker offloading for heavy arithmetic calculations
+## 🔴 Phase 1: High Priority - Critical Path (P0)
 
-## 💼 Business Logic & Module Fixes
-- [x] **Stock > Valorisation**: Fix broken submodule (Wire to `getStockValuation`).
-- [x] **Stock > Régularisation**: Fix "Rendered fewer hooks" crash by extracting component.
-- [ ] **Achats > Names**: Fix missing supplier names in "Réception" (Partially fixed via Master view, verify Worker view).
+### 1. Stock Valuation Logic Fix
+*   **Context:** Currently reporting 0 total value despite existing inventory.
+*   **Tasks:**
+    *   [ ] **Backend Audit:** Inspect `local-bridge/src/db.ts` for the `getStockValuation` method.
+    *   [ ] **SQL Correction:** Update query to use `SUM(COALESCE(cost_price, 0) * quantity)` and `SUM(COALESCE(unit_price, 0) * quantity)`.
+    *   [ ] **Null Resilience:** Implement `COALESCE` or Javascript-side fallback to ensure `null` prices don't break the sum.
+    *   [ ] **Verification:** Add a test product with a specific cost/price and verify the valuation increases correctly.
 
-## 📦 Smart Replenishment ("Produits à Commander") - PRD-004
-- [ ] **Phase 1 (Master View)**: Implement "Besoins & Alertes" tab in `Achats` module (Aggregates Low Stock + Requests).
-- [ ] **Phase 2 (Worker Input)**: Add "Signaler Besoin" (Report Need) button in Worker Stock views.
-- [ ] **Phase 3 (Automation)**: Implement "One-Click Order Generation" grouping by supplier.
+### 2. Edition Module Restoration (Reports)
+*   **Context:** Key business reports are currently non-functional templates.
+*   **Tasks:**
+    *   [x] **List of Invoices:**
+        *   [x] Create `InvoiceListTable` component in `EditionModule.tsx` (Integrated directly).
+        *   [x] Connect to `OfflineDataService.getSales` with date range support.
+        *   [x] Add "View Details" action to see individual items in an invoice.
+    *   [x] **Purchase Tracking (Daily/Period):**
+        *   [x] Implement data fetching from `purchase_orders` table.
+        *   [x] Add grouping logic to show total spent per day/period.
+    *   [x] **Purchase by Family:**
+        *   [x] Implement SQL join between `purchase_items` and `products` to group by `category`.
+        *   [x] Handle "Unclassified" category for products without a family.
+    *   [ ] **Verification:** Generate a sale and a purchase, then verify they appear in their respective reports.
 
-## 🛠️ Performance & UX Evolution (Optimization PRD)
-- [x] **Master > Achats Visibility**: Show worker purchases in Master dashboard (Deliveries/Purchases).
-- [x] **Shortcuts**: Resolve F2 conflict with Facturation.
-- [x] **Master > Inventaire**: Remove "Clé Supabase" from UI.
-- [x] **Master > Invitations**: Fix "Invite Worker" crash and label as "Offline Construction".
-- [x] **AI & Analytics**: Fix Chat crash and ensure Analytics page uses real data.
+### 3. Supplier Settlements Logic
+*   **Context:** Payment UI exists but does not currently update supplier balances or record history.
+*   **Tasks:**
+    *   [x] **State Binding:** Ensure the "Confirm Payment" button triggers the `addPayment` action in `usePurchasingStore`.
+    *   [x] **Balance Update:** In `LocalDatabase.ts` (mapped to `db.ts`), implement the atomic transaction: `INSERT payment` AND `UPDATE supplier balance`.
+    *   [x] **History View:** Fix the "Payment History" table to pull from the `supplier_payments` table.
+    *   [ ] **Verification:** Pay a supplier with a 10,000 F balance and verify it drops to 0 F in the "Files" module.
 
-## 💼 Business Logic Implementation (Gestion & Stock)
+### 4. Keyboard Shortcuts Overhaul (PRD-013)
+*   **Context:** Rapid POS interaction via F1-F12 keys.
+*   **Tasks:**
+    *   [x] **Context Provider:** Implement `ShortcutsContext` to track active shortcuts based on the current module.
+    *   [x] **Global Listener:** Add window listener in `App.tsx` or `WorkerLayout.tsx` to catch F-keys globally.
+    *   [x] **Help Overlay:** Build the retro DOS-style `ShortcutsHelpOverlay` triggered by **F1**.
+    *   [x] **POS Wiring:** Map **F2** to Validate, **F4** to Payment, **F10** to Print.
+    *   [x] **Verification:** Complete a full sale cycle using only the keyboard.
 
-## 🏗️ Offline + Hybrid Refactor Phase 1: Offline MVP (Remaining)
-- [x] P1.3: Mirror Supabase `products`/`product_families` schema (Implemented via Raw SQL in `db.ts`).
-- [ ] Finalize frontend store loading hooks for all modules (Still relies on mixed Zustand/Service calls).
+### 5. Licensing & Activation System
+*   **Context:** Business protection and store limits.
+*   **Tasks:**
+    *   [ ] **Nag Screens:** Implement the persistent trial banner and "Activation Required" dialog.
+    *   [ ] **Store Limit Enforcement:** Add logic to the "Create Store" form to block creation if the limit (2) is reached.
+    *   [ ] **Verification:** Attempt to activate with a key from the CLI generator and verify "Active" status.
 
-## 🏗️ Offline + Hybrid Refactor Phase 3: Reliability & Packaging
-- [ ] P3.1: Create Windows Service wrapper (node-windows) to host LocalBridge
-- [ ] P3.2: Add macOS LaunchAgent plist for auto-start
-- [ ] P3.3: Build `/health/full` endpoint returning DB status, queue depth, last sync timestamp
-- [ ] P3.4: Surface this data in a Diagnostics screen within the app
-- [ ] P3.5: Implement log bundle export (zip backend logs + SQLite DB copy)
-- [ ] P3.6: Optional remote command channel (polling Supabase for config updates)
+---
 
-## 🤖 AI Integration (Phase 3)
-- [ ] Ensure one month (30 days) of data collection capability
-- [ ] Implement Edge AI infrastructure for local processing
-- [ ] Build Conversational AI Interface (ChatGPT-like)
-- [ ] Implement Dual Analysis Engine (Sales patterns + Inventory items)
+## 🟡 Phase 2: Medium Priority - Intelligence & Support (P1)
 
-## 📊 Advanced Features (Phase 4)
-- [ ] Implement Weighted Average Calculations for worker performance
-- [ ] Build Sales Status System (Good/Bad/Worse) with automated indicators
-- [ ] Finalize Store Interconnection features and shared insights
+### 6. System Intelligence (Logging)
+*   **Context:** English-only technical logs for developer debugging.
+*   **Tasks:**
+    *   [ ] **Schema Update:** Add `severity` (INFO/WARN/ERROR) and `app_version` to the `audit_logs` table in LocalBridge.
+    *   [ ] **Infinite Loading Fix:** Debug `AuditLogsPage.tsx` fetching logic to resolve the hang during data load.
+    *   [ ] **Global Logger:** Create `Logger.ts` utility. Replace all `console.log` with `Logger.info`.
+    *   [ ] **Auto-Logging:** Wire `useEffect` in all modules to log `MODULE_ENTER` and `MODULE_EXIT` events.
+    *   [ ] **Verification:** Trigger a manual error and see it appear in the Master "System Logs" screen in English.
+
+### 7. Dynamic Help Center (Master)
+*   **Context:** Move from template to Markdown-driven portal.
+*   **Tasks:**
+    *   [ ] **Markdown Engine:** Integrate `react-markdown` to render local `.md` files.
+    *   [ ] **Support Form:** Build "Report Bug" form that saves a structured log entry including Hardware ID.
+    *   [ ] **Verification:** Verify that editing a Markdown file in the project updates the Help Center UI instantly.
+
+---
+
+## 🟢 Phase 3: UI Polish & Optimization (P2)
+
+### 8. LOSS EXIT UI Polish
+*   **Context:** Better user guidance without technical jargon.
+*   **Tasks:**
+    *   [ ] **Intro Text:** Add: "Use this screen to record products that are no longer sellable due to expiration, damage, or theft. This ensures your stock levels remain accurate for accounting."
+    *   [ ] **Constraint:** Ensure the word "submodule" is NOT used in the text.
+    *   [ ] **Verification:** Check visibility in `en`, `fr`, and `bm`.
+
+### 9. SQLite FTS5 Performance
+*   **Context:** Instant search for low-end hardware.
+*   **Tasks:**
+    *   [ ] **Virtual Table:** Create an FTS5 virtual table for products in the sidecar.
+    *   [ ] **Query Refactor:** Update search hooks to use `SELECT ... FROM products_fts WHERE name MATCH ...`.
+    *   [ ] **Verification:** Search through 1,000 items on a slow CPU; verify < 100ms response.
