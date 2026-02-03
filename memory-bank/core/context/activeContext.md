@@ -1,25 +1,27 @@
 # Active Context - Retail Manager
 
 ## Current Focus
-Evolving the project by integrating DeepSearch audit results and finalizing the Offline-First/Hybrid refactor. The primary goal is ensuring performance on low-end hardware (Dual Core, 2.5GB RAM) and completing Phase 3 (Reliability & Packaging) of the refactor.
+The project is focused on **v1.0 Stability and Feature Completion**. Recent efforts have centered on fixing UI crashes, restoring missing state in settings, and making the POS keyboard-first workflow fully dynamic and customizable.
 
 ## Current Blockers
-- **macOS Build Failure**: Attempts to launch the app on MacBook for backend verification are currently failing.
-- **Sidecar Synchronization**: Issues with the simultaneous launch of the Tauri frontend and the Node.js LocalBridge sidecar.
+- **Stock Valuation**: Reports 0 total value despite available inventory; requires SQL/Logic fix.
+- **Audit Logs Loading**: Infinite loading/hang in the Master Dashboard logs view.
+- **Report Verification**: Functional Invoice/Purchase reports need verification with real data.
 
 ## Recent Changes
-- **Restored Loggings**: Implemented robust logging for both the Rust core and the Node.js sidecar using `tauri-plugin-log`. Sidecar stdout/stderr is now piped to Tauri logs.
-- Removed all Electron dependencies, configuration, and legacy documentation.
-- Migrated from Electron to Tauri v2 for improved performance on low-end hardware.
-- Bundled the Node.js LocalBridge as a standalone binary sidecar within Tauri.
-- Initialized Memory Bank core files (`tasks.md`, `activeContext.md`, `projectbrief.md`).
+- **Dynamic Keyboard Shortcuts**: Replaced hardcoded `F2`/`F3` module navigation with dynamic actions. `SalesModule`, `FacturationModule`, and `SanifereFooter` now use mappings from `useSettingsStore`.
+- **Dynamic UI Labels**: `SanifereFooter` buttons now automatically update their text based on the keyboard shortcut preferences set in the "Program" module.
+- **UI Crash Fixes**: Resolved "SelectItem must have a value" errors by replacing empty strings with `'none'`.
+- **State Restoration**: Fixed a crash in the Passwords submodule by restoring missing `passwordForm` and `showPasswords` state in `SettingsModule.tsx`.
+- **i18n Fixes**: Added missing `common.none` and `common.print` translations across all supported languages.
+- **Dependency Fixes**: Resolved "Can't find variable" errors for `useFormatters` and `useSettingsStore` by adding missing imports and fixing hook placement scoping.
 
 ## Next Steps
-- **Debug macOS Launch**: Fix the orchestration between Tauri and the LocalBridge sidecar (now possible with logs).
-- Implement SQLite FTS5 for zero-memory catalog searching.
-- Refactor Zustand state to use SQLite-backed virtualization.
+- **Critical Fixes**: Repair Stock Valuation SQL logic in `local-bridge/src/db.ts`.
+- **Licensing UI**: Build the "Activation Required" nag dialogs.
+- **Logging Fix**: Debug `AuditLogsPage.tsx` infinite loading.
 
 ## Technical Decisions
-- **Migration to Tauri v2**: Decided for performance on low-end hardware.
-- **SQLite as Primary Local State**: Moving away from large in-memory Zustand stores.
-- **Node.js Sidecar**: Keeping LocalBridge as a sidecar for business logic centralization.
+- **One Action Per Key**: Updated mapping logic to ensure an action is only assigned to one function key at a time, preventing conflicts.
+- **English-Only Logs**: All technical/audit logs remain in English for developer debugging.
+- **Retro DOS Aesthetic**: The Keyboard Help Overlay (F1) and physical-looking footer buttons maintain a legacy POS feel.

@@ -7,8 +7,10 @@
 
 ## Interaction Patterns
 - **Thin Client**: The React frontend is designed to be a view layer for the SQLite database, fetching windowed data to keep DOM and memory usage low.
-- **Vim-style Navigation (Planned)**: Keyboard-heavy shortcuts for high-speed retail operations.
+- **Context-Aware Keyboard Shortcuts**: Global `keydown` listener managed by `ShortcutsContext`. Intercepts F-keys (F1-F12) based on active module to replicate legacy POS efficiency.
+- **Retro-DOS Help System**: F1 triggers a high-contrast, text-heavy overlay for rapid documentation access.
 
 ## Data Patterns
 - **FTS5 Searching**: Utilizing SQLite's built-in full-text search for item lookups.
 - **Optimistic UI**: Immediate local updates followed by background synchronization.
+- **English-Only Audit Logging**: All system-level events and technical logs are recorded strictly in English to facilitate cross-locale debugging and support.

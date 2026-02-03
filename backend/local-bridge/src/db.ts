@@ -222,6 +222,20 @@ export interface LocalReplenishmentRequest {
   updated_at: string;
 }
 
+  export interface LocalAuditLog {
+    id: string;
+    timestamp: string;
+    user_id?: string | null;
+    action_type: string;
+    entity_affected?: string | null;
+    entity_id?: string | null;
+    old_value?: string | null;
+    new_value?: string | null;
+    ip_address?: string | null;
+    store_id?: string | null;
+    severity?: 'INFO' | 'WARN' | 'ERROR';
+    app_version?: string;
+  }
 export interface ReplenishmentNeed {
   product_id: string;
   product_name: string;
@@ -267,12 +281,26 @@ class LocalBridgeDatabase {
     }
     
     this.db = new Database(this.dbPath, options);
-    this.db.pragma('journal_mode = WAL');
-    this.initialize();
-  }
-
-  private initialize() {
-    this.db.exec(`
+          this.db.pragma('journal_mode = WAL');
+          this.initialize();
+          this.migrate();
+        }
+    
+        private migrate() {
+          // Migration for existing audit_logs table
+          try {
+            this.db.exec(`ALTER TABLE audit_logs ADD COLUMN severity TEXT DEFAULT 'INFO';`);
+          } catch (err) {
+            // ignore if column exists
+          }
+          try {
+            this.db.exec(`ALTER TABLE audit_logs ADD COLUMN app_version TEXT;`);
+          } catch (err) {
+            // ignore if column exists
+          }
+        }
+    
+        private initialize() {    this.db.exec(`
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,
@@ -463,6 +491,21 @@ class LocalBridgeDatabase {
         created_at TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'pending'
       );
+
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id TEXT PRIMARY KEY,
+        timestamp TEXT NOT NULL,
+        user_id TEXT,
+        action_type TEXT NOT NULL,
+        entity_affected TEXT,
+        entity_id TEXT,
+        old_value TEXT,
+        new_value TEXT,
+        ip_address TEXT,
+        store_id TEXT,
+        severity TEXT DEFAULT 'INFO',
+        app_version TEXT
+      );
 CREATE TABLE IF NOT EXISTS inventory_movements (
         id TEXT PRIMARY KEY,
         store_id TEXT NOT NULL,
@@ -506,6 +549,8 @@ CREATE TABLE IF NOT EXISTS sale_items (
       CREATE INDEX IF NOT EXISTS idx_pending_mutations_store ON pending_mutations(store_id);
       CREATE INDEX IF NOT EXISTS idx_replenishment_requests_store ON replenishment_requests(store_id);
       CREATE INDEX IF NOT EXISTS idx_replenishment_requests_status ON replenishment_requests(status);
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp);
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
     `);
 
     const ensureColumn = (table: string, column: string, ddl: string) => {
@@ -1231,35 +1276,48 @@ CREATE TABLE IF NOT EXISTS sale_items (
   }
 
   insertSupplierPayment(payment: LocalSupplierPayment) {
-    this.db
-      .prepare(
-        `
-        INSERT INTO supplier_payments (
-          id,
-          store_id,
-          supplier_id,
-          amount,
-          payment_method,
-          reference,
-          notes,
-          created_at
-        ) VALUES (
-          @id,
-          @store_id,
-          @supplier_id,
-          @amount,
-          @payment_method,
-          @reference,
-          @notes,
-          @created_at
-        )
-      `
+    const insertPayment = this.db.prepare(`
+      INSERT INTO supplier_payments (
+        id,
+        store_id,
+        supplier_id,
+        amount,
+        payment_method,
+        reference,
+        notes,
+        created_at
+      ) VALUES (
+        @id,
+        @store_id,
+        @supplier_id,
+        @amount,
+        @payment_method,
+        @reference,
+        @notes,
+        @created_at
       )
-      .run({
-        ...payment,
-        reference: payment.reference ?? null,
-        notes: payment.notes ?? null,
+    `);
+
+    const updateBalance = this.db.prepare(`
+      UPDATE suppliers
+      SET balance = balance - @amount, updated_at = @created_at
+      WHERE id = @supplier_id
+    `);
+
+    const transaction = this.db.transaction((paymentData) => {
+      insertPayment.run(paymentData);
+      updateBalance.run({
+        amount: paymentData.amount,
+        created_at: paymentData.created_at,
+        supplier_id: paymentData.supplier_id,
       });
+    });
+
+    transaction({
+      ...payment,
+      reference: payment.reference ?? null,
+      notes: payment.notes ?? null,
+    });
   }
 
 
@@ -1630,18 +1688,18 @@ CREATE TABLE IF NOT EXISTS sale_items (
   getDailyRevenue(storeId: string): number {
     const row = this.db
       .prepare(`
-        SELECT SUM(total_price) as total
+        SELECT SUM(COALESCE(CAST(total_price AS REAL), 0)) as total
         FROM sales
         WHERE store_id = ? AND date(created_at) = date('now')
       `)
       .get(storeId) as { total: number };
-    return row?.total ?? 0;
+    return row?.total || 0;
   }
 
   getWeeklyRevenue(storeId: string): { date: string; revenue: number }[] {
     const rows = this.db
       .prepare(`
-        SELECT date(created_at) as date, SUM(total_price) as revenue
+        SELECT date(created_at) as date, SUM(COALESCE(CAST(total_price AS REAL), 0)) as revenue
         FROM sales
         WHERE store_id = ? AND created_at >= date('now', '-6 days')
         GROUP BY date(created_at)
@@ -1657,7 +1715,7 @@ CREATE TABLE IF NOT EXISTS sale_items (
         SELECT 
           si.product_name as name, 
           SUM(si.quantity) as quantity, 
-          SUM(si.total) as revenue
+          SUM(COALESCE(CAST(si.total AS REAL), 0)) as revenue
         FROM sale_items si
         JOIN sales s ON s.id = si.sale_id
         WHERE s.store_id = ?
@@ -1675,7 +1733,7 @@ CREATE TABLE IF NOT EXISTS sale_items (
         SELECT 
           u.full_name as name, 
           COUNT(s.id) as sales_count, 
-          SUM(s.total_price) as revenue
+          SUM(COALESCE(CAST(s.total_price AS REAL), 0)) as revenue
         FROM sales s
         LEFT JOIN users u ON s.worker_id = u.id
         WHERE s.store_id = ?
@@ -1691,17 +1749,17 @@ CREATE TABLE IF NOT EXISTS sale_items (
     const row = this.db
       .prepare(`
         SELECT 
-          SUM(quantity * COALESCE(cost_price, 0)) as total_cost,
-          SUM(quantity * unit_price) as total_retail,
+          SUM(CAST(COALESCE(quantity, 0) AS REAL) * CAST(COALESCE(cost_price, 0) AS REAL)) as total_cost,
+          SUM(CAST(COALESCE(quantity, 0) AS REAL) * CAST(COALESCE(unit_price, 0) AS REAL)) as total_retail,
           COUNT(*) as item_count
         FROM products
         WHERE store_id = ? AND quantity > 0
       `)
       .get(storeId) as { total_cost: number; total_retail: number; item_count: number };
     return {
-      total_cost: row?.total_cost ?? 0,
-      total_retail: row?.total_retail ?? 0,
-      item_count: row?.item_count ?? 0,
+      total_cost: row?.total_cost || 0,
+      total_retail: row?.total_retail || 0,
+      item_count: row?.item_count || 0,
     };
   }
 
@@ -1871,6 +1929,69 @@ CREATE TABLE IF NOT EXISTS sale_items (
       .prepare(`UPDATE worker_invitations SET ${updateAssignments} WHERE id = @id`)
       .run(payload);
     return this.getInvitationById(invitationId);
+  }
+
+  // ===== Audit Logs =====
+      insertAuditLog(log: LocalAuditLog) {
+        this.db
+          .prepare(
+            `
+            INSERT INTO audit_logs (
+              id, timestamp, user_id, action_type, entity_affected, entity_id, old_value, new_value, ip_address, store_id, severity, app_version
+            ) VALUES (
+              @id, @timestamp, @user_id, @action_type, @entity_affected, @entity_id, @old_value, @new_value, @ip_address, @store_id, @severity, @app_version
+            )
+          `
+          )
+          .run({
+            ...log,
+            user_id: log.user_id ?? null,
+            entity_affected: log.entity_affected ?? null,
+            entity_id: log.entity_id ?? null,
+            old_value: log.old_value ?? null,
+            new_value: log.new_value ?? null,
+            ip_address: log.ip_address ?? null,
+            store_id: log.store_id ?? null,
+            severity: log.severity ?? 'INFO',
+            app_version: log.app_version ?? null,
+          });
+      }
+  listAuditLogs(options: { 
+    store_id?: string; 
+    user_id?: string; 
+    action_type?: string; 
+    limit?: number; 
+    offset?: number 
+  }): { data: LocalAuditLog[]; total: number } {
+    let sql = 'SELECT * FROM audit_logs WHERE 1=1';
+    let countSql = 'SELECT COUNT(*) as count FROM audit_logs WHERE 1=1';
+    const params: any = {};
+
+    if (options.store_id) {
+      sql += ' AND store_id = @store_id';
+      countSql += ' AND store_id = @store_id';
+      params.store_id = options.store_id;
+    }
+    if (options.user_id) {
+      sql += ' AND user_id = @user_id';
+      countSql += ' AND user_id = @user_id';
+      params.user_id = options.user_id;
+    }
+    if (options.action_type) {
+      sql += ' AND action_type = @action_type';
+      countSql += ' AND action_type = @action_type';
+      params.action_type = options.action_type;
+    }
+
+    const total = (this.db.prepare(countSql).get(params) as { count: number }).count;
+
+    sql += ' ORDER BY timestamp DESC LIMIT @limit OFFSET @offset';
+    params.limit = options.limit ?? 50;
+    params.offset = options.offset ?? 0;
+
+    const rows = this.db.prepare(sql).all(params) as LocalAuditLog[];
+
+    return { data: rows, total };
   }
 }
 

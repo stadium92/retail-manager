@@ -125,6 +125,16 @@ export async function registerAuthRoutes(app: FastifyInstance) {
 
     request.log.info('Master user bootstrapped for %s', email);
 
+    db.insertAuditLog({
+      id: crypto.randomUUID(),
+      timestamp: now,
+      user_id: userId,
+      action_type: 'user_bootstrap',
+      entity_affected: 'auth',
+      entity_id: userId,
+      store_id: storeId,
+    });
+
     return reply.status(201).send({
       message: 'Master user created',
       store_id: storeId,
@@ -146,6 +156,15 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     const passwordOk = user ? bcrypt.compareSync(password, user.password_hash) : false;
 
     if (!user || !passwordOk) {
+      // Log failed login attempt
+      db.insertAuditLog({
+        id: crypto.randomUUID(),
+        timestamp: new Date().toISOString(),
+        action_type: 'user_login_failed',
+        entity_affected: 'auth',
+        old_value: email,
+      });
+
       return reply.status(401).send({
         error: 'InvalidCredentials',
         message: 'Invalid email or password.',
@@ -172,6 +191,16 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       refresh_token: refreshToken,
       expires_at: sessionExpiry,
       created_at: new Date().toISOString(),
+    });
+
+    db.insertAuditLog({
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+      user_id: user.id,
+      action_type: 'user_login',
+      entity_affected: 'auth',
+      entity_id: user.id,
+      store_id: storeId,
     });
 
     return reply.send(buildLoginResponse(user, primaryRole, storeId, accessToken, refreshToken));
