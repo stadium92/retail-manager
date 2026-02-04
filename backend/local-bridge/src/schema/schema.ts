@@ -163,7 +163,6 @@ export const deliveries = sqliteTable('deliveries', {
   updated_at: text('updated_at').notNull(),
 });
 
-
 export const inventory_movements = sqliteTable('inventory_movements', {
   id: text('id').primaryKey(),
   product_id: text('product_id').notNull(),

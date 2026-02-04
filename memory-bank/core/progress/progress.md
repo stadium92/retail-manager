@@ -6,10 +6,10 @@
 - [x] Full UI Internationalization (en, fr, bm)
 - [x] License Key Generator (CLI)
 - [x] Keyboard Shortcuts System (PRD-013)
-- [ ] Core Logic Fixes (Stock Valuation) - **P0**
+- [x] Dynamic Markdown Help Center (v1.0 Depth)
+- [ ] Core Logic Fixes (Stock Valuation, Invoices) - **P0**
 - [ ] Licensing Frontend Integration - **P0**
 - [ ] System Intelligence (Logger & Error Boundary) - **P1**
-- [ ] Dynamic Markdown Help Center - **P1**
 
 ## Milestones
 - **Milestone 1: Performance Foundation (COMPLETED)**
@@ -22,12 +22,14 @@
   - Fixing broken business reports.
   - Implementing keyboard-first POS workflow.
   - Finalizing activation and store limits.
-- **Milestone 4: Reliability & Support**
+- **Milestone 4: Reliability & Support (IN PROGRESS)**
   - System logs behavior tracking.
-  - Local documentation library.
+  - Local documentation library (Expanded depth).
 
 ## Recent Achievements
 - **Dynamic Keyboard Engine**: Successfully linked F1-F12 keys to POS actions via user settings.
 - **Dynamic UI Adaptation**: Footer buttons in Sales modules now automatically update labels based on customized key mappings.
 - **UI Stability**: Resolved several critical crashes related to Select components and missing component state.
-- **i18n Completion**: Added missing translations for core UI actions.
+- **i18n Milestone**: Achieved full parity and 100% coverage across French, English, and Bamanankan.
+- **Licensing Core**: Backend key validation logic and hardware binding are fully implemented.
+- **Help Center Depth**: Expanded the help module with technical guides and searchable categories.

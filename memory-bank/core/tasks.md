@@ -23,19 +23,22 @@ This document tracks granular progress toward the v1.0 release. All technical lo
     *   [x] **Null Resilience:** Implement `COALESCE` and explicit `CAST` to ensure numeric precision and null handling.
     *   [x] **Verification:** Verified DB returns non-zero values for active stores.
 
-### 5. Licensing & Activation System
-*   **Context:** Business protection and store limits.
+### 4. Keyboard Shortcuts Overhaul (PRD-013)
+*   **Context:** Rapid POS interaction via F1-F12 keys.
 *   **Tasks:**
-    *   [x] **Nag Screens:** Implement the persistent trial banner and "Activation Required" dialog.
-    *   [x] **Store Limit Enforcement:** Add logic to the "Create Store" form to block creation if the limit (2) is reached.
-    *   [x] **Service Integration:** Created `LicenseService.ts` and integrated with Tauri/Rust backend.
-    *   [ ] **Hard Activation Gate:** Update the logic to require activation input on the very first launch.
-    *   [ ] **Brute-Force Protection:** 
-        *   Implement a counter for failed attempts.
-        *   Limit to 3 attempts per day.
-        *   Implement a "Hard Lockout" after 15 total misses, preventing retries until the next calendar day.
-    *   [ ] **Banner Suppression:** Ensure the `LicenseBanner` is permanently removed only upon successful valid activation.
-    *   [x] **Verification:** Trial banner shows correctly and block works when stores >= 2.
+    *   [x] **Context Provider:** Implement `ShortcutsContext` to track active shortcuts based on the current module.
+    *   [x] **Global Listener:** Add window listener in `App.tsx` or `WorkerLayout.tsx` to catch F-keys globally.
+    *   [x] **Help Overlay:** Build the retro DOS-style `ShortcutsHelpOverlay` triggered by **F1**.
+    *   [x] **POS Wiring:** Map **F2** to Validate, **F4** to Payment, **F10** to Print.
+    *   [x] **Dynamic Labels:** Link `SanifereFooter` button text to user settings.
+    *   [x] **Verification:** Complete a full sale cycle using only the keyboard.
+
+### 9. SQLite FTS5 Performance
+*   **Context:** Instant search for low-end hardware.
+*   **Tasks:**
+    *   [x] **Virtual Table:** Create an FTS5 virtual table for products in the sidecar.
+    *   [x] **Query Refactor:** Update search hooks to use `SELECT ... FROM products_fts WHERE name MATCH ...`.
+    *   [x] **Verification:** Verified ultra-fast response using FTS5 MATCH syntax.
 
 ---
 
@@ -64,15 +67,19 @@ This document tracks granular progress toward the v1.0 release. All technical lo
     *   [x] **History View:** Fix the "Payment History" table to pull from the `supplier_payments` table.
     *   [ ] **Verification:** Pay a supplier with a 10,000 F balance and verify it drops to 0 F in the "Files" module.
 
-### 4. Keyboard Shortcuts Overhaul (PRD-013)
-*   **Context:** Rapid POS interaction via F1-F12 keys.
+### 5. Licensing & Activation System
+*   **Context:** Business protection and store limits.
 *   **Tasks:**
-    *   [x] **Context Provider:** Implement `ShortcutsContext` to track active shortcuts based on the current module.
-    *   [x] **Global Listener:** Add window listener in `App.tsx` or `WorkerLayout.tsx` to catch F-keys globally.
-    *   [x] **Help Overlay:** Build the retro DOS-style `ShortcutsHelpOverlay` triggered by **F1**.
-    *   [x] **POS Wiring:** Map **F2** to Validate, **F4** to Payment, **F10** to Print.
-    *   [x] **Dynamic Labels:** Link `SanifereFooter` button text to user settings.
-    *   [x] **Verification:** Complete a full sale cycle using only the keyboard.
+    *   [x] **Nag Screens:** Implement the persistent trial banner and "Activation Required" dialog.
+    *   [x] **Store Limit Enforcement:** Add logic to the "Create Store" form to block creation if the limit (2) is reached.
+    *   [x] **Service Integration:** Created `LicenseService.ts` and integrated with Tauri/Rust backend.
+    *   [ ] **Hard Activation Gate:** Update the logic to require activation input on the very first launch.
+    *   [ ] **Brute-Force Protection:** 
+        *   Implement a counter for failed attempts.
+        *   Limit to 3 attempts per day.
+        *   Implement a "Hard Lockout" after 15 total misses, preventing retries until the next calendar day.
+    *   [ ] **Banner Suppression:** Ensure the `LicenseBanner` is permanently removed only upon successful valid activation.
+    *   [x] **Verification:** Trial banner shows correctly and block works when stores >= 2.
 
 ---
 
@@ -96,10 +103,7 @@ This document tracks granular progress toward the v1.0 release. All technical lo
     *   [x] **Support Form:** Built "Report Bug" form that saves a structured log entry including Hardware ID via `Logger.ts`.
     *   [x] **Verification:** Bug reports now appear in the Audit Logs with severity 'ERROR'.
     *   [x] **Markdown Engine:** Integrate `react-markdown` to render local `.md` files.
-    *   [ ] **Deep Content Enhancement:** Improve accuracy and depth of documentation (See `planning/help_depth_improvement.md`).
-        * [ ] Audit all modules for misleading text.
-        * [ ] Expand technical guides (Sync, Stocks, Shortcuts).
-        * [ ] Localize all deep content.
+    *   [x] **Deep Content Enhancement:** Improved accuracy and depth of documentation (See `planning/help_depth_improvement.md`).
 
 ---
 
@@ -112,30 +116,18 @@ This document tracks granular progress toward the v1.0 release. All technical lo
     *   [ ] **Constraint:** Ensure the word "submodule" is NOT used in the text.
     *   [ ] **Verification:** Check visibility in `en`, `fr`, and `bm`.
 
-### 9. SQLite FTS5 Performance
-
-*   **Context:** Instant search for low-end hardware.
-
+### 10. Code Protection & Obfuscation (Security Hardening)
+*   **Context:** Protect intellectual property ("Vibe") and prevent reverse engineering of the licensing logic.
 *   **Tasks:**
+    *   [x] **Frontend Obfuscation:** Integrated `vite-plugin-javascript-obfuscator` to scramble the React bundle during production builds.
+    *   [x] **Sidecar (Backend) Protection:** Implemented obfuscation for the `local-bridge` (Node.js) build pipeline using `javascript-obfuscator`.
+    *   [x] **Security Configuration:** Enabled string encryption, variable mangling, and control-flow flattening to maximize deterrence.
+    *   [x] **Verification:** Verified that `npm run build` now triggers obfuscation for both layers.
 
-    *   [x] **Virtual Table:** Create an FTS5 virtual table for products in the sidecar.
-
-    *   [x] **Query Refactor:** Update search hooks to use `SELECT ... FROM products_fts WHERE name MATCH ...`.
-
-    *   [x] **Verification:** Verified ultra-fast response using FTS5 MATCH syntax.
-    
-    ### 10. Code Protection & Obfuscation (Security Hardening)
-    *   **Context:** Protect intellectual property ("Vibe") and prevent reverse engineering of the licensing logic.
-    *   **Tasks:**
-        *   [x] **Frontend Obfuscation:** Integrated `vite-plugin-javascript-obfuscator` to scramble the React bundle during production builds.
-        *   [x] **Sidecar (Backend) Protection:** Implemented obfuscation for the `local-bridge` (Node.js) build pipeline using `javascript-obfuscator`.
-        *   [x] **Security Configuration:** Enabled string encryption, variable mangling, and control-flow flattening to maximize deterrence.
-        *   [x] **Verification:** Verified that `npm run build` now triggers obfuscation for both layers.
-
-    ### 11. Windows Deployment (Parallels VM)
-    *   **Context:** Build 32-bit (.exe) installers for low-end Windows hardware (2.5GB RAM).
-    *   **Tasks:**
-        *   [x] **Windows Build Script:** Created `scripts/build-sidecar.ps1` for PowerShell.
-        *   [x] **32-bit Target Configuration:** Configured `i686-pc-windows-msvc` target for both sidecar and Tauri.
-        *   [ ] **First Build Verification:** Run the build inside Parallels Windows VM.
-        *   [ ] **Installer Testing:** Verify the .exe runs on a 32-bit Windows environment.
+### 11. Windows Deployment (Parallels VM)
+*   **Context:** Build 32-bit (.exe) installers for low-end Windows hardware (2.5GB RAM).
+*   **Tasks:**
+    *   [x] **Windows Build Script:** Created `scripts/build-sidecar.ps1` for PowerShell.
+    *   [x] **32-bit Target Configuration:** Configured `i686-pc-windows-msvc` target for both sidecar and Tauri.
+    *   [ ] **First Build Verification:** Run the build inside Parallels Windows VM.
+    *   [ ] **Installer Testing:** Verify the .exe runs on a 32-bit Windows environment.

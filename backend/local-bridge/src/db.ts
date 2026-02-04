@@ -222,20 +222,21 @@ export interface LocalReplenishmentRequest {
   updated_at: string;
 }
 
-  export interface LocalAuditLog {
-    id: string;
-    timestamp: string;
-    user_id?: string | null;
-    action_type: string;
-    entity_affected?: string | null;
-    entity_id?: string | null;
-    old_value?: string | null;
-    new_value?: string | null;
-    ip_address?: string | null;
-    store_id?: string | null;
-    severity?: 'INFO' | 'WARN' | 'ERROR';
-    app_version?: string;
-  }
+export interface LocalAuditLog {
+  id: string;
+  timestamp: string;
+  user_id?: string | null;
+  action_type: string;
+  entity_affected?: string | null;
+  entity_id?: string | null;
+  old_value?: string | null;
+  new_value?: string | null;
+  ip_address?: string | null;
+  store_id?: string | null;
+  severity?: 'INFO' | 'WARN' | 'ERROR';
+  app_version?: string;
+}
+
 export interface ReplenishmentNeed {
   product_id: string;
   product_name: string;
@@ -295,21 +296,22 @@ class LocalBridgeDatabase {
     this.migrate();
   }
     
-        private migrate() {
-          // Migration for existing audit_logs table
-          try {
-            this.db.exec(`ALTER TABLE audit_logs ADD COLUMN severity TEXT DEFAULT 'INFO';`);
-          } catch (err) {
-            // ignore if column exists
-          }
-          try {
-            this.db.exec(`ALTER TABLE audit_logs ADD COLUMN app_version TEXT;`);
-          } catch (err) {
-            // ignore if column exists
-          }
-        }
+  private migrate() {
+    // Migration for existing audit_logs table
+    try {
+      this.db.exec(`ALTER TABLE audit_logs ADD COLUMN severity TEXT DEFAULT 'INFO';`);
+    } catch (err) {
+      // ignore if column exists
+    }
+    try {
+      this.db.exec(`ALTER TABLE audit_logs ADD COLUMN app_version TEXT;`);
+    } catch (err) {
+      // ignore if column exists
+    }
+  }
     
-        private initialize() {    this.db.exec(`
+  private initialize() {
+    this.db.exec(`
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,
@@ -545,7 +547,7 @@ class LocalBridgeDatabase {
         severity TEXT DEFAULT 'INFO',
         app_version TEXT
       );
-CREATE TABLE IF NOT EXISTS inventory_movements (
+      CREATE TABLE IF NOT EXISTS inventory_movements (
         id TEXT PRIMARY KEY,
         store_id TEXT NOT NULL,
         product_id TEXT NOT NULL,
@@ -557,7 +559,7 @@ CREATE TABLE IF NOT EXISTS inventory_movements (
         created_at TEXT NOT NULL,
         created_by TEXT
       );
-CREATE TABLE IF NOT EXISTS sale_items (
+      CREATE TABLE IF NOT EXISTS sale_items (
         id TEXT PRIMARY KEY,
         sale_id TEXT NOT NULL,
         product_id TEXT,
@@ -1973,30 +1975,31 @@ CREATE TABLE IF NOT EXISTS sale_items (
   }
 
   // ===== Audit Logs =====
-      insertAuditLog(log: LocalAuditLog) {
-        this.db
-          .prepare(
-            `
-            INSERT INTO audit_logs (
-              id, timestamp, user_id, action_type, entity_affected, entity_id, old_value, new_value, ip_address, store_id, severity, app_version
-            ) VALUES (
-              @id, @timestamp, @user_id, @action_type, @entity_affected, @entity_id, @old_value, @new_value, @ip_address, @store_id, @severity, @app_version
-            )
-          `
-          )
-          .run({
-            ...log,
-            user_id: log.user_id ?? null,
-            entity_affected: log.entity_affected ?? null,
-            entity_id: log.entity_id ?? null,
-            old_value: log.old_value ?? null,
-            new_value: log.new_value ?? null,
-            ip_address: log.ip_address ?? null,
-            store_id: log.store_id ?? null,
-            severity: log.severity ?? 'INFO',
-            app_version: log.app_version ?? null,
-          });
-      }
+  insertAuditLog(log: LocalAuditLog) {
+    this.db
+      .prepare(
+        `
+        INSERT INTO audit_logs (
+          id, timestamp, user_id, action_type, entity_affected, entity_id, old_value, new_value, ip_address, store_id, severity, app_version
+        ) VALUES (
+          @id, @timestamp, @user_id, @action_type, @entity_affected, @entity_id, @old_value, @new_value, @ip_address, @store_id, @severity, @app_version
+        )
+      `
+      )
+      .run({
+        ...log,
+        user_id: log.user_id ?? null,
+        entity_affected: log.entity_affected ?? null,
+        entity_id: log.entity_id ?? null,
+        old_value: log.old_value ?? null,
+        new_value: log.new_value ?? null,
+        ip_address: log.ip_address ?? null,
+        store_id: log.store_id ?? null,
+        severity: log.severity ?? 'INFO',
+        app_version: log.app_version ?? null,
+      });
+  }
+
   listAuditLogs(options: { 
     store_id?: string; 
     user_id?: string; 
