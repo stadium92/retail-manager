@@ -19,6 +19,21 @@ The application uses a dual-plane data strategy:
 - **OS**: Windows 10 / macOS.
 - **Optimization Strategy**: Tauri's small footprint combined with SQLite-side searching (FTS5) to minimize RAM usage.
 
-## Development Environment
-- **Tauri**: Requires Rust and the `@tauri-apps/cli`.
-- **Sidecar**: Node.js app packaged with `pkg`.
+## Multi-Platform Build Architecture
+
+### Build vs. Development Node Versions
+The project uses `pkg` to bundle the backend sidecar, which targets **Node 18**. However, local development typically uses a newer version (e.g., **Node 20**).
+
+- **Production Build (Mac)**: 
+  1. Run `npm run tauri:build` from the root. 
+  2. This uses `scripts/build-sidecar.sh` to package `local-bridge-aarch64-apple-darwin`.
+- **Production Build (Windows 32-bit)**:
+  1. Must be run inside a **Windows VM (Parallels)**.
+  2. Run `.\scripts\build-sidecar.ps1` in PowerShell to package the 32-bit sidecar (`local-bridge-i686-pc-windows-msvc.exe`).
+  3. Run `tauri build --target i686-pc-windows-msvc` to generate the `.exe`.
+- **Local Development**: After any production build, run `cd backend/local-bridge && npm rebuild better-sqlite3` to restore the native module for Node 20.
+
+### Target Specifications
+- **macOS**: `aarch64-apple-darwin` (Apple Silicon).
+- **Windows**: `i686-pc-windows-msvc` (32-bit x86). Targeted for maximum compatibility with low-end hardware (2.5GB RAM).
+- **Backend**: Compiled to **CommonJS** for `pkg` compatibility.

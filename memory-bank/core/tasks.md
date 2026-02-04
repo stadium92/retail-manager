@@ -95,7 +95,11 @@ This document tracks granular progress toward the v1.0 release. All technical lo
     *   [x] **Structure Update:** Moved `helpCenter` to top-level in all translation files for better access.
     *   [x] **Support Form:** Built "Report Bug" form that saves a structured log entry including Hardware ID via `Logger.ts`.
     *   [x] **Verification:** Bug reports now appear in the Audit Logs with severity 'ERROR'.
-    *   [x] **Markdown Engine:** Integrate `react-markdown` to render local `.md` files (Requires npm install).
+    *   [x] **Markdown Engine:** Integrate `react-markdown` to render local `.md` files.
+    *   [ ] **Deep Content Enhancement:** Improve accuracy and depth of documentation (See `planning/help_depth_improvement.md`).
+        * [ ] Audit all modules for misleading text.
+        * [ ] Expand technical guides (Sync, Stocks, Shortcuts).
+        * [ ] Localize all deep content.
 
 ---
 
@@ -127,3 +131,11 @@ This document tracks granular progress toward the v1.0 release. All technical lo
         *   [x] **Sidecar (Backend) Protection:** Implemented obfuscation for the `local-bridge` (Node.js) build pipeline using `javascript-obfuscator`.
         *   [x] **Security Configuration:** Enabled string encryption, variable mangling, and control-flow flattening to maximize deterrence.
         *   [x] **Verification:** Verified that `npm run build` now triggers obfuscation for both layers.
+
+    ### 11. Windows Deployment (Parallels VM)
+    *   **Context:** Build 32-bit (.exe) installers for low-end Windows hardware (2.5GB RAM).
+    *   **Tasks:**
+        *   [x] **Windows Build Script:** Created `scripts/build-sidecar.ps1` for PowerShell.
+        *   [x] **32-bit Target Configuration:** Configured `i686-pc-windows-msvc` target for both sidecar and Tauri.
+        *   [ ] **First Build Verification:** Run the build inside Parallels Windows VM.
+        *   [ ] **Installer Testing:** Verify the .exe runs on a 32-bit Windows environment.

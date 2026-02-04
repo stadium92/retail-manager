@@ -2,6 +2,16 @@
   "name": "local-bridge",
   "version": "0.1.0",
   "private": true,
+  "bin": "dist/index.js",
+  "pkg": {
+    "assets": [
+      "dist/**/*"
+    ],
+    "targets": [
+      "node18-macos-arm64"
+    ],
+    "outputPath": "../../src-tauri/binaries"
+  },
   "engines": {
     "node": "18.x"
   },

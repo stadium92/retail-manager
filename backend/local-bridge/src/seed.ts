@@ -1,6 +1,5 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import { fileURLToPath } from 'url';
 import { db } from './db.js';
 
 const seedConfig = {
@@ -172,6 +171,6 @@ const run = () => {
 
 export const seed = run;
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (require.main === module) {
   run();
 }

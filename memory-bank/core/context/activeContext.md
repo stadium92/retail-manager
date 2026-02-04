@@ -9,6 +9,7 @@ The project is focused on **v1.0 Stability and Feature Completion**. Recent effo
 - **Report Verification**: Functional Invoice/Purchase reports need verification with real data.
 
 ## Recent Changes
+- **macOS Build Fix (Sidecar)**: Resolved the `SyntaxError: Cannot use import statement outside a module` crash by switching the `local-bridge` backend compilation to CommonJS. This ensures compatibility with the `pkg` packaging tool. Validated with a fully functional `.dmg` build.
 - **Dynamic Keyboard Shortcuts**: Replaced hardcoded `F2`/`F3` module navigation with dynamic actions. `SalesModule`, `FacturationModule`, and `SanifereFooter` now use mappings from `useSettingsStore`.
 - **Dynamic UI Labels**: `SanifereFooter` buttons now automatically update their text based on the keyboard shortcut preferences set in the "Program" module.
 - **UI Crash Fixes**: Resolved "SelectItem must have a value" errors by replacing empty strings with `'none'`.
