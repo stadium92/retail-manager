@@ -262,29 +262,38 @@ class LocalBridgeDatabase {
 
     this.dbPath = path.join(env.dataDir, 'localbridge.sqlite');
     
+    // Handle pkg-packaged environment: specify native module location
     let options: Database.Options = {};
     if ((process as any).pkg) {
         const execDir = path.dirname(process.execPath);
-        // Look for the binding in the bundle resources (Contents/Resources/binaries/better_sqlite3.node)
         const resourcePath = path.resolve(execDir, '../Resources/binaries/better_sqlite3.node');
-        // Fallback for development/flat buffers
         const adjacentPath = path.join(execDir, 'better_sqlite3.node');
 
         if (fs.existsSync(resourcePath)) {
+            console.log('[DB] Using native module from:', resourcePath);
             options.nativeBinding = resourcePath;
         } else if (fs.existsSync(adjacentPath)) {
+            console.log('[DB] Using native module from:', adjacentPath);
             options.nativeBinding = adjacentPath;
         } else {
-            console.error('Could not find better_sqlite3.node in:', resourcePath, 'or', adjacentPath);
-            options.nativeBinding = adjacentPath; // try anyway
+            console.error('[DB] ERROR: Could not find better_sqlite3.node in:', resourcePath, 'or', adjacentPath);
+            // List what's actually in the directories for debugging
+            try {
+              const macosDir = path.resolve(execDir);
+              const resourcesDir = path.resolve(execDir, '../Resources/binaries');
+              console.error('[DB] Contents of MacOS dir:', fs.existsSync(macosDir) ? fs.readdirSync(macosDir) : 'DOES NOT EXIST');
+              console.error('[DB] Contents of Resources/binaries:', fs.existsSync(resourcesDir) ? fs.readdirSync(resourcesDir) : 'DOES NOT EXIST');
+            } catch (e) {
+              console.error('[DB] Error listing directories:', e);
+            }
         }
     }
     
     this.db = new Database(this.dbPath, options);
-          this.db.pragma('journal_mode = WAL');
-          this.initialize();
-          this.migrate();
-        }
+    this.db.pragma('journal_mode = WAL');
+    this.initialize();
+    this.migrate();
+  }
     
         private migrate() {
           // Migration for existing audit_logs table
@@ -377,6 +386,36 @@ class LocalBridgeDatabase {
         updated_by TEXT,
         FOREIGN KEY (category) REFERENCES product_families(id) ON DELETE SET NULL
       );
+
+      -- FTS5 Virtual Table for ultra-fast searching
+      CREATE VIRTUAL TABLE IF NOT EXISTS products_fts USING fts5(
+        id UNINDEXED,
+        store_id UNINDEXED,
+        name,
+        sku,
+        barcode,
+        description,
+        content='products',
+        content_rowid='rowid'
+      );
+
+      -- Triggers to keep FTS index in sync with products table
+      CREATE TRIGGER IF NOT EXISTS products_ai AFTER INSERT ON products BEGIN
+        INSERT INTO products_fts(rowid, id, store_id, name, sku, barcode, description)
+        VALUES (new.rowid, new.id, new.store_id, new.name, new.sku, new.barcode, new.description);
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS products_ad AFTER DELETE ON products BEGIN
+        INSERT INTO products_fts(products_fts, rowid, id, store_id, name, sku, barcode, description)
+        VALUES('delete', old.rowid, old.id, old.store_id, old.name, old.sku, old.barcode, old.description);
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS products_au AFTER UPDATE ON products BEGIN
+        INSERT INTO products_fts(products_fts, rowid, id, store_id, name, sku, barcode, description)
+        VALUES('delete', old.rowid, old.id, old.store_id, old.name, old.sku, old.barcode, old.description);
+        INSERT INTO products_fts(rowid, id, store_id, name, sku, barcode, description)
+        VALUES (new.rowid, new.id, new.store_id, new.name, new.sku, new.barcode, new.description);
+      END;
 
       CREATE TABLE IF NOT EXISTS worker_invitations (
         id TEXT PRIMARY KEY,
@@ -879,58 +918,60 @@ CREATE TABLE IF NOT EXISTS sale_items (
     offset: number = 0,
     filter?: 'in_stock' | 'out_of_stock' | 'low_stock'
   ): { data: LocalProduct[]; total: number } {
-    const searchQuery = query.trim().toLowerCase();
-    const likeQuery = `%${searchQuery}%`;
-    let filterClause = '';
+    const searchQuery = query.trim();
     
-    if (filter === 'in_stock') {
-        filterClause = 'AND quantity > 0';
-    } else if (filter === 'out_of_stock') {
-        filterClause = 'AND quantity <= 0';
-    } else if (filter === 'low_stock') {
-        // Assuming min_quantity defaults to 0 or 10 if null, but SQL needs explicit handling if column is nullable
-        // The table definition has DEFAULT 0 for min_quantity.
-        filterClause = 'AND quantity > 0 AND quantity <= COALESCE(min_quantity, 10)';
+    // If query is empty, use standard fast scan
+    if (!searchQuery) {
+      let filterClause = '';
+      if (filter === 'in_stock') filterClause = 'AND quantity > 0';
+      else if (filter === 'out_of_stock') filterClause = 'AND quantity <= 0';
+      else if (filter === 'low_stock') filterClause = 'AND quantity > 0 AND quantity <= COALESCE(min_quantity, 10)';
+
+      const total = (this.db.prepare(`SELECT COUNT(*) as count FROM products WHERE store_id = ? ${filterClause}`).get(storeId) as any).count;
+      const rows = this.db.prepare(`SELECT * FROM products WHERE store_id = ? ${filterClause} ORDER BY name ASC LIMIT ? OFFSET ?`).all(storeId, limit, offset);
+      return { data: rows as LocalProduct[], total };
     }
+
+    // FTS5 MATCH pattern (prefix search for each word)
+    const matchPattern = searchQuery.split(/\s+/).map(word => `${word}*`).join(' ');
+    
+    let filterClause = '';
+    if (filter === 'in_stock') filterClause = 'AND p.quantity > 0';
+    else if (filter === 'out_of_stock') filterClause = 'AND p.quantity <= 0';
+    else if (filter === 'low_stock') filterClause = 'AND p.quantity > 0 AND p.quantity <= COALESCE(p.min_quantity, 10)';
 
     const countResult = this.db
       .prepare(
         `
       SELECT COUNT(*) as count 
-      FROM products 
-      WHERE store_id = ? 
-      AND (
-        LOWER(name) LIKE ? OR 
-        LOWER(sku) LIKE ? OR 
-        LOWER(barcode) LIKE ?
-      )
+      FROM products_fts f
+      JOIN products p ON f.id = p.id
+      WHERE f.store_id = ? 
+      AND products_fts MATCH ?
       ${filterClause}
     `
       )
-      .get(storeId, likeQuery, likeQuery, likeQuery) as { count: number };
+      .get(storeId, matchPattern) as { count: number };
 
     const rows = this.db
       .prepare(
         `
       SELECT p.*, pf.name as category_name
-      FROM products p
+      FROM products_fts f
+      JOIN products p ON f.id = p.id
       LEFT JOIN product_families pf ON p.category = pf.id
-      WHERE p.store_id = ? 
-      AND (
-        LOWER(p.name) LIKE ? OR 
-        LOWER(p.sku) LIKE ? OR 
-        LOWER(p.barcode) LIKE ?
-      )
+      WHERE f.store_id = ? 
+      AND products_fts MATCH ?
       ${filterClause}
-      ORDER BY p.name ASC
+      ORDER BY rank -- FTS5 built-in relevance ranking
       LIMIT ? OFFSET ?
     `
       )
-      .all(storeId, likeQuery, likeQuery, likeQuery, limit, offset);
+      .all(storeId, matchPattern, limit, offset);
 
     const mappedRows = rows.map((row: any) => ({
       ...row,
-      category: row.category_name || row.category // Fallback to ID if name not found or null
+      category: row.category_name || row.category
     }));
 
     return {

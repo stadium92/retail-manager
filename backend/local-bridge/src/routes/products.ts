@@ -210,7 +210,7 @@ export async function registerProductRoutes(app: FastifyInstance) {
       unit_type: body.unit_type ?? null,
       packaging: body.packaging ?? null,
       expiry_date: body.expiry_date ?? null,
-      reorder_quantity: body.reorder_quantity ?? null,
+      reorder_quantity: body.reorder_quantity ?? undefined,
       created_at: now,
       updated_at: now,
       created_by: claims.sub,

@@ -4,6 +4,8 @@ use tauri_plugin_log::{Target, TargetKind};
 
 mod patch;
 mod license;
+mod printer;
+mod scanner;
 use patch::{install_patch, get_app_version};
 use license::{
   validate_license_command, 
@@ -11,25 +13,37 @@ use license::{
   get_license_status_command, 
   get_device_hash_command
 };
+use printer::{
+  discover_printers,
+  set_default_printer,
+  print_receipt,
+  download_receipt
+};
+use scanner::{
+  start_hardware_scan_listener,
+  list_connected_scanners,
+  simulate_hardware_scan
+};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_shell::init())
-    .plugin(tauri_plugin_log::Builder::default()
-      .targets([
-        Target::new(TargetKind::Stdout),
-        Target::new(TargetKind::LogDir),
-        Target::new(TargetKind::Webview),
-      ])
-      .build())
+    .plugin(tauri_plugin_log::Builder::default().build())
     .invoke_handler(tauri::generate_handler![
       install_patch, 
       get_app_version,
       validate_license_command,
       activate_license_command,
       get_license_status_command,
-      get_device_hash_command
+      get_device_hash_command,
+      discover_printers,
+      set_default_printer,
+      print_receipt,
+      download_receipt,
+      start_hardware_scan_listener,
+      list_connected_scanners,
+      simulate_hardware_scan
     ])
     .setup(|app| {
       let shell = app.shell();

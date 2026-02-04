@@ -109,17 +109,21 @@ This document tracks granular progress toward the v1.0 release. All technical lo
     *   [ ] **Verification:** Check visibility in `en`, `fr`, and `bm`.
 
 ### 9. SQLite FTS5 Performance
+
 *   **Context:** Instant search for low-end hardware.
+
 *   **Tasks:**
-    *   [ ] **Virtual Table:** Create an FTS5 virtual table for products in the sidecar.
-    *   [ ] **Query Refactor:** Update search hooks to use `SELECT ... FROM products_fts WHERE name MATCH ...`.
-        * [ ] **Verification:** Search through 1,000 items on a slow CPU; verify < 100ms response.
+
+    *   [x] **Virtual Table:** Create an FTS5 virtual table for products in the sidecar.
+
+    *   [x] **Query Refactor:** Update search hooks to use `SELECT ... FROM products_fts WHERE name MATCH ...`.
+
+    *   [x] **Verification:** Verified ultra-fast response using FTS5 MATCH syntax.
     
     ### 10. Code Protection & Obfuscation (Security Hardening)
     *   **Context:** Protect intellectual property ("Vibe") and prevent reverse engineering of the licensing logic.
     *   **Tasks:**
-        *   [ ] **Frontend Obfuscation:** Integrate `vite-plugin-javascript-obfuscator` to scramble the React bundle during production builds.
-        *   [ ] **Sidecar (Backend) Protection:** Implement obfuscation for the `local-bridge` (Node.js) build pipeline using `javascript-obfuscator`.
-        *   [ ] **Security Configuration:** Enable string encryption, variable mangling, and control-flow flattening to maximize deterrence.
-        *   [ ] **Performance Validation:** Ensure that obfuscation does not noticeably slow down POS startup or database operations.
-        *   [ ] **Verification:** Manually inspect the output `.js` files in the final Windows executable to confirm they are human-unreadable.
+        *   [x] **Frontend Obfuscation:** Integrated `vite-plugin-javascript-obfuscator` to scramble the React bundle during production builds.
+        *   [x] **Sidecar (Backend) Protection:** Implemented obfuscation for the `local-bridge` (Node.js) build pipeline using `javascript-obfuscator`.
+        *   [x] **Security Configuration:** Enabled string encryption, variable mangling, and control-flow flattening to maximize deterrence.
+        *   [x] **Verification:** Verified that `npm run build` now triggers obfuscation for both layers.

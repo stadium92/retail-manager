@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { db } from '../db.js';
 import { authenticateRequest } from './utils/auth.js';
-import { crypto } from '../env.js';
+import { randomUUID } from 'crypto';
 
 export async function registerAuditRoutes(app: FastifyInstance) {
   app.get('/rest/v1/audit_logs', async (request, reply) => {
@@ -33,7 +33,7 @@ export async function registerAuditRoutes(app: FastifyInstance) {
     const body = request.body as any;
 
     const log = {
-      id: crypto.randomUUID(),
+      id: randomUUID(),
       timestamp: new Date().toISOString(),
       user_id: user.id, // Use authenticated user ID
       store_id: user.store_id || body.store_id, // Use auth store or body

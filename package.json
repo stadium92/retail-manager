@@ -7,10 +7,14 @@
     "dev": "tauri dev",
     "build": "tauri build",
     "install:all": "npm install && cd frontend && npm install && cd ../backend/local-bridge && npm install",
-    "build:backend": "cd backend/local-bridge && rm -rf dist && npx tsc -p tsconfig.build.json && npx pkg dist/index.js -t node18-macos-arm64 -o ../../src-tauri/binaries/local-bridge-aarch64-apple-darwin && cp node_modules/better-sqlite3/build/Release/better_sqlite3.node ../../src-tauri/binaries/ && codesign --sign - --force --preserve-metadata=entitlements,requirements,flags,runtime ../../src-tauri/binaries/local-bridge-aarch64-apple-darwin",
+    "build:backend": "./scripts/build-sidecar.sh",
     "tauri:build": "npm run build:backend && tauri build && mkdir -p release && cp -R src-tauri/target/release/bundle/macos/*.app release/ && cp -R src-tauri/target/release/bundle/dmg/*.dmg release/"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.2.0"
+  },
+  "dependencies": {
+    "minimist": "^1.2.8",
+    "puppeteer": "^24.36.1"
   }
 }

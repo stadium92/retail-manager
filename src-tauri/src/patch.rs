@@ -3,6 +3,7 @@ use sha2::{Sha256, Digest};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tauri::AppHandle;
+use dirs_next::data_local_dir;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PatchManifest {
@@ -29,10 +30,9 @@ pub async fn install_patch(
     }
 
     // Create temp directory for extraction
-    let app_dir = app
-        .path_resolver()
-        .app_data_dir()
-        .ok_or("Failed to get app data dir")?;
+    let mut base = data_local_dir().ok_or("Failed to get app data dir")?;
+    base.push(&app.package_info().name);
+    let app_dir = base;
     
     let temp_dir = app_dir.join("patch_temp");
     if temp_dir.exists() {
@@ -99,10 +99,9 @@ fn verify_patch_checksums(
 }
 
 fn install_patch_files(app: &AppHandle, temp_dir: &Path) -> Result<(), String> {
-    let app_dir = app
-        .path_resolver()
-        .app_data_dir()
-        .ok_or("Failed to get app data dir")?;
+    let mut base = data_local_dir().ok_or("Failed to get app data dir")?;
+    base.push(&app.package_info().name);
+    let app_dir = base;
 
     // Install frontend files
     let frontend_src = temp_dir.join("frontend");
