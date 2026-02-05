@@ -32,8 +32,8 @@ yarn-error.log*
 
 # User specified
 backup/
-scripts/
-docs/
+!scripts/
+!docs/
 
 notes
 release
