@@ -68,6 +68,7 @@ temp_payload/
 test_extract/
 frontend/node_modules/
 node_modules/
+MVP/
 
 # Build targets and Rust artifacts
 backend/sidecar-wrapper/target/
