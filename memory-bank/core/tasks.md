@@ -139,4 +139,6 @@ This document tracks granular progress toward the v1.0 release. All technical lo
     *   [ ] **Installer Testing:** Verify the .exe runs on a 32-bit Windows environment.
     *   [ ] **Database Path Fix:** Ensure `env.ts` resolves correct Windows path (`C:\Users\...\AppData\Local`) instead of Linux-style `.local/share`.
     *   [ ] **Activation UI Restoration:** Fix missing activation prompt and countdowns (App appears unlocked).
+        *   [ ] **Locate Missing Component:** Find or recreate `LicenseBanner` which seems to be missing from the project structure.
+        *   [ ] **Integrate Global Check:** Ensure the license check runs on app startup and blocks usage if expired.
     *   [ ] **Cross-Platform Code Commit:** Commit only code changes (no binaries) ensuring compatibility with macOS.
