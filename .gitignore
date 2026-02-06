@@ -66,6 +66,8 @@ temp_archive/
 temp_extract/
 temp_payload/
 test_extract/
+frontend/node_modules/
+node_modules/
 
 # Build targets and Rust artifacts
 backend/sidecar-wrapper/target/
