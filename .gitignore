@@ -57,3 +57,17 @@ backend/local-bridge/sea-prep.blob
 backend/local-bridge/data/*.sqlite-wal
 memory-bank/chat/*.md
 !memory-bank/chat/README.md
+
+# Temporary and extraction directories
+extracted_archive/
+full_extract/
+scripts/rebuild_fix.ps1
+temp_archive/
+temp_extract/
+temp_payload/
+test_extract/
+
+# Build targets and Rust artifacts
+backend/sidecar-wrapper/target/
+src-tauri/target/
+**/target/
