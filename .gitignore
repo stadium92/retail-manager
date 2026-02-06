@@ -18,7 +18,12 @@ src-tauri/*
 !src-tauri/Cargo.toml
 !src-tauri/tauri.conf.json
 !src-tauri/build.rs
+!src-tauri/icons/
+!src-tauri/icons/**
 
+# Ignore binaries in src-tauri
+src-tauri/binaries/*
+!src-tauri/binaries/.gitkeep
 
 # System
 .DS_Store

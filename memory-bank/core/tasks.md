@@ -128,6 +128,15 @@ This document tracks granular progress toward the v1.0 release. All technical lo
 *   **Context:** Build 32-bit (.exe) installers for low-end Windows hardware (2.5GB RAM).
 *   **Tasks:**
     *   [x] **Windows Build Script:** Created `scripts/build-sidecar.ps1` for PowerShell.
+    *   [x] **Script Optimization:** Removed emojis/non-ASCII chars from `.ps1` to prevent Windows encoding parser errors.
     *   [x] **32-bit Target Configuration:** Configured `i686-pc-windows-msvc` target for both sidecar and Tauri.
-    *   [ ] **First Build Verification:** Run the build inside Parallels Windows VM.
+    *   [x] **C++ Build Tools Setup:** Verified `cargo build` works for `i686-pc-windows-msvc` (Visual Studio 2026 / v143 toolset).
+    *   [x] **Sidecar Packaging Strategy (Rust Wrapper):**
+        *   [x] Created `backend/sidecar-wrapper` (Rust) to replace deprecated `pkg` tool.
+        *   [x] Implemented `payload.zip` embedding for Node.js 18 (x86) + App Bundle.
+        *   [x] Compiled `local-bridge-wrapper.exe` for 32-bit Windows.
+    *   [x] **First Build Verification:** Run the build inside Parallels Windows VM.
     *   [ ] **Installer Testing:** Verify the .exe runs on a 32-bit Windows environment.
+    *   [ ] **Database Path Fix:** Ensure `env.ts` resolves correct Windows path (`C:\Users\...\AppData\Local`) instead of Linux-style `.local/share`.
+    *   [ ] **Activation UI Restoration:** Fix missing activation prompt and countdowns (App appears unlocked).
+    *   [ ] **Cross-Platform Code Commit:** Commit only code changes (no binaries) ensuring compatibility with macOS.
