@@ -11,6 +11,7 @@ This index provides navigation for the Retail Manager memory-bank directory, org
 Pro/retail-manager/memory-bank/
 ├── INDEX.md (this file)
 ├── core/                     # Core operations hub
+├── tech/                     # Technical setup and build patterns
 ├── planning/                 # Planning and strategy center
 ├── ai/                       # AI systems and intelligence
 ├── analysis/                 # Analysis and insights
@@ -20,6 +21,14 @@ Pro/retail-manager/memory-bank/
 │   └── Notes/               # Project notes
 └── van-docs/                 # VAN mode documentation
 ```
+
+---
+
+## 🛠️ Technical Setup & Build Patterns
+
+### Tech Directory Structure
+Located in: `tech/`
+- **[`tech/windows_arm64_setup.md`](tech/windows_arm64_setup.md)** - Blueprint for rebuilding the development environment on Windows ARM64. Includes required software (Visual Studio, Rust, Node.js), 32-bit sidecar build techniques (Rust Wrapper pattern), and reinstallation tutorials.
 
 ---
 
@@ -118,6 +127,7 @@ Located in: `van-docs/`
 
 | Need | Go To | Primary File |
 |------|-------|--------------|
+| **ARM64 Setup Guide** | `tech/` | `windows_arm64_setup.md` |
 | **PRD Document** | `docs/` | `prd.txt` |
 | **Frontend Prompt (Complete)** | `docs/` | `lovable_frontend_prompt.md` |
 | **Frontend Prompt - Phase 1** | `docs/` | `lovable_frontend_prompt_phase1.md` |
