@@ -18,12 +18,7 @@ src-tauri/*
 !src-tauri/Cargo.toml
 !src-tauri/tauri.conf.json
 !src-tauri/build.rs
-!src-tauri/icons/
-!src-tauri/icons/**
 
-# Ignore binaries in src-tauri
-src-tauri/binaries/*
-!src-tauri/binaries/.gitkeep
 
 # System
 .DS_Store
@@ -47,30 +42,3 @@ backup/
 notes
 release
 data
-
-# Heavy files and build artifacts
-backend/local-bridge/build-staging/
-backend/local-bridge/dist-bundled/
-backend/local-bridge/dist-bundled-incl-sqlite/
-backend/local-bridge/payload.zip
-backend/local-bridge/sea-prep.blob
-backend/local-bridge/data/*.sqlite-wal
-memory-bank/chat/*.md
-!memory-bank/chat/README.md
-
-# Temporary and extraction directories
-extracted_archive/
-full_extract/
-scripts/rebuild_fix.ps1
-temp_archive/
-temp_extract/
-temp_payload/
-test_extract/
-frontend/node_modules/
-node_modules/
-MVP/
-
-# Build targets and Rust artifacts
-backend/sidecar-wrapper/target/
-src-tauri/target/
-**/target/

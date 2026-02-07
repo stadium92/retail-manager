@@ -1,7 +1,27 @@
 # Windows 32-bit Build Pattern (Tauri + Node.js Sidecar)
 
+## Windows VM Environment Setup (M1 Mac / Parallels)
+To successfully compile 32-bit applications on an Apple Silicon Mac, a Windows 11 on ARM VM (via Parallels or UTM) is required.
+
+### 1. Visual Studio 2022 Community Requirements
+The following **Individual Components** must be installed (approx. 6-8GB footprint):
+-   **MSVC v143 - VS 2022 C++ x64/x86 build tools (Latest)**: The actual 32-bit compiler engine.
+-   **Windows 11 SDK (10.0.22621.0)**: Provides standard headers like `windows.h`.
+-   **C++ Core Features**: Base IDE support for C++.
+-   **MSVC v143 - VS 2022 C++ ARM64 build tools** (Optional but Recommended): Enables the `ARM64_x86 Cross Tools Command Prompt`, which allows the compiler to run natively on M1 while building a 32-bit binary, significantly increasing build speed.
+
+### 2. Environment Configuration
+-   **Build Shell**: Always use **`ARM64_x86 Cross Tools Command Prompt`** for the best performance on M1 Macs.
+-   **Execution Policy**: Run `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine` in Admin PowerShell to allow `npm` and `tauri` scripts to run.
+
+### 3. Space Optimization (Critical for VM)
+To prevent the VM from ballooning in size on the Mac SSD:
+-   **Disable Auto-Updates**: Set connection to "Metered" and disable the `wuauserv`, `bits`, and `dosvc` services via Registry (`Start=4`).
+-   **Clean Update Cache**: Periodically delete `C:\Windows\SoftwareDistribution\Download\*`.
+-   **Parallels Compression**: After cleanup, shut down the VM and use **Hardware > Hard Disk > Advanced > Compress** in Parallels configuration.
+
 ## Context
-Building a Tauri v2 application with a Node.js backend sidecar for 32-bit Windows (`i686-pc-windows-msvc`) presents specific challenges, particularly with native modules (`better-sqlite3`) and the deprecated `pkg` tool which lacks upstream binaries for this target.
+Building a Tauri v2 application with a Node.js backend sidecar for 32-bit Windows (`i686-pc-windows-msvc`) presents specific challenges...
 
 ## Successful Workflow
 

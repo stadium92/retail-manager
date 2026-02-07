@@ -28,9 +28,10 @@ The project uses `pkg` to bundle the backend sidecar, which targets **Node 18**.
   1. Run `npm run tauri:build` from the root. 
   2. This uses `scripts/build-sidecar.sh` to package `local-bridge-aarch64-apple-darwin`.
 - **Production Build (Windows 32-bit)**:
-  1. Must be run inside a **Windows VM (Parallels)**.
-  2. Run `.\scripts\build-sidecar.ps1` in PowerShell to package the 32-bit sidecar (`local-bridge-i686-pc-windows-msvc.exe`).
-  3. Run `tauri build --target i686-pc-windows-msvc` to generate the `.exe`.
+  1. Must be run inside a **Windows 11 ARM VM (Parallels)**.
+  2. **Requirement**: Visual Studio 2022 with `VC.Tools.x86.x64` and `Windows11SDK`. (See `windows_build_pattern.md` for full VM setup).
+  3. Run `.\scripts\build-sidecar.ps1` in PowerShell to package the 32-bit sidecar (`local-bridge-i686-pc-windows-msvc.exe`).
+  4. Run `tauri build --target i686-pc-windows-msvc` to generate the `.exe`.
 - **Local Development**: After any production build, run `cd backend/local-bridge && npm rebuild better-sqlite3` to restore the native module for Node 20.
 
 ### Target Specifications
