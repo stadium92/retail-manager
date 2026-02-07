@@ -12,6 +12,9 @@ const numberFromEnv = (value: string | undefined, fallback: number) => {
 };
 
 const getDefaultDataDir = () => {
+    if (process.platform === 'win32') {
+        return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'retail-manager', 'data');
+    }
     if (process.platform === 'darwin') {
         return path.join(os.homedir(), 'Library', 'Application Support', 'Retail Manager', 'data');
     }

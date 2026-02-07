@@ -28,8 +28,6 @@
 
 ## Recent Achievements
 - **Dynamic Keyboard Engine**: Successfully linked F1-F12 keys to POS actions via user settings.
-- **Dynamic UI Adaptation**: Footer buttons in Sales modules now automatically update labels based on customized key mappings.
-- **UI Stability**: Resolved several critical crashes related to Select components and missing component state.
-- **i18n Milestone**: Achieved full parity and 100% coverage across French, English, and Bamanankan.
-- **Licensing Core**: Backend key validation logic and hardware binding are fully implemented.
-- **Help Center Depth**: Expanded the help module with technical guides and searchable categories.
+- **Windows Build Environment**: Fixed `scripts/build-sidecar.ps1` parsing errors by removing non-ASCII characters and emojis.
+- **Dependency Management**: Identified and addressed Visual Studio C++ build tool requirements for 32-bit Windows targets.
+- **Submodule Verification**: Investigated `frontend` submodule fetch issues and synchronized state.
