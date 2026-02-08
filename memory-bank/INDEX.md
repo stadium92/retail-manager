@@ -12,6 +12,7 @@ Pro/retail-manager/memory-bank/
 ├── INDEX.md (this file)
 ├── core/                     # Core operations hub
 ├── tech/                     # Technical setup and build patterns
+├── chat/                     # Session logs and chat history
 ├── planning/                 # Planning and strategy center
 ├── ai/                       # AI systems and intelligence
 ├── analysis/                 # Analysis and insights
@@ -29,6 +30,16 @@ Pro/retail-manager/memory-bank/
 ### Tech Directory Structure
 Located in: `tech/`
 - **[`tech/windows_arm64_setup.md`](tech/windows_arm64_setup.md)** - Blueprint for rebuilding the development environment on Windows ARM64. Includes required software (Visual Studio, Rust, Node.js), 32-bit sidecar build techniques (Rust Wrapper pattern), and reinstallation tutorials.
+- **[`tech/sidecar_wrapper_strategy.md`](tech/sidecar_wrapper_strategy.md)** - Deep dive into the Rust Wrapper pattern used to bundle the Node.js backend for 32-bit production deployment.
+- **[`tech/dynamic_port_discovery.md`](tech/dynamic_port_discovery.md)** - Strategy for automated backend port discovery to ensure frontend connectivity across different network environments.
+
+---
+
+## 💬 Session Logs & Chat History
+
+### Chat Directory Structure
+Located in: `chat/`
+- **[`chat/2026-02-08_sidecar_dependency_resolution.md`](chat/2026-02-08_sidecar_dependency_resolution.md)** - **Problem to Solution (A-Z)**: Comprehensive log of resolving the "Failed to fetch data" issue. Covers missing transitive dependencies (`fastq`), emergency logging implementation, and Tauri resource path corrections.
 
 ---
 

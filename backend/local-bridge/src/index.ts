@@ -1,5 +1,7 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import fs from 'fs';
+import path from 'path';
 import { env } from './env.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerProductRoutes } from './routes/products.js';
@@ -14,7 +16,26 @@ import { registerAnalyticsRoutes } from './routes/analytics.js';
 import { registerAuditRoutes } from './routes/audit.js';
 import { db } from './db.js';
 
+// Emergency logging
+const logDir = path.join(process.env.LOCALAPPDATA || '', 'retail-manager-logs');
+if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+const logFile = path.join(logDir, 'backend-startup.log');
+
+function log(msg: string) {
+  const line = `[${new Date().toISOString()}] ${msg}\n`;
+  try {
+    fs.appendFileSync(logFile, line);
+  } catch (e) {
+    // ignore
+  }
+}
+
+log('Backend starting...');
+log(`CWD: ${process.cwd()}`);
+log(`Port: ${env.port}`);
+
 async function start() {
+  log('Initializing Fastify...');
   const app = Fastify({ logger: true });
 
   await app.register(cors, { origin: true });
@@ -37,17 +58,18 @@ async function start() {
   await registerAuditRoutes(app);
 
   try {
+    log(`Attempting to listen on port ${env.port}...`);
     await app.listen({ port: env.port, host: '0.0.0.0' });
+    log(`LocalBridge listening on http://localhost:${env.port}`);
     app.log.info(`LocalBridge listening on http://localhost:${env.port}`);
   } catch (err) {
+    log(`CRITICAL ERROR during startup: ${err}`);
     app.log.error(err);
     process.exit(1);
   }
 }
 
-start();
- 
- 
- 
- 
- 
+log('Calling start()...');
+start().catch(e => {
+  log(`UNHANDLED PROMISE ERROR: ${e}`);
+});

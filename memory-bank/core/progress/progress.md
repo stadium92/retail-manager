@@ -31,3 +31,6 @@
 - **Windows Build Environment**: Fixed `scripts/build-sidecar.ps1` parsing errors by removing non-ASCII characters and emojis.
 - **Dependency Management**: Identified and addressed Visual Studio C++ build tool requirements for 32-bit Windows targets.
 - **Submodule Verification**: Investigated `frontend` submodule fetch issues and synchronized state.
+- **Project Restoration**: Successfully cloned the `frontend-test-1` branch and synchronized the `frontend` submodule.
+- **Build Investigation**: Attempted sidecar and frontend builds; identified issues with `pkg` (Node source compilation failure) and `vite build` (hanging/slow on ARM64).
+- **Tech Context Refresh**: Rediscovered the "Rust Wrapper Pattern" for sidecars and the requirement for `ARM64_x86 Cross Tools Command Prompt`.
