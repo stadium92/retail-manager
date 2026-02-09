@@ -18,14 +18,14 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "start": "node --enable-source-maps dist/index.js",
-    "build": "tsc -p tsconfig.json && npm run obfuscate",
+    "build": "tsc -p tsconfig.json",
     "obfuscate": "javascript-obfuscator ./dist --output ./dist --compact true --control-flow-flattening true --dead-code-injection true --string-array true --string-array-encoding base64",
     "seed": "tsx src/seed.ts"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",
     "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^12.6.2",
+    "better-sqlite3": "9.4.3",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.45.1",
     "fastify": "^4.29.1",

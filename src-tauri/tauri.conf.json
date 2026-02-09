@@ -30,7 +30,8 @@
       "binaries/local-bridge"
     ],
     "resources": [
-      "binaries/better_sqlite3.node"
+      "binaries/better_sqlite3.node",
+      "../backend/local-bridge/payload.zip"
     ],
     "icon": [
       "icons/32x32.png",

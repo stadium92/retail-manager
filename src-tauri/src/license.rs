@@ -32,6 +32,14 @@ pub struct LicenseStatus {
 }
 
 const TRIAL_DAYS: i32 = 30;
+const SECRET_KEY: &[u8] = b"RETAIL-MANAGER-SECURE-KEY-2026";
+
+fn encrypt_decrypt(data: &[u8]) -> Vec<u8> {
+    data.iter()
+        .enumerate()
+        .map(|(i, &b)| b ^ SECRET_KEY[i % SECRET_KEY.len()])
+        .collect()
+}
 
 pub fn get_device_hash() -> String {
     let uid = machine_uid::get().unwrap_or_else(|_| "UNKNOWN_DEVICE".to_string());
@@ -103,15 +111,18 @@ pub fn get_status(app_handle: &AppHandle) -> LicenseStatus {
     
     // 1. Check if activated
     if license_path.exists() {
-        if let Ok(content) = fs::read_to_string(&license_path) {
-            if let Ok(data) = serde_json::from_str::<LicenseData>(&content) {
-                if data.hardware_hash == device_hash {
-                    return LicenseStatus {
-                        status: "active".to_string(),
-                        days_remaining: 9999,
-                        stores: data.stores,
-                        device_hash,
-                    };
+        if let Ok(encrypted_content) = fs::read(&license_path) {
+            let decrypted_vec = encrypt_decrypt(&encrypted_content);
+            if let Ok(content) = String::from_utf8(decrypted_vec) {
+                if let Ok(data) = serde_json::from_str::<LicenseData>(&content) {
+                    if data.hardware_hash == device_hash {
+                        return LicenseStatus {
+                            status: "active".to_string(),
+                            days_remaining: 9999,
+                            stores: data.stores,
+                            device_hash,
+                        };
+                    }
                 }
             }
         }
@@ -197,8 +208,9 @@ pub fn activate_license_command(app_handle: AppHandle, key: String, store_name: 
     let path = get_license_path(&app_handle);
     let content = serde_json::to_string(&data).map_err(|e| e.to_string())?;
     
-    // In production, encrypt 'content' here before writing
-    fs::write(path, content).map_err(|e| e.to_string())?;
+    // Encrypt content before writing
+    let encrypted_vec = encrypt_decrypt(content.as_bytes());
+    fs::write(path, encrypted_vec).map_err(|e| e.to_string())?;
     
     Ok(())
 }

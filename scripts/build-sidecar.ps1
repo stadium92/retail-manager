@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 # Configuration
 $BACKEND_DIR = "backend/local-bridge"
 $TAURI_BIN_DIR = "src-tauri/binaries"
-$NODE_TARGET = "node14-win-x86" # Target 32-bit for maximum compatibility
+$NODE_TARGET = "node18-win-x86" # Target 32-bit for maximum compatibility
 $TARGET_ARCH = "ia32"           # 32-bit architecture for Node native modules
 
 Write-Host "Starting Windows Backend Sidecar Build (32-bit)..." -ForegroundColor Cyan
