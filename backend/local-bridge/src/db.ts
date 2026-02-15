@@ -185,6 +185,26 @@ export interface LocalSaleItem {
   created_at: string;
 }
 
+export interface LocalScheduledOrder {
+  id: string;
+  store_id: string;
+  supplier_id?: string | null;
+  name: string;
+  recurrence_type: 'daily' | 'weekly' | 'monthly' | 'custom';
+  recurrence_value: string;
+  next_run_date: string;
+  is_active: number; // 0 or 1
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LocalScheduledOrderItem {
+  id: string;
+  scheduled_order_id: string;
+  product_id: string;
+  quantity: number;
+}
+
 
 export interface LocalInventoryMovement {
   id: string;
@@ -254,7 +274,7 @@ export interface ReplenishmentNeed {
 
 class LocalBridgeDatabase {
   private readonly dbPath: string;
-  private readonly db: Database.Database;
+  public readonly db: Database.Database;
 
   constructor() {
     if (!fs.existsSync(env.dataDir)) {
@@ -571,6 +591,28 @@ class LocalBridgeDatabase {
         created_at TEXT NOT NULL
       );
 
+      -- Scheduled Orders
+      CREATE TABLE IF NOT EXISTS scheduled_orders (
+        id TEXT PRIMARY KEY,
+        store_id TEXT NOT NULL,
+        supplier_id TEXT,
+        name TEXT NOT NULL,
+        recurrence_type TEXT NOT NULL,
+        recurrence_value TEXT NOT NULL,
+        next_run_date TEXT NOT NULL,
+        is_active INTEGER DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS scheduled_order_items (
+        id TEXT PRIMARY KEY,
+        scheduled_order_id TEXT NOT NULL,
+        product_id TEXT NOT NULL,
+        quantity INTEGER NOT NULL,
+        FOREIGN KEY (scheduled_order_id) REFERENCES scheduled_orders(id) ON DELETE CASCADE
+      );
+
       CREATE INDEX IF NOT EXISTS idx_worker_invitations_status ON worker_invitations(status);
       CREATE INDEX IF NOT EXISTS idx_worker_invitations_store ON worker_invitations(store_id);
       CREATE INDEX IF NOT EXISTS idx_products_store ON products(store_id);
@@ -592,6 +634,7 @@ class LocalBridgeDatabase {
       CREATE INDEX IF NOT EXISTS idx_replenishment_requests_status ON replenishment_requests(status);
       CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp);
       CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
+      CREATE INDEX IF NOT EXISTS idx_scheduled_orders_next_run ON scheduled_orders(next_run_date);
     `);
 
     const ensureColumn = (table: string, column: string, ddl: string) => {
@@ -1972,6 +2015,57 @@ class LocalBridgeDatabase {
       .prepare(`UPDATE worker_invitations SET ${updateAssignments} WHERE id = @id`)
       .run(payload);
     return this.getInvitationById(invitationId);
+  }
+
+  // ===== Scheduled Orders =====
+  listScheduledOrders(storeId: string): LocalScheduledOrder[] {
+    const rows = this.db
+      .prepare('SELECT * FROM scheduled_orders WHERE store_id = ? ORDER BY next_run_date ASC')
+      .all(storeId);
+    return rows as LocalScheduledOrder[];
+  }
+
+  insertScheduledOrder(order: LocalScheduledOrder) {
+    this.db
+      .prepare(
+        `
+        INSERT INTO scheduled_orders (
+          id, store_id, supplier_id, name, recurrence_type, recurrence_value, next_run_date, is_active, created_at, updated_at
+        ) VALUES (
+          @id, @store_id, @supplier_id, @name, @recurrence_type, @recurrence_value, @next_run_date, @is_active, @created_at, @updated_at
+        )
+      `
+      )
+      .run({
+        ...order,
+        supplier_id: order.supplier_id ?? null,
+        is_active: order.is_active ? 1 : 0
+      });
+  }
+
+  deleteScheduledOrder(id: string) {
+    this.db.prepare('DELETE FROM scheduled_orders WHERE id = ?').run(id);
+  }
+
+  listScheduledOrderItems(scheduledOrderId: string): LocalScheduledOrderItem[] {
+    const rows = this.db
+      .prepare('SELECT * FROM scheduled_order_items WHERE scheduled_order_id = ?')
+      .all(scheduledOrderId);
+    return rows as LocalScheduledOrderItem[];
+  }
+
+  insertScheduledOrderItem(item: LocalScheduledOrderItem) {
+    this.db
+      .prepare(
+        `
+        INSERT INTO scheduled_order_items (
+          id, scheduled_order_id, product_id, quantity
+        ) VALUES (
+          @id, @scheduled_order_id, @product_id, @quantity
+        )
+      `
+      )
+      .run(item);
   }
 
   // ===== Audit Logs =====

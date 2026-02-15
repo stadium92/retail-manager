@@ -14,7 +14,9 @@ import { registerStoreRoutes } from './routes/stores.js';
 import { registerSyncRoutes } from './routes/sync.js';
 import { registerAnalyticsRoutes } from './routes/analytics.js';
 import { registerAuditRoutes } from './routes/audit.js';
+import { registerSystemRoutes } from './routes/system.js';
 import { db } from './db.js';
+import { runScheduler } from './scheduler.js';
 
 // Emergency logging
 const logDir = path.join(process.env.LOCALAPPDATA || '', 'retail-manager-logs');
@@ -55,7 +57,15 @@ async function start() {
   await registerStoreRoutes(app);
   await registerSyncRoutes(app);
   await registerAnalyticsRoutes(app);
+  await registerSystemRoutes(app);
   await registerAuditRoutes(app);
+
+  // Run Startup Scheduler
+  try {
+    runScheduler();
+  } catch (err) {
+    log(`Scheduler Error: ${err}`);
+  }
 
   try {
     log(`Attempting to listen on port ${env.port}...`);

@@ -63,6 +63,19 @@ const paymentCreateSchema = z.object({
   notes: z.string().nullable().optional(),
 });
 
+const scheduledOrderCreateSchema = z.object({
+  store_id: z.string().optional(),
+  supplier_id: z.string().optional(),
+  name: z.string().min(1),
+  recurrence_type: z.enum(['daily', 'weekly', 'monthly', 'custom']),
+  recurrence_value: z.string().min(1),
+  is_active: z.boolean().optional(),
+  products: z.array(z.object({
+    product_id: z.string().min(1),
+    quantity: z.number().min(1)
+  })).min(1)
+});
+
 const updateProductInventory = (productId: string, receivedQty: number, unitCost?: number, storeId?: string, actorId?: string) => {
   const product = db.getProductById(productId);
   if (!product) return;
@@ -115,7 +128,105 @@ const updateProductInventory = (productId: string, receivedQty: number, unitCost
   }
 };
 
+// Helper to calculate next run date
+const calculateNextRunDate = (type: string, value: string): string => {
+  const now = new Date();
+  let next = new Date();
+  
+  if (type === 'daily') {
+    next.setDate(now.getDate() + parseInt(value || '1'));
+  } else if (type === 'weekly') {
+    // value is day of week (0-6 or 1-7). Let's assume 0=Sunday, 1=Monday
+    const targetDay = parseInt(value);
+    const currentDay = now.getDay();
+    let daysToAdd = targetDay - currentDay;
+    if (daysToAdd <= 0) daysToAdd += 7;
+    next.setDate(now.getDate() + daysToAdd);
+  } else if (type === 'monthly') {
+    const targetDate = parseInt(value);
+    next.setMonth(now.getMonth() + 1);
+    next.setDate(targetDate);
+  }
+  return next.toISOString();
+};
+
 export async function registerPurchasingRoutes(app: FastifyInstance) {
+  // --- Scheduled Orders ---
+  app.get('/rest/v1/scheduled_orders', async (request, reply) => {
+    const claims = authenticateRequest(request, reply);
+    if (!claims) return;
+
+    const parsed = listSchema.safeParse(request.query ?? {});
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'ValidationFailed', details: parsed.error.flatten() });
+    }
+
+    const storeId = parsed.data.store_id ?? claims.store_id;
+    if (!storeId) {
+      return reply.status(400).send({ error: 'StoreRequired', message: 'Store is required.' });
+    }
+
+    const orders = db.listScheduledOrders(storeId);
+    // Enrich with items
+    const fullOrders = orders.map(o => ({
+      ...o,
+      items: db.listScheduledOrderItems(o.id)
+    }));
+    
+    return reply.send(fullOrders);
+  });
+
+  app.post('/rest/v1/scheduled_orders', async (request, reply) => {
+    const claims = authenticateRequest(request, reply, ['master', 'worker']);
+    if (!claims) return;
+
+    const parsed = scheduledOrderCreateSchema.safeParse(request.body ?? {});
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'ValidationFailed', details: parsed.error.flatten() });
+    }
+
+    const storeId = parsed.data.store_id ?? claims.store_id;
+    if (!storeId) {
+      return reply.status(400).send({ error: 'StoreRequired', message: 'Store is required.' });
+    }
+
+    const now = new Date().toISOString();
+    const orderId = crypto.randomUUID();
+    const nextRun = calculateNextRunDate(parsed.data.recurrence_type, parsed.data.recurrence_value);
+
+    db.insertScheduledOrder({
+      id: orderId,
+      store_id: storeId,
+      supplier_id: parsed.data.supplier_id ?? null,
+      name: parsed.data.name,
+      recurrence_type: parsed.data.recurrence_type,
+      recurrence_value: parsed.data.recurrence_value,
+      next_run_date: nextRun,
+      is_active: parsed.data.is_active ?? true,
+      created_at: now,
+      updated_at: now,
+    });
+
+    for (const item of parsed.data.products) {
+      db.insertScheduledOrderItem({
+        id: crypto.randomUUID(),
+        scheduled_order_id: orderId,
+        product_id: item.product_id,
+        quantity: item.quantity
+      });
+    }
+
+    return reply.status(201).send({ message: 'Scheduled order created', id: orderId, next_run: nextRun });
+  });
+
+  app.delete('/rest/v1/scheduled_orders/:id', async (request, reply) => {
+    const claims = authenticateRequest(request, reply, ['master', 'worker']);
+    if (!claims) return;
+    const id = (request.params as { id: string }).id;
+    db.deleteScheduledOrder(id);
+    return reply.send({ message: 'Scheduled order deleted' });
+  });
+
   app.get('/rest/v1/suppliers', async (request, reply) => {
     const claims = authenticateRequest(request, reply);
     if (!claims) return;

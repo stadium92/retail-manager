@@ -142,3 +142,118 @@ This document tracks granular progress toward the v1.0 release. All technical lo
         *   [ ] **Locate Missing Component:** Find or recreate `LicenseBanner` which seems to be missing from the project structure.
         *   [ ] **Integrate Global Check:** Ensure the license check runs on app startup and blocks usage if expired.
     *   [ ] **Cross-Platform Code Commit:** Commit only code changes (no binaries) ensuring compatibility with macOS.
+
+---
+
+## 🟣 Phase 4: Critical Refinement Phase (P0+) - Immediate Action
+
+### 12. Master-Side Family Selection & Worker Context Fix
+*   **Context:** The Master dashboard is failing to select product families correctly, and the Master lacks visibility into worker-specific data when viewing a worker's profile.
+*   **Tasks:**
+    *   [ ] **Fix Family Selector (Master Inventory):**
+        *   **Deep Dive:** Investigate `frontend/src/components/master/Inventory`. The `FamilySelector` component likely relies on a `storeId` context that is missing or undefined in the Master view (since Master manages *multiple* stores, unlike a Worker who is bound to one).
+        *   **Action:** Ensure the `MasterDashboard` or `InventoryPage` explicitly passes the currently selected Store ID to the `FamilySelector`. If `storeId` is null (Global View), the selector must query `SELECT * FROM families` without a `store_id` filter (or show all).
+    *   [ ] **Worker Context Visibility:**
+        *   **Deep Dive:** When a Master selects a worker in the "Team" module (`frontend/src/components/master/Team`), the UI currently shows generic info.
+        *   **Action:** Implement a `useWorkerDetails` hook that fetches the specific `store_id`, `role`, and `last_active` status from the `profiles` table.
+        *   **UI Update:** Display this context in the "Worker Details" sidebar or modal so the Master knows exactly which store context that worker is operating in.
+
+### 13. Purchases Module UX & Generation Logic Overhaul
+*   **Context:** The default view is wrong, and the "Generate Orders" button is broken/ambiguous. The Master needs the same manual control as the Worker.
+*   **Tasks:**
+    *   [ ] **Set Default Tab to "Products to Order":**
+        *   **Deep Dive:** Locate `frontend/src/pages/master/Purchases/PurchasesPage.tsx`. The `Tabs` component likely initializes with `defaultValue="history"`.
+        *   **Action:** Change the initialization state to `defaultValue="to-order"`. Ensure this persists even after navigating away and back (consider simple `localStorage` persistence).
+    *   [ ] **Fix "Generate Orders" Widget (Supplier Selection):**
+        *   **Deep Dive:** The current `handleGenerateOrder` function likely fails because it tries to auto-assign suppliers or expects a pre-selection that the UI doesn't provide.
+        *   **Action:** Refactor the "Generate" button to open a **"Create Order Dialog"** instead of immediately firing an API call.
+        *   **Implementation:** Inside this dialog, add a `<Select>` component for **Suppliers** (fetching from `suppliers` table).
+        *   **Logic:** The "Generate" button inside the dialog should remain disabled until a specific Supplier is chosen. This mirrors the `Worker/ManualOrder` flow where supplier selection is the prerequisite step.
+    *   [ ] **Parity with Worker Manual Order:**
+        *   **Action:** Review `frontend/src/pages/worker/Purchases/ManualOrder.tsx`. Copy the exact logic for "Add Product -> Select Variant -> Add to Cart" and implement it in the Master's "Products to Order" widget. Ensure the Master can manually override quantities before generating the final Purchase Order.
+
+### 14. Automatic Order Scheduling (Cron/Interval System)
+*   **Context:** Clients need to schedule orders (e.g., "Every Sunday" or "Every Month on the 1st"). The current system lacks this granularity.
+*   **Tasks:**
+    *   [ ] **Database Schema Update:**
+        *   **Deep Dive:** The `purchase_orders` or a new `scheduled_orders` table needs columns for recurrence.
+        *   **Action:** Add `recurrence_type` (daily, weekly, monthly, custom), `recurrence_value` (e.g., 'Sunday', '1'), and `next_run_date` (timestamp) to the schema.
+    *   [ ] **UI Implementation (Auto-Order Submodule):**
+        *   **Deep Dive:** In the "Automatic Order" view (`frontend/src/components/worker/Purchases/AutomaticOrder`), replace the simple toggle with a **"Schedule Configuration"** panel.
+        *   **Action:** Add a Form with:
+            *   "Repeat Every": [Dropdown: Week, Month]
+            *   "On": [Dropdown: Monday-Sunday OR Date 1-31]
+            *   "Products": [Multi-select list]
+    *   [ ] **Backend Logic (The Scheduler):**
+        *   **Deep Dive:** Since this is an offline-first app, we cannot rely on a cloud Cron job. The check must happen on **App Startup** (`local-bridge`).
+        *   **Action:** Create a `SchedulerService.ts` in the backend. On `app.init`, run a query: `SELECT * FROM scheduled_orders WHERE next_run_date <= NOW()`.
+        *   **Execution:** For each match, generate a new `purchase_order` and update the `next_run_date` to the future interval. Log this event in `audit_logs` as "System Auto-Order".
+
+### 15. Master-Worker Data Interconnectivity (Unified Dashboard)
+*   **Context:** The Master dashboard is currently isolated. It must mirror the Worker's submodules (Files, Clients, Suppliers) so the Master sees exactly what the Worker sees/registers.
+*   **Tasks:**
+    *   [ ] **Port "Files" Module to Master:**
+        *   **Deep Dive:** The "Files" module (containing Clients, Suppliers, Client Service) exists in `frontend/src/pages/worker/Files`. It is missing from `frontend/src/pages/master/`.
+        *   **Action:** Import and mount the `Files` layout into the Master's router (`frontend/src/pages/master/router.tsx`).
+    *   [ ] **Global Data Visibility (Interconnection):**
+        *   **Deep Dive:** Currently, RLS (Row Level Security) might be restricting Master views to specific contexts.
+        *   **Action:** Update the SQL queries for Clients and Suppliers in the Master view to **remove store filters** by default (or provide a "All Stores" dropdown).
+        *   **Result:** When a Worker registers a new Supplier in Store A, the Master must see that Supplier immediately in the Master Dashboard > Suppliers tab.
+    *   [ ] **UI Consistency:**
+        *   **Action:** Reuse the exact same Table Components (`ClientTable`, `SupplierTable`) used in the Worker view to ensure the Master sees the same columns, status, and details. Do not duplicate code; refactor these into `frontend/src/components/shared/` if they aren't already.
+
+---
+
+## 🟠 Phase 5: Critical Bug Fixes & UX Gaps (P0) - Immediate Action
+
+### 16. POS & Sales Submodule Deletion Logic
+*   **Context:** Users cannot delete items from the cart in Retail, Wholesale, or Proforma modes. The "Delete" button is missing or broken.
+*   **Tasks:**
+    *   [ ] **Fix POS Grid Deletion:**
+        *   **Deep Dive:** In `frontend/src/components/worker/Sales/SalesEntryForm.tsx` (or `SanifereGrid.tsx`), the "Delete" action might be disconnected from the state.
+        *   **Action:** Ensure the `trash` icon in the grid row calls `removeFromCart(productId)`.
+        *   **Shortcut:** Map the **"Delete"** key on the keyboard to trigger the removal of the *selected* row.
+    *   [ ] **Key Programming Integration:**
+        *   **Action:** In `frontend/src/components/worker/Modules/SettingsModule.tsx` (Key Programming), add a "Delete Item" option to the list of assignable functions so users can map F5 or F8 to delete.
+    *   [ ] **Consistent Behavior:** Ensure this deletion logic works identically across **Retail** (`vente-detail`), **Wholesale** (`facturation-gros`), and **Proforma** (`proforma`) modes.
+
+### 17. Database Corruption & "Vody" Error Fix
+*   **Context:** Modifying the product "Vody" triggers a "database disk image is malformed" error. This indicates physical SQLite corruption.
+*   **Tasks:**
+    *   [ ] **Emergency Repair Tool:**
+        *   **Action:** Create a "Repair Database" button in the Master Settings -> System Logs page.
+        *   **Backend Logic:** Execute `PRAGMA integrity_check;` and `VACUUM;` commands via `better-sqlite3`.
+    *   [ ] **Input Validation (Root Cause?):**
+        *   **Deep Dive:** The "Vody" error might be triggered by invalid characters (emojis, null bytes) in the product name or description.
+        *   **Action:** Add strict sanitization to `updateProduct` in `db.ts` to strip non-printable characters before SQL insertion.
+
+### 18. Packaging (Conditionnement) Logic Overhaul
+*   **Context:** Selling a "Box" doesn't multiply the price/deduct stock correctly. The logic is superficial.
+*   **Tasks:**
+    *   [ ] **Stock Logic (Base Units):**
+        *   **Deep Dive:** Inventory should always be stored in *Base Units* (e.g., Pieces). A "Box of 12" is just a UI abstraction.
+        *   **Action:** In `createOrder` and `recordSale`, ensure that if `unit_type === 'Carton'`, the backend receives `quantity * pack_size` as the quantity to deduct.
+    *   [ ] **Price Calculation Fix:**
+        *   **Action:** In `SalesEntryForm.tsx` and `ReplenishmentNeeds.tsx`, when a user switches Unit Type to "Carton":
+            *   Update the displayed **Unit Price** to `Base Price * Pack Size`.
+            *   OR, if a specific `wholesale_price_ht` (Box Price) is set, use that instead.
+    *   [ ] **UI Responsiveness:**
+        *   **Action:** Ensure changing the "Unit" dropdown immediately recalculates the Row Total in the grid.
+
+### 19. Generate Orders Enhancements
+*   **Context:** Translation error (`menu.purchases.selectSupplierAndConfirm`) and missing product details (Packaging/Unit) in the review dialog.
+*   **Tasks:**
+    *   [ ] **Fix Translation Key:**
+        *   **Action:** Verify `frontend/src/components/master/Purchases/ReplenishmentNeeds.tsx` uses `t('menu.purchases.selectSupplierAndConfirm')` correctly (already fixed in previous session, but verify recurrence).
+    *   [ ] **Add Columns to Order Dialog:**
+        *   **Action:** In the `Dialog` inside `ReplenishmentNeeds.tsx`, add columns for **"Packaging"** (Cndt) and **"Unit"**.
+        *   **Logic:** Allow the Master to toggle between ordering in "Pieces" or "Cartons" directly in this dialog, updating the total cost accordingly.
+
+### 20. Missing Translations & Bambara Audit
+*   **Context:** The "Add Item" widget in Inventory (Master) and Products (Files) is untranslated. Bambara support is incomplete in Worker submodules.
+*   **Tasks:**
+    *   [ ] **Translate Add Item Dialog:**
+        *   **Action:** In `InventoryPage.tsx` and `FichiersProduitsModule.tsx`, wrap all labels (`Nom`, `Prix`, `Stock`, `Image`) in `t(...)` calls. Add missing keys to `fr`, `en`, `bm`.
+    *   [ ] **Bambara Deep Audit:**
+        *   **Action:** SYSTEMATICALLY review every Worker submodule (`Sales`, `Stock`, `Files`, `Edition`). Identify any hardcoded French strings and move them to `bm/translation.json`.
+        *   **Specific Focus:** Check the "Tables" (Headers), "Buttons" (Save, Cancel), and "Toasts" (Success/Error messages).
