@@ -257,3 +257,85 @@ This document tracks granular progress toward the v1.0 release. All technical lo
     *   [ ] **Bambara Deep Audit:**
         *   **Action:** SYSTEMATICALLY review every Worker submodule (`Sales`, `Stock`, `Files`, `Edition`). Identify any hardcoded French strings and move them to `bm/translation.json`.
         *   **Specific Focus:** Check the "Tables" (Headers), "Buttons" (Save, Cancel), and "Toasts" (Success/Error messages).
+
+---
+
+## 🔵 Phase 6: Logic Refinement & Deep Polish (P0) - User Feedback
+
+### 21. Key Programming Display Fix
+*   **Context:** The "Delete" button (and potentially others) works when pressed but shows as "none" or blank in the `SanifereFooter` visual keypad.
+*   **Tasks:**
+    *   [ ] **Fix Visual Mapping:**
+        *   **Deep Dive:** In `frontend/src/components/worker/Sales/SanifereFooter.tsx`, the `ACTION_LABELS` map likely uses the key `'delete'` but the settings store might be saving it as `'ACTION_DELETE'` or similar, causing a mismatch.
+        *   **Action:** Verify the exact string used in `SettingsModule` (`'delete'`) matches the key in `SanifereFooter`. Ensure `t('common.delete')` is correctly pulled.
+
+### 22. Generate Orders: Translation & Packaging Logic
+*   **Context:** Translations for `selectSupplier` are raw keys. Packaging logic in orders needs to be consistent with product definitions.
+*   **Tasks:**
+    *   [ ] **Fix Raw Translation Keys:**
+        *   **Action:** Verify `ReplenishmentNeeds.tsx` uses `menu.purchases.selectSupplier` and that the JSON files have this exact path nested correctly. The user reported it is still showing the raw key.
+    *   [ ] **Packaging Logic (Order Dialog):**
+        *   **Deep Dive:** Packaging (e.g., "12") is defined at the Product level. In the Order Dialog, this should be **read-only** information.
+        *   **Action:** Display "Packaging: 12" as text. When the user enters "Quantity: 2", the system should treat this as "2 Boxes" (if Unit=Box) or "2 Pieces" (if Unit=Piece).
+        *   **Clarification:** Ensure the "Unit" toggle in the dialog clearly switches between `Piece` (Quantity = 1) and `Box` (Quantity = Pack Size).
+
+### 23. Universal Packaging & Price Logic (The Core Math)
+*   **Context:** Prices must scale logically. A "Box of 12" must sell for `Unit Price * 12` (or distinct Wholesale Price). Stock deduction must be accurate.
+*   **Tasks:**
+    *   [ ] **Sales Module Price scaling:**
+        *   **Action:** In `SalesModule.tsx` `handleToggleUnit`, ensure `newPrice` is calculated as `basePrice * conditionnement`.
+    *   [ ] **Stock Valuation Accuracy:**
+        *   **Deep Dive:** `ValorisationStock.tsx` calculates total value.
+        *   **Action:** Ensure it uses: `Sum(Quantity * Cost Price)`. Since Quantity is always in Base Units, this *should* be correct, but verify it isn't trying to divide by pack size unnecessarily.
+    *   [ ] **Inventory/Files Form Polish:**
+        *   **Action:** In the "Add Product" form, clarify the inputs: "Retail Price (Piece)" vs "Wholesale Price (Box/Pack)". Ensure the UI makes this relationship clear.
+
+### 24. Translation Audit: Add Item & Products Table
+*   **Context:** The "Add Item" dialog is 100% French hardcoded. The Products table has mixed headers like "Pre-detail".
+*   **Tasks:**
+    *   [ ] **Translate Add Item Forms:**
+        *   **Action:** Completely refactor `InventoryPage.tsx` (Master) and `FichiersProduitsModule.tsx` (Worker) forms. Wrap every `<Label>Name</Label>` with `t('inventory.fields.name')`.
+        *   **Languages:** Add keys to `en`, `fr`, `bm`.
+    *   [ ] **Fix Product Table Headers:**
+        *   **Action:** In `FichiersProduitsModule.tsx`, replace hardcoded strings like "Prix Détail" with `t('inventory.fields.retailPriceShort')`.
+
+### 25. Master Stock Valuation Port
+*   **Context:** The Master needs the same "Stock Valuation" visibility as the Worker.
+*   **Tasks:**
+    *   [ ] **Port ValorisationStock:**
+        *   **Action:** Import `ValorisationStock` into the Master Dashboard (likely in `InventoryPage` as a new Tab or a separate Analytics sub-view).
+        *   **Logic:** Ensure it accepts a `storeId` prop so the Master can view valuation for *specific* stores, not just a global sum.
+
+---
+
+## 🔴 Phase 7: Critical Repairs & Logic Rectification (P0) - User Feedback
+
+### 26. "Vody" & Database Corruption Handling
+*   **Context:** The product "Vody" triggers "database disk image is malformed". General updates (like Family change for "Oranjeboom") are failing, likely due to DB locks or payload issues.
+*   **Tasks:**
+    *   [ ] **Force Delete Tool:**
+        *   **Action:** Enhance the "System Tools" in `SettingsModule` to allow deleting a product by Name (risky but needed) or ID, bypassing standard checks if possible.
+        *   **Note:** If the SQLite file is physically corrupt, only a file deletion/restore or `VACUUM` can fix it.
+    *   [ ] **Persistence Verification:**
+        *   **Deep Dive:** Verify `OfflineInventoryService` actually sends the `category_id` (family) in the update payload. The user says "Family doesn't get updated".
+
+### 27. Stock Valuation Multiplier Logic
+*   **Context:** User states: "Oranjeboom... packing is 12... we have 20... value should be 12 * 20 * price".
+*   **Interpretation:** The user views the Stock Quantity (20) as **PACKS**, not Pieces.
+*   **Conflict:** The system assumes Stock Quantity = Base Units.
+*   **Fix:**
+    *   **Action:** In `db.ts` `getStockValuation`, add logic: `IF unit_type IN ('Carton', 'Box') THEN value = quantity * packaging * unit_price`.
+    *   **Risk:** If the user mixes Pieces and Boxes, this breaks. But if they set the product Unit to "Carton", we must respect their convention that "1 Stock = 1 Carton".
+
+### 28. Robust Delete Button (Keyboard)
+*   **Context:** "Delete button is still not working".
+*   **Tasks:**
+    *   [ ] **Global Capture:**
+        *   **Action:** Ensure the `Delete` key listener in `SalesModule` captures events on the `window` object, not just the grid `div`.
+        *   **Safety:** Ensure it doesn't trigger if the user is typing in the Search/Barcode input.
+
+### 29. Final Translation Polish
+*   **Context:** Inventory Tabs and specific Dropdowns are still untranslated.
+*   **Tasks:**
+    *   [ ] **Inventory Tabs:** Verify `t('menu.program.inventory')` implementation in `InventoryPage`.
+    *   [ ] **Family Dropdown:** Ensure `t('inventory.allFamilies')` is correctly loaded.

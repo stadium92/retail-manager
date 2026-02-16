@@ -263,6 +263,10 @@ export interface ReplenishmentNeed {
   sku?: string;
   current_stock: number;
   min_stock: number;
+  unit_type?: string;
+  packaging?: string;
+  unit_price?: number;
+  cost_price?: number;
   supplier_id?: string;
   supplier_name?: string;
   source: 'low_stock' | 'worker_request';
@@ -271,6 +275,13 @@ export interface ReplenishmentNeed {
   request_reason?: string;
   requester_name?: string;
 }
+
+// Helper to prevent database corruption from null bytes or control characters
+const sanitizeString = (str?: string | null) => {
+  if (!str) return str;
+  // Remove control characters (0-31) except newlines/tabs, and delete (127)
+  return str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "").trim();
+};
 
 class LocalBridgeDatabase {
   private readonly dbPath: string;
@@ -317,6 +328,22 @@ class LocalBridgeDatabase {
   }
     
   private migrate() {
+    // Force recreate triggers to ensure they are active
+    try {
+      this.db.exec('DROP TRIGGER IF EXISTS sale_items_ai;');
+      this.db.exec(`
+        CREATE TRIGGER sale_items_ai AFTER INSERT ON sale_items
+        BEGIN
+          UPDATE products
+          SET quantity = quantity - new.quantity
+          WHERE id = new.product_id;
+        END;
+      `);
+      console.log('[DB] Trigger sale_items_ai recreated.');
+    } catch (e) {
+      console.warn('[DB] Trigger migration failed:', e);
+    }
+
     // Migration for existing audit_logs table
     try {
       this.db.exec(`ALTER TABLE audit_logs ADD COLUMN severity TEXT DEFAULT 'INFO';`);
@@ -330,7 +357,7 @@ class LocalBridgeDatabase {
     }
   }
     
-  private initialize() {
+  public initialize() {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
@@ -584,12 +611,20 @@ class LocalBridgeDatabase {
         sale_id TEXT NOT NULL,
         product_id TEXT,
         product_name TEXT NOT NULL,
-        quantity INTEGER NOT NULL DEFAULT 1,
+        quantity REAL NOT NULL DEFAULT 1,
         unit_price REAL NOT NULL,
         discount REAL DEFAULT 0,
         total REAL NOT NULL,
         created_at TEXT NOT NULL
       );
+
+      -- Trigger to deduct inventory when a sale item is recorded
+      CREATE TRIGGER IF NOT EXISTS sale_items_ai AFTER INSERT ON sale_items
+      BEGIN
+        UPDATE products
+        SET quantity = quantity - new.quantity
+        WHERE id = new.product_id;
+      END;
 
       -- Scheduled Orders
       CREATE TABLE IF NOT EXISTS scheduled_orders (
@@ -1089,9 +1124,10 @@ class LocalBridgeDatabase {
       `)
       .run({
         ...product,
-        sku: product.sku ?? null,
-        barcode: product.barcode ?? null,
-        description: product.description ?? null,
+        name: sanitizeString(product.name),
+        sku: sanitizeString(product.sku) ?? null,
+        barcode: sanitizeString(product.barcode) ?? null,
+        description: sanitizeString(product.description) ?? null,
         cost_price: product.cost_price ?? null,
         unit_price: product.unit_price ?? null,
         wholesale_price: product.wholesale_price ?? null,
@@ -1730,6 +1766,13 @@ class LocalBridgeDatabase {
     productId: string,
     updates: Partial<Omit<LocalProduct, 'id' | 'store_id'>>
   ): LocalProduct | undefined {
+    console.log('[DB] updateProduct', productId, updates);
+    // Sanitize string fields
+    if (updates.name) updates.name = sanitizeString(updates.name)!;
+    if (updates.sku) updates.sku = sanitizeString(updates.sku);
+    if (updates.barcode) updates.barcode = sanitizeString(updates.barcode);
+    if (updates.description) updates.description = sanitizeString(updates.description);
+
     const normalizedEntries = Object.entries(updates).filter(([, value]) => value !== undefined);
     if (normalizedEntries.length === 0) {
       return this.getProductById(productId);
@@ -1832,16 +1875,19 @@ class LocalBridgeDatabase {
   }
 
   getStockValuation(storeId: string): { total_cost: number; total_retail: number; item_count: number } {
-    const row = this.db
-      .prepare(`
+    console.log('[DB] Calculating Stock Valuation for store:', storeId || 'ALL');
+    const sql = `
         SELECT 
           SUM(CAST(COALESCE(quantity, 0) AS REAL) * CAST(COALESCE(cost_price, 0) AS REAL)) as total_cost,
           SUM(CAST(COALESCE(quantity, 0) AS REAL) * CAST(COALESCE(unit_price, 0) AS REAL)) as total_retail,
           COUNT(*) as item_count
         FROM products
-        WHERE store_id = ? AND quantity > 0
-      `)
-      .get(storeId) as { total_cost: number; total_retail: number; item_count: number };
+        WHERE (? = '' OR store_id = ?) AND quantity > 0
+    `;
+    
+    const row = this.db.prepare(sql).get(storeId || '', storeId || '') as any;
+    console.log('[DB] Valuation Result:', row);
+    
     return {
       total_cost: row?.total_cost || 0,
       total_retail: row?.total_retail || 0,
@@ -1891,6 +1937,7 @@ class LocalBridgeDatabase {
     const pendingRequests = this.db
       .prepare(`
         SELECT rr.*, p.name as product_name, p.sku, p.quantity as current_stock, p.min_quantity,
+               p.unit_type, p.packaging, p.unit_price, p.cost_price,
                u.full_name as requester_name
         FROM replenishment_requests rr
         JOIN products p ON rr.product_id = p.id
@@ -1902,6 +1949,10 @@ class LocalBridgeDatabase {
         sku: string;
         current_stock: number;
         min_quantity: number;
+        unit_type: string;
+        packaging: string;
+        unit_price: number;
+        cost_price: number;
         requester_name?: string;
       })[];
 
@@ -1916,6 +1967,10 @@ class LocalBridgeDatabase {
         sku: p.sku || undefined,
         current_stock: p.quantity || 0,
         min_stock: p.min_quantity || 0,
+        packaging: p.packaging || '1',
+        unit_type: p.unit_type || 'Pièce',
+        unit_price: p.unit_price || 0,
+        cost_price: p.cost_price || 0,
         source: 'low_stock',
         suggested_qty: Math.max(10, (p.min_quantity || 10) * 2 - (p.quantity || 0)),
       });
@@ -1925,9 +1980,7 @@ class LocalBridgeDatabase {
     for (const req of pendingRequests) {
       const existing = needsMap.get(req.product_id);
       if (existing) {
-        // If exists, enrich with request info but keep source 'low_stock' as primary alert, or maybe 'worker_request' is more urgent?
-        // Let's mark as mixed or prioritize the higher qty.
-        existing.source = 'worker_request'; // Prioritize human signal
+        existing.source = 'worker_request';
         existing.request_id = req.id;
         existing.request_reason = req.reason || undefined;
         existing.requester_name = req.requester_name || undefined;
@@ -1939,6 +1992,10 @@ class LocalBridgeDatabase {
           sku: req.sku,
           current_stock: req.current_stock,
           min_stock: req.min_quantity || 0,
+          packaging: req.packaging || '1',
+          unit_type: req.unit_type || 'Pièce',
+          unit_price: req.unit_price || 0,
+          cost_price: req.cost_price || 0,
           source: 'worker_request',
           suggested_qty: req.quantity_requested || 10,
           request_id: req.id,

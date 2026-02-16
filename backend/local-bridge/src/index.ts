@@ -14,7 +14,6 @@ import { registerStoreRoutes } from './routes/stores.js';
 import { registerSyncRoutes } from './routes/sync.js';
 import { registerAnalyticsRoutes } from './routes/analytics.js';
 import { registerAuditRoutes } from './routes/audit.js';
-import { registerSystemRoutes } from './routes/system.js';
 import { db } from './db.js';
 import { runScheduler } from './scheduler.js';
 
@@ -57,7 +56,6 @@ async function start() {
   await registerStoreRoutes(app);
   await registerSyncRoutes(app);
   await registerAnalyticsRoutes(app);
-  await registerSystemRoutes(app);
   await registerAuditRoutes(app);
 
   // Run Startup Scheduler

@@ -566,7 +566,24 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
     updatedItems.forEach((item) => {
       const received = itemsPayload.data.find((payload) => payload.id === item.id);
       if (received) {
-        updateProductInventory(item.product_id, received.quantity_received, received.unit_cost, order.store_id, claims.sub);
+        // Find the product to check its packaging/unit_type
+        const product = db.getProductById(item.product_id);
+        const packSize = product?.packaging ? parseInt(product.packaging) : 1;
+        
+        // If we want DB to store pieces, and we received 1 Box of 18:
+        // We must add 18 to quantity.
+        // We assume quantity_received represents BOXES if the product unit is Box.
+        let finalQty = received.quantity_received;
+        let finalCost = received.unit_cost;
+        
+        if (product?.unit_type === 'Carton' || product?.unit_type === 'Box' || product?.unit_type === 'Pack') {
+           if (packSize > 1) {
+             finalQty = received.quantity_received * packSize;
+             finalCost = received.unit_cost / packSize;
+           }
+        }
+
+        updateProductInventory(item.product_id, finalQty, finalCost, order.store_id, claims.sub);
       }
     });
 
