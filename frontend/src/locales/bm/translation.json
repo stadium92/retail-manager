@@ -1,0 +1,1061 @@
+{
+  "common": {
+    "save": "Ka kɛ",
+    "cancel": "Ka bɔ",
+    "delete": "Ka bɔ",
+    "edit": "Ka fura",
+    "create": "Ka kɛ",
+    "update": "Ka yɛlɛma",
+    "search": "Ka ɲini",
+    "filter": "Ka fili",
+    "loading": "Ka se ka taa...",
+    "error": "Juguman",
+    "success": "N'ka ɲɛ",
+    "confirm": "Ka sɛgɛ",
+    "close": "Ka da",
+    "clear": "Ka bɔ",
+    "selected": "sugandira",
+    "unknown": "Tɛ dɔn",
+    "itemsSelected": "sugandira",
+    "deleteSelected": "Ka sugandira bɔ",
+    "all": "Bɛɛ",
+    "noData": "Kunnafoni tɛ yen",
+    "failedToLoad": "Kɛli tɛ ɲɛ",
+    "total": "Bɛɛ",
+    "refresh": "Refresh",
+    "help": "Dɛmɛ",
+    "cash": "Wari",
+    "card": "Carte",
+    "credit": "Crédit",
+    "enable": "Bila bila",
+    "deletedSuccessfully": "Bɔra ka ɲɛ",
+    "failedToDelete": "Bɔli tɛ ɲɛ",
+    "perTransaction": "baara kelen na",
+    "transactions": "baara",
+    "online": "Ɛntɛrinɛti bɛ yen",
+    "offline": "Ɛntɛrinɛti tɛ yen",
+    "actions": "Kɛwalew",
+    "enabled": "Bila bila",
+    "disabled": "Dabilara",
+    "disableAccount": "Account dabila",
+    "enableAccount": "Account bila",
+    "offlineMode": "Mode hors ligne",
+    "offlineModeMessage": "Ɛntɛrinɛti bɛ laɲini",
+    "localBridgeError": "LocalBridge kɛli tɛ ɲɛ",
+    "other": "Wɛrɛ",
+    "notClassified": "Tɛ dɔn",
+    "none": "Si tɛ",
+    "print": "Ka bɔ papye kan"
+  },
+  "helpCenter": {
+    "title": "Dɛmɛ Yɔrɔ",
+    "subtitle": "I ka ɲininka sɔrɔ ani ka Retail Manager kɛcogo kalan.",
+    "searchPlaceholder": "Dɛmɛ ɲini...",
+    "categories": {
+      "sales": "Sɔrɔ",
+      "stock": "Stock",
+      "sync": "Sync",
+      "security": "Lakanali"
+    },
+    "faq": "Ɲininka caman",
+    "faqSubtitle": "Baara kɛcogo teliya la.",
+    "articles": {
+      "posTitle": "Sɔrɔ bɛ kɛ cogo di?",
+      "posContent": "Sɔrɔ kɛli kama, taa Sɔrɔ dɔgɔman yɔrɔ la (F1). Fen scan wala Cmd+K digi ka ɲini. F4 digi ka sara sɔrɔ.",
+      "syncTitle": "Kunnafoni bɛ yɛlɛma cogo di?",
+      "syncContent": "App b'i ka sɔrɔ yɛlɛma a yɛrɛ ma ni ɛntɛrinɛti sɔrɔra. I bɛ se ka ɛntɛrinɛti cogo lajɛ duguma fɛ.",
+      "inventoryTitle": "Stock dɔgɔman ɲɛnabɔ",
+      "inventoryContent": "'Commande Automatique' bɛ bɛnɛ minnu dɔgɔyara bɛɛ jira. I bɛ se ka commande kɛ i ka fournisseurw ye teliya la.",
+      "securityTitle": "Baara yɔrɔw",
+      "securityContent": "Kuntigɛba (Master) bɛ se ka magasin bɛɛ ani rapɔrɔw lajɛ. Baarakɛla (Worker) bɛ danna a ka magasin ani sɔrɔ baara dɔrɔn de la."
+    },
+    "reportBug": "Juguman jira",
+    "reportBugSubtitle": "I ye juguman dɔ sɔrɔ? A ɲɛfɔ duguma.",
+    "bugDescription": "Juguman ɲɛfɔli",
+    "bugDescriptionPlaceholder": "Mun kɛra? I tun bɛ mun kɛ la waati min na juguman kɛra?",
+    "submitReport": "Ka ci",
+    "submitting": "Ka ci...",
+    "hardwareId": "Mobili ID"
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "stores": "Magasinw",
+    "inventory": "Bɛnɛ",
+    "sales": "Sɔrɔ",
+    "purchases": "Achats",
+    "workers": "Baarakɛlaw",
+    "deliverers": "Di kɛlaw",
+    "deliveries": "Di ɲɛnabɔ",
+    "analytics": "Sɔrɔ lajɛ",
+    "invitations": "Weleli",
+    "team": "Jɛkulu",
+    "systemLogs": "Système Gafɛw"
+  },
+  "purchases": {
+    "title": "Achats & Approvisionnement",
+    "subtitle": "Gestion des stocks et commandes",
+    "needs": "Produits à Commander",
+    "history": "Historique Commandes",
+    "searchSuppliers": "Rechercher fournisseur...",
+    "allSuppliers": "Tous les Fournisseurs",
+    "noOrdersFound": "Aucune commande trouvée",
+    "ordersCreated": "commandes créées",
+    "needsAlerts": "Besoins & Alertes",
+    "source": "Source",
+    "suggestedQtyShort": "Qté Sugg.",
+    "stockLow": "Stock Bas",
+    "workerRequest": "Demande",
+    "noNeedsIdentified": "Bɛnɛ si tɛ sisan."
+  },
+  "team": {
+    "title": "Jɛkulu",
+    "description": "I ka jɛkulu mɔgɔw ɲɛnabɔ",
+    "totalWorkers": "Baarakɛlaw bɛɛ",
+    "totalDeliverers": "Di kɛlaw bɛɛ",
+    "slotsAvailable": "{{count}} yɔrɔ bɛ yen",
+    "tabs": {
+      "workers": "Baarakɛlaw",
+      "deliverers": "Di kɛlaw"
+    },
+    "addWorker": "Baarakɛla fara a kan",
+    "addDeliverer": "Di kɛla fara a kan",
+    "emptyWorkers": "Baarakɛla si tɛ. A fɔlɔ fara a kan.",
+    "emptyDeliverers": "Di kɛla si tɛ.",
+    "deleteTitle": "Mɔgɔ bɔ",
+    "deleteDescription": "I b'a fɛ ka {{name}} bɔ i ka jɛkulu la?",
+    "status": {
+      "active": "Ka baara kɛ",
+      "inactive": "Dabilara"
+    },
+    "success": {
+      "deleteMember": "Mɔgɔ bɔra ka ɲɛ"
+    },
+    "errors": {
+      "loadTeam": "Jɛkulu kɛli tɛ ɲɛ",
+      "deleteMember": "Mɔgɔ bɔli tɛ ɲɛ"
+    },
+    "table": {
+      "name": "Tɔgɔ",
+      "email": "Email",
+      "phone": "Telefɔni",
+      "store": "Magasin",
+      "revenue": "Sɔrɔ",
+      "status": "Ka ɲɛ",
+      "actions": "Ka kɛ",
+      "sales": "Sɔrɔ",
+      "vehicle": "Mobili",
+      "deliveries": "Di ɲɛnabɔ",
+      "completed": "Ka kɛ"
+    },
+    "dialog": {
+      "addWorkerTitle": "Baarakɛla kura",
+      "addWorkerDescription": "Baarakɛla kura account dabɔ.",
+      "addDelivererTitle": "Di kɛla kura",
+      "addDelivererDescription": "Di kɛla kura account dabɔ."
+    },
+    "form": {
+      "fullName": "Tɔgɔ bɛɛ",
+      "fullNamePlaceholder": "Ka tɔgɔ bɛɛ sɛbɛ",
+      "email": "Email",
+      "emailPlaceholder": "worker@example.com",
+      "password": "Gafɛ",
+      "passwordPlaceholder": "Ka gafɛ fɔlɔ sɛbɛ",
+      "phone": "Telefɔni",
+      "phonePlaceholder": "+223 XX XX XX XX",
+      "assignStore": "Ka magasin bila",
+      "selectStore": "Ka magasin sugandi",
+      "noStore": "Magasin tɛ",
+      "vehicleType": "Mobili cogo",
+      "selectVehicle": "Ka mobili sugandi",
+      "noVehicle": "Tɛ dɔn"
+    },
+    "vehicleTypes": {
+      "bike": "Velo",
+      "motorbike": "Moto",
+      "van": "Camionnette",
+      "truck": "Camion"
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "todaySales": "Tɔn sɔrɔ ni",
+    "weekSales": "Dɔgɔkun sɔrɔ ni",
+    "monthSales": "Kalo sɔrɔ ni",
+    "totalStores": "Magasin jɛlen bɛɛ",
+    "lowStockItems": "Bɛnɛ caman tɛ",
+    "salesStatus": "Sɔrɔ ka ɲɛ",
+    "status": {
+      "good": "Sɔrɔ ka ɲɛ",
+      "bad": "Sɔrɔ ma ɲɛ",
+      "worse": "Sɔrɔ ma ɲɛ koyi"
+    },
+    "tabs": {
+      "overview": "Lajɛ bɛɛ",
+      "aiAssistant": "AI Dɛmɛbaga",
+      "aiInsights": "AI Hakili",
+      "askAnything": "I ka baara koo ɲininka",
+      "chatPlaceholder": "Ask about your business...",
+      "q1": "Bi sɔrɔ bɛ cogo di?",
+      "q2": "Bɛnɛ juman ka kan ka fara a kan?",
+      "q3": "Bɛnɛ feerelan caman jira",
+      "q4": "Dɔgɔkun in sɔrɔ taa ɲɛ bɛ cogo di?"
+    },
+    "trendValue": "Dɔgɔkun cɛma {{percent}}%",
+    "welcome": {
+      "title": "I bisimila Retail Manager la",
+      "description": "I ka retail ɲɛnabɔli siraw bɛɛ: sɔrɔ, bɛnɛ, baarakɛlaw, ani di.",
+      "quickActions": "Ka kɛ teliya la",
+      "action1": "I ka sɔrɔ lajɛ ani ɲɛnabɔ",
+      "action2": "Bɛnɛ jɛlen lajɛ",
+      "action3": "Baarakɛlaw ka baara lajɛ",
+      "action4": "Di ɲɛnabɔ",
+      "currentStatus": "Sisan ka ɲɛ",
+      "status1": "Kalo sɔrɔ: {{amount}}",
+      "status2": "Magasin bɛ baara la: {{count}}",
+      "status3": "Bɛnɛ minnu bɛ ka ɲɛnabɔ: {{count}}"
+    }
+  },
+  "analytics": {
+    "title": "Sɔrɔ lajɛ",
+    "description": "Baara kɛcogo ani ɲɛtaa",
+    "errors": {
+      "loadAnalytics": "Sɔrɔ lajɛ ma se ka kɛ"
+    },
+    "cards": {
+      "todayTitle": "Tɔn sɔrɔ ni",
+      "todaySubtitle": "Tɔn sɔrɔ",
+      "weekTitle": "Dɔgɔkun sɔrɔ ni",
+      "weekSubtitle": "Tile 7 tɛmugu",
+      "monthTitle": "Kalo sɔrɔ ni",
+      "monthSubtitle": "Kalo in na"
+    },
+    "overview": {
+      "title": "Sɔrɔ lajɛ bɛɛ",
+      "description": "Baara kɛcogo ani taa ɲɛ",
+      "averageTitle": "Don o don sɔrɔ cɛma",
+      "averageSubtitle": "Tile 7 tɛmugu lajɛlen",
+      "weeklyTitle": "Dɔgɔkun yɛlɛn",
+      "weeklySubtitle": "Don o don cɛma lajɛlen",
+      "monthlyTitle": "Kalo laɲini taa ɲɛ",
+      "monthlyTarget": "Laɲini: {{target}}"
+    },
+    "insights": {
+      "title": "Baara kɛcogo lajɛ",
+      "description": "Kunnafoni kɔrɔw ani ladiliw",
+      "today": {
+        "heading": "Tɔn baara kɛcogo:",
+        "above": "A ka ɲɛ ka tɛmɛ cɛma kan – i ni ce!",
+        "below": "A ma ɲɛ ka tɛmɛ cɛma kan – laɲini kɛ sɔrɔ la"
+      },
+      "weekly": {
+        "heading": "Dɔgɔkun taa ɲɛ:",
+        "summary": "Dɔgɔkun in sɔrɔ ye {{amount}} ye.",
+        "strong": " Baara kɛra ka ɲɛ dɔgɔkun in na!",
+        "focus": " I jija ka sɔrɔ yɛlɛ"
+      },
+      "monthly": {
+        "heading": "Kalo laɲini:",
+        "summary": "I y'i ka kalo laɲini {{target}} la {{achieved}} sɔrɔ.",
+        "onTrack": " I bɛ sira ɲuman kan!",
+        "increase": " I jija ka kalo laɲini sɔrɔ"
+      }
+    }
+  },
+  "inventory": {
+    "title": "Bɛnɛ",
+    "addItem": "Ka bɛnɛ kɛ",
+    "editItem": "Ka bɛnɛ fura",
+    "deleteItem": "Ka bɛnɛ bɔ",
+    "itemName": "Bɛnɛ tɔgɔ",
+    "price": "Sɔrɔ",
+    "quantity": "Jɛlen",
+    "lowStock": "Bɛnɛ caman tɛ",
+    "description": "Ɲɛfɔli",
+    "sku": "SKU",
+    "cost": "Sɔngɔ",
+    "lowStockThreshold": "Bɛnɛ dɔgɔyali yɔrɔ",
+    "store": "Magasin",
+    "image": "Ja",
+    "manageInventory": "I ka bɛnɛ ɲɛnabɔ",
+    "createStoreFirst": "Aw ye magasin dɔ dabɔ fɔlɔ sani ka bɛnɛ fara a kan.",
+    "searchPlaceholder": "Ka bɛnɛ ɲini...",
+    "filterByStore": "Ka fili magasin fɛ",
+    "allStores": "Magasin bɛɛ",
+    "noItemsFound": "Bɛnɛ tɛ sɔrɔ",
+    "noItemsMatch": "Bɛnɛ si ma sɔrɔ ni ɲinini in ye.",
+    "inStock": "A bɛ yen",
+    "outOfStock": "A banna",
+    "noStoresMessage": "Aw ye magasin dɔ dabɔ fɔlɔ sani ka bɛnɛ fara a kan.",
+    "itemsSelected": "Bɛnɛ {{count}} sugandira",
+    "emptyState": "Bɛnɛ tɛ sɔrɔ. I ka bɛnɛ fɔlɔ fara a kan!",
+    "status": {
+      "lowStock": "Bɛnɛ caman tɛ",
+      "inStock": "A bɛ yen"
+    },
+    "statusLow": "Stock caman tɛ",
+    "statusIn": "A bɛ yen",
+    "statusOut": "A banna",
+    "table": {
+      "name": "Tɔgɔ",
+      "store": "Magasin",
+      "sku": "SKU",
+      "quantity": "Jɛlen",
+      "price": "Sɔrɔ",
+      "status": "Ka ɲɛ",
+      "actions": "Ka kɛ"
+    },
+    "fields": {
+      "name": "Bɛnɛ tɔgɔ*",
+      "image": "Bɛnɛ ja",
+      "description": "Ɲɛfɔli",
+      "sku": "SKU",
+      "store": "Magasin*",
+      "quantity": "Jɛlen*",
+      "lowStockThreshold": "Bɛnɛ dɔgɔyali yɔrɔ",
+      "price": "Sɔrɔ*",
+      "cost": "Sɔngɔ",
+      "family": "Famille / Catégorie",
+      "category": "Kulu",
+      "selectFamily": "Sélectionner une famille",
+      "brand": "Marque",
+      "aisle": "Rayon / Emplacement",
+      "packaging": "Conditionnement",
+      "unitType": "Unité",
+      "reorderQty": "Qté à Commander (Idéal)",
+      "expiryDate": "Date de Péremption",
+      "retailPrice": "Feere sɔngɔ",
+      "wholesalePrice": "PVG",
+      "aisle": "Rayon",
+      "packaging": "Conditionnement",
+      "expiryDate": "Don laban",
+      "purchasePriceShort": "Sanni",
+      "retailPriceShort": "Feere",
+      "wholesalePriceShort": "Gros"
+    },
+    "selectStore": "Ka magasin sugandi",
+    "editItemDescription": "Ka bɛnɛ kunnafoni yɛlɛma",
+    "createItem": "Ka bɛnɛ kura kɛ",
+    "createItemDescription": "Ka bɛnɛ kura fara i ka bɛnɛw kan",
+    "deleteTitle": "Ka bɛnɛ bɔ",
+    "deleteDescription": "I b'a fɛ ka \"{{name}}\" bɔ cogo min tɛ se ka segin?",
+    "deleteConfirm": "I b'a fɛ ka bɛnɛ in bɔ?",
+    "deleteConfirmDescription": "A tɛ se ka segin.",
+    "errors": {
+      "loadInventory": "Bɛnɛ kɛli tɛ ɲɛ",
+      "loadStores": "Magasin kɛli tɛ ɲɛ",
+      "updateItem": "Bɛnɛ yɛlɛmali tɛ ɲɛ",
+      "createItem": "Bɛnɛ dabɔli tɛ ɲɛ",
+      "deleteItem": "Bɛnɛ bɔli tɛ ɲɛ",
+      "bulkDelete": "Bɛnɛ {{count}} bɔli tɛ ɲɛ"
+    },
+    "success": {
+      "updateItem": "Bɛnɛ yɛlɛmara ka ɲɛ",
+      "createItem": "Bɛnɛ dabɔra ka ɲɛ",
+      "deleteItem": "Bɛnɛ bɔra ka ɲɛ",
+      "bulkDelete": "Bɛnɛ {{count}} bɔra"
+    },
+    "export": {
+      "sheetName": "Bɛnɛ",
+      "reportTitle": "Bɛnɛ rapɔrɔ",
+      "columns": {
+        "name": "Tɔgɔ",
+        "sku": "SKU",
+        "quantity": "Jɛlen",
+        "price": "Sɔrɔ",
+        "store": "Magasin"
+      }
+    }
+  },
+  "stores": {
+    "title": "Magasin",
+    "manageStores": "Ka magasin bɛɛ ɲɛnabɔ",
+    "addStore": "Ka magasin kɛ",
+    "editStore": "Ka magasin fura",
+    "deleteStore": "Ka magasin bɔ",
+    "storeName": "Magasin tɔgɔ",
+    "address": "Adɛrɛsi",
+    "phone": "Telefɔni",
+    "view": "Ka lajɛ",
+    "allStores": "Magasin bɛɛ",
+    "totalStores": "Magasin {{count}} bɛɛ",
+    "emptyState": "Magasin tɛ fɔlɔ",
+    "deleteTitle": "Ka magasin bɔ",
+    "deleteDescription": "I b'a fɛ ka {{name}} bɔ cogo min tɛ se ka segin?",
+    "table": {
+      "name": "Tɔgɔ",
+      "address": "Adɛrɛsi",
+      "phone": "Telefɔni",
+      "actions": "Ka kɛ"
+    },
+    "dialog": {
+      "createTitle": "Ka magasin kura kɛ",
+      "createDescription": "Ka magasin kura fara i ka baara la",
+      "editTitle": "Ka magasin fura",
+      "editDescription": "Ka magasin kunnafoni yɛlɛma"
+    },
+    "fields": {
+      "name": "Magasin tɔgɔ",
+      "image": "Magasin ja",
+      "address": "Adɛrɛsi",
+      "phone": "Telefɔni"
+    },
+    "success": {
+      "createStore": "Magasin dabɔra ka ɲɛ",
+      "updateStore": "Magasin yɛlɛmara ka ɲɛ",
+      "deleteStore": "Magasin bɔra ka ɲɛ"
+    },
+    "errors": {
+      "loadStores": "Magasin kɛli tɛ ɲɛ",
+      "authRequired": "Donni ka kan ka kɛ",
+      "createStore": "Magasin dabɔli tɛ ɲɛ",
+      "updateStore": "Magasin yɛlɛmali tɛ ɲɛ",
+      "deleteStore": "Magasin bɔli tɛ ɲɛ"
+    }
+  },
+  "storeDetails": {
+    "backToStores": "Ka segin magasinw ma",
+    "editStore": "Ka magasin fura",
+    "errors": {
+      "notFound": "Magasin ma sɔrɔ",
+      "loadDetails": "Magasin kunnafoni kɛli tɛ ɲɛ"
+    },
+    "metrics": {
+      "todaySales": "Tɔn sɔrɔ ni",
+      "weekSales": "Dɔgɔkun sɔrɔ ni",
+      "inventoryValue": "Bɛnɛ sɔngɔ",
+      "lowStockItems": "Bɛnɛ caman tɛ"
+    },
+    "tabs": {
+      "inventory": "Bɛnɛ ({{count}})",
+      "sales": "Sɔrɔ ({{count}})",
+      "workers": "Baarakɛlaw ({{count}})"
+    },
+    "inventory": {
+      "title": "Bɛnɛw",
+      "description": "Bɛnɛ minnu bɛ magasin in ɲɛ",
+      "empty": "Bɛnɛ tɛ yen",
+      "table": {
+        "name": "Tɔgɔ",
+        "sku": "SKU",
+        "quantity": "Jɛlen",
+        "price": "Sɔrɔ",
+        "value": "Sɔngɔ",
+        "status": "Ka ɲɛ"
+      }
+    },
+    "sales": {
+      "title": "Sɔrɔ kura",
+      "description": "Sɔrɔ kura minnu kɛra magasin in na",
+      "empty": "Sɔrɔ tɛ fɔlɔ",
+      "table": {
+        "date": "Don",
+        "item": "Bɛnɛ",
+        "customer": "Jatigɛ",
+        "quantity": "Jɛlen",
+        "total": "Bɛɛ",
+        "worker": "Baarakɛla"
+      }
+    },
+    "workers": {
+      "title": "Magasin baarakɛlaw",
+      "description": "Baarakɛlaw minnu bɛ magasin in na",
+      "empty": "Baarakɛla si tɛ",
+      "table": {
+        "name": "Tɔgɔ",
+        "email": "Email",
+        "phone": "Telefɔni",
+        "role": "Role"
+      }
+    }
+  },
+  "deliveries": {
+    "title": "Ka di",
+    "manageDeliveries": "Ka di bɛɛ lajɛ ani ka ɲɛnabɔ",
+    "pending": "Ka sugandi",
+    "assigned": "Ka kɛ",
+    "in_transit": "Ka taa",
+    "delivered": "Ka kɛ",
+    "cancelled": "Ka bɔ",
+    "customerName": "Jatigɛ tɔgɔ",
+    "deliveryAddress": "Di yɔrɔ",
+    "allDeliveries": "Di bɛɛ",
+    "totalCount": "Di {{count}} bɛɛ",
+    "emptyState": "Di tɛ fɔlɔ",
+    "table": {
+      "customer": "Jatigɛ",
+      "phone": "Telefɔni",
+      "address": "Adɛrɛsi",
+      "status": "Ka ɲɛ",
+      "deliverer": "Di kɛla",
+      "actions": "Ka kɛ"
+    },
+    "bulkActions": {
+      "selected": "{{count}} sugandi",
+      "clear": "Ka bɔ",
+      "delete": "Ka sugandira bɔ"
+    },
+    "export": {
+      "sheetName": "Di",
+      "reportTitle": "Di rapɔrɔ",
+      "columns": {
+        "customer": "Jatigɛ",
+        "phone": "Telefɔni",
+        "address": "Adɛrɛsi",
+        "status": "Ka ɲɛ",
+        "deliverer": "Di kɛla"
+      }
+    }
+  },
+  "deliverer": {
+    "dashboard": {
+      "title": "Di kɛla dashboard",
+      "loading": "Ka di kɛ...",
+      "loadingMap": "Ka karti kɛ...",
+      "active": "Ka baara kɛ",
+      "completedToday": "Ka kɛ banna bi",
+      "noActive": "Di baara tɛ yen sisan",
+      "activeDeliveries": "Di baara sisan",
+      "call": "Ka wele",
+      "navigate": "Ka taa",
+      "pickUp": "Ka ta",
+      "complete": "Ka da",
+      "statusUpdated": "Ka ɲɛ yɛlɛmara",
+      "statusMarked": "Di kɛra {{status}}",
+      "queued": "Ka makala",
+      "queuedDescription": "Ni i donna ɛntɛrinɛti la, a bɛna yɛlɛma",
+      "tabs": {
+        "deliveries": "Di",
+        "map": "Karti"
+      },
+      "notifications": {
+        "statusUpdate": "Di yɛlɛmali",
+        "statusChanged": "Di kɛra {{status}}",
+        "newDelivery": "Di kura",
+        "assignedTo": "Di kura bɛ yen {{customer}} fɛ"
+      },
+      "errors": {
+        "unexpected": "Foli kɛra",
+        "updateFailed": "Di yɛlɛmali tɛ ɲɛ"
+      },
+      "map": {
+        "loadingMap": "Ka karti kɛ...",
+        "loadingLocations": "Ka yɔrɔw kɛ...",
+        "geocodingError": "Di yɔrɔw ma se ka sɔrɔ",
+        "noDeliveries": "Di tɛ yen",
+        "yourLocation": "I ka yɔrɔ",
+        "navigate": "Ka taa",
+        "call": "Ka wele",
+        "viewDetails": "Ka kunnafoni lajɛ"
+      }
+    }
+  },
+  "deliverers": {
+    "title": "Di kɛlaw",
+    "manageDeliverers": "I ka di kɛlaw ɲɛnabɔ",
+    "allDeliverers": "Di kɛlaw bɛɛ",
+    "totalDeliverers": "Di kɛlaw bɛɛ: {{total}}",
+    "emptyState": "Di kɛla tɛ sɔrɔ.",
+    "active": "Ka baara kɛ",
+    "table": {
+      "name": "Tɔgɔ",
+      "email": "Email",
+      "phone": "Telefɔni",
+      "total": "Di bɛɛ",
+      "completed": "Ka kɛ banna",
+      "completionRate": "Ka ɲɛ %",
+      "status": "Ka ɲɛ"
+    },
+    "errors": {
+      "loadDeliverers": "Di kɛlaw kɛli tɛ ɲɛ",
+      "loadProfiles": "Di kɛlaw kunnafoni kɛli tɛ ɲɛ"
+    }
+  },
+  "sales": {
+    "title": "Sɔrɔ",
+    "manageSales": "Ka sɔrɔ bɛɛ lajɛ ani ka ɲɛnabɔ",
+    "totalSales": "Sɔrɔ bɛɛ",
+    "salesCount": "Sɔrɔ jɛlen",
+    "averageSale": "Sɔrɔ cɛma",
+    "averageTransaction": "Sɔrɔ cɛma",
+    "totalCount": "Jɛlen bɛɛ",
+    "allSales": "Sɔrɔ bɛɛ",
+    "salesTransactions": "sɔrɔ baara",
+    "salesAcrossStores": "Ka sɔrɔ bɛɛ lajɛ i ka magasinw na",
+    "filterByStore": "Ka fili magasin fɛ",
+    "allStores": "Magasin bɛɛ",
+    "searchPlaceholder": "Ka ɲini bɛnɛ wala jatigɛ fɛ...",
+    "noSalesMatch": "Sɔrɔ si ma sɔrɔ ni ɲinini in ye.",
+    "emptyState": "Sɔrɔ tɛ fɔlɔ",
+    "date": "Don",
+    "item": "Bɛnɛ",
+    "customer": "Jatigɛ",
+    "quantity": "Jɛlen",
+    "total": "Bɛɛ",
+    "worker": "Baarakɛla",
+    "actions": "Ka kɛ",
+    "failedToDeleteSale": "Sɔrɔ bɔli tɛ ɲɛ",
+    "saleDeletedSuccessfully": "Sɔrɔ bɔra ka ɲɛ",
+    "failedToDeleteSales": "Sɔrɔ {{count}} bɔli tɛ ɲɛ",
+    "deletedSales": "Sɔrɔ {{count}} bɔra",
+    "deleteConfirm": "I b'a fɛ ka sɔrɔ in bɔ?",
+    "deleteConfirmDescription": "Baara in tɛ se ka segin.",
+    "exportSheetName": "Sɔrɔ",
+    "table": {
+      "date": "Don",
+      "item": "Bɛnɛ",
+      "quantity": "Jɛlen",
+      "unitPrice": "Sɔngɔ kelen sɔrɔ",
+      "total": "Bɛɛ",
+      "worker": "Baarakɛla",
+      "store": "Magasin",
+      "customer": "Jatigɛ",
+      "actions": "Ka kɛ"
+    },
+    "bulkActions": {
+      "selected": "{{count}} sugandi",
+      "clear": "Ka bɔ",
+      "delete": "Ka sugandira bɔ",
+      "confirmDelete": "I b'a fɛ ka sɔrɔ {{count}} bɔ cogo min tɛ se ka segin?"
+    },
+    "export": {
+      "sheetName": "Sɔrɔ",
+      "reportTitle": "Sɔrɔ rapɔrɔ",
+      "columns": {
+        "date": "Don",
+        "item": "Bɛnɛ",
+        "quantity": "Jɛlen",
+        "unitPrice": "Sɔngɔ kelen sɔrɔ",
+        "total": "Bɛɛ",
+        "worker": "Baarakɛla",
+        "store": "Magasin",
+        "customer": "Jatigɛ"
+      }
+    }
+  },
+  "invitations": {
+    "title": "Baarakɛlaw weleli",
+    "description": "Baarakɛlaw ani di kɛlaw wele",
+    "emptyState": "Weleli tɛ yen.",
+    "actions": {
+      "invite": "Ka baarakɛla wele",
+      "send": "Ka weleli ci",
+      "sending": "Ka ci..."
+    },
+    "dialog": {
+      "title": "Ka baarakɛla wele",
+      "description": "Ka baarakɛla kura wala di kɛla wele"
+    },
+    "form": {
+      "email": "Email",
+      "emailPlaceholder": "worker@example.com",
+      "role": "Role",
+      "selectRole": "Ka role sugandi",
+      "store": "Magasin (N'a bɛ yen)",
+      "selectStore": "Ka magasin sugandi",
+      "noStore": "Magasin tɛ"
+    },
+    "roles": {
+      "worker": "Baarakɛla",
+      "deliverer": "Di kɛla"
+    },
+    "status": {
+      "accepted": "Sɔnna",
+      "cancelled": "Ka bɔ",
+      "expired": "Tɛmɛna",
+      "pending": "Ka makala"
+    },
+    "table": {
+      "email": "Email",
+      "role": "Role",
+      "status": "Ka ɲɛ",
+      "expires": "Ban waati",
+      "actions": "Ka kɛ"
+    },
+    "cards": {
+      "allTitle": "Weleli bɛɛ",
+      "total": "Weleli bɛɛ: {{count}}"
+    },
+    "errors": {
+      "loadInvitations": "Weleli kɛli tɛ ɲɛ",
+      "createInvitation": "Weleli dabɔli tɛ ɲɛ",
+      "resendInvitation": "Weleli segin ci tɛ ɲɛ",
+      "cancelInvitation": "Weleli bɔli tɛ ɲɛ"
+    },
+    "success": {
+      "created": "Weleli dabɔra ka ɲɛ",
+      "resent": "Weleli seginna ka ci",
+      "cancelled": "Weleli bɔra ka ɲɛ"
+    }
+  },
+  "goals": {
+    "title": "Kalo ka ɲɛ",
+    "setGoal": "Ka kalo ka ɲɛ kɛ",
+    "currentGoal": "Sisan ka ɲɛ",
+    "progress": "Ka taa",
+    "remaining": "Ka sɛ",
+    "daysRemaining": "Don jɛlen",
+    "onTrack": "Ka taa ɲɛ",
+    "behind": "Ka kɔ"
+  },
+  "auth": {
+    "login": "Ka taa",
+    "signup": "Ka sɛrɛ",
+    "email": "Email",
+    "password": "Gafɛ",
+    "signOut": "Ka bɔ",
+    "fullName": "Tɔgɔ bɛɛ",
+    "confirmPassword": "Gafɛ sɛgɛsɛgɛ",
+    "signIn": "Don",
+    "createAccount": "Account dabɔ",
+    "signingIn": "Donni bɛ kɛ...",
+    "creatingAccount": "Account dabɔli bɛ kɛ...",
+    "accountCreated": "Account dabɔra ka ɲɛ",
+    "accountCreatedInvitation": "Account dabɔra ani weleli sɔnna!",
+    "accountCreatedInvitationFailed": "Account dabɔra nka weleli sɔnni tɛ ɲɛ",
+    "welcome": "I bisimila",
+    "description": "I ka retail ɲɛnabɔli sira",
+    "devLoginMaster": "Dev Don (Master)",
+    "devLoginWorker": "Dev Baarakɛla",
+    "devLoginDeliverer": "Dev Di kɛla"
+  },
+  "export": {
+    "title": "Ka kunnafoni bɔ",
+    "csv": "Ka bɔ CSV",
+    "excel": "Ka bɔ Excel",
+    "pdf": "Ka bɔ PDF",
+    "success": "Kunnafoni bɔra ka ɲɛ",
+    "error": "Kunnafoni bɔli tɛ ɲɛ"
+  },
+  "workers": {
+    "title": "Baarakɛlaw",
+    "manageWorkers": "Ka baarakɛlaw ɲɛnabɔ",
+    "name": "Tɔgɔ",
+    "email": "Email",
+    "phone": "Telefɔni",
+    "salesCount": "Sɔrɔ jɛlen",
+    "totalRevenue": "Sɔrɔ bɛɛ",
+    "status": "Ka ɲɛ",
+    "active": "Ka baara kɛ",
+    "search": "Ka baarakɛlaw ɲini...",
+    "allWorkers": "Baarakɛlaw bɛɛ",
+    "totalCount": "Baarakɛla {{count}} bɛɛ",
+    "emptyState": "Baarakɛla si tɛ",
+    "table": {
+      "name": "Tɔgɔ",
+      "email": "Email",
+      "phone": "Telefɔni",
+      "sales": "Sɔrɔ",
+      "revenue": "Sɔrɔ",
+      "actions": "Ka kɛ"
+    },
+    "bulkActions": {
+      "selected": "{{count}} sugandi",
+      "clear": "Ka bɔ",
+      "delete": "Ka sugandira bɔ"
+    },
+    "export": {
+      "sheetName": "Baarakɛlaw",
+      "reportTitle": "Baarakɛlaw rapɔrɔ",
+      "columns": {
+        "name": "Tɔgɔ",
+        "email": "Email",
+        "phone": "Telefɔni",
+        "sales": "Sɔrɔ",
+        "revenue": "Sɔrɔ"
+      }
+    }
+  },
+  "worker": {
+    "dashboard": {
+      "title": "Baarakɛla dashboard",
+      "tabs": {
+        "sales": "Sɔrɔ",
+        "inventory": "Bɛnɛ",
+        "deliveries": "Ka di"
+      },
+      "summary": {
+        "todaySales": "Ni sɔrɔ",
+        "totalRevenue": "Sɔrɔ bɛɛ",
+        "transactionsCompleted": "Baara kɛra",
+        "fromSales": "Ka bɔ sɔrɔ {{count}}"
+      }
+    },
+    "sales": {
+      "newSale": "Sɔrɔ kura",
+      "addItem": "Ka bɛnɛ kɛ",
+      "selectItem": "Ka bɛnɛ sugandi",
+      "items": "Bɛnɛ ({{count}})",
+      "each": "o kelen-kelen",
+      "inStock": "ka da",
+      "total": "Bɛɛ",
+      "customerName": "Jatigɛ tɔgɔ (N'a bɛ yen)",
+      "customerPhone": "Jatigɛ telefɔni (N'a bɛ yen)",
+      "enterCustomerName": "Ka jatigɛ tɔgɔ sɛbɛ",
+      "enterPhone": "Ka telefɔni nimɔrɔ sɛbɛ",
+      "needsDelivery": "Nin sɔrɔ ka kan ka di",
+      "deliveryAddress": "Ka di yɔrɔ",
+      "enterDeliveryAddress": "Ka di yɔrɔ sɛbɛ",
+      "recordSale": "Ka sɔrɔ sɛbɛ",
+      "recording": "Ka sɛbɛ...",
+      "itemAlreadyAdded": "Bɛnɛ farala ka ɲɛ",
+      "adjustQuantity": "Ka jɛlen yɛlɛma",
+      "noItems": "Bɛnɛ tɛ",
+      "addAtLeastOne": "Ka bɛnɛ kelen fara sɔrɔ la",
+      "deliveryAddressRequired": "Di yɔrɔ ka kan ka kɛ",
+      "saleRecorded": "Sɔrɔ sɛbɛnra",
+      "itemsSold": "Bɛnɛ {{count}} feera. Bɛɛ: {{total}}",
+      "saleQueued": "Sɔrɔ ja",
+      "itemsQueued": "Bɛnɛ {{count}} ja. Bɛɛ: {{total}}",
+      "errorRecording": "Sɔrɔ sɛbɛnni tɛ ɲɛ",
+      "noStoreAssigned": "Magasin tɛ",
+      "contactManager": "I tɛ magasin kɔnɔ. Ka i kuntigɛla ɲini.",
+      "couldNotLoadStore": "I ka magasin tɛ se ka kɛ. Ka i kuntigɛla ɲini.",
+      "itemFound": "Bɛnɛ sɔrɔra: {{name}}",
+      "itemNotFound": "Bɛnɛ ma sɔrɔ ni barcode in ye",
+      "cart": {
+        "summary": "Panyi lajɛ",
+        "total": "Bɛɛ jɛlen",
+        "items": "Fen {{count}} panyi kɔnɔ",
+        "pay": "Sara / Da",
+        "clear": "Panyi bɔ"
+      }
+    },
+    "inventory": {
+      "search": "Ka bɛnɛ ɲini...",
+      "loading": "Ka bɛnɛ kɛ...",
+      "noItems": "Bɛnɛ tɛ",
+      "noItemsFound": "Bɛnɛ tɛ sɔrɔ",
+      "sku": "SKU",
+      "inStock": "ka da",
+      "outOfStock": "Ka ban",
+      "lowStock": "Bɛnɛ caman tɛ"
+    },
+    "deliveries": {
+      "loading": "Ka di kɛ...",
+      "noDeliveries": "Di tɛ fɔlɔ",
+      "all": "Bɛɛ",
+      "pending": "Ka sugandi",
+      "assigned": "Ka kɛ",
+      "in_transit": "Ka taa",
+      "delivered": "Ka kɛ",
+      "cancelled": "Ka bɔ",
+      "inTransit": "Ka taa",
+      "delivered": "Ka kɛ",
+      "call": "Appeler",
+      "awaitingAssignment": "Ka makala mɔgɔ sugandi",
+      "note": "Kunnafoni"
+    }
+  },
+  "pos": {
+    "grid": {
+      "empty": "Panyi bɛ fɛnɛ",
+      "scanPrompt": "Fen scan wala i ka digi",
+      "headers": {
+        "designation": "Fɛn tɔgɔ",
+        "sku": "SKU",
+        "price": "Sɔngɔ kelen",
+        "qty": "Jɛlen",
+        "discount": "Dɔgɔyali %",
+        "total": "Bɛɛ"
+      },
+      "stock": "Bɛnɛ"
+    },
+    "totals": {
+      "customer": "Jatigɛ",
+      "name": "Tɔgɔ",
+      "phone": "Telefɔni",
+      "items": "Fɛnw",
+      "discount": "Dɔgɔyali bɛɛ",
+      "total": "Bɛɛ",
+      "scan": "Scan",
+      "pay": "Sara",
+      "clear": "Bɔ",
+      "proforma": "Proforma",
+      "navigation": "Taa ɲɛ",
+      "quantity": "Jɛlen",
+      "delete": "Bɔ"
+    }
+  },
+  "menu": {
+    "sales": {
+      "trigger": "Sɔrɔ",
+      "retail": "Sɔrɔ dɔgɔman",
+      "billingRetail": "Facture dɔgɔman",
+      "billingWholesale": "Facture duman",
+      "proforma": "Facture PROFORMA",
+      "invoice_number": "Facture nimɔrɔ",
+      "closeCash": "Caisse da",
+      "settlement": "Facture sara"
+    },
+    "purchases": {
+      "trigger": "Achats",
+      "reception": "Fen san",
+      "autoOrder": "Commande AUTOMATIQUE",
+      "manualOrder": "Commande fɛ",
+      "replenishmentNeeds": "Bɛnɛ fara a kan",
+      "needsAlerts": "Besoins & Alertes",
+      "noNeedsIdentified": "Bɛnɛ si tɛ sisan.",
+      "source": "Source",
+      "suggestedQtyShort": "Qté Sugg.",
+      "stockLow": "Stock Bas",
+      "workerRequest": "Demande",
+      "ordersCreated": "commandes créées",
+      "supplierSettlement": "Fournisseur sara"
+    },
+    "files": {
+      "trigger": "Dosiyew",
+      "products": "Fenw",
+      "clients": "Jatigɛlaw",
+      "clientServices": "Service jatigɛlaw",
+      "suppliers": "Fournisseurw",
+      "families": "Fen gwanw"
+    },
+    "edition": {
+      "trigger": "Yɛlɛmali",
+      "clientStatus": "Jatigɛla cogo",
+      "accountStatement": "Account lajɛ",
+      "salesTracking": "Sɔrɔ lajɛ",
+      "dailySales": "Don o don sɔrɔ",
+      "salesByProduct": "Sɔrɔ fen fɛ",
+      "invoiceList": "Facturew tɔgɔ",
+      "supplierStatus": "Fournisseur cogo",
+      "supplierStatement": "Fournisseur account",
+      "purchaseTracking": "Fen san lajɛ",
+      "purchaseByFamily": "Fen san gwan fɛ",
+      "dailyPurchases": "Don o don san",
+      "periodPurchases": "San waati fɛ"
+    },
+    "management": {
+      "trigger": "Ɲɛnabɔli",
+      "cashConsultation": "Caisse lajɛ",
+      "cashJournal": "Caisse gafɛ",
+      "dashboard": "Dashboard",
+      "statistics": "Statistikw",
+      "lossExit": "Fen min banna",
+      "lossExitDescription": "Nin yɔrɔ in kɛ ka fen minnu tɛ feere se ka kɛ tun (expiration, tiɲɛni wala sonsanniya). O b'a to i ka bɛnɛ jate ka jija.",
+      "reasons": {
+        "expired": "A tɛmɛna",
+        "broken": "Tiɲɛna",
+        "theft": "Sonsanniya",
+        "other": "Wɛrɛ"
+      }
+    },
+    "stock": {
+      "trigger": "Stock",
+      "productSheet": "Fen stock sheet",
+      "movements": "Stock yɛlɛmali",
+      "listing": "Stock tɔgɔ",
+      "regularization": "Stock fura",
+      "valorization": "Stock sɔngɔ",
+      "inventory": "Stock lajɛ"
+    },
+    "program": {
+      "trigger": "Programm",
+      "preferences": "Preferences",
+      "keyProgramming": "Digi programm",
+      "passwords": "Gafɛw",
+      "team": "JƐKULU",
+      "cashier": "WARI KƐLA",
+      "date": "DON",
+      "time": "WAATI",
+      "to": "ka se",
+      "cashFund": "CAISSE WARI",
+      "cashCounting": "WARI JATE",
+      "denomination": "Wari fɛnw",
+      "amount": "Sɔngɔ",
+      "tokens": "JETONW",
+      "hqTransfer": "SIEGE SARA",
+      "dailyTransactions": "BI BAARAW",
+      "collections": "WARI DON",
+      "cashOfDay": "Bi wari",
+      "checks": "Chèque",
+      "creditSettlement": "Crédit sara",
+      "creditSale": "Crédit sɔrɔ",
+      "clientGroup": "Jatigɛ kulu",
+      "creditLimit": "Crédit danna",
+      "balance": "Solde",
+      "newClient": "Jatigɛ kura",
+      "editClient": "Jatigɛ yɛlɛma",
+      "clientCode": "Jatigɛ nimɔrɔ",
+      "supplierPayment": "Fournisseur sara",
+      "dailyExpenses": "Bi fɛnw",
+      "bankTransfer": "Banque wari",
+      "bankRef": "Banque nimɔrɔ",
+      "computer": "ORDINATEUR",
+      "receptionTitle": "Fen san lajɛ",
+      "mode": "Cogo",
+      "existingOrder": "Baara kɛra",
+      "directPurchase": "Sanni direct",
+      "supplier": "Fournisseur",
+      "order": "Commande",
+      "receiveAll": "Bɛɛ sɔrɔra",
+      "searchProductToAdd": "Fen ɲini ka fara a kan...",
+      "ordered": "Dilirala",
+      "received": "Sɔrɔra",
+      "unitCost": "Sɔngɔ kelen",
+      "validateReceipt": "Sanni sɛgɛsɛgɛ",
+      "discrepancy": "Danna",
+      "autoFillSuccess": "Jate kɛra a yɛrɛ ma",
+      "observations": "OBSERVATIONS",
+      "passwords": "Gafɛw",
+      "calculatedMargin": "Calculated Margin",
+      "lastMovements": "Last Movements",
+      "unit": "Unit"
+    }
+  },
+  "customer": {
+    "catalog": {
+      "title": "Kunnafoni Bɛnɛw",
+      "loading": "Ka bɛnɛ kɛ...",
+      "searchPlaceholder": "Ka bɛnɛ ɲini...",
+      "noProductsFound": "Bɛnɛ tɛ sɔrɔ",
+      "noProductsAvailable": "Bɛnɛ tɛ yen",
+      "productCount": "Bɛnɛ {{count}}",
+      "productCount_one": "Bɛnɛ {{count}}",
+      "productCount_other": "Bɛnɛ {{count}}",
+      "inStock": "{{quantity}} ka da",
+      "sku": "SKU",
+      "footer": {
+        "browse": "Ka bɛnɛw lajɛ",
+        "contact": "Sɔrɔ ani kunnafoni wɛrɛw kosɔn, aw ye magasin wele"
+      }
+    }
+  },
+  "index": {
+    "title": "Retail Manager",
+    "description": "I ka retail ɲɛnabɔli siraw bɛɛ: sɔrɔ, bɛnɛ, baarakɛlaw, ani di.",
+    "features": {
+      "sales": {
+        "title": "Sɔrɔ lajɛ",
+        "description": "Kunnafoni ani baara kɛcogo"
+      },
+      "inventory": {
+        "title": "Bɛnɛ ɲɛnabɔli",
+        "description": "Bɛnɛ jɛlen lajɛ ani ka sɔrɔ kura kɛ"
+      },
+      "team": {
+        "title": "Baarakɛlaw ɲɛnabɔli",
+        "description": "Baarakɛlaw ani di kɛlaw ka baara lajɛ"
+      }
+    },
+    "getStarted": "Ka daminɛ"
+  },
+  "notFound": {
+    "message": "Ayi! Pajɛ ma sɔrɔ",
+    "returnHome": "Ka segin so"
+  },
+  "scanner": {
+    "cameraAccessDenied": "Kamera sɔrɔ ka kan",
+    "enableCamera": "I ka kamera sɔrɔ bila ka se ka fenw scan.",
+    "instructions": "Kamera bila barcode kan"
+  },
+  "audit": {
+    "actionType": "Action Type",
+    "login": "Login",
+    "priceChange": "Price Change",
+    "inventory": "Inventory",
+    "saleDeletion": "Sale Deletion",
+    "old": "Old",
+    "new": "New"
+  }
+}

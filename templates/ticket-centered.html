@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Receipt</title>
+  <style>
+    :root{ --text:#222; --muted:#666; --accent:#111 }
+    html,body{height:100%;margin:0;padding:0;background:transparent}
+    body{font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial; color:var(--text);}
+    /* center the receipt precisely on the page */
+    .page{width:100%;padding:8mm 0;box-sizing:border-box}
+    .receipt{display:block;margin:0 auto;max-width:300px;width:100%;background:#fff;padding:14px 18px;border-radius:8px;box-sizing:border-box}
+    header{text-align:center;margin-bottom:8px}
+    .store-name{font-weight:800;font-size:20px;margin:0}
+    .store-meta{font-size:12px;color:var(--muted);margin:2px 0}
+    hr.sepa{border:none;border-top:2px dotted #999;margin:10px 0}
+    .meta{font-size:13px;margin:6px 0}
+    .meta strong{font-weight:700}
+    table.items{width:100%;border-collapse:collapse;margin-top:6px}
+    table.items thead th{text-align:left;font-weight:700;padding:6px 4px}
+    table.items td{padding:8px 4px}
+    .qty{width:48px;text-align:center}
+    .price{width:90px;text-align:right}
+    .muted{color:var(--muted);font-size:12px}
+    .totals{margin-top:8px}
+    .totals .row{display:flex;justify-content:space-between;padding:6px 4px}
+    .totals .total{font-weight:800;font-size:16px}
+    footer{margin-top:18px;text-align:center;color:var(--muted);font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="receipt">
+      <header>
+        <div class="store-name">{{storeName}}</div>
+        <div class="store-meta">{{storeAddress}}</div>
+        <div class="store-meta">Tel: {{phone}}</div>
+      </header>
+
+      <hr class="sepa" />
+
+      <div class="meta"><strong>Invoice:</strong> <span>{{invoice}}</span></div>
+      <div class="meta"><strong>Date:</strong> <span>{{date}}</span></div>
+      <div class="meta"><strong>Cashier:</strong> <span>{{cashier}}</span></div>
+
+      <hr class="sepa" />
+
+      <table class="items" role="presentation">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th class="qty">QTY</th>
+            <th class="price">Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#items}}
+            <tr>
+              <td>{{name}}</td>
+              <td class="qty">{{qty}}</td>
+              <td class="price">{{price}}</td>
+            </tr>
+          {{/items}}
+        </tbody>
+      </table>
+
+      <hr class="sepa" />
+
+      <div class="totals">
+        <div class="row"><div>Subtotal</div><div>{{subtotal}}</div></div>
+        <div class="row"><div>Discount</div><div>{{discount}}</div></div>
+        <div class="row total"><div>Total</div><div>{{total}}</div></div>
+      </div>
+
+      <footer>
+        <div>Merci pour votre achat</div>
+        <div>Powered by Retail Manager</div>
+      </footer>
+    </div>
+  </div>
+</body>
+</html>

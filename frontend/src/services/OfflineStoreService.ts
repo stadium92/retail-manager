@@ -1,0 +1,535 @@
+/**
+ * OfflineStoreService - Handles store operations with offline support
+ */
+
+import { LocalDatabase, LocalStore } from './LocalDatabase';
+import { supabase } from '@/integrations/supabase/client';
+import { Store } from '@/types';
+import { toast } from '@/hooks/use-toast';
+import { storeSchema } from '@/schemas/validation';
+import { getDataClient } from '@/lib/dataClient';
+import { OfflineAuthService } from './OfflineAuthService';
+
+type TimeoutResult<T> =
+  | { timedOut: true; promise: Promise<T> }
+  | { timedOut: false; value: T };
+
+async function raceWithSoftTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number
+): Promise<TimeoutResult<T>> {
+  let timeoutId: number | undefined;
+  const timeoutPromise = new Promise<{ __timeout: true }>((resolve) => {
+    timeoutId = window.setTimeout(() => resolve({ __timeout: true }), timeoutMs);
+  });
+
+  const result = await Promise.race([promise, timeoutPromise]);
+  if (timeoutId) window.clearTimeout(timeoutId);
+
+  if ((result as any)?.__timeout) {
+    return { timedOut: true, promise };
+  }
+
+  return { timedOut: false, value: result as T };
+}
+
+function mapLocalStoreToStore(s: LocalStore): Store {
+  return {
+    id: s.id,
+    name: s.name,
+    address: s.address,
+    phone: s.phone,
+    owner_id: undefined,
+    created_at: s.created_at,
+    updated_at: s.updated_at,
+  } as Store;
+}
+
+export class OfflineStoreService {
+  /**
+   * Create a store (works offline)
+   */
+  static async createStore(
+    storeData: Omit<Store, 'id' | 'created_at' | 'updated_at'>
+  ): Promise<{ data?: Store; error?: any }> {
+    const isOnline = navigator.onLine;
+    const dataClient = getDataClient();
+    const storeId = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    // Skip validation when offline to allow more flexible data entry
+    if (isOnline) {
+      const validationResult = storeSchema.safeParse(storeData);
+      if (!validationResult.success) {
+        return { error: { message: validationResult.error.errors[0].message } };
+      }
+    } else {
+      // Basic validation for offline mode - just ensure name exists
+      if (!storeData.name || storeData.name.trim().length === 0) {
+        return { error: { message: 'Store name is required' } };
+      }
+    }
+
+    try {
+      await LocalDatabase.init();
+
+      if (dataClient.isLocalFirst) {
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (!headers) {
+          return { error: { message: 'LocalBridge session required.' } };
+        }
+
+        const response = await fetch(`${dataClient.localBridgeBaseUrl}/rest/v1/stores`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...headers },
+          body: JSON.stringify({
+            name: storeData.name,
+            address: storeData.address ?? null,
+            phone: storeData.phone ?? null,
+          }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          return { error: payload };
+        }
+
+        const createdAt = payload.created_at || now;
+        const updatedAt = payload.updated_at || createdAt;
+        const localStore: LocalStore = {
+          id: payload.id,
+          name: payload.name,
+          address: payload.address || undefined,
+          city: undefined,
+          phone: payload.phone || undefined,
+          email: undefined,
+          is_active: true,
+          created_at: createdAt,
+          updated_at: updatedAt,
+          synced: true,
+        };
+        await LocalDatabase.saveStore(localStore);
+
+        toast({
+          title: 'Store Created',
+          description: 'Store created in local backend.',
+        });
+
+        return {
+          data: {
+            id: localStore.id,
+            name: localStore.name,
+            address: localStore.address,
+            phone: localStore.phone,
+            owner_id: storeData.owner_id,
+            created_at: localStore.created_at,
+            updated_at: localStore.updated_at,
+          } as Store,
+        };
+      }
+
+      const localStore: LocalStore = {
+        id: storeId,
+        name: storeData.name,
+        address: storeData.address,
+        city: undefined,
+        phone: storeData.phone,
+        email: undefined,
+        is_active: true,
+        created_at: now,
+        updated_at: now,
+        synced: false,
+      };
+
+      // Always save locally first
+      await LocalDatabase.saveStore(localStore);
+
+      if (!isOnline) {
+        // Queue for later sync
+        await LocalDatabase.addToSyncQueue({
+          id: crypto.randomUUID(),
+          type: 'store_create',
+          data: localStore,
+          timestamp: Date.now(),
+          retries: 0,
+        });
+
+        toast({
+          title: 'Store Created (Offline)',
+          description: 'Will sync when back online.',
+        });
+
+        return {
+          data: {
+            id: localStore.id,
+            name: localStore.name,
+            address: localStore.address,
+            phone: localStore.phone,
+            owner_id: storeData.owner_id,
+            created_at: now,
+            updated_at: now,
+          } as Store,
+        };
+      }
+
+      // Try to sync immediately if online
+      const { data, error } = await supabase
+        .from('stores')
+        .insert({
+          id: storeId,
+          name: storeData.name,
+          address: storeData.address,
+          phone: storeData.phone,
+          owner_id: storeData.owner_id,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        // Queue for later sync
+        await LocalDatabase.addToSyncQueue({
+          id: crypto.randomUUID(),
+          type: 'store_create',
+          data: localStore,
+          timestamp: Date.now(),
+          retries: 0,
+        });
+
+        toast({
+          title: 'Store Created Locally',
+          description: 'Server sync failed, will retry later.',
+          variant: 'destructive',
+        });
+
+        return {
+          data: {
+            id: localStore.id,
+            name: localStore.name,
+            address: localStore.address,
+            phone: localStore.phone,
+            owner_id: storeData.owner_id,
+            created_at: now,
+            updated_at: now,
+          } as Store,
+        };
+      }
+
+      // Mark as synced
+      localStore.synced = true;
+      await LocalDatabase.saveStore(localStore);
+
+      toast({
+        title: 'Store Created',
+        description: 'Store created and synced successfully.',
+      });
+
+      return { data };
+    } catch (error) {
+      console.error('Create store error:', error);
+      return { error: { message: 'Failed to create store' } };
+    }
+  }
+
+  /**
+   * Get all stores (merges local and remote)
+   */
+  static async getStores(
+    options?: { notify?: boolean; timeoutMs?: number }
+  ): Promise<{ data?: Store[]; error?: any }> {
+    try {
+      await LocalDatabase.init();
+      const localStores = await LocalDatabase.getAllStores();
+      const localAsStores = localStores.map(mapLocalStoreToStore);
+
+      const dataClient = getDataClient();
+      if (dataClient.isLocalFirst) {
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (!headers) {
+          return { data: localAsStores };
+        }
+        const response = await fetch(`${dataClient.localBridgeBaseUrl}/rest/v1/stores`, { headers });
+        const payload = await response.json().catch(() => []);
+        if (!response.ok) {
+          return { data: localAsStores, error: payload };
+        }
+
+        await this.cacheRemoteStores(payload || [], localStores);
+        const unsyncedLocalIds = new Set(localStores.filter((s) => !s.synced).map((s) => s.id));
+        const mergedById = new Map<string, Store>();
+        for (const s of localAsStores) mergedById.set(s.id, s);
+        for (const s of payload || []) {
+          if (!unsyncedLocalIds.has(s.id)) mergedById.set(s.id, s as Store);
+        }
+
+        const merged = Array.from(mergedById.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        return { data: merged };
+      }
+
+      if (!navigator.onLine) {
+        // Return local stores only
+        return {
+          data: localAsStores,
+        };
+      }
+
+      // Fetch from server with timeout
+      const fetchRemote = async (): Promise<{ data: any[] | null; error: any }> => {
+        const { data, error } = await supabase
+          .from('stores')
+          .select('*')
+          .order('name');
+        return { data, error };
+      };
+
+      const remoteResult = await raceWithSoftTimeout(fetchRemote(), options?.timeoutMs ?? 4500);
+
+      if (remoteResult.timedOut) {
+        // Return local immediately; still cache remote results if/when they arrive
+        remoteResult.promise
+          .then(async (result) => {
+            if (result.error || !result.data) return;
+            await OfflineStoreService.cacheRemoteStores(result.data, localStores);
+            if (options?.notify !== false) {
+              window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'stores' } }));
+            }
+          })
+          .catch(() => {
+            /* ignore */
+          });
+
+        return { data: localAsStores };
+      }
+
+      // TypeScript narrowing: if not timedOut, value exists
+      const { data: remoteStores, error } = (remoteResult as { timedOut: false; value: { data: any[] | null; error: any } }).value;
+
+      if (error) {
+        console.error('Failed to fetch remote stores:', error);
+        // Return local stores as fallback
+        return { data: localAsStores };
+      }
+
+      await this.cacheRemoteStores(remoteStores || [], localStores);
+      if (options?.notify !== false) {
+        window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'stores' } }));
+      }
+
+      // Merge: start with ALL local cached (synced+unsynced), then overlay remote,
+      // except where a local item is unsynced (local changes should win).
+      const unsyncedLocalIds = new Set(localStores.filter((s) => !s.synced).map((s) => s.id));
+      const mergedById = new Map<string, Store>();
+      for (const s of localAsStores) mergedById.set(s.id, s);
+      for (const s of remoteStores || []) {
+        if (!unsyncedLocalIds.has(s.id)) mergedById.set(s.id, s as Store);
+      }
+
+      const merged = Array.from(mergedById.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      return { data: merged };
+    } catch (error) {
+      console.error('Get stores error:', error);
+      return { error };
+    }
+  }
+
+  private static async cacheRemoteStores(remoteStores: any[], localStores: LocalStore[]) {
+    for (const store of remoteStores || []) {
+      const existingLocal = localStores.find((ls) => ls.id === store.id);
+      // Never overwrite local unsynced edits
+      if (existingLocal && !existingLocal.synced) continue;
+
+      await LocalDatabase.saveStore({
+        id: store.id,
+        name: store.name,
+        address: store.address || undefined,
+        city: store.city || undefined,
+        phone: store.phone || undefined,
+        email: store.email || undefined,
+        is_active: store.is_active ?? true,
+        created_at: store.created_at,
+        updated_at: store.updated_at || store.created_at,
+        synced: true,
+      });
+    }
+  }
+
+  /**
+   * Update a store (works offline)
+   */
+  static async updateStore(
+    id: string,
+    updates: Partial<Store>
+  ): Promise<{ data?: Store; error?: any }> {
+    try {
+      await LocalDatabase.init();
+      const now = new Date().toISOString();
+      const dataClient = getDataClient();
+
+      if (dataClient.isLocalFirst) {
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (!headers) {
+          return { error: { message: 'LocalBridge session required.' } };
+        }
+
+        const response = await fetch(`${dataClient.localBridgeBaseUrl}/rest/v1/stores/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', ...headers },
+          body: JSON.stringify({
+            name: updates.name,
+            address: updates.address ?? null,
+            phone: updates.phone ?? null,
+          }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          return { error: payload };
+        }
+
+        const localStore: LocalStore = {
+          id: payload.id,
+          name: payload.name,
+          address: payload.address || undefined,
+          city: undefined,
+          phone: payload.phone || undefined,
+          email: undefined,
+          is_active: true,
+          created_at: payload.created_at || now,
+          updated_at: payload.updated_at || now,
+          synced: true,
+        };
+        await LocalDatabase.saveStore(localStore);
+
+        return { data: payload as Store };
+      }
+
+      // Get existing local store or create from updates
+      let localStore = await LocalDatabase.getStore(id);
+      
+      if (localStore) {
+        localStore = {
+          ...localStore,
+          name: updates.name ?? localStore.name,
+          address: updates.address ?? localStore.address,
+          phone: updates.phone ?? localStore.phone,
+          updated_at: now,
+          synced: false,
+        };
+      } else {
+        localStore = {
+          id,
+          name: updates.name || '',
+          address: updates.address,
+          city: undefined,
+          phone: updates.phone,
+          email: undefined,
+          is_active: true,
+          created_at: now,
+          updated_at: now,
+          synced: false,
+        };
+      }
+
+      await LocalDatabase.saveStore(localStore);
+
+      if (!navigator.onLine) {
+        await LocalDatabase.addToSyncQueue({
+          id: crypto.randomUUID(),
+          type: 'store_update',
+          data: localStore,
+          timestamp: Date.now(),
+          retries: 0,
+        });
+
+        toast({
+          title: 'Store Updated (Offline)',
+          description: 'Will sync when back online.',
+        });
+
+        return { 
+          data: {
+            id: localStore.id,
+            name: localStore.name,
+            address: localStore.address,
+            phone: localStore.phone,
+            owner_id: undefined,
+            created_at: localStore.created_at,
+            updated_at: localStore.updated_at,
+          } as Store 
+        };
+      }
+
+      // Try to sync immediately
+      const { data, error } = await supabase
+        .from('stores')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        await LocalDatabase.addToSyncQueue({
+          id: crypto.randomUUID(),
+          type: 'store_update',
+          data: localStore,
+          timestamp: Date.now(),
+          retries: 0,
+        });
+
+        return { 
+          data: {
+            id: localStore.id,
+            name: localStore.name,
+            address: localStore.address,
+            phone: localStore.phone,
+            owner_id: undefined,
+            created_at: localStore.created_at,
+            updated_at: localStore.updated_at,
+          } as Store 
+        };
+      }
+
+      localStore.synced = true;
+      await LocalDatabase.saveStore(localStore);
+
+      return { data };
+    } catch (error) {
+      console.error('Update store error:', error);
+      return { error };
+    }
+  }
+
+  static async deleteStore(id: string): Promise<{ error?: any }> {
+    try {
+      await LocalDatabase.init();
+      await LocalDatabase.deleteStore(id);
+
+      const dataClient = getDataClient();
+      if (dataClient.isLocalFirst) {
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (!headers) {
+          return { error: { message: 'LocalBridge session required.' } };
+        }
+        const response = await fetch(`${dataClient.localBridgeBaseUrl}/rest/v1/stores/${id}`, {
+          method: 'DELETE',
+          headers,
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          return { error: payload };
+        }
+        return {};
+      }
+
+      if (!navigator.onLine) {
+        return {};
+      }
+
+      const { error } = await supabase
+        .from('stores')
+        .delete()
+        .eq('id', id);
+
+      return { error };
+    } catch (error) {
+      return { error };
+    }
+  }
+}

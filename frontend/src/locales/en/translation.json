@@ -1,0 +1,1221 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "update": "Update",
+    "search": "Search",
+    "filter": "Filter",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "confirm": "Confirm",
+    "close": "Close",
+    "clear": "Clear",
+    "unknown": "Unknown",
+    "transactions": "transactions",
+    "perTransaction": "per transaction",
+    "itemsSelected": "item(s) selected",
+    "deleteSelected": "Delete Selected",
+    "failedToLoad": "Failed to load data",
+    "total": "Total",
+    "refresh": "Refresh",
+    "help": "Help",
+    "cash": "Cash",
+    "card": "Card",
+    "credit": "Credit",
+    "online": "Online",
+    "offline": "Offline",
+    "actions": "Actions",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "disableAccount": "Disable Account",
+    "enableAccount": "Enable Account",
+    "offlineMode": "Offline Mode",
+    "offlineModeMessage": "Internet connection required",
+    "localBridgeError": "LocalBridge request failed",
+    "other": "Other",
+    "notClassified": "Unclassified",
+    "none": "None",
+    "print": "Print"
+  },
+  "helpCenter": {
+    "title": "Help Center",
+    "subtitle": "Find answers to your questions and learn how to use Retail Manager.",
+    "searchPlaceholder": "Search help...",
+    "categories": {
+      "keyboard": {
+        "title": "Keyboard Shortcuts",
+        "description": "Navigate like a pro with F1-F12"
+      },
+      "inventory": {
+        "title": "Inventory Management",
+        "description": "Stocktake, alerts and reordering"
+      },
+      "sales": {
+        "title": "Sales & Billing",
+        "description": "Processing transactions and debt"
+      },
+      "reports": {
+        "title": "Reports & Analytics",
+        "description": "Track your business performance"
+      }
+    },
+    "faq": "Frequently Asked Questions",
+    "faqSubtitle": "Quick solutions for common operations.",
+    "questions": {
+      "sync": {
+        "q": "How do I synchronize my data?",
+        "a": "Synchronization happens automatically when you are online. Check the status indicator at the bottom of your screen."
+      },
+      "storage": {
+        "q": "Where is my data stored?",
+        "a": "Your data is stored securely on your computer first (LocalBridge) and then copied to our encrypted cloud servers."
+      },
+      "devices": {
+        "q": "Can I use multiple devices?",
+        "a": "Yes, you can install Retail Manager on multiple devices. Data will sync across all of them automatically."
+      }
+    },
+    "reportBug": "Report a Bug",
+    "reportBugSubtitle": "Encountered an issue? Describe it below and our team will investigate.",
+    "bugDescription": "Problem Description",
+    "bugDescriptionPlaceholder": "What happened? What were you doing when the error occurred?",
+    "submitReport": "Submit Report",
+    "submitting": "Submitting...",
+    "hardwareId": "Hardware ID",
+    "successMessage": "Bug report submitted successfully.",
+    "errorMessage": "Failed to submit bug report."
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "stores": "Stores",
+    "inventory": "Inventory",
+    "sales": "Sales",
+    "purchases": "Purchases",
+    "workers": "Workers",
+    "deliverers": "Deliverers",
+    "deliveries": "Deliveries",
+    "analytics": "Analytics",
+    "invitations": "Invitations",
+    "team": "Team",
+    "systemLogs": "System Logs"
+  },
+  "purchases": {
+    "title": "Purchases & Procurement",
+    "subtitle": "Inventory management and orders",
+    "needs": "Products to Order",
+    "history": "Order History",
+    "searchSuppliers": "Search supplier...",
+    "allSuppliers": "All Suppliers",
+    "noOrdersFound": "No orders found",
+    "ordersCreated": "orders created",
+    "needsAlerts": "Needs & Alerts",
+    "source": "Source",
+    "suggestedQtyShort": "Sugg. Qty",
+    "stockLow": "Low Stock",
+    "workerRequest": "Worker Request",
+    "noNeedsIdentified": "No needs identified."
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "todaySales": "Today's Sales",
+    "weekSales": "Week Sales",
+    "monthSales": "Month Sales",
+    "totalStores": "Total Stores",
+    "lowStockItems": "Low Stock Items",
+    "salesStatus": "Sales Status",
+    "status": {
+      "good": "Good Sales",
+      "bad": "Sales Below Average",
+      "worse": "Low Sales Activity"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "aiAssistant": "AI Assistant",
+      "aiInsights": "AI Insights",
+      "askAnything": "Ask me anything about your business",
+      "chatPlaceholder": "Ask about your business...",
+      "q1": "How are my sales today?",
+      "q2": "Which items should I restock?",
+      "q3": "Show me top-selling products",
+      "q4": "What are my sales trends this week?"
+    },
+    "trendValue": "{{percent}}% of week avg",
+    "welcome": {
+      "title": "Welcome to Your Retail Manager",
+      "description": "Your complete retail management platform for monitoring sales, inventory, workers, and deliveries.",
+      "quickActions": "Quick Actions",
+      "action1": "View and manage your sales",
+      "action2": "Monitor inventory levels",
+      "action3": "Track worker performance",
+      "action4": "Manage deliveries",
+      "currentStatus": "Current Status",
+      "status1": "Month Sales: {{amount}}",
+      "status2": "Active Stores: {{count}}",
+      "status3": "Items Needing Attention: {{count}}"
+    }
+  },
+  "analytics": {
+    "title": "Analytics",
+    "description": "Business insights and performance metrics",
+    "errors": {
+      "loadAnalytics": "Failed to load analytics"
+    },
+    "cards": {
+      "todayTitle": "Today's Sales",
+      "todaySubtitle": "Revenue today",
+      "weekTitle": "Week Sales",
+      "weekSubtitle": "Last 7 days",
+      "monthTitle": "Month Sales",
+      "monthSubtitle": "This month"
+    },
+    "overview": {
+      "title": "Sales Overview",
+      "description": "Performance metrics and trends",
+      "averageTitle": "Average Daily Sales",
+      "averageSubtitle": "Based on the last 7 days",
+      "weeklyTitle": "Weekly Growth",
+      "weeklySubtitle": "Comparison to daily average",
+      "monthlyTitle": "Monthly Target Progress",
+      "monthlyTarget": "Target: {{target}}"
+    },
+    "insights": {
+      "title": "Performance Insights",
+      "description": "Key observations and recommendations",
+      "today": {
+        "heading": "Today's Performance:",
+        "above": "Above average – great job!",
+        "below": "Below weekly average – consider promotional activities"
+      },
+      "weekly": {
+        "heading": "Weekly Trend:",
+        "summary": "Current week sales are {{amount}}.",
+        "strong": " Strong performance this week!",
+        "focus": " Focus on increasing sales volume"
+      },
+      "monthly": {
+        "heading": "Monthly Goal:",
+        "summary": "You've achieved {{achieved}} of your {{target}} monthly target.",
+        "onTrack": " On track to meet your goal!",
+        "increase": " Increase efforts to reach monthly target"
+      }
+    }
+  },
+  "inventory": {
+    "title": "Inventory",
+    "addItem": "Add Item",
+    "editItem": "Edit Item",
+    "deleteItem": "Delete Item",
+    "itemName": "Item Name",
+    "price": "Price",
+    "quantity": "Quantity",
+    "lowStock": "Low Stock",
+    "description": "Description",
+    "sku": "SKU",
+    "cost": "Cost",
+    "lowStockThreshold": "Low Stock Threshold",
+    "store": "Store",
+    "image": "Image",
+    "manageInventory": "Manage your product inventory",
+    "createStoreFirst": "Please create a store first before adding inventory items.",
+    "searchPlaceholder": "Search items...",
+    "filterByStore": "Filter by store",
+    "allStores": "All stores",
+    "noItemsFound": "No items found",
+    "noItemsMatch": "No items match your search.",
+    "inStock": "In stock",
+    "outOfStock": "Out of stock",
+    "noStoresMessage": "Please create a store first before adding inventory items.",
+    "itemsSelected": "{{count}} item(s) selected",
+    "itemsTitle": "Inventory Items",
+    "summary": "Total items: {{total}} | Low stock: {{lowStock}}",
+    "emptyState": "No items found. Add your first inventory item!",
+    "status": {
+      "lowStock": "Low Stock",
+      "inStock": "In Stock"
+    },
+    "statusLow": "Low Stock",
+    "statusIn": "In Stock",
+    "statusOut": "Out of Stock",
+    "table": {
+      "name": "Name",
+      "store": "Store",
+      "sku": "SKU",
+      "quantity": "Quantity",
+      "price": "Price",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "fields": {
+      "name": "Item Name*",
+      "image": "Product Image",
+      "description": "Description",
+      "sku": "SKU",
+      "store": "Store*",
+      "quantity": "Quantity*",
+      "lowStockThreshold": "Low Stock Threshold",
+      "price": "Price*",
+      "cost": "Cost",
+      "family": "Family / Category",
+      "category": "Category",
+      "selectFamily": "Select a family",
+      "brand": "Brand",
+      "aisle": "Aisle / Location",
+      "packaging": "Packaging",
+      "unitType": "Unit",
+      "reorderQty": "Reorder Qty (Ideal)",
+      "expiryDate": "Expiry Date",
+      "retailPrice": "Retail Price",
+      "wholesalePrice": "Wholesale Price",
+      "aisle": "Aisle",
+      "packaging": "Packaging",
+      "expiryDate": "Expiry Date",
+      "purchasePriceShort": "P. Cost",
+      "retailPriceShort": "P. Retail",
+      "wholesalePriceShort": "P. Wholesale"
+    },
+    "selectStore": "Select store",
+    "editItemDescription": "Update inventory item information",
+    "createItem": "Create Item",
+    "createItemDescription": "Add a new item to your inventory",
+    "deleteTitle": "Delete Item",
+    "deleteDescription": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
+    "deleteConfirm": "Are you sure you want to delete this item?",
+    "deleteConfirmDescription": "This action cannot be undone.",
+    "errors": {
+      "loadInventory": "Failed to load inventory",
+      "loadStores": "Failed to load stores",
+      "updateItem": "Failed to update item",
+      "createItem": "Failed to create item",
+      "deleteItem": "Failed to delete item",
+      "bulkDelete": "Failed to delete {{count}} item(s)"
+    },
+    "success": {
+      "updateItem": "Item updated successfully",
+      "createItem": "Item created successfully",
+      "deleteItem": "Item deleted successfully",
+      "bulkDelete": "Deleted {{count}} item(s)"
+    },
+    "export": {
+      "sheetName": "Inventory",
+      "reportTitle": "Inventory Report",
+      "columns": {
+        "name": "Name",
+        "sku": "SKU",
+        "quantity": "Quantity",
+        "price": "Price",
+        "store": "Store"
+      }
+    }
+  },
+  "stores": {
+    "title": "Stores",
+    "manageStores": "Manage your retail stores",
+    "addStore": "Add Store",
+    "editStore": "Edit Store",
+    "deleteStore": "Delete Store",
+    "storeName": "Store Name",
+    "address": "Address",
+    "phone": "Phone",
+    "allStores": "All Stores",
+    "totalStores": "Total stores: {{count}}",
+    "emptyState": "No stores yet. Create your first store!",
+    "view": "View",
+    "table": {
+      "name": "Name",
+      "address": "Address",
+      "phone": "Phone",
+      "actions": "Actions"
+    },
+    "fields": {
+      "name": "Store Name",
+      "image": "Store Image",
+      "address": "Address",
+      "phone": "Phone"
+    },
+    "dialog": {
+      "createTitle": "Create Store",
+      "createDescription": "Add a new store to your business",
+      "editTitle": "Edit Store",
+      "editDescription": "Update store information"
+    },
+    "deleteTitle": "Delete Store",
+    "deleteDescription": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
+    "errors": {
+      "loadStores": "Failed to load stores",
+      "authRequired": "Authentication required",
+      "createStore": "Failed to create store",
+      "updateStore": "Failed to update store",
+      "deleteStore": "Failed to delete store"
+    },
+    "success": {
+      "createStore": "Store created successfully",
+      "updateStore": "Store updated successfully",
+      "deleteStore": "Store deleted successfully"
+    }
+  },
+  "storeDetails": {
+    "backToStores": "Back to Stores",
+    "editStore": "Edit Store",
+    "errors": {
+      "notFound": "Store not found",
+      "loadDetails": "Failed to load store details"
+    },
+    "metrics": {
+      "todaySales": "Today's Sales",
+      "weekSales": "Week Sales",
+      "inventoryValue": "Inventory Value",
+      "lowStockItems": "Low Stock Items"
+    },
+    "tabs": {
+      "inventory": "Inventory ({{count}})",
+      "sales": "Sales ({{count}})",
+      "workers": "Workers ({{count}})"
+    },
+    "inventory": {
+      "title": "Inventory Items",
+      "description": "Products available at this store",
+      "empty": "No inventory items",
+      "table": {
+        "name": "Name",
+        "sku": "SKU",
+        "quantity": "Quantity",
+        "price": "Price",
+        "value": "Value",
+        "status": "Status"
+      }
+    },
+    "sales": {
+      "title": "Recent Sales",
+      "description": "Latest transactions at this store",
+      "empty": "No sales yet",
+      "table": {
+        "date": "Date",
+        "item": "Item",
+        "customer": "Customer",
+        "quantity": "Quantity",
+        "total": "Total",
+        "worker": "Worker"
+      }
+    },
+    "workers": {
+      "title": "Store Workers",
+      "description": "Staff assigned to this store",
+      "empty": "No workers assigned",
+      "table": {
+        "name": "Name",
+        "email": "Email",
+        "phone": "Phone",
+        "role": "Role"
+      }
+    }
+  },
+  "deliveries": {
+    "title": "Deliveries",
+    "manageDeliveries": "Track and manage all deliveries",
+    "trackAndManage": "Track and manage all deliveries",
+    "pending": "Pending",
+    "assigned": "Assigned",
+    "in_transit": "In Transit",
+    "inTransit": "In Transit",
+    "delivered": "Delivered",
+    "cancelled": "Cancelled",
+    "awaitingAssignment": "Awaiting deliverer assignment",
+    "customerName": "Customer Name",
+    "deliveryAddress": "Delivery Address",
+    "allDeliveries": "All Deliveries",
+    "totalCount": "{{count}} total deliveries",
+    "emptyState": "No deliveries yet",
+    "table": {
+      "customer": "Customer",
+      "phone": "Phone",
+      "address": "Address",
+      "status": "Status",
+      "deliverer": "Deliverer",
+      "actions": "Actions"
+    },
+    "bulkActions": {
+      "selected": "{{count}} selected",
+      "clear": "Clear",
+      "delete": "Delete Selected"
+    },
+    "export": {
+      "sheetName": "Deliveries",
+      "reportTitle": "Deliveries Report",
+      "columns": {
+        "customer": "Customer",
+        "phone": "Phone",
+        "address": "Address",
+        "status": "Status",
+        "deliverer": "Deliverer"
+      }
+    }
+  },
+  "deliverer": {
+    "dashboard": {
+      "title": "Deliverer Portal",
+      "loading": "Loading deliveries...",
+      "loadingMap": "Loading map...",
+      "active": "Active",
+      "completedToday": "Completed Today",
+      "noActive": "No active deliveries",
+      "activeDeliveries": "Active Deliveries",
+      "call": "Call",
+      "navigate": "Navigate",
+      "pickUp": "Pick Up",
+      "complete": "Complete",
+      "statusUpdated": "Status updated",
+      "statusMarked": "Delivery marked as {{status}}",
+      "queued": "Queued for sync",
+      "queuedDescription": "Status update will be synced when online",
+      "tabs": {
+        "deliveries": "Deliveries",
+        "map": "Map View"
+      },
+      "notifications": {
+        "statusUpdate": "Delivery Update",
+        "statusChanged": "Delivery status changed to {{status}}",
+        "newDelivery": "New Delivery Assigned",
+        "assignedTo": "You have a new delivery for {{customer}}"
+      },
+      "errors": {
+        "unexpected": "An unexpected error occurred",
+        "updateFailed": "Failed to update delivery status"
+      },
+      "map": {
+        "loadingMap": "Loading map...",
+        "loadingLocations": "Loading locations...",
+        "geocodingError": "Could not load delivery locations",
+        "noDeliveries": "No deliveries to display",
+        "yourLocation": "Your Location",
+        "navigate": "Navigate",
+        "call": "Call",
+        "viewDetails": "View Details"
+      }
+    }
+  },
+  "deliverers": {
+    "title": "Deliverers",
+    "manageDeliverers": "Manage your delivery personnel",
+    "allDeliverers": "All Deliverers",
+    "totalDeliverers": "Total deliverers: {{total}}",
+    "emptyState": "No deliverers found. Deliverers are created when users sign up with the deliverer role.",
+    "active": "Active",
+    "table": {
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "total": "Total Deliveries",
+      "completed": "Completed",
+      "completionRate": "Completion Rate",
+      "status": "Status"
+    },
+    "errors": {
+      "loadDeliverers": "Failed to load deliverers",
+      "loadProfiles": "Failed to load deliverer profiles"
+    }
+  },
+  "sales": {
+    "title": "Sales",
+    "manageSales": "View and manage all sales transactions",
+    "totalSales": "Total Sales",
+    "salesCount": "Sales Count",
+    "averageSale": "Average Sale",
+    "averageTransaction": "Average Transaction",
+    "totalCount": "Total Count",
+    "allSales": "All Sales",
+    "salesTransactions": "sales transactions",
+    "salesAcrossStores": "View all sales transactions across your stores",
+    "filterByStore": "Filter by store",
+    "allStores": "All Stores",
+    "searchPlaceholder": "Search by item or customer...",
+    "noSalesMatch": "No sales match your search criteria.",
+    "emptyState": "No sales recorded yet",
+    "date": "Date",
+    "item": "Item",
+    "customer": "Customer",
+    "quantity": "Quantity",
+    "total": "Total",
+    "worker": "Worker",
+    "actions": "Actions",
+    "invoice_number": "Invoice No.",
+    "failedToDeleteSale": "Failed to delete sale",
+    "saleDeletedSuccessfully": "Sale deleted successfully",
+    "failedToDeleteSales": "Failed to delete {{count}} sale(s)",
+    "deletedSales": "Deleted {{count}} sale(s)",
+    "deleteConfirm": "Are you sure you want to delete this sale?",
+    "deleteConfirmDescription": "This action cannot be undone.",
+    "exportSheetName": "Sales",
+    "table": {
+      "date": "Date",
+      "item": "Item",
+      "quantity": "Quantity",
+      "unitPrice": "Unit Price",
+      "total": "Total",
+      "worker": "Worker",
+      "store": "Store",
+      "customer": "Customer",
+      "actions": "Actions"
+    },
+    "bulkActions": {
+      "selected": "{{count}} selected",
+      "clear": "Clear",
+      "delete": "Delete Selected",
+      "confirmDelete": "Are you sure you want to delete {{count}} sales records? This cannot be undone."
+    },
+    "export": {
+      "sheetName": "Sales",
+      "reportTitle": "Sales Report",
+      "columns": {
+        "date": "Date",
+        "item": "Item",
+        "quantity": "Quantity",
+        "unitPrice": "Unit Price",
+        "total": "Total",
+        "worker": "Worker",
+        "store": "Store",
+        "customer": "Customer"
+      }
+    }
+  },
+  "invitations": {
+    "title": "Worker Invitations",
+    "description": "Invite and manage workers and deliverers",
+    "emptyState": "No invitations found.",
+    "actions": {
+      "invite": "Invite Worker",
+      "send": "Send Invitation",
+      "sending": "Sending..."
+    },
+    "dialog": {
+      "title": "Invite Worker",
+      "description": "Send an invitation to a new worker or deliverer"
+    },
+    "form": {
+      "email": "Email",
+      "emailPlaceholder": "worker@example.com",
+      "role": "Role",
+      "selectRole": "Select role",
+      "store": "Store (Optional)",
+      "selectStore": "Select store",
+      "noStore": "No store"
+    },
+    "roles": {
+      "worker": "Worker",
+      "deliverer": "Deliverer"
+    },
+    "status": {
+      "accepted": "Accepted",
+      "cancelled": "Cancelled",
+      "expired": "Expired",
+      "pending": "Pending"
+    },
+    "table": {
+      "email": "Email",
+      "role": "Role",
+      "status": "Status",
+      "expires": "Expires",
+      "actions": "Actions"
+    },
+    "cards": {
+      "allTitle": "All Invitations",
+      "total": "Total invitations: {{count}}"
+    },
+    "errors": {
+      "loadInvitations": "Failed to load invitations",
+      "createInvitation": "Failed to create invitation",
+      "resendInvitation": "Failed to resend invitation",
+      "cancelInvitation": "Failed to cancel invitation"
+    },
+    "success": {
+      "created": "Invitation created successfully",
+      "resent": "Invitation resent successfully",
+      "cancelled": "Invitation cancelled successfully"
+    }
+  },
+  "goals": {
+    "title": "Monthly Goals",
+    "setGoal": "Set Monthly Goal",
+    "currentGoal": "Current Goal",
+    "progress": "Progress",
+    "remaining": "Remaining",
+    "daysRemaining": "Days Remaining",
+    "onTrack": "On Track",
+    "behind": "Behind"
+  },
+  "auth": {
+    "login": "Login",
+    "signup": "Sign Up",
+    "email": "Email",
+    "password": "Password",
+    "signOut": "Sign Out",
+    "fullName": "Full Name",
+    "confirmPassword": "Confirm Password",
+    "signIn": "Sign In",
+    "createAccount": "Create Account",
+    "signingIn": "Signing in...",
+    "creatingAccount": "Creating account...",
+    "accountCreated": "Account created successfully",
+    "accountCreatedInvitation": "Account created and invitation accepted!",
+    "accountCreatedInvitationFailed": "Account created but failed to accept invitation",
+    "welcome": "Welcome",
+    "description": "Your intelligent retail management platform",
+    "devLoginMaster": "Dev Login (Master)",
+    "devLoginWorker": "Dev Worker",
+    "devLoginDeliverer": "Dev Deliverer"
+  },
+  "export": {
+    "title": "Export Data",
+    "csv": "Export as CSV",
+    "excel": "Export as Excel",
+    "pdf": "Export as PDF",
+    "success": "Data exported successfully",
+    "error": "Failed to export data"
+  },
+  "workers": {
+    "title": "Workers",
+    "manageWorkers": "Manage your team members",
+    "name": "Name",
+    "email": "Email",
+    "phone": "Phone",
+    "salesCount": "Sales Count",
+    "totalRevenue": "Total Revenue",
+    "status": "Status",
+    "active": "Active",
+    "search": "Search workers...",
+    "allWorkers": "All Workers",
+    "totalCount": "{{count}} total workers",
+    "emptyState": "No workers found",
+    "table": {
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "sales": "Sales",
+      "revenue": "Revenue",
+      "actions": "Actions"
+    },
+    "bulkActions": {
+      "selected": "{{count}} selected",
+      "clear": "Clear",
+      "delete": "Delete Selected"
+    },
+    "export": {
+      "sheetName": "Workers",
+      "reportTitle": "Workers Report",
+      "columns": {
+        "name": "Name",
+        "email": "Email",
+        "phone": "Phone",
+        "sales": "Sales",
+        "revenue": "Revenue"
+      }
+    }
+  },
+  "worker": {
+    "dashboard": {
+      "title": "Worker Dashboard",
+      "tabs": {
+        "sales": "Sales",
+        "inventory": "Inventory",
+        "deliveries": "Deliveries"
+      },
+      "summary": {
+        "todaySales": "Today's Sales",
+        "totalRevenue": "Total Revenue",
+        "transactionsCompleted": "Transactions completed",
+        "fromSales": "From {{count}} sale"
+      }
+    },
+    "sales": {
+      "newSale": "New Sale",
+      "addItem": "Add Item",
+      "selectItem": "Select an item",
+      "items": "Items ({{count}})",
+      "each": "each",
+      "inStock": "in stock",
+      "total": "Total",
+      "customerName": "Customer Name (Optional)",
+      "customerPhone": "Customer Phone (Optional)",
+      "enterCustomerName": "Enter customer name",
+      "enterPhone": "Enter phone number",
+      "needsDelivery": "This sale needs delivery",
+      "deliveryAddress": "Delivery Address",
+      "enterDeliveryAddress": "Enter delivery address",
+      "recordSale": "Record Sale",
+      "recording": "Recording...",
+      "itemAlreadyAdded": "Item already added",
+      "adjustQuantity": "Adjust the quantity instead",
+      "noItems": "No items",
+      "addAtLeastOne": "Add at least one item to the sale",
+      "deliveryAddressRequired": "Delivery address required",
+      "saleRecorded": "Sale recorded",
+      "itemsSold": "{{count}} item(s) sold. Total: {{total}}",
+      "saleQueued": "Sale queued",
+      "itemsQueued": "{{count}} item(s) queued for sync. Total: {{total}}",
+      "errorRecording": "Failed to record sale",
+      "noStoreAssigned": "No Store Assigned",
+      "contactManager": "You are not assigned to any store. Please contact your manager.",
+      "couldNotLoadStore": "Could not load your assigned store. Please contact your manager.",
+      "itemFound": "Found item: {{name}}",
+      "itemNotFound": "No item found with this barcode",
+      "cart": {
+        "summary": "Cart Summary",
+        "total": "Total",
+        "items": "{{count}} items in cart",
+        "pay": "Pay / Finalize",
+        "clear": "Clear Cart"
+      }
+    },
+    "inventory": {
+      "search": "Search inventory...",
+      "loading": "Loading inventory...",
+      "noItems": "No inventory items",
+      "noItemsFound": "No items found",
+      "sku": "SKU",
+      "inStock": "in stock",
+      "outOfStock": "Out of Stock",
+      "lowStock": "Low Stock"
+    },
+    "deliveries": {
+      "loading": "Loading deliveries...",
+      "noDeliveries": "No deliveries yet",
+      "all": "All",
+      "pending": "Pending",
+      "assigned": "Assigned",
+      "in_transit": "In Transit",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled",
+      "inTransit": "In Transit",
+      "delivered": "Delivered",
+      "call": "Call",
+      "awaitingAssignment": "Awaiting deliverer assignment",
+      "note": "Note"
+    }
+  },
+  "pos": {
+    "grid": {
+      "empty": "No items in cart",
+      "scanPrompt": "Scan a product or press",
+      "headers": {
+        "designation": "Designation",
+        "sku": "SKU",
+        "price": "Unit Price",
+        "qty": "Qty",
+        "discount": "Discount %",
+        "total": "Total"
+      },
+      "stock": "Stock"
+    },
+    "totals": {
+      "customer": "Customer",
+      "name": "Name",
+      "phone": "Phone",
+      "items": "Items",
+      "discount": "Total Discount",
+      "total": "Total",
+      "scan": "Scan",
+      "pay": "Pay",
+      "clear": "Clear",
+      "proforma": "Proforma",
+      "navigation": "Navigation",
+      "quantity": "Quantity",
+      "delete": "Delete"
+    }
+  },
+  "menu": {
+    "sales": {
+      "trigger": "Sales",
+      "retail": "Retail SALE",
+      "billingRetail": "Retail BILLING",
+      "billingWholesale": "Wholesale BILLING",
+      "proforma": "PROFORMA INVOICE",
+      "invoice_number": "Invoice No.",
+      "closeCash": "CASH CLOSING",
+      "settlement": "Settlement of BILLS"
+    },
+    "purchases": {
+      "trigger": "Purchases",
+      "reception": "Reception/Purchases",
+      "autoOrder": "AUTOMATIC Order",
+      "manualOrder": "Manual Order",
+      "supplierSettlement": "SUPPLIER Settlements"
+    },
+    "files": {
+      "trigger": "Files",
+      "products": "Products/Items",
+      "clients": "Clients",
+      "clientServices": "Client-SERVICES",
+      "suppliers": "Suppliers",
+      "families": "PRODUCT-Families"
+    },
+    "edition": {
+      "trigger": "Edition",
+      "clientStatus": "CLIENT Status",
+      "accountStatement": "Account statement",
+      "salesTracking": "SALES Tracking",
+      "dailySales": "Daily sales",
+      "salesByProduct": "Sales by product",
+      "invoiceList": "List of invoices",
+      "supplierStatus": "SUPPLIER Status",
+      "supplierStatement": "Supplier statement",
+      "purchaseTracking": "PURCHASE Tracking",
+      "purchaseByFamily": "Purchases Families/products",
+      "dailyPurchases": "Daily purchases",
+      "periodPurchases": "Period purchases"
+    },
+    "management": {
+      "trigger": "Management",
+      "status": "Status",
+      "quantityOrdered": "Qty Ordered",
+      "totalAmount": "Total Amount",
+      "topProducts": "Top Products",
+    "cashConsultation": "CASH Consultation",
+      "cashJournal": "CASH Journal",
+      "dashboard": "Dashboard",
+      "statistics": "Statistics",
+      "lossExit": "LOSS EXIT",
+      "lossExitDescription": "Use this screen to record products that are no longer sellable due to expiration, damage, or theft. This ensures your stock levels remain accurate for accounting.",
+      "reasons": {
+        "expired": "Expired",
+        "broken": "Damaged / Broken",
+        "theft": "Theft",
+        "other": "Other"
+      }
+    },
+    "stock": {
+      "trigger": "Stock",
+      "productSheet": "Product stock sheet",
+      "movements": "Stock Movements",
+      "listing": "STOCK Listing",
+      "regularization": "STOCK REGULARIZATION",
+      "valorization": "Stock valuation",
+      "inventory": "STOCK Inventory"
+    },
+    "program": {
+      "trigger": "Program",
+      "preferences": "Preferences",
+      "keyProgramming": "KEY Programming",
+      "insert": "INSERT",
+      "ticket": "TICKET",
+      "value": "VALUE",
+      "data": "DATA",
+      "threshold": "THRESHOLD",
+      "designation": "DESIGNATION",
+      "photo": "PHOTO",
+      "productsDisplayed": "products displayed",
+      "passwords": "Passwords",
+      "team": "TEAM",
+      "cashier": "CASHIER",
+      "date": "DATE",
+      "time": "TIME",
+      "to": "to",
+      "cashFund": "CASH FUND",
+      "cashCounting": "CASH COUNTING",
+      "denomination": "Denomination",
+      "amount": "Amount",
+      "tokens": "TOKENS",
+      "hqTransfer": "HQ TRANSFER",
+      "dailyTransactions": "DAILY TRANSACTIONS",
+      "collections": "COLLECTIONS",
+      "cashOfDay": "Cash of the day",
+      "checks": "Checks",
+      "creditSettlement": "Credit Settlement",
+      "creditSale": "Credit Sale",
+      "clientGroup": "Client Group",
+      "creditLimit": "Credit Limit",
+      "balance": "Balance",
+      "newClient": "New Client",
+      "editClient": "Edit Client",
+      "clientCode": "Client Code",
+      "supplierPayment": "Supplier Payment",
+      "dailyExpenses": "Daily Expenses",
+      "bankTransfer": "Bank Transfer",
+      "bankRef": "BANK REF",
+      "computer": "COMPUTER",
+      "receptionTitle": "Goods Reception",
+      "mode": "Mode",
+      "existingOrder": "Existing Order",
+      "directPurchase": "Direct Purchase",
+      "supplier": "Supplier",
+      "order": "Order",
+      "receiveAll": "Receive All",
+      "searchProductToAdd": "Search product to add...",
+      "ordered": "Ordered",
+      "received": "Received",
+      "voucherSettlement": "Voucher Settlement",
+      "totalDue": "Total Due",
+      "remaining": "Remaining",
+      "invoice": "Invoice",
+      "partial": "Partial",
+      "unpaid": "Unpaid",
+      "payAll": "Pay All",
+      "unitCost": "Unit Cost",
+      "validateReceipt": "Validate Reception",
+      "discrepancy": "Discrepancy",
+      "autoFillSuccess": "Quantities filled automatically",
+      "autoOrderTitle": "Automatic Order - Low Stock Products",
+      "filterBySupplier": "Filter by Supplier",
+      "filterByCategory": "Filter by Category",
+      "deficit": "Deficit",
+      "suggestedQty": "Suggested Qty",
+      "generateOrders": "Generate Orders",
+      "replenishmentNeeds": "Replenishment Needs",
+      "needsAlerts": "Needs & Alerts",
+      "noNeedsIdentified": "No needs identified.",
+      "source": "Source",
+      "suggestedQtyShort": "Sugg. Qty",
+      "stockLow": "Low Stock",
+      "workerRequest": "Worker Request",
+      "ordersCreated": "orders created",
+      "assignSuppliersPrompt": "Select products and assign suppliers",
+      "photo": "Photo",
+      "threshold": "Threshold",
+      "value": "Value",
+      "productsDisplayed": "products displayed",
+      "supplierContact": "Contact Person",
+      "leadTimeDays": "Lead Time (days)",
+      "dueBalance": "Due Balance",
+      "newSupplier": "New Supplier",
+      "editSupplier": "Edit Supplier",
+      "familyParent": "Parent Family",
+      "subFamilies": "Sub-families",
+      "rootFamily": "None (Root)",
+      "newFamily": "New Family",
+      "editFamily": "Edit Family",
+      "newGroup": "New Group",
+      "editGroup": "Edit Group",
+      "defaultDiscount": "Default Discount (%)",
+      "clientCount": "Nb Clients",
+      "groupDescription": "Client groups allow you to apply automatic discounts at the POS and segment your reports.",
+      "stockMovements": "Stock Movements",
+      "stockValuation": "Stock Valuation",
+      "stockInventory": "Stock Inventory",
+      "stockFiche": "Product Sheet",
+      "income": "Income",
+      "expenses": "Expenses",
+      "cashBalance": "Cash Balance",
+      "cashJournal": "Cash Journal",
+      "topProducts": "Top Products",
+      "lossExit": "Loss Exit",
+      "reason": "Reason",
+      "notes": "Notes",
+      "voucherSettlement": "Voucher Settlement",
+      "totalDue": "Total Due",
+      "remaining": "Remaining",
+      "unpaid": "Unpaid",
+      "partial": "Partial",
+      "settle": "Settle",
+      "payAll": "Pay All",
+      "totalDebt": "Total Debt",
+      "suppliersToSettle": "Suppliers to Settle",
+      "paymentsThisMonth": "Payments this Month",
+      "supplierBalances": "Supplier Balances",
+      "paymentHistory": "Payment History",
+      "confirmPayment": "Confirm Payment",
+      "appearance": "Appearance",
+      "darkTheme": "Dark Mode",
+      "printing": "Printing",
+      "printerFormat": "Printer Format",
+      "autoLogout": "Auto Logout",
+      "sounds": "Sounds",
+      "savePreferences": "Save Preferences",
+      "fKeyProgramming": "Function Key Programming",
+      "resetToDefault": "Reset to Default",
+      "changePassword": "Change Password",
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm Password",
+      "syncStatus": "Local Data Status",
+      "productsInCache": "Products in Cache",
+      "suppliersInCache": "Suppliers in Cache",
+      "lastSync": "Last Sync",
+      "pendingMutations": "Changes pending sync",
+      "fullSync": "Full Sync",
+      "supabaseKey": "Supabase Key (Service Role)",
+      "syncLocalChanges": "Sync Local Changes",
+      "syncData": "Sync Data",
+      "orderRef": "Order Ref",
+      "invoice": "Invoice",
+      "invoiceNo": "Invoice No.",
+      "customerCode": "Customer Code",
+      "address": "Address",
+      "name": "Name",
+      "retailInvoice": "RETAIL INVOICE",
+      "help": "Help",
+      "validate": "Validate",
+      "select": "Select",
+      "fiche": "Sheet",
+      "print": "Print",
+      "insert": "Insert",
+      "ticket": "Ticket",
+      "price": "Price",
+      "netToPay": "Net to Pay",
+      "receivedAmount": "Amount Received",
+      "change": "Change",
+      "insufficient": "Insufficient Amount",
+      "downPayment": "Down Payment",
+      "remainingToPay": "Remaining to Pay",
+      "manualOrderTitle": "Manual Order",
+      "placeOrder": "Place Order",
+      "draft": "Draft",
+      "searchProductPrompt": "Search and add products to the order",
+      "sellingPrice": "Selling Price",
+      "purchasePrice": "Purchase Price",
+      "minimumStock": "Min Stock",
+      "currentStock": "Current Stock",
+      "outOfStockShort": "Stock-out",
+      "lastDates": "Last Dates",
+      "bestSuppliers": "Best Suppliers",
+      "productFicheTitle": "Product Sheet",
+      "stockRegularization": "Stock Regularization",
+      "stockValuation": "Stock Valuation",
+      "realStock": "Real Stock (Counted)",
+      "deltaAdjustment": "Adjustment (+/-)",
+      "countedQty": "Counted Quantity (Real)",
+      "adjustQty": "Quantity to Adjust",
+      "diffResult": "Difference / Result",
+      "applyRegularization": "Apply Regularization",
+      "scanToStart": "Scan a product to start regularization",
+      "purchaseValue": "Purchase Value (Cost)",
+      "sellingValue": "Selling Value (Retail)",
+      "potentialMargin": "Potential Margin",
+      "itemRefCount": "Number of references in stock",
+      "observations": "OBSERVATIONS",
+      "passwords": "Passwords",
+      "calculatedMargin": "Calculated Margin",
+      "lastMovements": "Last Movements",
+      "unit": "Unit"
+    }
+  },
+  "customer": {
+    "catalog": {
+      "title": "Product Catalog",
+      "loading": "Loading products...",
+      "searchPlaceholder": "Search products...",
+      "noProductsFound": "No products found",
+      "noProductsAvailable": "No products available",
+      "productCount": "{{count}} products",
+      "productCount_one": "{{count}} product",
+      "productCount_other": "{{count}} products",
+      "inStock": "{{quantity}} in stock",
+      "sku": "SKU",
+      "footer": {
+        "browse": "Browse our product catalog",
+        "contact": "For orders and inquiries, please contact the store directly"
+      }
+    }
+  },
+  "index": {
+    "title": "Retail Manager",
+    "description": "Your intelligent retail management platform for complete business oversight",
+    "features": {
+      "sales": {
+        "title": "Sales Analytics",
+        "description": "Real-time insights and performance tracking"
+      },
+      "inventory": {
+        "title": "Inventory Management",
+        "description": "Track stock levels and automate reorders"
+      },
+      "team": {
+        "title": "Team Management",
+        "description": "Monitor worker and deliverer performance"
+      }
+    },
+    "getStarted": "Get Started"
+  },
+  "notFound": {
+    "message": "Oops! Page not found",
+    "returnHome": "Return to Home"
+  },
+  "scanner": {
+    "cameraAccessDenied": "Camera Access Required",
+    "enableCamera": "Please enable camera access in your browser settings to scan products.",
+    "instructions": "Point camera at barcode"
+  },
+  "team": {
+    "title": "Team Management",
+    "description": "Manage your workers and deliverers",
+    "totalWorkers": "Total Workers",
+    "totalDeliverers": "Total Deliverers",
+    "slotsAvailable": "{{count}} slots available",
+    "addWorker": "Add Worker",
+    "addDeliverer": "Add Deliverer",
+    "emptyWorkers": "No workers yet. Add your first worker to get started.",
+    "emptyDeliverers": "No deliverers yet. Add your first deliverer to get started.",
+    "tabs": {
+      "workers": "Workers",
+      "deliverers": "Deliverers"
+    },
+    "table": {
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "store": "Assigned Store",
+      "sales": "Sales",
+      "revenue": "Revenue",
+      "vehicle": "Vehicle",
+      "deliveries": "Deliveries",
+      "completed": "Completed",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "dialog": {
+      "addWorkerTitle": "Add New Worker",
+      "addWorkerDescription": "Create a new worker account. They will be able to log in with these credentials.",
+      "addDelivererTitle": "Add New Deliverer",
+      "addDelivererDescription": "Create a new deliverer account. They will be able to log in with these credentials."
+    },
+    "form": {
+      "fullName": "Full Name",
+      "fullNamePlaceholder": "Enter full name",
+      "email": "Email",
+      "emailPlaceholder": "worker@example.com",
+      "password": "Password",
+      "passwordPlaceholder": "Enter initial password",
+      "phone": "Phone Number",
+      "phonePlaceholder": "+223 XX XX XX XX",
+      "assignStore": "Assign to Store",
+      "selectStore": "Select a store",
+      "noStore": "No store assigned",
+      "vehicleType": "Vehicle Type",
+      "selectVehicle": "Select vehicle type",
+      "noVehicle": "Not specified"
+    },
+    "vehicleTypes": {
+      "bike": "Bicycle",
+      "motorbike": "Motorbike",
+      "van": "Van",
+      "truck": "Truck"
+    },
+    "deleteTitle": "Remove Team Member",
+    "deleteDescription": "Are you sure you want to remove \"{{name}}\" from your team? This will revoke their access.",
+    "errors": {
+      "loadTeam": "Failed to load team members",
+      "createWorker": "Failed to create worker account",
+      "createDeliverer": "Failed to create deliverer account",
+      "deleteMember": "Failed to remove team member"
+    },
+    "success": {
+      "createWorker": "Worker account created successfully",
+      "createDeliverer": "Deliverer account created successfully",
+      "deleteMember": "Team member removed successfully"
+    }
+  },
+  "audit": {
+    "actionType": "Action Type",
+    "login": "Login",
+    "priceChange": "Price Change",
+    "inventory": "Inventory",
+    "saleDeletion": "Sale Deletion",
+    "old": "Old",
+    "new": "New"
+  }
+}

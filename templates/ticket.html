@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Receipt - {{invoiceNumber}}</title>
+  <style>
+    /* Receipt (80mm) style */
+    :root{--width:216px;} /* 80mm ≈ 303px, but PDF engines differ; adjust as needed */
+    body{font-family: Inter, "Helvetica Neue", Arial, sans-serif; font-size:12px; color:#111; margin:0; padding:10px; width:var(--width);} 
+    .store{ text-align:center; }
+    .store h1{ margin:0; font-size:14px; }
+    .meta{ margin-top:6px; font-size:11px; text-align:center; }
+    hr{ border:none; border-top:1px dashed #333; margin:8px 0; }
+    table{ width:100%; border-collapse:collapse; }
+    th, td{ padding:4px 0; }
+    .qty{ width:12%; text-align:right; }
+    .price{ width:24%; text-align:right; }
+    .total-row{ font-weight:700; }
+    .footer{ text-align:center; margin-top:8px; font-size:11px; }
+    .small{ font-size:10px; color:#444; }
+  </style>
+</head>
+<body>
+  <div class="store">
+    <h1>{{storeName}}</h1>
+    <div class="small">{{storeAddress}}</div>
+    <div class="meta">Tel: {{storePhone}}</div>
+  </div>
+
+  <hr />
+
+  <div>
+    <div>Invoice: <strong>{{invoiceNumber}}</strong></div>
+    <div>Date: {{date}}</div>
+    <div>Cashier: {{cashier}}</div>
+  </div>
+
+  <hr />
+
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align:left">Item</th>
+        <th class="qty">QTY</th>
+        <th class="price">Price</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Items will be inserted here -->
+      {{#items}}
+      <tr>
+        <td>{{name}}</td>
+        <td class="qty">{{quantity}}</td>
+        <td class="price">{{lineTotal}}</td>
+      </tr>
+      {{/items}}
+    </tbody>
+  </table>
+
+  <hr />
+
+  <table>
+    <tr>
+      <td>Subtotal</td>
+      <td style="text-align:right">{{subtotal}}</td>
+    </tr>
+    <tr>
+      <td>Discount</td>
+      <td style="text-align:right">{{discount}}</td>
+    </tr>
+    <tr class="total-row">
+      <td>Total</td>
+      <td style="text-align:right">{{total}}</td>
+    </tr>
+  </table>
+
+  <div class="footer">
+    <div class="small">Merci pour votre achat</div>
+    <div class="small">Powered by Retail Manager</div>
+  </div>
+</body>
+</html>

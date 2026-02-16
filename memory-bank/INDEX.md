@@ -11,6 +11,8 @@ This index provides navigation for the Retail Manager memory-bank directory, org
 Pro/retail-manager/memory-bank/
 ├── INDEX.md (this file)
 ├── core/                     # Core operations hub
+├── tech/                     # Technical setup and build patterns
+├── chat/                     # Session logs and chat history
 ├── planning/                 # Planning and strategy center
 ├── ai/                       # AI systems and intelligence
 ├── analysis/                 # Analysis and insights
@@ -20,6 +22,26 @@ Pro/retail-manager/memory-bank/
 │   └── Notes/               # Project notes
 └── van-docs/                 # VAN mode documentation
 ```
+
+---
+
+## 🛠️ Technical Setup & Build Patterns
+
+### Tech Directory Structure
+Located in: `tech/`
+- **[`tech/windows_arm64_setup.md`](tech/windows_arm64_setup.md)** - Blueprint for rebuilding the development environment on Windows ARM64.
+- **[`tech/cross_architecture_build_bible.md`](tech/cross_architecture_build_bible.md)** - **CRITICAL**: The "Bible" for solving the architecture mismatch and library compatibility hell. Essential for builds.
+- **[`tech/sidecar_wrapper_strategy.md`](tech/sidecar_wrapper_strategy.md)** - Deep dive into the Rust Wrapper pattern.
+- **[`tech/dynamic_port_discovery.md`](tech/dynamic_port_discovery.md)** - Strategy for automated backend port discovery to ensure frontend connectivity across different network environments.
+
+---
+
+## 💬 Session Logs & Chat History
+
+### Chat Directory Structure
+Located in: `chat/`
+- **[`chat/2026-02-08_sidecar_dependency_resolution.md`](chat/2026-02-08_sidecar_dependency_resolution.md)** - **Problem to Solution (A-Z)**: Comprehensive log of resolving the "Failed to fetch data" issue. Covers missing transitive dependencies (`fastq`), emergency logging implementation, and Tauri resource path corrections.
+- **[`chat/2026-02-14_environment_reconstruction.md`](chat/2026-02-14_environment_reconstruction.md)** - **Current Session**: Tracking the reconstruction of the dev environment on Tiny11 ARM64, including Rust/Git installation and build pipeline setup.
 
 ---
 
@@ -69,6 +91,8 @@ Located in: `docs/`
 - **`interface_architecture_privileges.md`** - Interface architecture, privilege system, and access control design
 - **`four_sided_architecture.md`** - Four-sided architecture: Master, Worker, Deliverer, Customer interfaces
 - **`feature_brainstorming.md`** - Deep feature brainstorming and analysis for each user type
+- **`offline_hybrid_refactor_prd.md`** - Offline-first + hybrid deployment PRD outlining dual data-plane strategy
+- **`offline_hybrid_refactor_plan.md`** - Execution plan with phased roadmap and checkbox subtask tracker
 - **`Notes/`** - Project notes and documentation
 
 #### Key Files
@@ -116,6 +140,7 @@ Located in: `van-docs/`
 
 | Need | Go To | Primary File |
 |------|-------|--------------|
+| **ARM64 Setup Guide** | `tech/` | `windows_arm64_setup.md` |
 | **PRD Document** | `docs/` | `prd.txt` |
 | **Frontend Prompt (Complete)** | `docs/` | `lovable_frontend_prompt.md` |
 | **Frontend Prompt - Phase 1** | `docs/` | `lovable_frontend_prompt_phase1.md` |
@@ -124,6 +149,8 @@ Located in: `van-docs/`
 | **Interface Architecture & Privileges** | `docs/` | `interface_architecture_privileges.md` |
 | **Four-Sided Architecture** | `docs/` | `four_sided_architecture.md` |
 | **Feature Brainstorming** | `docs/` | `feature_brainstorming.md` |
+| **Offline/Hybrid PRD** | `docs/` | `offline_hybrid_refactor_prd.md` |
+| **Offline/Hybrid Plan** | `docs/` | `offline_hybrid_refactor_plan.md` |
 | **Core Operations** | `core/` | Future core files |
 | **Planning** | `planning/` | Future planning docs |
 | **AI Features** | `ai/` | Future AI implementations |

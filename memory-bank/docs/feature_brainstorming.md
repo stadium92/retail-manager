@@ -524,3 +524,26 @@ For each user type, consider:
 
 Use this framework to prioritize development and ensure MVP focuses on must-haves while planning for should-haves.
 
+
+## 5. Future Innovations & Advanced Features
+
+### 5.1 Visual Product Recognition (AI Camera)
+**Concept**: Allow workers/masters to take a picture of a product to identify it and add it to the cart/inventory, similar to "Just Walk Out" technology.
+
+**Goal**: Speed up sales for non-barcoded items and reduce manual search.
+
+**Technical Architecture (Low Token Cost Strategy)**:
+Instead of using expensive Generative AI (LLM) for every request, use **Vector Search**:
+1.  **Ingestion**: When a product photo is uploaded, generate a lightweight embedding (using models like CLIP or MobileNet). Store this vector in Supabase using `pgvector`.
+2.  **Query**: When a worker takes a photo, generate a vector on-device (via TensorFlow.js) or on a lightweight serverless function.
+3.  **Search**: Perform a vector similarity search in Supabase to find the closest match.
+4.  **Result**: Return the product instantly with near-zero marginal cost (no per-call AI token fees).
+
+**Pros**:
+-   Zero token cost per scan.
+-   Fast response time.
+-   High "wow" factor.
+
+**Cons**:
+-   Requires high-quality reference photos.
+-   May require user confirmation for similar-looking products.

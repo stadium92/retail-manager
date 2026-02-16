@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+src-tauri/target/
+frontend/dist/
+
+# Ignore src-tauri except code and key config/build files
+src-tauri/*
+!src-tauri/src/
+!src-tauri/src/**
+!src-tauri/Cargo.lock
+!src-tauri/Cargo.toml
+!src-tauri/tauri.conf.json
+!src-tauri/build.rs
+
+
+# System
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# User specified
+backup/
+!scripts/
+!docs/
+
+notes
+release
+data
