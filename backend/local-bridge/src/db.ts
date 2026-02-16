@@ -982,7 +982,7 @@ class LocalBridgeDatabase {
       
     return rows.map((row: any) => ({
       ...row,
-      category: row.category_name || row.category
+      category_name: row.category_name || null,
     })) as LocalProduct[];
   }
 
@@ -1051,7 +1051,7 @@ class LocalBridgeDatabase {
 
     const mappedRows = rows.map((row: any) => ({
       ...row,
-      category: row.category_name || row.category
+      category_name: row.category_name || null,
     }));
 
     return {
