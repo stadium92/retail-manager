@@ -275,10 +275,15 @@ Extract in this order (least dependencies first):
 3. Manual smoke test every route category (auth, products, sales, deliveries)
 4. Git commit: `refactor: split monolithic db.ts into repository modules`
 
-## Route Import Changes
+## Import Audit (Complete)
 
-| Route File | Current Import | New Import |
-|-----------|---------------|------------|
+### A. Files importing `{ db }` (17 files)
+
+| File | Current Import | New Import |
+|------|---------------|------------|
+| `src/index.ts` | `import { db } from './db.js'` | `import { db } from './db/index.js'` |
+| `src/scheduler.ts` | `import { db } from './db.js'` | `import { db } from './db/index.js'` |
+| `src/seed.ts` | `import { db } from './db.js'` | `import { db } from './db/index.js'` |
 | `routes/auth.ts` | `import { db } from '../db.js'` | `import { db } from '../db/index.js'` |
 | `routes/products.ts` | `import { db } from '../db.js'` | `import { db } from '../db/index.js'` |
 | `routes/sales.ts` | `import { db } from '../db.js'` | `import { db } from '../db/index.js'` |
@@ -292,8 +297,38 @@ Extract in this order (least dependencies first):
 | `routes/invitations.ts` | `import { db } from '../db.js'` | `import { db } from '../db/index.js'` |
 | `routes/system.ts` | `import { db } from '../db.js'` | `import { db } from '../db/index.js'` |
 | `routes/emergency.ts` | `import { db } from '../db.js'` | `import { db } from '../db/index.js'` |
-| `scheduler.ts` | `import { db } from './db.js'` | `import { db } from './db/index.js'` |
-| `seed.ts` | `import { db } from './db.js'` | `import { db } from './db/index.js'` |
+
+### B. Type-only import (1 file)
+
+| File | Current Import | New Import |
+|------|---------------|------------|
+| `routes/utils/auth.ts` | `import type { LocalRole } from '../../db.js'` | `import type { LocalRole } from '../../db/index.js'` |
+
+### C. Direct `db.db` access — raw SQLite instance (3 files, 19 usages)
+
+**These files bypass repository methods and call `db.db.prepare()`, `db.db.exec()`, `db.db.pragma()` directly. The barrel must expose `db.db`.**
+
+| File | # Usages | Operations |
+|------|----------|------------|
+| `scheduler.ts` | 1 | `db.db.prepare('UPDATE scheduled_orders...')` |
+| `routes/emergency.ts` | 8 | REINDEX, VACUUM, integrity_check, DROP all tables, re-initialize |
+| `routes/products.ts` | 6 | REINDEX, VACUUM, integrity_check, DROP all tables, re-initialize |
+| `routes/system.ts` | 4 | integrity_check, REINDEX, VACUUM, delete corrupted data |
+
+### D. `db.initialize()` called externally (2 files)
+
+| File | Context |
+|------|---------|
+| `routes/emergency.ts` | After dropping all tables, re-initializes schema |
+| `routes/products.ts` | Same "nuclear reset" pattern |
+
+### E. `db.dbFile` getter (1 file)
+
+| File | Usage |
+|------|-------|
+| `src/index.ts` | `dataPath: db.dbFile` — exposed in system info response |
+
+### F. Cross-boundary (frontend → backend): **None** ✅
 
 ## Risks & Mitigations
 
@@ -304,6 +339,9 @@ Extract in this order (least dependencies first):
 | Some methods reference other methods (`getReplenishmentNeeds` calls product/supplier queries) | Medium | Cross-repo calls go through the composed `db` object, or accept `db` as a parameter for the raw SQL queries |
 | `pkg` build breaks with new file structure | Low | `pkg` bundles from compiled JS; directory structure doesn't affect it |
 | Seeds/scheduler need `initialize()` timing | Low | `index.ts` runs `initializeSchema` and `runMigrations` at import time (same as current behavior) |
+| `db.db` raw access breaks if not exposed | High | Barrel `index.ts` explicitly exposes `db: rawDb` on the composed object — 19 usages in 3 files preserved |
+| `db.initialize()` not available after split | Medium | Barrel exposes `initialize: () => initializeSchema(rawDb)` — 2 files call it after nuclear reset |
+| `routes/utils/auth.ts` type import path breaks | Medium | Deeper nesting (`../../db.js` → `../../db/index.js`) — tracked in import audit |
 
 ## Success Criteria
 
