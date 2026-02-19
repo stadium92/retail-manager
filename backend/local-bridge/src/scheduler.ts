@@ -1,4 +1,4 @@
-import { db } from './db.js';
+import { db } from './db/index.js';
 import crypto from 'crypto';
 
 export const runScheduler = () => {

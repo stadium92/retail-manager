@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import { db } from './db.js';
+import { db } from './db/index.js';
 
 const seedConfig = {
   masterEmail: process.env.SEED_MASTER_EMAIL || 'master@offline.local',

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import crypto from 'crypto';
-import { db } from '../db.js';
+import { db } from '../db/index.js';
 import { authenticateRequest } from './utils/auth.js';
 
 const listSchema = z.object({
@@ -202,7 +202,7 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
       recurrence_type: parsed.data.recurrence_type,
       recurrence_value: parsed.data.recurrence_value,
       next_run_date: nextRun,
-      is_active: parsed.data.is_active ?? true,
+      is_active: (parsed.data.is_active ?? true) ? 1 : 0,
       created_at: now,
       updated_at: now,
     });

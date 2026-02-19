@@ -1,7 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import jwt from 'jsonwebtoken';
 import { env } from '../../env.js';
-import type { LocalRole } from '../../db.js';
+import type { LocalRole } from '../../db/index.js';
 
 export type Role = LocalRole['role'] | 'any' | 'supabase-sync';
 

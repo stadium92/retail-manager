@@ -3,7 +3,7 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import { db } from '../db.js';
+import { db } from '../db/index.js';
 import { env } from '../env.js';
 import { authenticateRequest, type Role } from './utils/auth.js';
 

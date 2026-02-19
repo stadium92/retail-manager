@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import crypto from 'crypto';
-import { db } from '../db.js';
+import { db } from '../db/index.js';
 import { authenticateRequest } from './utils/auth.js';
 
 const salesQuerySchema = z.object({

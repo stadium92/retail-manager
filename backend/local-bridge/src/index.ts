@@ -14,7 +14,7 @@ import { registerStoreRoutes } from './routes/stores.js';
 import { registerSyncRoutes } from './routes/sync.js';
 import { registerAnalyticsRoutes } from './routes/analytics.js';
 import { registerAuditRoutes } from './routes/audit.js';
-import { db } from './db.js';
+import { db } from './db/index.js';
 import { runScheduler } from './scheduler.js';
 
 // Emergency logging
@@ -39,7 +39,7 @@ async function start() {
   log('Initializing Fastify...');
   const app = Fastify({ logger: true });
 
-  await app.register(cors, { origin: true });
+  await app.register(cors, { origin: '*' });
 
   app.get('/health', async () => ({
     status: 'ok',

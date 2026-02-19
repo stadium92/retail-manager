@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { db } from '../db.js';
+import { db } from '../db/index.js';
 import { authenticateRequest } from './utils/auth.js';
 
 export async function registerEmergencyRoutes(app: FastifyInstance) {

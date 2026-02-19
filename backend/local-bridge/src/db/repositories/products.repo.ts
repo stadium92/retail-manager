@@ -1,0 +1,278 @@
+import Database from 'better-sqlite3';
+import { LocalProduct, LocalProductFamily, sanitizeString } from '../types.js';
+
+export const createProductsRepo = (db: Database.Database) => ({
+  listProducts(storeId: string): LocalProduct[] {
+    const rows = db
+      .prepare(`
+        SELECT p.*, pf.name as category_name 
+        FROM products p
+        LEFT JOIN product_families pf ON p.category = pf.id
+        WHERE p.store_id = ?
+        ORDER BY p.name ASC
+      `)
+      .all(storeId);
+      
+    return rows.map((row: any) => ({
+      ...row,
+      category_name: row.category_name || null,
+    })) as LocalProduct[];
+  },
+
+  listAllProducts(): LocalProduct[] {
+    const rows = db.prepare('SELECT * FROM products ORDER BY name ASC').all();
+    return rows as LocalProduct[];
+  },
+
+  searchProducts(
+    storeId: string,
+    query: string,
+    limit: number = 50,
+    offset: number = 0,
+    filter?: 'in_stock' | 'out_of_stock' | 'low_stock'
+  ): { data: LocalProduct[]; total: number } {
+    const searchQuery = query.trim();
+    
+    // If query is empty, use standard fast scan
+    if (!searchQuery) {
+      let filterClause = '';
+      if (filter === 'in_stock') filterClause = 'AND quantity > 0';
+      else if (filter === 'out_of_stock') filterClause = 'AND quantity <= 0';
+      else if (filter === 'low_stock') filterClause = 'AND quantity > 0 AND quantity <= COALESCE(min_quantity, 10)';
+
+      const total = (db.prepare(`SELECT COUNT(*) as count FROM products WHERE store_id = ? ${filterClause}`).get(storeId) as any).count;
+      const rows = db.prepare(`SELECT * FROM products WHERE store_id = ? ${filterClause} ORDER BY name ASC LIMIT ? OFFSET ?`).all(storeId, limit, offset);
+      return { data: rows as LocalProduct[], total };
+    }
+
+    // FTS5 MATCH pattern (prefix search for each word)
+    const matchPattern = searchQuery.split(/\s+/).map(word => `${word}*`).join(' ');
+    
+    let filterClause = '';
+    if (filter === 'in_stock') filterClause = 'AND p.quantity > 0';
+    else if (filter === 'out_of_stock') filterClause = 'AND p.quantity <= 0';
+    else if (filter === 'low_stock') filterClause = 'AND p.quantity > 0 AND p.quantity <= COALESCE(p.min_quantity, 10)';
+
+    const countResult = db
+      .prepare(
+        `
+      SELECT COUNT(*) as count 
+      FROM products_fts f
+      JOIN products p ON f.id = p.id
+      WHERE f.store_id = ? 
+      AND products_fts MATCH ?
+      ${filterClause}
+    `
+      )
+      .get(storeId, matchPattern) as { count: number };
+
+    const rows = db
+      .prepare(
+        `
+      SELECT p.*, pf.name as category_name
+      FROM products_fts f
+      JOIN products p ON f.id = p.id
+      LEFT JOIN product_families pf ON p.category = pf.id
+      WHERE f.store_id = ? 
+      AND products_fts MATCH ?
+      ${filterClause}
+      ORDER BY rank -- FTS5 built-in relevance ranking
+      LIMIT ? OFFSET ?
+    `
+      )
+      .all(storeId, matchPattern, limit, offset);
+
+    const mappedRows = rows.map((row: any) => ({
+      ...row,
+      category_name: row.category_name || null,
+    }));
+
+    return {
+      data: mappedRows as LocalProduct[],
+      total: countResult.count,
+    };
+  },
+
+  getProductById(productId: string): LocalProduct | undefined {
+    const row = db.prepare('SELECT * FROM products WHERE id = ? LIMIT 1').get(productId);
+    return row as LocalProduct | undefined;
+  },
+
+  insertProduct(product: LocalProduct) {
+    db.prepare(`
+        INSERT INTO products (
+          id,
+          store_id,
+          name,
+          sku,
+          barcode,
+          description,
+          cost_price,
+          unit_price,
+          wholesale_price,
+          wholesale_price_ht,
+          wholesale_price_ttc,
+          min_quantity,
+          quantity,
+          category,
+          image_url,
+          aisle,
+          brand,
+          unit_type,
+          packaging,
+          expiry_date,
+          reorder_quantity,
+          created_at,
+          updated_at,
+          created_by,
+          updated_by
+        ) VALUES (
+          @id,
+          @store_id,
+          @name,
+          @sku,
+          @barcode,
+          @description,
+          @cost_price,
+          @unit_price,
+          @wholesale_price,
+          @wholesale_price_ht,
+          @wholesale_price_ttc,
+          @min_quantity,
+          @quantity,
+          @category,
+          @image_url,
+          @aisle,
+          @brand,
+          @unit_type,
+          @packaging,
+          @expiry_date,
+          @reorder_quantity,
+          @created_at,
+          @updated_at,
+          @created_by,
+          @updated_by
+        )
+      `)
+      .run({
+        ...product,
+        name: sanitizeString(product.name),
+        sku: sanitizeString(product.sku) ?? null,
+        barcode: sanitizeString(product.barcode) ?? null,
+        description: sanitizeString(product.description) ?? null,
+        cost_price: product.cost_price ?? null,
+        unit_price: product.unit_price ?? null,
+        wholesale_price: product.wholesale_price ?? null,
+        wholesale_price_ht: product.wholesale_price_ht ?? null,
+        wholesale_price_ttc: product.wholesale_price_ttc ?? null,
+        min_quantity: product.min_quantity ?? 0,
+        quantity: product.quantity ?? 0,
+        category: product.category ?? null,
+        image_url: product.image_url ?? null,
+        aisle: product.aisle ?? null,
+        brand: product.brand ?? null,
+        unit_type: product.unit_type ?? null,
+        packaging: product.packaging ?? null,
+        expiry_date: product.expiry_date ?? null,
+        reorder_quantity: product.reorder_quantity ?? null,
+        created_by: product.created_by ?? null,
+        updated_by: product.updated_by ?? null,
+      });
+  },
+
+  updateProduct(
+    productId: string,
+    updates: Partial<Omit<LocalProduct, 'id' | 'store_id'>>
+  ): LocalProduct | undefined {
+    console.log('[DB] updateProduct', productId, updates);
+    // Sanitize string fields
+    if (updates.name) updates.name = sanitizeString(updates.name)!;
+    if (updates.sku) updates.sku = sanitizeString(updates.sku);
+    if (updates.barcode) updates.barcode = sanitizeString(updates.barcode);
+    if (updates.description) updates.description = sanitizeString(updates.description);
+
+    const normalizedEntries = Object.entries(updates).filter(([, value]) => value !== undefined);
+    if (normalizedEntries.length === 0) {
+      const row = db.prepare('SELECT * FROM products WHERE id = ? LIMIT 1').get(productId);
+      return row as LocalProduct | undefined;
+    }
+
+    const assignments = normalizedEntries.map(([key]) => `${key} = @${key}`).join(', ');
+    const statement = db.prepare(`UPDATE products SET ${assignments} WHERE id = @id`);
+    statement.run({ id: productId, ...Object.fromEntries(normalizedEntries) });
+    const row = db.prepare('SELECT * FROM products WHERE id = ? LIMIT 1').get(productId);
+    return row as LocalProduct | undefined;
+  },
+
+  deleteProduct(productId: string) {
+    db.prepare('DELETE FROM products WHERE id = ?').run(productId);
+  },
+
+  listProductFamilies(storeId: string): LocalProductFamily[] {
+    const rows = db
+      .prepare('SELECT * FROM product_families WHERE store_id = ? ORDER BY name ASC')
+      .all(storeId);
+    return rows as LocalProductFamily[];
+  },
+
+  getProductFamilyById(familyId: string): LocalProductFamily | undefined {
+    const row = db.prepare('SELECT * FROM product_families WHERE id = ? LIMIT 1').get(familyId);
+    return row as LocalProductFamily | undefined;
+  },
+
+  insertProductFamily(family: LocalProductFamily) {
+    db
+      .prepare(
+        `
+        INSERT INTO product_families (
+          id,
+          store_id,
+          name,
+          description,
+          parent_id,
+          created_at,
+          updated_at
+        ) VALUES (
+          @id,
+          @store_id,
+          @name,
+          @description,
+          @parent_id,
+          @created_at,
+          @updated_at
+        )
+      `
+      )
+      .run({
+        ...family,
+        description: family.description ?? null,
+        parent_id: family.parent_id ?? null,
+      });
+  },
+
+  updateProductFamily(
+    familyId: string,
+    updates: Partial<Omit<LocalProductFamily, 'id' | 'store_id'>>
+  ): LocalProductFamily | undefined {
+    const normalizedEntries = Object.entries(updates).filter(([, value]) => value !== undefined);
+    if (normalizedEntries.length === 0) {
+      const row = db.prepare('SELECT * FROM product_families WHERE id = ? LIMIT 1').get(familyId);
+      return row as LocalProductFamily | undefined;
+    }
+
+    const assignments = normalizedEntries.map(([key]) => `${key} = @${key}`).join(', ');
+    db
+      .prepare(`UPDATE product_families SET ${assignments} WHERE id = @id`)
+      .run({ id: familyId, ...Object.fromEntries(normalizedEntries) });
+    
+    const row = db.prepare('SELECT * FROM product_families WHERE id = ? LIMIT 1').get(familyId);
+    return row as LocalProductFamily | undefined;
+  },
+
+  deleteProductFamily(familyId: string) {
+    db.prepare('DELETE FROM product_families WHERE id = ?').run(familyId);
+    db
+      .prepare('UPDATE products SET category = NULL WHERE category = ?')
+      .run(familyId);
+  },
+});
