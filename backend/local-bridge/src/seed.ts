@@ -1,10 +1,6 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-<<<<<<< HEAD
-import { db } from './db.js';
-=======
 import { db } from './db/index.js';
->>>>>>> origin/frontend-test-1
 
 const seedConfig = {
   masterEmail: process.env.SEED_MASTER_EMAIL || 'master@offline.local',
