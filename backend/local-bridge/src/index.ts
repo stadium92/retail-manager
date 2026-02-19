@@ -14,7 +14,8 @@ import { registerStoreRoutes } from './routes/stores.js';
 import { registerSyncRoutes } from './routes/sync.js';
 import { registerAnalyticsRoutes } from './routes/analytics.js';
 import { registerAuditRoutes } from './routes/audit.js';
-import { db } from './db.js';
+import { db } from './db/index.js';
+import { runScheduler } from './scheduler.js';
 
 // Emergency logging
 const logDir = path.join(process.env.LOCALAPPDATA || '', 'retail-manager-logs');
@@ -31,6 +32,7 @@ function log(msg: string) {
 }
 
 log('Backend starting...');
+log(`Build Time: 2026-02-17 09:30 UTC`);
 log(`CWD: ${process.cwd()}`);
 log(`Port: ${env.port}`);
 
@@ -38,7 +40,7 @@ async function start() {
   log('Initializing Fastify...');
   const app = Fastify({ logger: true });
 
-  await app.register(cors, { origin: true });
+  await app.register(cors, { origin: '*' });
 
   app.get('/health', async () => ({
     status: 'ok',
@@ -56,6 +58,13 @@ async function start() {
   await registerSyncRoutes(app);
   await registerAnalyticsRoutes(app);
   await registerAuditRoutes(app);
+
+  // Run Startup Scheduler
+  try {
+    runScheduler();
+  } catch (err) {
+    log(`Scheduler Error: ${err}`);
+  }
 
   try {
     log(`Attempting to listen on port ${env.port}...`);

@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "retail-manager",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "identifier": "com.retailmanager.app",
   "build": {
     "frontendDist": "../frontend/dist",
@@ -20,7 +20,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self' 'unsafe-inline' 'unsafe-eval' tauri: https: http: ws: wss: data: blob:;"
     }
   },
   "bundle": {

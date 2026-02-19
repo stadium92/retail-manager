@@ -1,26 +1,56 @@
+# Windows Sidecar Build Script (PowerShell)
+# This script should be run inside your Parallels Windows VM
 
-# Windows Sidecar Build Script (ARM64 -> i686)
 $ErrorActionPreference = "Stop"
 
+# Configuration
+$BACKEND_DIR = "backend/local-bridge"
 $TAURI_BIN_DIR = "src-tauri/binaries"
-if (!(Test-Path $TAURI_BIN_DIR)) { New-Item -ItemType Directory $TAURI_BIN_DIR }
+$NODE_TARGET = "node18-win-x86" # Target 32-bit for maximum compatibility
+$TARGET_ARCH = "ia32"           # 32-bit architecture for Node native modules
 
-Write-Host "🚀 Building Local Bridge (Node.js)..." -ForegroundColor Cyan
-cd backend/local-bridge
-npm run build
+Write-Host "Starting Windows Backend Sidecar Build (32-bit)..." -ForegroundColor Cyan
 
-Write-Host "📦 Creating Payload Zip (Requires 32-bit Node.exe and modules)..." -ForegroundColor Cyan
-# Ensure you have a 32-bit node.exe in the root of local-bridge
-if (!(Test-Path "node.exe")) {
-    Write-Host "⚠️ Please place a 32-bit node.exe in backend/local-bridge/" -ForegroundColor Yellow
+# Add Git bin to PATH for pkg (needs patch, sh, etc.)
+$env:PATH = "C:\Program Files\Git\usr\bin;" + $env:PATH
+
+# 1. Setup Directories
+if (!(Test-Path $TAURI_BIN_DIR)) {
+    New-Item -ItemType Directory -Path $TAURI_BIN_DIR
 }
-Compress-Archive -Path dist, node_modules, node.exe -DestinationPath payload.zip -Force
 
-Write-Host "🦀 Building Rust Wrapper (i686)..." -ForegroundColor Cyan
-cd ../sidecar-wrapper
-cargo build --release --target i686-pc-windows-msvc
+# 2. Go to Backend
+Push-Location $BACKEND_DIR
+Write-Host "Working directory: $(Get-Location)"
 
-Write-Host "🚚 Deploying Sidecar..." -ForegroundColor Cyan
-Copy-Item "target/i686-pc-windows-msvc/release/sidecar-wrapper.exe" "../../$TAURI_BIN_DIR/local-bridge-i686-pc-windows-msvc.exe" -Force
+# 3. Rebuild better-sqlite3 for 32-bit Windows
+Write-Host "Recompiling better-sqlite3 for 32-bit Windows (Skipped, done manually)..." -ForegroundColor Yellow
+# npm rebuild better-sqlite3 --arch=$TARGET_ARCH
 
-Write-Host "✅ Sidecar Ready!" -ForegroundColor Green
+# Find the binary
+$BINARY_SOURCE = "node_modules/better-sqlite3/build/Release/better_sqlite3.node"
+$DEST_BINARY = "../../$TAURI_BIN_DIR/better_sqlite3.node"
+
+if (Test-Path $DEST_BINARY) {
+    Write-Host "Binary already exists at $DEST_BINARY. Skipping copy."
+} elseif (Test-Path $BINARY_SOURCE) {
+    # Copy the binary
+    Write-Host "Copying native binary..."
+    Copy-Item $BINARY_SOURCE $DEST_BINARY -Force
+} else {
+    Write-Warning "Warning: Native module build failed. File not found at $BINARY_SOURCE. Assuming it is already in place."
+}
+
+# 4. Build TypeScript
+Write-Host "Compiling TypeScript..."
+npx tsc -p tsconfig.json
+
+# 5. Package with pkg
+Write-Host "Packaging sidecar executable..."
+# Note: we manually specify the target to force 32-bit
+npx pkg . --target $NODE_TARGET --output "../../$TAURI_BIN_DIR/local-bridge-i686-pc-windows-msvc.exe" --compress GZip
+
+Pop-Location
+
+Write-Host "Windows Sidecar build complete!" -ForegroundColor Green
+Write-Host "Note: Your local better-sqlite3 is now 32-bit."

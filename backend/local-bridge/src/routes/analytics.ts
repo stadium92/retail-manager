@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { db } from '../db.js';
+import { db } from '../db/index.js';
 import { authenticateRequest } from './utils/auth.js';
 
 const analyticsQuerySchema = z.object({
@@ -46,11 +46,12 @@ export async function registerAnalyticsRoutes(app: FastifyInstance) {
     }
 
     const storeId = parsed.data.store_id ?? claims.store_id;
-    if (!storeId) {
+    // Allow empty string for Master to view all stores
+    if (storeId === undefined && claims.role !== 'master') {
       return reply.status(400).send({ error: 'StoreRequired', message: 'Store ID is required.' });
     }
 
-    const valuation = db.getStockValuation(storeId);
+    const valuation = db.getStockValuation(storeId || '');
     return reply.send(valuation);
   });
 }

@@ -41,7 +41,6 @@ Located in: `tech/`
 ### Chat Directory Structure
 Located in: `chat/`
 - **[`chat/2026-02-08_sidecar_dependency_resolution.md`](chat/2026-02-08_sidecar_dependency_resolution.md)** - **Problem to Solution (A-Z)**: Comprehensive log of resolving the "Failed to fetch data" issue. Covers missing transitive dependencies (`fastq`), emergency logging implementation, and Tauri resource path corrections.
-- **[`chat/2026-02-14_environment_reconstruction.md`](chat/2026-02-14_environment_reconstruction.md)** - **Current Session**: Tracking the reconstruction of the dev environment on Tiny11 ARM64, including Rust/Git installation and build pipeline setup.
 
 ---
 

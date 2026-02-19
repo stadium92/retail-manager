@@ -42,3 +42,12 @@ backup/
 notes
 release
 data
+
+# Backend Heavy Artifacts
+backend/sidecar-wrapper/target/
+backend/sidecar-wrapper/payload-*.zip
+backend/local-bridge/payload.zip
+backend/local-bridge/dist/
+backend/local-bridge/node_modules/
+backend/local-bridge/retail-manager-logs/
+backend/local-bridge/data/

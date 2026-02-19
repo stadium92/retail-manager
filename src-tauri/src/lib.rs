@@ -28,6 +28,7 @@ use scanner::{
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
+    .plugin(tauri_plugin_http::init())
     .plugin(tauri_plugin_shell::init())
     .plugin(tauri_plugin_log::Builder::default()
       .targets([
@@ -52,36 +53,49 @@ pub fn run() {
       simulate_hardware_scan
     ])
     .setup(|app| {
+      use std::fs::OpenOptions;
+      use std::io::Write;
       let shell = app.shell();
-      let sidecar_command = shell.sidecar("local-bridge").map_err(|e| {
-        log::error!("Failed to create sidecar command: {}", e);
-        e
-      }).unwrap();
+      let log_path = "C:\\Users\\Mohamed\\Desktop\\tauri-debug.log";
+      let mut file = OpenOptions::new().create(true).append(true).open(log_path).unwrap();
+      let _ = writeln!(file, "App starting... {}", std::env::consts::ARCH);
 
-      let (mut rx, _child) = sidecar_command.spawn().map_err(|e| {
-        log::error!("Failed to spawn sidecar: {}", e);
-        e
-      }).unwrap();
-
-      // Create a background task to pipe sidecar logs to Tauri logs
-      tauri::async_runtime::spawn(async move {
-        while let Some(event) = rx.recv().await {
-          match event {
-            CommandEvent::Stdout(line) => {
-              log::info!("Sidecar: {}", String::from_utf8_lossy(&line).trim());
+      match shell.sidecar("local-bridge") {
+        Ok(sidecar_command) => {
+          match sidecar_command.spawn() {
+            Ok((mut rx, _child)) => {
+              let _ = writeln!(file, "Sidecar spawn command successful.");
+              // Create a background task to pipe sidecar logs to Tauri logs
+              tauri::async_runtime::spawn(async move {
+                while let Some(event) = rx.recv().await {
+                  match event {
+                    CommandEvent::Stdout(line) => {
+                      log::info!("Sidecar: {}", String::from_utf8_lossy(&line).trim());
+                    }
+                    CommandEvent::Stderr(line) => {
+                      log::error!("Sidecar Error: {}", String::from_utf8_lossy(&line).trim());
+                    }
+                    CommandEvent::Terminated(payload) => {
+                      log::warn!("Sidecar terminated with exit code: {:?}", payload.code);
+                    }
+                    _ => {}
+                  }
+                }
+              });
             }
-            CommandEvent::Stderr(line) => {
-              log::error!("Sidecar Error: {}", String::from_utf8_lossy(&line).trim());
+            Err(e) => {
+              let _ = writeln!(file, "Failed to spawn sidecar: {}", e);
+              log::error!("Failed to spawn sidecar: {}", e);
             }
-            CommandEvent::Terminated(payload) => {
-              log::warn!("Sidecar terminated with exit code: {:?}", payload.code);
-            }
-            _ => {}
           }
         }
-      });
+        Err(e) => {
+          let _ = writeln!(file, "Failed to create sidecar command: {}", e);
+          log::error!("Failed to create sidecar command: {}", e);
+        }
+      }
 
-      log::info!("Tauri core initialized and sidecar spawn attempted.");
+      log::info!("Tauri core initialized.");
       Ok(())
     })
     .run(tauri::generate_context!())
