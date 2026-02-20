@@ -6,24 +6,33 @@ Build a **Universal Windows Application** using Tauri v2 + Node.js Sidecar that 
 2.  **ARM64**: Support for Surface Pro/Mac M-series (via x64 emulation).
 3.  **x86 (32-bit)**: *Deprecated* - Abandoned due to missing native module prebuilds.
 
-## 🏆 The "Final Golden" Solution (Finalized Feb 17, 2026)
+## 🏆 The "Final Golden" Solution (Finalized Feb 20, 2026)
 
-After a long struggle with "Failed to Fetch" errors and silent crashes, we standardized on this exact stack.
+After overcoming "Compiling Hell," we have standardized on the **Reliability Stack**.
 
 ### 1. The Final Stack (Bible Compliant)
 *   **Target Architecture**: `x86_64-pc-windows-msvc` (Works on ARM64 via emulation).
 *   **Runtime**: **Node.js v18.20.8 (x64)**.
 *   **Database**: **`better-sqlite3` v9.4.3 (ABI 108)**.
-*   **Security**: `@tauri-apps/plugin-http` for all backend requests (bypasses WebView CORS).
-*   **CORS**: Backend MUST use `origin: '*'` with wildcard.
+*   **Connectivity**: 
+    *   **IP-Based**: Standardized on `127.0.0.1:8787` (Avoids `localhost` security quirks).
+    *   **Security**: `@tauri-apps/plugin-http` for all local requests (Required for Mixed Content bypass).
+    *   **Fallback**: `smartFetch` automatically falls back to standard `fetch` if the plugin is missing/unnecessary (e.g., in Browser).
+*   **CORS**: Backend explicitly allows `tauri.localhost`, `tauri://localhost`, and `127.0.0.1`.
 
-### 2. The Sidecar Wrapper (The "Silent" Guardian)
-The Rust wrapper (`backend/sidecar-wrapper`) must follow these rules:
-*   **No Console Output**: NEVER use `println!` or `eprintln!`. On Windows, if the app is launched without a console (the default), these calls will cause a "Broken Pipe" panic and kill the backend instantly. Use file logging only.
-*   **Job Objects**: Use Win32 Job Objects to ensure the Node.js process is killed when the main app closes.
-*   **Extraction**: Extract the payload to `%TEMP%\retail-manager-sidecar`.
+### 2. The Sidecar Wrapper (The "Reliable" Guardian)
+The Rust wrapper (`backend/sidecar-wrapper`) follows these high-reliability rules:
+*   **Emergency Port Cleanup**: Kills any existing process on port 8787 before starting (Fixes "Port already in use" crashes).
+*   **Smart Extraction**: Skips re-extracting files to `%TEMP%` if they already exist (Fixes 40-minute Antivirus scanning delays).
+*   **Parent Watchdog**: Uses the `sysinfo` crate to monitor the parent process ID. If the main app exits or crashes, the sidecar kills itself immediately (Prevents "Zombie Processes").
+*   **Job Objects**: Still uses Win32 Job Objects as a second layer of process cleanup.
 
-### 3. The Build Procedure
+### 3. Universal Environment Logic (Mac & Windows Safe)
+The backend database initialization (`db.ts`) is now environment-aware:
+*   **Development**: Detects Mac/Development mode and uses default binary resolution (Keeps Safari/Chrome testing working).
+*   **Production**: Detects Sidecar/Extraction environment and forces the path to the bundled `.node` binary.
+
+### 4. The Build Procedure
 Always use the automated script: `scripts/prepare-sidecar-payload.ps1`.
 
 **The Manual Steps (Injected by Script):**
@@ -31,7 +40,8 @@ Always use the automated script: `scripts/prepare-sidecar-payload.ps1`.
 2.  Download **Node v18.20.8 x64** Zip.
 3.  Download **BS3 v9.4.3 x64 (ABI 108)** `.node` binary.
 4.  Inject `.node` into `node_modules/better-sqlite3/build/Release/`.
-5.  Zip the payload and compile the Rust wrapper using `cargo build --release --target x86_64-pc-windows-msvc`.
+5.  Zip the payload AND copy it to `backend/local-bridge/payload.zip` (Required for Tauri Resource compliance).
+6.  Compile the Rust wrapper using `cargo build --release --target x86_64-pc-windows-msvc`.
 
 ### 4. Tauri Configuration (v2)
 *   **`tauri.conf.json`**:
