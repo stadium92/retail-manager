@@ -25,7 +25,16 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let log_path = "C:\\Users\\Mohamed\\Desktop\\wrapper-debug.log";
     let mut log_file = OpenOptions::new().create(true).append(true).open(log_path)?;
 
-    writeln!(log_file, "--- Wrapper Starting (v2) ---")?;
+    writeln!(log_file, "--- Wrapper Starting (v2.1) ---")?;
+
+    // EMERGENCY CLEANUP: Kill any process on 8787
+    #[cfg(windows)]
+    {
+        writeln!(log_file, "Cleaning up port 8787...")?;
+        let _ = Command::new("powershell")
+            .args(["-Command", "Get-NetTCPConnection -LocalPort 8787 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"])
+            .status();
+    }
 
     // Embed the architecture-specific payload zip
     // The PAYLOAD_FILE env var is set by the build script
@@ -45,35 +54,37 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         writeln!(log_file, "Temp dir exists.")?;
     }
 
-    // Extract files
-    writeln!(log_file, "Extracting {} files...", archive.len())?;
-    for i in 0..archive.len() {
-        let mut file = archive.by_index(i)?;
-        let outpath = match file.enclosed_name() {
-            Some(path) => temp_dir.join(path),
-            None => continue,
-        };
+    // SMART EXTRACTION: Only extract if dist/index.js is missing
+    let script_path = temp_dir.join("dist").join("index.js");
+    if !script_path.exists() {
+        writeln!(log_file, "Extraction required. Extracting {} files...", archive.len())?;
+        for i in 0..archive.len() {
+            let mut file = archive.by_index(i)?;
+            let outpath = match file.enclosed_name() {
+                Some(path) => temp_dir.join(path),
+                None => continue,
+            };
 
-        // Check for directory (handles both / and \)
-        if (*file.name()).ends_with('/') || (*file.name()).ends_with('\\') {
-            fs::create_dir_all(&outpath)?;
-        } else {
-            if let Some(p) = outpath.parent() {
-                if !p.exists() {
-                    fs::create_dir_all(p)?;
+            // Check for directory (handles both / and \)
+            if (*file.name()).ends_with('/') || (*file.name()).ends_with('\\') {
+                fs::create_dir_all(&outpath)?;
+            } else {
+                if let Some(p) = outpath.parent() {
+                    if !p.exists() {
+                        fs::create_dir_all(p)?;
+                    }
                 }
+                let mut outfile = fs::File::create(&outpath)?;
+                io::copy(&mut file, &mut outfile)?;
             }
-            // Overwrite file
-            // writeln!(log_file, "Extracting: {:?}", outpath)?; // Too verbose, commenting out
-            let mut outfile = fs::File::create(&outpath)?;
-            io::copy(&mut file, &mut outfile)?;
         }
+    } else {
+        writeln!(log_file, "Skipping extraction (files already exist).")?;
     }
 
     // Path to the bundled node executable
     let node_path = temp_dir.join("node.exe");
-    // Path to the entry script
-    let script_path = temp_dir.join("dist").join("index.js");
+    // Path to the entry script (already defined above)
 
     writeln!(log_file, "Node Path: {:?}", node_path)?;
     writeln!(log_file, "Script Path: {:?}", script_path)?;
@@ -90,6 +101,20 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     writeln!(log_file, "Starting backend server via bundled Node...")?;
     writeln!(log_file, "Wrapper Architecture: {}", std::env::consts::ARCH)?;
     
+    // WATCHDOG: Start a thread to monitor if the parent process dies
+    let parent_pid = {
+        #[cfg(windows)]
+        {
+            use std::os::windows::io::AsRawHandle;
+            // On Windows, we can use the current process to find our parent
+            // But a simpler way is to just let the child die when the job object closes.
+            // However, a dedicated thread is safer.
+            std::process::id()
+        }
+        #[cfg(not(windows))]
+        { std::process::id() }
+    };
+
     // Spawn the node process
     let mut child = Command::new(&node_path)
         .arg(&script_path)
@@ -99,8 +124,33 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     match child {
         Ok(mut child) => {
-            writeln!(log_file, "Node process spawned successfully (PID: {:?})", child.id())?;
+            let child_id = child.id();
+            writeln!(log_file, "Node process spawned successfully (PID: {:?})", child_id)?;
             
+            // Get current process info to find parent
+            let current_pid = std::process::id();
+            
+            // WATCHDOG thread: Terminate if parent process dies
+            std::thread::spawn(move || {
+                use sysinfo::{System, Pid};
+                let mut sys = System::new_all();
+                
+                // Find our parent PID
+                let parent_pid = sys.process(Pid::from_u32(current_pid))
+                    .and_then(|p| p.parent());
+
+                if let Some(ppid) = parent_pid {
+                    loop {
+                        std::thread::sleep(std::time::Duration::from_secs(3));
+                        sys.refresh_all();
+                        if sys.process(ppid).is_none() {
+                            // Parent is gone! Kill children and exit.
+                            std::process::exit(0);
+                        }
+                    }
+                }
+            });
+
             #[cfg(windows)]
             {
                 use windows_sys::Win32::System::JobObjects::*;
