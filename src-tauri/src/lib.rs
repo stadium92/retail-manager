@@ -98,6 +98,13 @@ pub fn run() {
       log::info!("Tauri core initialized.");
       Ok(())
     })
-    .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+    .build(tauri::generate_context!())
+    .expect("error while building tauri application")
+    .run(|_app_handle, event| match event {
+      tauri::RunEvent::ExitRequested { .. } => {
+        // Tauri cleans up sidecars automatically, but the build() -> run() 
+        // pattern ensures we have a hook if we need manual cleanup.
+      }
+      _ => {}
+    });
 }
