@@ -263,34 +263,52 @@ class LocalBridgeDatabase {
 
     this.dbPath = path.join(env.dataDir, 'localbridge.sqlite');
     
-    // Handle pkg-packaged environment: specify native module location
+    // Handle Sidecar/Pkg environment: specify native module location
     let options: Database.Options = {};
-    if ((process as any).pkg) {
+    
+    const isPkg = (process as any).pkg;
+    // Detect if we are running in the Tauri Sidecar (extracted to Temp)
+    // We check if the 'dist' and 'node_modules' folders exist in the current working directory
+    const isSidecar = fs.existsSync(path.join(process.cwd(), 'node_modules')) && 
+                      fs.existsSync(path.join(process.cwd(), 'dist')) && 
+                      !isPkg;
+
+    if (isSidecar) {
+        // PRODUCTION (Sidecar): Use the binary extracted to the temp folder
+        const sidecarBinaryPath = path.join(process.cwd(), 'node_modules/better-sqlite3/build/Release/better_sqlite3.node');
+        if (fs.existsSync(sidecarBinaryPath)) {
+            console.log('[DB] Sidecar environment detected. Using extracted native module.');
+            options.nativeBinding = sidecarBinaryPath;
+        }
+    } else if (isPkg) {
+        // PRODUCTION (Legacy Pkg): Standard pathing for macOS/Linux packaged binaries
         const execDir = path.dirname(process.execPath);
         const resourcePath = path.resolve(execDir, '../Resources/binaries/better_sqlite3.node');
         const adjacentPath = path.join(execDir, 'better_sqlite3.node');
 
         if (fs.existsSync(resourcePath)) {
-            console.log('[DB] Using native module from:', resourcePath);
+            console.log('[DB] Pkg environment (Resource) detected.');
             options.nativeBinding = resourcePath;
         } else if (fs.existsSync(adjacentPath)) {
-            console.log('[DB] Using native module from:', adjacentPath);
+            console.log('[DB] Pkg environment (Adjacent) detected.');
             options.nativeBinding = adjacentPath;
-        } else {
-            console.error('[DB] ERROR: Could not find better_sqlite3.node in:', resourcePath, 'or', adjacentPath);
-            // List what's actually in the directories for debugging
-            try {
-              const macosDir = path.resolve(execDir);
-              const resourcesDir = path.resolve(execDir, '../Resources/binaries');
-              console.error('[DB] Contents of MacOS dir:', fs.existsSync(macosDir) ? fs.readdirSync(macosDir) : 'DOES NOT EXIST');
-              console.error('[DB] Contents of Resources/binaries:', fs.existsSync(resourcesDir) ? fs.readdirSync(resourcesDir) : 'DOES NOT EXIST');
-            } catch (e) {
-              console.error('[DB] Error listing directories:', e);
-            }
         }
+    } else {
+        // DEVELOPMENT: Do nothing. Let better-sqlite3 find its own binary normally.
+        // This is what ensures Safari on Mac works perfectly.
+        console.log('[DB] Development environment detected. Using default binary resolution.');
     }
     
-    this.db = new Database(this.dbPath, options);
+    try {
+      this.db = new Database(this.dbPath, options);
+    } catch (err) {
+      console.error('[DB] CRITICAL ERROR: Failed to open database:', err);
+      // Log more context for debugging
+      console.error('[DB] Attempted Path:', this.dbPath);
+      console.error('[DB] Options:', JSON.stringify(options));
+      console.error('[DB] CWD:', process.cwd());
+      throw err;
+    }
     this.db.pragma('journal_mode = WAL');
     this.initialize();
     this.migrate();

@@ -31,6 +31,15 @@ function log(msg: string) {
   }
 }
 
+process.on('uncaughtException', (err) => {
+  log(`CRITICAL: Uncaught Exception: ${err.message}\n${err.stack}`);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  log(`CRITICAL: Unhandled Rejection at: ${promise} reason: ${reason}`);
+});
+
 log('Backend starting...');
 log(`Build Time: 2026-02-17 09:30 UTC`);
 log(`CWD: ${process.cwd()}`);
@@ -44,8 +53,11 @@ async function start() {
     origin: [
       'http://tauri.localhost', 
       'https://tauri.localhost',
+      'tauri://localhost',
       'http://localhost:5173',
-      'http://127.0.0.1:5173'
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:8787',
+      'http://localhost:8787'
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     credentials: true
