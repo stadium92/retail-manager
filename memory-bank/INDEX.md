@@ -78,7 +78,7 @@ Located in: `ai/`
 
 ### Analysis Directory Structure
 Located in: `analysis/`
-- Ready for research data and analytical findings
+- **[`analysis/CLIENT-SERVICE-ANALYSIS-006.md`](analysis/CLIENT-SERVICE-ANALYSIS-006.md)** - **Team audit report**: 11 findings (3 critical, 3 high, 3 medium, 2 low) covering the missing client-service backend, disconnected discount flow, hardcoded client groups, and supplier-vs-client symmetry gap. Includes priority matrix, team Q/A, and 6-phase fix plan.
 - Sales pattern analysis results
 
 ---
@@ -89,6 +89,7 @@ Located in: `analysis/`
 Located in: `docs/`
 - **`prd.txt`** - Product Requirements Document (complete specification)
 - **[`docs/PROMPT-005-Multi-Price-Batch-Implementation.md`](docs/PROMPT-005-Multi-Price-Batch-Implementation.md)** - **Agent-ready prompt** for Gemini 3 Pro (1M context). Contains file index, 10x dev persona, raw client Q/A session, and 8 atomic implementation phases (A–H) for PRD-005.
+- **[`docs/PROMPT-006-Client-Service-Backend-And-Discount-Fix.md`](docs/PROMPT-006-Client-Service-Backend-And-Discount-Fix.md)** - **Agent-ready prompt** for Gemini 3 Pro (1M context). Fixes 11 client-service bugs: creates `clients` + `client_services` DB tables, backend repos + routes, wires frontend to API, auto-applies client group discounts in POS, adds stock deduction on sale, credit balance tracking, and i18n. 7 phases (0–6).
 - **[`docs/CLIENT-BRIEF-005-Multi-Price-Raw.md`](docs/CLIENT-BRIEF-005-Multi-Price-Raw.md)** - Original unedited client brief for PRD-005. Raw requirements verbatim.
 - **`lovable_frontend_prompt.md`** - Frontend generation prompt for Lovable.dev (complete, all phases)
 - **`lovable_frontend_prompt_phase1.md`** - Phase 1: Core Foundation & Master Interface

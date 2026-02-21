@@ -76,6 +76,20 @@ Below is the raw client discussion that produced this PRD. Read it to understand
 
 > "Remember we have this feature in both the master and the worker side of the project — this module was supposed to be written just once so that they are both used by the worker and the master side."
 
+> "Also about the price logics, I want parentheses on the first second third and fourth respectively being 'detail', 'discount', 'bulk' and 'resale'. When adding new products to the store, after clicking on the 'add product button' in the inventory module of the master dashboard — this is where it resides — this should reflect in the worker side also, in the 'files' module under the 'Products' submodule when adding new product files."
+
+**Price Tier Labels (mandatory in UI):**
+| Tier | French Label | English Label | Bambara Label |
+|------|-------------|---------------|---------------|
+| Price 1 | Prix de vente (Détail) | Selling Price (Detail) | Jugu fɔlɔ (Detail) |
+| Price 2 | 2ème prix (Remise) | Price 2 (Discount) | Jugu filanan (Discount) |
+| Price 3 | 3ème prix (Gros) | Price 3 (Bulk) | Jugu sabanan (Bulk) |
+| Price 4 | 4ème prix (Revente) | Price 4 (Resale) | Jugu naanin (Resale) |
+
+**Mandatory i18n scope:** These labels must be implemented in all available locales (`en`, `fr`, `bm`) and must appear consistently in both:
+- Master dashboard → Inventory → Add Product
+- Worker dashboard → Files → Products → Add Product
+
 ### Q/A TEAM: Purchase Cost Source Analysis
 
 > **Q (Tester):** "At which price are we buying the product?"
@@ -192,7 +206,7 @@ Switch piece→box → price goes 100→1200 ✅
 5. In `frontend/src/types/index.ts`, add `selling_price_2/3/4` to the `Product` interface.
 6. In `FichiersProduitsModule.tsx` (or the shared product form), add 3 new price inputs under the "Prix et Marges" section.
 7. In `SalesModule.tsx`, update `getProductPrice()` to accept a `priceTier` parameter and select the appropriate price.
-8. Add translation keys for `price2`, `price3`, `price4` in all 3 locale files.
+8. Add translation keys for `price1Detail`, `price2Discount`, `price3Bulk`, `price4Resale` in all 3 locale files (`en`, `fr`, `bm`).
 
 **Commit message:** `feat(prices): add selling_price_2/3/4 multi-tier pricing (PRD-005 Phase A)`
 

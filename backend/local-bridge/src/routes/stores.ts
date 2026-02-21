@@ -14,6 +14,7 @@ const storeUpdateSchema = z.object({
   name: z.string().min(1).optional(),
   address: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
+  default_price_tier: z.number().int().min(1).max(4).optional(),
 });
 
 export async function registerStoreRoutes(app: FastifyInstance) {

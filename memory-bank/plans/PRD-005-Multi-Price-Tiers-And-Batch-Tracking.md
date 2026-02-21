@@ -39,12 +39,12 @@ The current system has a single retail price (`unit_price`) per product. Store o
 
 ### 2.1 Multi-Price Tiers (4 Named Selling Prices)
 
-| Tier | DB Column | UI Label (fr) | UI Label (en) | Purpose |
-|------|-----------|---------------|---------------|---------|
-| **Price 1** | `unit_price` (existing) | Prix de vente | Selling Price | Standard retail — the base price |
-| **Price 2** | `selling_price_2` (NEW) | 2ème prix | Price 2 | Neighborhood/discount tier |
-| **Price 3** | `selling_price_3` (NEW) | 3ème prix | Price 3 | Bulk/loyal client tier |
-| **Price 4** | `selling_price_4` (NEW) | 4ème prix | Price 4 | Inter-store resale (prix de revente) |
+| Tier | DB Column | UI Label (fr) | UI Label (en) | UI Label (bm) | Purpose |
+|------|-----------|---------------|---------------|---------------|---------|
+| **Price 1** | `unit_price` (existing) | Prix de vente (Détail) | Selling Price (Detail) | Jugu fɔlɔ (Detail) | Standard retail — the base price |
+| **Price 2** | `selling_price_2` (NEW) | 2ème prix (Remise) | Price 2 (Discount) | Jugu filanan (Discount) | Discount tier for select clients/stores |
+| **Price 3** | `selling_price_3` (NEW) | 3ème prix (Gros) | Price 3 (Bulk) | Jugu sabanan (Bulk) | Bulk/volume tier |
+| **Price 4** | `selling_price_4` (NEW) | 4ème prix (Revente) | Price 4 (Resale) | Jugu naanin (Resale) | Inter-store resale (prix de revente) |
 
 **Existing columns:**
 - `wholesale_price` → Deprecated (map to `selling_price_2` during migration, keep column for safety)
@@ -121,6 +121,8 @@ ALTER TABLE inventory_movements ADD COLUMN batch_id TEXT REFERENCES product_batc
 
 ### 3.1 Product Form — "Prix et Marges" Section
 
+**Localization requirement (mandatory):** these labels must be translated and displayed in all available languages (`en`, `fr`, `bm`) on both Master and Worker product forms.
+
 In the **Add/Edit Article** form (shared between Master and Worker):
 
 ```
@@ -128,10 +130,10 @@ In the **Add/Edit Article** form (shared between Master and Worker):
 │                                                               │
 │  Prix d'achat (P.A.)     [________]                          │
 │                                                               │
-│  Prix de vente (Price 1)  [________]  ← existing             │
-│  2ème prix (Price 2)      [________]  ← NEW                  │
-│  3ème prix (Price 3)      [________]  ← NEW                  │
-│  4ème prix (Price 4)      [________]  ← NEW                  │
+│  Prix de vente (Détail)   [________]  ← existing             │
+│  2ème prix (Remise)       [________]  ← NEW                  │
+│  3ème prix (Gros)         [________]  ← NEW                  │
+│  4ème prix (Revente)      [________]  ← NEW                  │
 │                                                               │
 │  Prix par défaut du magasin: [ ▼ Price 1 ]  ← dropdown      │
 │                                                               │

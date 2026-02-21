@@ -50,15 +50,7 @@ async function start() {
   const app = Fastify({ logger: true });
 
   await app.register(cors, { 
-    origin: [
-      'http://tauri.localhost', 
-      'https://tauri.localhost',
-      'tauri://localhost',
-      'http://localhost:5173',
-      'http://127.0.0.1:5173',
-      'http://127.0.0.1:8787',
-      'http://localhost:8787'
-    ],
+    origin: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     credentials: true
   });

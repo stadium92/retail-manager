@@ -101,10 +101,10 @@ export const createPurchasingRepo = (db: Database.Database) => ({
     db.prepare('DELETE FROM purchase_items WHERE order_id = ?').run(orderId);
   },
 
-  listPurchaseItems(orderId: string): (LocalPurchaseItem & { product?: { id: string; name: string } })[] {
+  listPurchaseItems(orderId: string): (LocalPurchaseItem & { product?: { id: string; name: string; packaging: string } })[] {
     const rows = db
       .prepare(`
-        SELECT pi.*, p.id as p_id, p.name as p_name
+        SELECT pi.*, p.id as p_id, p.name as p_name, p.packaging as p_packaging
         FROM purchase_items pi
         LEFT JOIN products p ON pi.product_id = p.id
         WHERE pi.order_id = ?
@@ -122,7 +122,8 @@ export const createPurchasingRepo = (db: Database.Database) => ({
       created_at: row.created_at,
       product: row.p_id ? {
         id: row.p_id,
-        name: row.p_name
+        name: row.p_name,
+        packaging: row.p_packaging
       } : undefined
     }));
   },
