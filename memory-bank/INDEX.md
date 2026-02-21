@@ -58,6 +58,11 @@ Located in: `core/`
 Located in: `planning/`
 - Ready for implementation plans and strategic documentation
 
+### Plans Directory
+Located in: `plans/`
+- **[`plans/PRD-004-Smart-Replenishment.md`](plans/PRD-004-Smart-Replenishment.md)** - Smart replenishment / auto-order scheduling PRD
+- **[`plans/PRD-005-Multi-Price-Tiers-And-Batch-Tracking.md`](plans/PRD-005-Multi-Price-Tiers-And-Batch-Tracking.md)** - **ACTIVE**: Multi-price tiers (4 selling prices), purchase batch tracking, supplier price integration, batch-level margin analysis. Full DB schema, authorization matrix, frontend specs, and 8-phase implementation plan.
+
 ---
 
 ## 🤖 AI Systems & Intelligence
@@ -83,6 +88,8 @@ Located in: `analysis/`
 ### Docs Directory Structure
 Located in: `docs/`
 - **`prd.txt`** - Product Requirements Document (complete specification)
+- **[`docs/PROMPT-005-Multi-Price-Batch-Implementation.md`](docs/PROMPT-005-Multi-Price-Batch-Implementation.md)** - **Agent-ready prompt** for Gemini 3 Pro (1M context). Contains file index, 10x dev persona, raw client Q/A session, and 8 atomic implementation phases (A–H) for PRD-005.
+- **[`docs/CLIENT-BRIEF-005-Multi-Price-Raw.md`](docs/CLIENT-BRIEF-005-Multi-Price-Raw.md)** - Original unedited client brief for PRD-005. Raw requirements verbatim.
 - **`lovable_frontend_prompt.md`** - Frontend generation prompt for Lovable.dev (complete, all phases)
 - **`lovable_frontend_prompt_phase1.md`** - Phase 1: Core Foundation & Master Interface
 - **`lovable_frontend_prompt_phase2.md`** - Phase 2: Worker, Deliverer & Customer Interfaces

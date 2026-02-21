@@ -37,6 +37,7 @@ export const createStoresRepo = (db: Database.Database) => ({
         address,
         phone,
         owner_id,
+        default_price_tier,
         created_at,
         updated_at
       ) VALUES (
@@ -45,6 +46,7 @@ export const createStoresRepo = (db: Database.Database) => ({
         @address,
         @phone,
         @owner_id,
+        @default_price_tier,
         @created_at,
         @updated_at
       )
@@ -54,6 +56,7 @@ export const createStoresRepo = (db: Database.Database) => ({
       address: store.address ?? null,
       phone: store.phone ?? null,
       owner_id: store.owner_id ?? null,
+      default_price_tier: store.default_price_tier ?? 1,
     });
   },
 

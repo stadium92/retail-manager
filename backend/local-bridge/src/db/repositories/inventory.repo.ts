@@ -29,6 +29,7 @@ export const createInventoryRepo = (db: Database.Database) => ({
         quantity,
         reason,
         source,
+        batch_id,
         created_at,
         created_by
       ) VALUES (
@@ -40,6 +41,7 @@ export const createInventoryRepo = (db: Database.Database) => ({
         @quantity,
         @reason,
         @source,
+        @batch_id,
         @created_at,
         @created_by
       )
@@ -49,6 +51,7 @@ export const createInventoryRepo = (db: Database.Database) => ({
       product_name: movement.product_name ?? null,
       reason: movement.reason ?? null,
       source: movement.source ?? null,
+      batch_id: movement.batch_id ?? null,
       created_by: movement.created_by ?? null,
     });
   },

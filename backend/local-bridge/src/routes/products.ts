@@ -25,6 +25,9 @@ const productCreateSchema = z.object({
   wholesale_price: z.number().nullable().optional(),
   wholesale_price_ht: z.number().nullable().optional(),
   wholesale_price_ttc: z.number().nullable().optional(),
+  selling_price_2: z.number().nullable().optional(),
+  selling_price_3: z.number().nullable().optional(),
+  selling_price_4: z.number().nullable().optional(),
   min_quantity: z.number().optional(),
   quantity: z.number().optional(),
   image_url: z.string().nullable().optional(),
@@ -61,6 +64,9 @@ const productUpdateSchema = z.object({
   wholesale_price: z.number().nullable().optional(),
   wholesale_price_ht: z.number().nullable().optional(),
   wholesale_price_ttc: z.number().nullable().optional(),
+  selling_price_2: z.number().nullable().optional(),
+  selling_price_3: z.number().nullable().optional(),
+  selling_price_4: z.number().nullable().optional(),
   min_quantity: z.number().optional(),
   quantity: z.number().optional(),
   image_url: z.string().nullable().optional(),
@@ -202,6 +208,9 @@ export async function registerProductRoutes(app: FastifyInstance) {
       wholesale_price: body.wholesale_price ?? null,
       wholesale_price_ht: body.wholesale_price_ht ?? null,
       wholesale_price_ttc: body.wholesale_price_ttc ?? null,
+      selling_price_2: body.selling_price_2 ?? null,
+      selling_price_3: body.selling_price_3 ?? null,
+      selling_price_4: body.selling_price_4 ?? null,
       min_quantity: body.min_quantity ?? 0,
       quantity: body.quantity ?? 0,
       image_url: body.image_url ?? null,
@@ -625,6 +634,32 @@ export async function registerProductRoutes(app: FastifyInstance) {
 
     db.deleteProduct(productId);
     return reply.send({ message: 'Product deleted.' });
+  });
+
+  // Product Batches Route
+  app.get('/rest/v1/product_batches', async (request, reply) => {
+    const claims = authenticateRequest(request, reply);
+    if (!claims) return;
+
+    const query = z.object({
+      store_id: z.string().optional(),
+      product_id: z.string().optional(),
+    }).safeParse(request.query ?? {});
+
+    if (!query.success) {
+      return reply.status(400).send({ error: 'ValidationFailed', details: query.error.flatten() });
+    }
+
+    const storeId = query.data.store_id ?? claims.store_id;
+    if (!storeId) {
+      return reply.status(400).send({ error: 'StoreRequired', message: 'Store is required.' });
+    }
+
+    if (claims.role !== 'master' && claims.store_id !== storeId) {
+      return reply.status(403).send({ error: 'Forbidden', message: 'You cannot view batches for another store.' });
+    }
+
+    return reply.send(db.listProductBatches(storeId, query.data.product_id));
   });
 
   // Emergency System Routes (Moved here to ensure they are picked up)

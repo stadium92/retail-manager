@@ -42,6 +42,7 @@ export async function registerStoreRoutes(app: FastifyInstance) {
       address: parsed.data.address ?? null,
       phone: parsed.data.phone ?? null,
       owner_id: claims.sub,
+      default_price_tier: 1,
       created_at: now,
       updated_at: now,
     });

@@ -291,6 +291,25 @@ export const initializeSchema = (db: Database.Database) => {
       FOREIGN KEY (scheduled_order_id) REFERENCES scheduled_orders(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS product_batches (
+      id TEXT PRIMARY KEY,
+      store_id TEXT NOT NULL,
+      product_id TEXT NOT NULL,
+      supplier_id TEXT,
+      purchase_order_id TEXT,
+      purchase_price REAL NOT NULL,
+      purchase_type TEXT NOT NULL DEFAULT 'wholesale',
+      quantity_received INTEGER NOT NULL,
+      quantity_remaining INTEGER NOT NULL,
+      received_at TEXT NOT NULL,
+      expiry_date TEXT,
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+      FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE SET NULL,
+      FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id) ON DELETE SET NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_worker_invitations_status ON worker_invitations(status);
     CREATE INDEX IF NOT EXISTS idx_worker_invitations_store ON worker_invitations(store_id);
     CREATE INDEX IF NOT EXISTS idx_products_store ON products(store_id);
@@ -313,6 +332,8 @@ export const initializeSchema = (db: Database.Database) => {
     CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp);
     CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
     CREATE INDEX IF NOT EXISTS idx_scheduled_orders_next_run ON scheduled_orders(next_run_date);
+    CREATE INDEX IF NOT EXISTS idx_product_batches_product ON product_batches(product_id);
+    CREATE INDEX IF NOT EXISTS idx_product_batches_store ON product_batches(store_id);
   `);
 
   const ensureColumn = (table: string, column: string, ddl: string) => {
@@ -341,6 +362,11 @@ export const initializeSchema = (db: Database.Database) => {
   }
 
   ensureColumn('suppliers', 'balance', `ALTER TABLE suppliers ADD COLUMN balance REAL NOT NULL DEFAULT 0`);
+  ensureColumn('suppliers', 'default_purchase_type', `ALTER TABLE suppliers ADD COLUMN default_purchase_type TEXT DEFAULT 'wholesale'`);
+  ensureColumn('suppliers', 'price_notes', `ALTER TABLE suppliers ADD COLUMN price_notes TEXT`);
+
+  ensureColumn('supplier_payments', 'confirmed_at', `ALTER TABLE supplier_payments ADD COLUMN confirmed_at TEXT`);
+
   ensureColumn('purchase_orders', 'status', `ALTER TABLE purchase_orders ADD COLUMN status TEXT NOT NULL DEFAULT 'draft'`);
   ensureColumn('purchase_orders', 'total_amount', `ALTER TABLE purchase_orders ADD COLUMN total_amount REAL NOT NULL DEFAULT 0`);
   ensureColumn('deliveries', 'status', `ALTER TABLE deliveries ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'`);
@@ -355,6 +381,7 @@ export const initializeSchema = (db: Database.Database) => {
   ensureColumn('sales', 'notes', `ALTER TABLE sales ADD COLUMN notes TEXT`);
   ensureColumn('sales', 'invoice_number', `ALTER TABLE sales ADD COLUMN invoice_number TEXT`);
   ensureColumn('sale_items', 'discount', `ALTER TABLE sale_items ADD COLUMN discount REAL DEFAULT 0`);
+  ensureColumn('sale_items', 'batch_id', `ALTER TABLE sale_items ADD COLUMN batch_id TEXT REFERENCES product_batches(id)`);
   
   // New Product Fields
   ensureColumn('products', 'aisle', `ALTER TABLE products ADD COLUMN aisle TEXT`);
@@ -365,4 +392,10 @@ export const initializeSchema = (db: Database.Database) => {
   ensureColumn('products', 'reorder_quantity', `ALTER TABLE products ADD COLUMN reorder_quantity INTEGER`);
   ensureColumn('products', 'wholesale_price_ht', `ALTER TABLE products ADD COLUMN wholesale_price_ht REAL`);
   ensureColumn('products', 'wholesale_price_ttc', `ALTER TABLE products ADD COLUMN wholesale_price_ttc REAL`);
+  ensureColumn('products', 'selling_price_2', `ALTER TABLE products ADD COLUMN selling_price_2 REAL`);
+  ensureColumn('products', 'selling_price_3', `ALTER TABLE products ADD COLUMN selling_price_3 REAL`);
+  ensureColumn('products', 'selling_price_4', `ALTER TABLE products ADD COLUMN selling_price_4 REAL`);
+
+  ensureColumn('stores', 'default_price_tier', `ALTER TABLE stores ADD COLUMN default_price_tier INTEGER NOT NULL DEFAULT 1`);
+  ensureColumn('inventory_movements', 'batch_id', `ALTER TABLE inventory_movements ADD COLUMN batch_id TEXT REFERENCES product_batches(id)`);
 };

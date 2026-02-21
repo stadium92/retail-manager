@@ -173,10 +173,15 @@ export const createPurchasingRepo = (db: Database.Database) => ({
     db.prepare('DELETE FROM purchase_items WHERE id = ?').run(itemId);
   },
 
-  listSupplierPayments(storeId: string): LocalSupplierPayment[] {
-    const rows = db
-      .prepare('SELECT * FROM supplier_payments WHERE store_id = ? ORDER BY created_at DESC')
-      .all(storeId);
+  listSupplierPayments(storeId: string, supplierId?: string): LocalSupplierPayment[] {
+    let sql = 'SELECT * FROM supplier_payments WHERE store_id = ?';
+    const params: any[] = [storeId];
+    if (supplierId) {
+      sql += ' AND supplier_id = ?';
+      params.push(supplierId);
+    }
+    sql += ' ORDER BY created_at DESC';
+    const rows = db.prepare(sql).all(...params);
     return rows as LocalSupplierPayment[];
   },
 
@@ -190,6 +195,7 @@ export const createPurchasingRepo = (db: Database.Database) => ({
         payment_method,
         reference,
         notes,
+        confirmed_at,
         created_at
       ) VALUES (
         @id,
@@ -199,6 +205,7 @@ export const createPurchasingRepo = (db: Database.Database) => ({
         @payment_method,
         @reference,
         @notes,
+        @confirmed_at,
         @created_at
       )
     `);
@@ -222,6 +229,30 @@ export const createPurchasingRepo = (db: Database.Database) => ({
       ...payment,
       reference: payment.reference ?? null,
       notes: payment.notes ?? null,
+      confirmed_at: payment.confirmed_at ?? null,
     });
+  },
+
+  getSupplierPaymentById(paymentId: string): LocalSupplierPayment | undefined {
+    const row = db.prepare('SELECT * FROM supplier_payments WHERE id = ? LIMIT 1').get(paymentId);
+    return row as LocalSupplierPayment | undefined;
+  },
+
+  updateSupplierPayment(
+    paymentId: string,
+    updates: Partial<Omit<LocalSupplierPayment, 'id' | 'store_id' | 'supplier_id' | 'amount' | 'created_at'>>
+  ): LocalSupplierPayment | undefined {
+    const normalizedEntries = Object.entries(updates).filter(([, value]) => value !== undefined);
+    if (normalizedEntries.length === 0) {
+      const row = db.prepare('SELECT * FROM supplier_payments WHERE id = ? LIMIT 1').get(paymentId);
+      return row as LocalSupplierPayment | undefined;
+    }
+    const assignments = normalizedEntries.map(([key]) => `${key} = @${key}`).join(', ');
+    db.prepare(`UPDATE supplier_payments SET ${assignments} WHERE id = @id`).run({
+      id: paymentId,
+      ...Object.fromEntries(normalizedEntries),
+    });
+    const row = db.prepare('SELECT * FROM supplier_payments WHERE id = ? LIMIT 1').get(paymentId);
+    return row as LocalSupplierPayment | undefined;
   },
 });

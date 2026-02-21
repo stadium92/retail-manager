@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { LocalProduct, LocalProductFamily, sanitizeString } from '../types.js';
+import { LocalProduct, LocalProductFamily, LocalProductBatch, sanitizeString } from '../types.js';
 
 export const createProductsRepo = (db: Database.Database) => ({
   listProducts(storeId: string): LocalProduct[] {
@@ -112,6 +112,9 @@ export const createProductsRepo = (db: Database.Database) => ({
           wholesale_price,
           wholesale_price_ht,
           wholesale_price_ttc,
+          selling_price_2,
+          selling_price_3,
+          selling_price_4,
           min_quantity,
           quantity,
           category,
@@ -138,6 +141,9 @@ export const createProductsRepo = (db: Database.Database) => ({
           @wholesale_price,
           @wholesale_price_ht,
           @wholesale_price_ttc,
+          @selling_price_2,
+          @selling_price_3,
+          @selling_price_4,
           @min_quantity,
           @quantity,
           @category,
@@ -165,6 +171,9 @@ export const createProductsRepo = (db: Database.Database) => ({
         wholesale_price: product.wholesale_price ?? null,
         wholesale_price_ht: product.wholesale_price_ht ?? null,
         wholesale_price_ttc: product.wholesale_price_ttc ?? null,
+        selling_price_2: product.selling_price_2 ?? null,
+        selling_price_3: product.selling_price_3 ?? null,
+        selling_price_4: product.selling_price_4 ?? null,
         min_quantity: product.min_quantity ?? 0,
         quantity: product.quantity ?? 0,
         category: product.category ?? null,
@@ -274,5 +283,52 @@ export const createProductsRepo = (db: Database.Database) => ({
     db
       .prepare('UPDATE products SET category = NULL WHERE category = ?')
       .run(familyId);
+  },
+
+  // ===== Product Batches =====
+  listProductBatches(storeId: string, productId?: string): LocalProductBatch[] {
+    let sql = 'SELECT * FROM product_batches WHERE store_id = ?';
+    const params: any[] = [storeId];
+    if (productId) {
+      sql += ' AND product_id = ?';
+      params.push(productId);
+    }
+    sql += ' ORDER BY received_at DESC';
+    const rows = db.prepare(sql).all(...params);
+    return rows as LocalProductBatch[];
+  },
+
+  getProductBatchById(batchId: string): LocalProductBatch | undefined {
+    const row = db.prepare('SELECT * FROM product_batches WHERE id = ? LIMIT 1').get(batchId);
+    return row as LocalProductBatch | undefined;
+  },
+
+  insertProductBatch(batch: LocalProductBatch) {
+    db.prepare(`
+        INSERT INTO product_batches (
+          id, store_id, product_id, supplier_id, purchase_order_id,
+          purchase_price, purchase_type, quantity_received, quantity_remaining,
+          received_at, expiry_date, notes, created_at
+        ) VALUES (
+          @id, @store_id, @product_id, @supplier_id, @purchase_order_id,
+          @purchase_price, @purchase_type, @quantity_received, @quantity_remaining,
+          @received_at, @expiry_date, @notes, @created_at
+        )
+      `)
+      .run({
+        ...batch,
+        supplier_id: batch.supplier_id ?? null,
+        purchase_order_id: batch.purchase_order_id ?? null,
+        expiry_date: batch.expiry_date ?? null,
+        notes: batch.notes ?? null,
+      });
+  },
+
+  updateProductBatchQuantity(batchId: string, quantityRemaining: number) {
+    db.prepare('UPDATE product_batches SET quantity_remaining = ? WHERE id = ?').run(quantityRemaining, batchId);
+  },
+
+  deleteProductBatch(batchId: string) {
+    db.prepare('DELETE FROM product_batches WHERE id = ?').run(batchId);
   },
 });

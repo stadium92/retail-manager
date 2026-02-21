@@ -111,6 +111,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       id: storeId,
       name: storeLabel,
       owner_id: userId,
+      default_price_tier: 1,
       created_at: now,
       updated_at: now,
     });
@@ -338,6 +339,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
           id: assignedStore,
           name: store_name,
           owner_id: claims.sub,
+          default_price_tier: 1,
           created_at: now,
           updated_at: now,
         });

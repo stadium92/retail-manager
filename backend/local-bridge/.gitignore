@@ -1,0 +1,9 @@
+node_modules
+dist
+dist-bundled
+dist-bundled-incl-sqlite
+data/
+retail-manager-logs/
+*.exe
+payload.zip
+.env

@@ -32,6 +32,7 @@ export interface LocalStore {
   address?: string | null;
   phone?: string | null;
   owner_id?: string | null;
+  default_price_tier: number;
   created_at: string;
   updated_at: string;
 }
@@ -72,11 +73,16 @@ export interface LocalProduct {
   wholesale_price?: number | null; // Deprecated/Generic
   wholesale_price_ht?: number | null;
   wholesale_price_ttc?: number | null;
+  
+  // New price tiers
+  selling_price_2?: number | null;
+  selling_price_3?: number | null;
+  selling_price_4?: number | null;
+
   min_quantity?: number;
   quantity?: number;
   category?: string | null;
   image_url?: string | null;
-  // New fields
   aisle?: string | null;
   brand?: string | null;
   unit_type?: string | null;
@@ -90,6 +96,22 @@ export interface LocalProduct {
   updated_by?: string | null;
 }
 
+export interface LocalProductBatch {
+  id: string;
+  store_id: string;
+  product_id: string;
+  supplier_id?: string | null;
+  purchase_order_id?: string | null;
+  purchase_price: number;
+  purchase_type: string; // 'wholesale' | 'resale' | 'discount' | 'other'
+  quantity_received: number;
+  quantity_remaining: number;
+  received_at: string;
+  expiry_date?: string | null;
+  notes?: string | null;
+  created_at: string;
+}
+
 export interface LocalSupplier {
   id: string;
   store_id: string;
@@ -98,6 +120,8 @@ export interface LocalSupplier {
   email?: string | null;
   address?: string | null;
   balance: number;
+  default_purchase_type?: string | null;
+  price_notes?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -131,6 +155,7 @@ export interface LocalSupplierPayment {
   payment_method: string;
   reference?: string | null;
   notes?: string | null;
+  confirmed_at?: string | null;
   created_at: string;
 }
 
@@ -177,6 +202,7 @@ export interface LocalSaleItem {
   unit_price: number;
   discount?: number | null;
   total: number;
+  batch_id?: string | null;
   created_at: string;
 }
 
@@ -210,6 +236,7 @@ export interface LocalInventoryMovement {
   quantity: number;
   reason?: string | null;
   source?: string | null;
+  batch_id?: string | null;
   created_at: string;
   created_by?: string | null;
 }

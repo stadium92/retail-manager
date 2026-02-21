@@ -7,6 +7,7 @@ import { authenticateRequest } from './utils/auth.js';
 const listSchema = z.object({
   store_id: z.string().optional(),
   status: z.string().optional(),
+  supplier_id: z.string().optional(),
 });
 
 const supplierCreateSchema = z.object({
@@ -63,6 +64,11 @@ const paymentCreateSchema = z.object({
   notes: z.string().nullable().optional(),
 });
 
+const paymentUpdateSchema = z.object({
+  confirmed_at: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+});
+
 const scheduledOrderCreateSchema = z.object({
   store_id: z.string().optional(),
   supplier_id: z.string().optional(),
@@ -76,14 +82,35 @@ const scheduledOrderCreateSchema = z.object({
   })).min(1)
 });
 
-const updateProductInventory = (productId: string, receivedQty: number, unitCost?: number, storeId?: string, actorId?: string) => {
+const updateProductInventory = (
+  productId: string, 
+  receivedQty: number, 
+  unitCost: number | undefined, 
+  storeId: string | undefined, 
+  actorId: string | undefined,
+  orderId: string | undefined,
+  supplierId: string | undefined
+) => {
   const product = db.getProductById(productId);
   if (!product) return;
-  const newQuantity = (product.quantity ?? 0) + receivedQty;
-  const updates: Record<string, number> = { quantity: newQuantity };
-  if (typeof unitCost === 'number') {
-    updates.cost_price = unitCost;
+
+  const currentQty = product.quantity ?? 0;
+  const currentCost = product.cost_price ?? 0;
+  const newQuantity = currentQty + receivedQty;
+  
+  let newCost = currentCost;
+  if (typeof unitCost === 'number' && newQuantity > 0) {
+    // Weighted Average Cost: ((OldQty * OldCost) + (NewQty * NewCost)) / TotalQty
+    const oldValue = currentQty * currentCost;
+    const newValue = receivedQty * unitCost;
+    newCost = (oldValue + newValue) / newQuantity;
   }
+
+  const updates: Record<string, any> = { 
+    quantity: newQuantity,
+    cost_price: newCost 
+  };
+  
   const now = new Date().toISOString();
   db.updateProduct(productId, {
     ...updates,
@@ -91,7 +118,24 @@ const updateProductInventory = (productId: string, receivedQty: number, unitCost
     updated_by: actorId ?? null,
   });
 
-  if (receivedQty > 0 && storeId) {
+  // Create Product Batch
+  if (receivedQty > 0 && storeId && typeof unitCost === 'number') {
+    const batchId = crypto.randomUUID();
+    db.insertProductBatch({
+      id: batchId,
+      store_id: storeId,
+      product_id: productId,
+      supplier_id: supplierId ?? null,
+      purchase_order_id: orderId ?? null,
+      purchase_price: unitCost,
+      purchase_type: 'wholesale', // Default
+      quantity_received: receivedQty,
+      quantity_remaining: receivedQty,
+      received_at: now,
+      created_at: now,
+      notes: orderId ? `Received from PO ${orderId.slice(0,8)}` : 'Manual reception'
+    });
+
     const movementId = crypto.randomUUID();
     db.insertInventoryMovement({
       id: movementId,
@@ -102,6 +146,7 @@ const updateProductInventory = (productId: string, receivedQty: number, unitCost
       quantity: receivedQty,
       reason: 'Purchase receipt',
       source: 'purchase_order',
+      batch_id: batchId, // Link movement to batch
       created_at: now,
       created_by: actorId ?? null,
     });
@@ -120,6 +165,7 @@ const updateProductInventory = (productId: string, receivedQty: number, unitCost
         quantity: receivedQty,
         reason: 'Purchase receipt',
         source: 'purchase_order',
+        batch_id: batchId,
         created_at: now,
       }),
       created_at: now,
@@ -583,7 +629,7 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
            }
         }
 
-        updateProductInventory(item.product_id, finalQty, finalCost, order.store_id, claims.sub);
+        updateProductInventory(item.product_id, finalQty, finalCost, order.store_id, claims.sub, order.id, order.supplier_id);
       }
     });
 
@@ -611,7 +657,7 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'StoreRequired', message: 'Store is required.' });
     }
 
-    const payments = db.listSupplierPayments(storeId);
+    const payments = db.listSupplierPayments(storeId, parsed.data.supplier_id);
     const withSupplier = payments.map((payment) => {
       const supplier = db.getSupplierById(payment.supplier_id);
       return {
@@ -664,5 +710,28 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
     });
 
     return reply.status(201).send(db.listSupplierPayments(storeId));
+  });
+
+  app.patch('/rest/v1/supplier_payments/:id', async (request, reply) => {
+    const claims = authenticateRequest(request, reply, ['master', 'worker']);
+    if (!claims) return;
+
+    const parsed = paymentUpdateSchema.safeParse(request.body ?? {});
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'ValidationFailed', details: parsed.error.flatten() });
+    }
+
+    const paymentId = (request.params as { id: string }).id;
+    const existing = db.getSupplierPaymentById(paymentId);
+    if (!existing) {
+      return reply.status(404).send({ error: 'NotFound', message: 'Payment not found.' });
+    }
+    
+    if (claims.store_id && claims.store_id !== existing.store_id && claims.role !== 'master') {
+      return reply.status(403).send({ error: 'Forbidden', message: 'Cannot update payment.' });
+    }
+
+    const updated = db.updateSupplierPayment(paymentId, parsed.data);
+    return reply.send(updated);
   });
 }

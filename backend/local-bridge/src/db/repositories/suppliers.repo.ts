@@ -25,6 +25,8 @@ export const createSuppliersRepo = (db: Database.Database) => ({
         email,
         address,
         balance,
+        default_purchase_type,
+        price_notes,
         created_at,
         updated_at
       ) VALUES (
@@ -35,6 +37,8 @@ export const createSuppliersRepo = (db: Database.Database) => ({
         @email,
         @address,
         @balance,
+        @default_purchase_type,
+        @price_notes,
         @created_at,
         @updated_at
       )
@@ -44,6 +48,8 @@ export const createSuppliersRepo = (db: Database.Database) => ({
       phone: supplier.phone ?? null,
       email: supplier.email ?? null,
       address: supplier.address ?? null,
+      default_purchase_type: supplier.default_purchase_type ?? 'wholesale',
+      price_notes: supplier.price_notes ?? null,
     });
   },
 

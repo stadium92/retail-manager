@@ -43,6 +43,7 @@ const ensureMasterAndStore = () => {
     id: storeId,
     name: seedConfig.storeName,
     owner_id: userId,
+    default_price_tier: 1,
     created_at: now,
     updated_at: now,
   });

@@ -117,6 +117,7 @@ export const createSalesRepo = (db: Database.Database) => ({
         unit_price,
         discount,
         total,
+        batch_id,
         created_at
       ) VALUES (
         @id,
@@ -127,6 +128,7 @@ export const createSalesRepo = (db: Database.Database) => ({
         @unit_price,
         @discount,
         @total,
+        @batch_id,
         @created_at
       )
     `
@@ -134,6 +136,7 @@ export const createSalesRepo = (db: Database.Database) => ({
       ...item,
       product_id: item.product_id ?? null,
       discount: item.discount ?? 0,
+      batch_id: item.batch_id ?? null,
     });
   },
 });
