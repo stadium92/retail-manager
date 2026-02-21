@@ -1,13 +1,25 @@
-use std::fs;
-use std::io;
+use std::fs::{self, OpenOptions};
+use std::io::{self, Write};
 use std::process::Command;
 use std::env;
+use std::path::PathBuf;
+
+fn get_log_path() -> PathBuf {
+    let mut path = if let Ok(local_app_data) = env::var("LOCALAPPDATA") {
+        PathBuf::from(local_app_data).join("retail-manager-logs")
+    } else {
+        env::temp_dir().join("retail-manager-logs")
+    };
+    
+    if !path.exists() {
+        let _ = fs::create_dir_all(&path);
+    }
+    path.join("wrapper-debug.log")
+}
 
 fn main() {
     if let Err(e) = run() {
-        use std::fs::OpenOptions;
-        use std::io::Write;
-        let log_path = "C:\\Users\\Mohamed\\Desktop\\wrapper-debug.log";
+        let log_path = get_log_path();
         if let Ok(mut log_file) = OpenOptions::new().create(true).append(true).open(log_path) {
             let _ = writeln!(log_file, "CRITICAL ERROR: {}", e);
         }
@@ -17,12 +29,7 @@ fn main() {
 }
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
-    use std::fs::{self, OpenOptions};
-    use std::io::{self, Write};
-    use std::process::Command;
-    use std::env;
-
-    let log_path = "C:\\Users\\Mohamed\\Desktop\\wrapper-debug.log";
+    let log_path = get_log_path();
     let mut log_file = OpenOptions::new().create(true).append(true).open(log_path)?;
 
     writeln!(log_file, "--- Wrapper Starting (v2.1) ---")?;
@@ -54,10 +61,30 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         writeln!(log_file, "Temp dir exists.")?;
     }
 
-    // SMART EXTRACTION: Only extract if dist/index.js is missing
-    let script_path = temp_dir.join("dist").join("index.js");
-    if !script_path.exists() {
-        writeln!(log_file, "Extraction required. Extracting {} files...", archive.len())?;
+    // VERSION CHECK: Compare version.txt in zip with version.txt in temp_dir
+    let mut needs_extraction = true;
+    let local_version_path = temp_dir.join("version.txt");
+    
+    if local_version_path.exists() {
+        if let Ok(mut zip_version_file) = archive.by_name("version.txt") {
+            let mut zip_version = String::new();
+            use std::io::Read;
+            if zip_version_file.read_to_string(&mut zip_version).is_ok() {
+                if let Ok(local_version) = fs::read_to_string(&local_version_path) {
+                    if zip_version.trim() == local_version.trim() {
+                        needs_extraction = false;
+                        writeln!(log_file, "Version matches ({}). Skipping extraction.", zip_version.trim())?;
+                    } else {
+                        writeln!(log_file, "Version mismatch (Local: {}, Zip: {}). Re-extracting...", local_version.trim(), zip_version.trim())?;
+                    }
+                }
+            }
+        }
+    }
+
+    // EXTRACTION
+    if needs_extraction {
+        writeln!(log_file, "Extracting {} files...", archive.len())?;
         for i in 0..archive.len() {
             let mut file = archive.by_index(i)?;
             let outpath = match file.enclosed_name() {
@@ -78,13 +105,12 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                 io::copy(&mut file, &mut outfile)?;
             }
         }
-    } else {
-        writeln!(log_file, "Skipping extraction (files already exist).")?;
     }
 
+    // Path to the entry script
+    let script_path = temp_dir.join("dist").join("index.js");
     // Path to the bundled node executable
     let node_path = temp_dir.join("node.exe");
-    // Path to the entry script (already defined above)
 
     writeln!(log_file, "Node Path: {:?}", node_path)?;
     writeln!(log_file, "Script Path: {:?}", script_path)?;

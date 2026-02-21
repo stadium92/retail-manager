@@ -20,6 +20,8 @@ Write-Host "Target Node: $NODE_VERSION | Target BS3: $BS3_VERSION" -ForegroundCo
 # 1. Build Backend TypeScript (Once)
 Write-Host "Compiling Backend TypeScript..."
 Push-Location $BACKEND_DIR
+# Clean previous build
+if (Test-Path "dist") { Remove-Item "dist" -Recurse -Force }
 # Ensure dependencies match
 npm install better-sqlite3@$BS3_VERSION --save-exact
 npm run build 
@@ -71,6 +73,10 @@ foreach ($item in $architectures) {
     Copy-Item "$BACKEND_DIR\dist" -Destination $staging -Recurse
     Copy-Item "$BACKEND_DIR\node_modules" -Destination $staging -Recurse
     
+    # NEW: Add version file to payload
+    $timestamp = Get-Date -Format "yyyyMMddHHmmss"
+    $timestamp | Out-File -FilePath "$staging\version.txt" -Encoding utf8
+
     # c. Inject specific Better-SQLite3 binary
     $bs3_url = "https://github.com/WiseLibs/better-sqlite3/releases/download/v$BS3_VERSION/better-sqlite3-v$BS3_VERSION-node-v$NODE_ABI-win32-$bs3_arch.tar.gz"
     $bs3_tar = "$env:TEMP\bs3_$bs3_arch.tar.gz"

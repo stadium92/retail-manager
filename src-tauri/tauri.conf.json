@@ -1,12 +1,12 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "retail-manager",
-  "version": "0.2.0",
+  "version": "0.2.4",
   "identifier": "com.retailmanager.app",
   "build": {
     "frontendDist": "../frontend/dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "pnpm --prefix ../frontend run dev",
+    "beforeDevCommand": "npm --prefix ../frontend run dev",
     "beforeBuildCommand": ""
   },
   "app": {

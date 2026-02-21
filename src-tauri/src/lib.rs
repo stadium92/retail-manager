@@ -53,10 +53,22 @@ pub fn run() {
       simulate_hardware_scan
     ])
     .setup(|app| {
-      use std::fs::OpenOptions;
+      use std::fs::{self, OpenOptions};
       use std::io::Write;
+      use std::path::PathBuf;
       let shell = app.shell();
-      let log_path = "C:\\Users\\Mohamed\\Desktop\\tauri-debug.log";
+      
+      let mut log_path = if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
+          PathBuf::from(local_app_data).join("retail-manager-logs")
+      } else {
+          std::env::temp_dir().join("retail-manager-logs")
+      };
+      
+      if !log_path.exists() {
+          let _ = fs::create_dir_all(&log_path);
+      }
+      log_path.push("tauri-debug.log");
+
       let mut file = OpenOptions::new().create(true).append(true).open(log_path).unwrap();
       let _ = writeln!(file, "App starting... {}", std::env::consts::ARCH);
 
