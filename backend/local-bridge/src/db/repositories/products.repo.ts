@@ -222,7 +222,27 @@ export const createProductsRepo = (db: Database.Database) => {
 
   deleteProduct(productId: string) {
     const existing = db.prepare('SELECT store_id FROM products WHERE id = ? LIMIT 1').get(productId) as { store_id: string } | undefined;
-    db.prepare('DELETE FROM products WHERE id = ?').run(productId);
+    
+    const deleteTx = db.transaction(() => {
+      // Nullify references in history tables (keep the record, lose the link)
+      db.prepare('UPDATE sale_items SET product_id = NULL WHERE product_id = ?').run(productId);
+      // Purchase items have NOT NULL constraint, so we must delete them
+      db.prepare('DELETE FROM purchase_items WHERE product_id = ?').run(productId);
+      
+      // Delete operational data that is meaningless without product
+      db.prepare('DELETE FROM inventory_movements WHERE product_id = ?').run(productId);
+      db.prepare('DELETE FROM replenishment_requests WHERE product_id = ?').run(productId);
+      db.prepare('DELETE FROM product_batches WHERE product_id = ?').run(productId);
+      try {
+          db.prepare('DELETE FROM scheduled_order_items WHERE product_id = ?').run(productId);
+      } catch (e) { /* ignore if table missing */ }
+
+      // Finally delete the product
+      db.prepare('DELETE FROM products WHERE id = ?').run(productId);
+    });
+    
+    deleteTx();
+
     if (existing) {
       emitOutbox(db, existing.store_id, 'product', productId, 'delete', { id: productId });
     }

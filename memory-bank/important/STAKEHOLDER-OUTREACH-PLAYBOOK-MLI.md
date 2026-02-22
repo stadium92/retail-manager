@@ -75,19 +75,24 @@ Your product value will come from local fit, trust, and outcomes. Stakeholders r
 Use this in discovery calls (15–20 minutes):
 
 1. Comment gérez-vous vos ventes aujourd’hui (papier, Excel, autre logiciel) ?
-2. Quel est votre plus grand problème quotidien en caisse ?
+- les vols elle sont plus souvent physique et bien préparer, le client s'est plue d'un vol de 10%, par example il as expliquer sur une vente de 50k franc on peut lui voler 10k.
+2. Quel est votre plus grand problème quotidien en caisse ? 
 3. À quelle fréquence avez-vous des écarts de stock ?
 4. Qui contrôle les ventes de chaque employé ?
 5. Combien de points de vente gérez-vous ?
+- le client gère deux point de ventes, mais deuxième est plus pour faire des comptes plus qu'autres choses.
 6. Avez-vous besoin d’un fonctionnement sans Internet ?
+- Oui si possible car le client n'a pas encore de modem wifi , et aimerais avoir une solution sans connection internet pour le moment.
 7. Quels rapports utilisez-vous chaque semaine ?
 8. Quelle est la conséquence d’une rupture de stock chez vous ?
 9. Voulez-vous suivre les dettes clients/fournisseurs ?
 10. Combien de temps acceptez-vous pour former un nouveau caissier ?
 11. Quel budget mensuel pouvez-vous allouer à un outil de gestion ?
 12. Préférez-vous payer une fois ou en abonnement ?
+- le client à expliquer que les maliens aiment please les One time payment plus que les abonnement.
 13. Qu’est-ce qui vous bloque le plus avant d’acheter un logiciel ?
 14. Si on réduit vos erreurs de stock de 30%, quelle valeur cela représente ?
+- le client ne se plaint vraiment pas de pouvoir sauver 30% de ses gains mais certe les erreur qu'il as préciser vient plus des vols de boissons et aussi des cassiers qui peuvent prendre un peu de la caisse.
 15. Si l’essai est concluant, quand pouvez-vous décider ?
 
 ---

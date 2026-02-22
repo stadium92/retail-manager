@@ -613,7 +613,7 @@ export async function registerProductRoutes(app: FastifyInstance) {
   });
 
   app.delete('/rest/v1/products/:id', async (request, reply) => {
-    const claims = authenticateRequest(request, reply, ['master']);
+    const claims = authenticateRequest(request, reply, ['master', 'worker']);
     if (!claims) return;
 
     const productId = (request.params as { id: string }).id;
@@ -621,7 +621,7 @@ export async function registerProductRoutes(app: FastifyInstance) {
     
     // Only check permissions if the product actually exists
     if (existing) {
-      if (claims.store_id && claims.role !== 'master' && claims.store_id !== existing.store_id) {
+      if (claims.role !== 'master' && claims.store_id !== existing.store_id) {
         return reply.status(403).send({
           error: 'Forbidden',
           message: 'You cannot delete this product.',
