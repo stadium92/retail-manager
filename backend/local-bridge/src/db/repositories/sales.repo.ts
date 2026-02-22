@@ -1,20 +1,8 @@
 import Database from 'better-sqlite3';
-import crypto from 'crypto';
 import { LocalSale, LocalSaleItem } from '../types.js';
+import { emitOutbox } from './sync_helpers.js';
 
 export const createSalesRepo = (db: Database.Database) => {
-  const emitOutbox = (storeId: string, entityType: string, entityId: string, opType: 'create' | 'update' | 'delete', payload: Record<string, unknown>, baseVersion?: number | null) => {
-    const now = new Date().toISOString();
-    const id = crypto.randomUUID();
-    const idempotencyKey = `${storeId}:${entityType}:${entityId}:${opType}:${now}`;
-    try {
-      db.prepare(
-        `INSERT OR IGNORE INTO sync_outbox (id, store_id, entity_type, entity_id, op_type, payload_json, base_version, created_at, status, retry_count, last_error, idempotency_key)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, NULL, ?)`
-      ).run(id, storeId, entityType, entityId, opType, JSON.stringify(payload), baseVersion ?? null, now, idempotencyKey);
-    } catch (_) { /* sync outbox write should never block main flow */ }
-  };
-
   return {
   listSales(storeId?: string, limit?: number): LocalSale[] {
     if (storeId) {
@@ -85,7 +73,7 @@ export const createSalesRepo = (db: Database.Database) => {
       notes: sale.notes ?? null,
       invoice_number: sale.invoice_number ?? null,
     });
-    emitOutbox(sale.store_id, 'sale', sale.id, 'create', sale as unknown as Record<string, unknown>);
+    emitOutbox(db, sale.store_id, 'sale', sale.id, 'create', sale as unknown as Record<string, unknown>);
   },
 
   updateSale(
@@ -156,7 +144,7 @@ export const createSalesRepo = (db: Database.Database) => {
     // Retrieve store_id from the parent sale for the outbox event
     const sale = db.prepare('SELECT store_id FROM sales WHERE id = ? LIMIT 1').get(item.sale_id) as { store_id: string } | undefined;
     if (sale) {
-      emitOutbox(sale.store_id, 'sale_item', item.id, 'create', item as unknown as Record<string, unknown>);
+      emitOutbox(db, sale.store_id, 'sale_item', item.id, 'create', item as unknown as Record<string, unknown>);
     }
   },
 };

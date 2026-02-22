@@ -1,20 +1,8 @@
 import Database from 'better-sqlite3';
-import crypto from 'crypto';
 import { LocalProduct, LocalProductFamily, LocalProductBatch, sanitizeString } from '../types.js';
+import { emitOutbox } from './sync_helpers.js';
 
 export const createProductsRepo = (db: Database.Database) => {
-  const emitOutbox = (storeId: string, entityType: string, entityId: string, opType: 'create' | 'update' | 'delete', payload: Record<string, unknown>, baseVersion?: number | null) => {
-    const now = new Date().toISOString();
-    const id = crypto.randomUUID();
-    const idempotencyKey = `${storeId}:${entityType}:${entityId}:${opType}:${now}`;
-    try {
-      db.prepare(
-        `INSERT OR IGNORE INTO sync_outbox (id, store_id, entity_type, entity_id, op_type, payload_json, base_version, created_at, status, retry_count, last_error, idempotency_key)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, NULL, ?)`
-      ).run(id, storeId, entityType, entityId, opType, JSON.stringify(payload), baseVersion ?? null, now, idempotencyKey);
-    } catch (_) { /* sync outbox write should never block main flow */ }
-  };
-
   return {
   listProducts(storeId: string): LocalProduct[] {
     const rows = db
@@ -201,7 +189,7 @@ export const createProductsRepo = (db: Database.Database) => {
         created_by: product.created_by ?? null,
         updated_by: product.updated_by ?? null,
       });
-    emitOutbox(product.store_id, 'product', product.id, 'create', product as unknown as Record<string, unknown>);
+    emitOutbox(db, product.store_id, 'product', product.id, 'create', product as unknown as Record<string, unknown>);
   },
 
   updateProduct(
@@ -227,7 +215,7 @@ export const createProductsRepo = (db: Database.Database) => {
     const row = db.prepare('SELECT * FROM products WHERE id = ? LIMIT 1').get(productId);
     const updated = row as LocalProduct | undefined;
     if (updated) {
-      emitOutbox(updated.store_id, 'product', productId, 'update', updated as unknown as Record<string, unknown>, (updated as any).version);
+      emitOutbox(db, updated.store_id, 'product', productId, 'update', updated as unknown as Record<string, unknown>, (updated as any).version - 1);
     }
     return updated;
   },
@@ -236,7 +224,7 @@ export const createProductsRepo = (db: Database.Database) => {
     const existing = db.prepare('SELECT store_id FROM products WHERE id = ? LIMIT 1').get(productId) as { store_id: string } | undefined;
     db.prepare('DELETE FROM products WHERE id = ?').run(productId);
     if (existing) {
-      emitOutbox(existing.store_id, 'product', productId, 'delete', { id: productId });
+      emitOutbox(db, existing.store_id, 'product', productId, 'delete', { id: productId });
     }
   },
 
