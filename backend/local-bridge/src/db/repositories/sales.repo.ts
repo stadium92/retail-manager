@@ -1,7 +1,9 @@
 import Database from 'better-sqlite3';
 import { LocalSale, LocalSaleItem } from '../types.js';
+import { emitOutbox } from './sync_helpers.js';
 
-export const createSalesRepo = (db: Database.Database) => ({
+export const createSalesRepo = (db: Database.Database) => {
+  return {
   listSales(storeId?: string, limit?: number): LocalSale[] {
     if (storeId) {
       const rows = db
@@ -71,6 +73,7 @@ export const createSalesRepo = (db: Database.Database) => ({
       notes: sale.notes ?? null,
       invoice_number: sale.invoice_number ?? null,
     });
+    emitOutbox(db, sale.store_id, 'sale', sale.id, 'create', sale as unknown as Record<string, unknown>);
   },
 
   updateSale(
@@ -138,5 +141,11 @@ export const createSalesRepo = (db: Database.Database) => ({
       discount: item.discount ?? 0,
       batch_id: item.batch_id ?? null,
     });
+    // Retrieve store_id from the parent sale for the outbox event
+    const sale = db.prepare('SELECT store_id FROM sales WHERE id = ? LIMIT 1').get(item.sale_id) as { store_id: string } | undefined;
+    if (sale) {
+      emitOutbox(db, sale.store_id, 'sale_item', item.id, 'create', item as unknown as Record<string, unknown>);
+    }
   },
-});
+};
+};

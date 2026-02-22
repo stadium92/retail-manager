@@ -618,18 +618,15 @@ export async function registerProductRoutes(app: FastifyInstance) {
 
     const productId = (request.params as { id: string }).id;
     const existing = db.getProductById(productId);
-    if (!existing) {
-      return reply.status(404).send({
-        error: 'NotFound',
-        message: 'Product not found.',
-      });
-    }
-
-    if (claims.store_id && claims.role !== 'master' && claims.store_id !== existing.store_id) {
-      return reply.status(403).send({
-        error: 'Forbidden',
-        message: 'You cannot delete this product.',
-      });
+    
+    // Only check permissions if the product actually exists
+    if (existing) {
+      if (claims.store_id && claims.role !== 'master' && claims.store_id !== existing.store_id) {
+        return reply.status(403).send({
+          error: 'Forbidden',
+          message: 'You cannot delete this product.',
+        });
+      }
     }
 
     db.deleteProduct(productId);

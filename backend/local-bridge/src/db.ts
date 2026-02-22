@@ -1748,7 +1748,21 @@ class LocalBridgeDatabase {
   }
 
   deleteProduct(productId: string) {
-    this.db.prepare('DELETE FROM products WHERE id = ?').run(productId);
+    const deleteTx = this.db.transaction(() => {
+      // Nullify references in history tables (keep the record, lose the link)
+      this.db.prepare('UPDATE sale_items SET product_id = NULL WHERE product_id = ?').run(productId);
+      this.db.prepare('UPDATE purchase_items SET product_id = NULL WHERE product_id = ?').run(productId);
+      
+      // Delete operational data that is meaningless without product
+      this.db.prepare('DELETE FROM inventory_movements WHERE product_id = ?').run(productId);
+      this.db.prepare('DELETE FROM replenishment_requests WHERE product_id = ?').run(productId);
+      this.db.prepare('DELETE FROM product_batches WHERE product_id = ?').run(productId);
+      this.db.prepare('DELETE FROM scheduled_order_items WHERE product_id = ?').run(productId);
+      
+      // Finally delete the product
+      this.db.prepare('DELETE FROM products WHERE id = ?').run(productId);
+    });
+    deleteTx();
   }
 
   listInvitations(storeId?: string): LocalWorkerInvitation[] {
