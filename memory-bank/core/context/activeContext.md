@@ -1,15 +1,16 @@
 # Active Context - Retail Manager
 
 ## Current Focus
-Completed the **Client Service & Discount Logic** implementation.
-- Backend: Added `clients` and `client_services` tables, repos, and routes.
-- Frontend: Wired Client/Group modules to API, implemented Auto-Discount in POS.
-- Integrity: Added stock deduction and client balance tracking to Sale creation.
+- **Anti-Theft & Accountability Pivot:** Following a stakeholder interview in Mali, the product's core value proposition has shifted from "management" to "anti-theft" (addressing up to 20% revenue loss from employee theft).
+- **Backend Security Audit:** Identified 9 major flaws in the local-bridge backend (cross-store exposure, double stock deduction, non-atomic writes) that directly conflict with the new anti-theft mandate. A prompt has been generated for Gemini 3 Pro to fix these (`memory-bank/ai/backend-wizards-fix-flaws.md`).
+- **Client Service & Discount Logic:** Completed the implementation of `clients` and `client_services` tables, repos, and routes.
 
 ## Current Blockers
+- **Critical Backend Flaws:** The 9 identified flaws in `routes/sales.ts`, `routes/products.ts`, and `db/schema.ts` must be patched immediately to ensure cashiers cannot bypass permissions or corrupt stock data.
 - **Legacy `db.ts` Cleanup:** The monolithic `db.ts` still exists alongside the new repositories. Phase 8 needs to be fully finalized (deleting `db.ts`) after ensuring all legacy dependencies are migrated.
 
 ## Recent Changes
+- **Stakeholder Insights Integrated:** Updated `projectbrief.md` to reflect the offline-first validation, the "hub and spoke" multi-store reality, the preference for one-time payments over SaaS, and the critical need for strict cashier permissions and blind closeouts.
 - **Client Service Implementation:**
     - Created `clients` and `client_services` tables in SQLite.
     - Implemented `clients.repo.ts` and `client_services.repo.ts`.
