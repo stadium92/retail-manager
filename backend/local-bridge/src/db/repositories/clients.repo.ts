@@ -1,7 +1,9 @@
 import Database from 'better-sqlite3';
 import { LocalClient } from '../types.js';
+import { emitOutbox } from './sync_helpers.js';
 
-export const createClientsRepo = (db: Database.Database) => ({
+export const createClientsRepo = (db: Database.Database) => {
+  return {
   listClients(storeId?: string): LocalClient[] {
     if (storeId) {
       const rows = db
@@ -72,6 +74,7 @@ export const createClientsRepo = (db: Database.Database) => ({
       loyalty_points: client.loyalty_points ?? 0,
       notes: client.notes ?? null,
     });
+    emitOutbox(db, client.store_id, 'client', client.id, 'create', client as unknown as Record<string, unknown>);
   },
 
   updateClient(
@@ -85,17 +88,25 @@ export const createClientsRepo = (db: Database.Database) => ({
     }
 
     const assignments = normalizedEntries.map(([key]) => `${key} = @${key}`).join(', ');
-    db.prepare(`UPDATE clients SET ${assignments} WHERE id = @id`).run({
+    db.prepare(`UPDATE clients SET ${assignments}, version = version + 1 WHERE id = @id`).run({
       id: clientId,
       ...Object.fromEntries(normalizedEntries),
     });
     
     const row = db.prepare('SELECT * FROM clients WHERE id = ? LIMIT 1').get(clientId);
-    return row as LocalClient | undefined;
+    const updated = row as LocalClient | undefined;
+    if (updated) {
+      emitOutbox(db, updated.store_id, 'client', clientId, 'update', updated as unknown as Record<string, unknown>, (updated as any).version - 1);
+    }
+    return updated;
   },
 
   deleteClient(clientId: string) {
+    const existing = db.prepare('SELECT store_id FROM clients WHERE id = ? LIMIT 1').get(clientId) as { store_id: string } | undefined;
     db.prepare('DELETE FROM clients WHERE id = ?').run(clientId);
+    if (existing) {
+      emitOutbox(db, existing.store_id, 'client', clientId, 'delete', { id: clientId });
+    }
   },
 
   updateClientBalance(clientId: string, amount: number) {
@@ -105,4 +116,5 @@ export const createClientsRepo = (db: Database.Database) => ({
       WHERE id = ?
     `).run(amount, new Date().toISOString(), clientId);
   },
-});
+};
+};
