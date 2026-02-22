@@ -256,4 +256,25 @@ export const createPurchasingRepo = (db: Database.Database) => ({
     const row = db.prepare('SELECT * FROM supplier_payments WHERE id = ? LIMIT 1').get(paymentId);
     return row as LocalSupplierPayment | undefined;
   },
+
+  listSupplierTransactions(storeId: string, supplierId: string): any[] {
+    // Get payments
+    const payments = db.prepare(`
+      SELECT id, 'payment' as type, amount, payment_method as method, NULL as status, notes, confirmed_at, created_at
+      FROM supplier_payments
+      WHERE store_id = ? AND supplier_id = ?
+    `).all(storeId, supplierId) as any[];
+
+    // Get purchases
+    const purchases = db.prepare(`
+      SELECT id, 'purchase' as type, total_amount as amount, NULL as method, status, notes, NULL as confirmed_at, created_at
+      FROM purchase_orders
+      WHERE store_id = ? AND supplier_id = ? AND (status = 'received' OR status = 'partial')
+    `).all(storeId, supplierId) as any[];
+
+    // Merge and sort by date descending
+    return [...payments, ...purchases].sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  },
 });

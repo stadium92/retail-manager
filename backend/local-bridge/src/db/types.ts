@@ -112,6 +112,33 @@ export interface LocalProductBatch {
   created_at: string;
 }
 
+export interface LocalClient {
+  id: string;
+  store_id: string;
+  service_id?: string | null;
+  name: string;
+  code?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  credit_limit?: number | null;
+  current_balance: number;
+  loyalty_points?: number | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LocalClientService {
+  id: string;
+  store_id: string;
+  name: string;
+  default_discount_percent: number;
+  description?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface LocalSupplier {
   id: string;
   store_id: string;
@@ -159,6 +186,17 @@ export interface LocalSupplierPayment {
   created_at: string;
 }
 
+export interface LocalSupplierTransaction {
+  id: string;
+  type: 'payment' | 'purchase';
+  amount: number;
+  method?: string;
+  status?: string;
+  created_at: string;
+  notes?: string;
+  confirmed_at?: string | null;
+}
+
 export interface LocalDelivery {
   id: string;
   sale_id?: string | null;
@@ -179,6 +217,7 @@ export interface LocalSale {
   id: string;
   store_id: string;
   worker_id?: string | null;
+  client_id?: string | null;
   customer_name?: string | null;
   customer_phone?: string | null;
   sale_type: 'detail' | 'gros' | 'proforma';

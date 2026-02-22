@@ -13,6 +13,7 @@ Before writing any code, you MUST read and understand these files. They are your
 | Priority | File | Why |
 |----------|------|-----|
 | 0 | `memory-bank/analysis/CLIENT-SERVICE-ANALYSIS-006.md` | Full analysis report — 11 bugs, architecture gaps, team Q/A, priority matrix |
+| 0b | `memory-bank/docs/CLIENT-BRIEF-006-Client-Service-Raw.md` | Original unedited team brief — raw client voice, team roles, intent behind each fix |
 | 1 | `memory-bank/plans/PRD-005-Multi-Price-Tiers-And-Batch-Tracking.md` | Related PRD — price tiers interact with client discounts |
 | 2 | `memory-bank/core/context/techContext.md` | Tech stack, build pipeline, architecture overview |
 | 3 | `memory-bank/core/context/systemPatterns.md` | Authorization model, pyramidal scheme, safety constraints |

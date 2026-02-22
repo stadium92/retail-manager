@@ -16,6 +16,8 @@ import { createDeliveriesRepo } from './repositories/deliveries.repo.js';
 import { createSalesRepo } from './repositories/sales.repo.js';
 import { createReplenishmentRepo } from './repositories/replenishment.repo.js';
 import { createProductsRepo } from './repositories/products.repo.js';
+import { createClientsRepo } from './repositories/clients.repo.js';
+import { createClientServicesRepo } from './repositories/client_services.repo.js';
 
 const db = {
   db: rawDb,
@@ -37,6 +39,8 @@ const db = {
   ...createSalesRepo(rawDb),
   ...createReplenishmentRepo(rawDb),
   ...createProductsRepo(rawDb),
+  ...createClientsRepo(rawDb),
+  ...createClientServicesRepo(rawDb),
 };
 
 // Auto-initialize on import (simulating class constructor behavior)

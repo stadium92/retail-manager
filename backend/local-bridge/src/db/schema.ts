@@ -310,6 +310,36 @@ export const initializeSchema = (db: Database.Database) => {
       FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id) ON DELETE SET NULL
     );
 
+    CREATE TABLE IF NOT EXISTS client_services (
+      id TEXT PRIMARY KEY,
+      store_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      default_discount_percent REAL DEFAULT 0,
+      description TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (store_id) REFERENCES stores(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS clients (
+      id TEXT PRIMARY KEY,
+      store_id TEXT NOT NULL,
+      service_id TEXT,
+      name TEXT NOT NULL,
+      code TEXT,
+      phone TEXT,
+      email TEXT,
+      address TEXT,
+      credit_limit REAL DEFAULT 0,
+      current_balance REAL DEFAULT 0,
+      loyalty_points INTEGER DEFAULT 0,
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (store_id) REFERENCES stores(id),
+      FOREIGN KEY (service_id) REFERENCES client_services(id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_worker_invitations_status ON worker_invitations(status);
     CREATE INDEX IF NOT EXISTS idx_worker_invitations_store ON worker_invitations(store_id);
     CREATE INDEX IF NOT EXISTS idx_products_store ON products(store_id);
@@ -398,4 +428,5 @@ export const initializeSchema = (db: Database.Database) => {
 
   ensureColumn('stores', 'default_price_tier', `ALTER TABLE stores ADD COLUMN default_price_tier INTEGER NOT NULL DEFAULT 1`);
   ensureColumn('inventory_movements', 'batch_id', `ALTER TABLE inventory_movements ADD COLUMN batch_id TEXT REFERENCES product_batches(id)`);
+  ensureColumn('sales', 'client_id', `ALTER TABLE sales ADD COLUMN client_id TEXT REFERENCES clients(id)`);
 };

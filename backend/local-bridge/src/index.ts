@@ -11,6 +11,7 @@ import { registerDeliveryRoutes } from './routes/deliveries.js';
 import { registerTeamRoutes } from './routes/team.js';
 import { registerSalesRoutes } from './routes/sales.js';
 import { registerStoreRoutes } from './routes/stores.js';
+import { registerClientsRoutes } from './routes/clients.js';
 import { registerSyncRoutes } from './routes/sync.js';
 import { registerAnalyticsRoutes } from './routes/analytics.js';
 import { registerAuditRoutes } from './routes/audit.js';
@@ -68,6 +69,7 @@ async function start() {
   await registerTeamRoutes(app);
   await registerSalesRoutes(app);
   await registerStoreRoutes(app);
+  await registerClientsRoutes(app);
   await registerSyncRoutes(app);
   await registerAnalyticsRoutes(app);
   await registerAuditRoutes(app);

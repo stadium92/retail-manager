@@ -589,6 +589,36 @@ class LocalBridgeDatabase {
         created_at TEXT NOT NULL
       );
 
+      CREATE TABLE IF NOT EXISTS client_services (
+        id TEXT PRIMARY KEY,
+        store_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        default_discount_percent REAL DEFAULT 0,
+        description TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (store_id) REFERENCES stores(id)
+      );
+
+      CREATE TABLE IF NOT EXISTS clients (
+        id TEXT PRIMARY KEY,
+        store_id TEXT NOT NULL,
+        service_id TEXT,
+        name TEXT NOT NULL,
+        code TEXT,
+        phone TEXT,
+        email TEXT,
+        address TEXT,
+        credit_limit REAL DEFAULT 0,
+        current_balance REAL DEFAULT 0,
+        loyalty_points INTEGER DEFAULT 0,
+        notes TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (store_id) REFERENCES stores(id),
+        FOREIGN KEY (service_id) REFERENCES client_services(id)
+      );
+
       CREATE INDEX IF NOT EXISTS idx_worker_invitations_status ON worker_invitations(status);
       CREATE INDEX IF NOT EXISTS idx_worker_invitations_store ON worker_invitations(store_id);
       CREATE INDEX IF NOT EXISTS idx_products_store ON products(store_id);
@@ -651,6 +681,7 @@ class LocalBridgeDatabase {
     ensureColumn('sales', 'customer_phone', `ALTER TABLE sales ADD COLUMN customer_phone TEXT`);
     ensureColumn('sales', 'notes', `ALTER TABLE sales ADD COLUMN notes TEXT`);
     ensureColumn('sales', 'invoice_number', `ALTER TABLE sales ADD COLUMN invoice_number TEXT`);
+    ensureColumn('sales', 'client_id', `ALTER TABLE sales ADD COLUMN client_id TEXT REFERENCES clients(id)`);
     ensureColumn('sale_items', 'discount', `ALTER TABLE sale_items ADD COLUMN discount REAL DEFAULT 0`);
     
     // New Product Fields

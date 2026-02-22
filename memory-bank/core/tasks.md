@@ -447,3 +447,49 @@ This document tracks granular progress toward the v1.0 release. All technical lo
     *   [ ] **33.8 — Smoke test: System** — integrity check, VACUUM (tests `db.db` access).
     *   [ ] **33.9 — Verify no file in `src/db/` exceeds 350 lines.**
     *   [ ] **33.10 — Git commit:** `refactor: split monolithic db.ts (2,193 lines) into 18 repository modules`
+
+## 🟣 Phase 9: Client Service & Discount Logic (P0)
+
+### 34. Client Service Backend & Frontend
+*   **Context:** Implement Clients, Client Groups (Services), and auto-apply discounts.
+*   **Tasks:**
+    *   [x] **Database Schema:**
+        *   [x] Create `clients` table.
+        *   [x] Create `client_services` table.
+        *   [x] Add `client_id` to `sales` table.
+        *   [x] Update `db.ts` legacy schema.
+    *   [x] **Backend Repositories:**
+        *   [x] Create `clients.repo.ts`.
+        *   [x] Create `client_services.repo.ts`.
+        *   [x] Register in `db/index.ts`.
+    *   [x] **Backend Routes:**
+        *   [x] Create `routes/clients.ts` (CRUD + Payments).
+        *   [x] Register routes in `index.ts`.
+        *   [x] Seed default client groups (VIP, Grossiste, Public).
+    *   [x] **Frontend Integration:**
+        *   [x] Wire `FichiersClientsModule` to API.
+        *   [x] Wire `FichiersServicesClientsModule` to API.
+    *   [x] **Sales Logic (Auto-Discount):**
+        *   [x] Update `SalesModule.tsx` `handleClientChange` to fetch client group.
+        *   [x] Apply `default_discount_percent` to all line items.
+        *   [x] Update `addProduct` to use stored session discount.
+    *   [x] **Sale Creation Integrity:**
+        *   [x] Pass `client_id` and `discount` in sale payload.
+        *   [x] Update `routes/sales.ts` to deduct stock (MAX(0, qty-?)).
+        *   [x] Update `routes/sales.ts` to update client balance if credit.
+    *   [x] **i18n:**
+        *   [x] Add translation keys to `en`, `fr`, `bm`.
+
+## 🟣 Phase 10: Offline→Online Hybrid Sync (P0)
+
+### 35. Hybrid Sync MVP Implementation (PRD-014)
+*   **Context:** Keep local offline reliability while enabling optional cloud sync for multi-store visibility, backup, and remote continuity.
+*   **Tasks:**
+    *   [ ] **35.1 — Local Sync Tables:** Add `sync_outbox` and `sync_state` tables to SQLite migrations in local bridge.
+    *   [ ] **35.2 — Version Columns:** Add `version`, `updated_at`, `deleted_at` to synced entities (products, clients, client_services, sales, purchase_orders).
+    *   [ ] **35.3 — Outbox Emission:** Write outbox events for every create/update/delete mutation with idempotency keys.
+    *   [ ] **35.4 — Cloud API Scaffold:** Implement `/api/v1/sync/handshake`, `/api/v1/sync/push`, `/api/v1/sync/pull`.
+    *   [ ] **35.5 — Idempotency + Conflicts:** Enforce deterministic conflict rules and duplicate-safe operation replay.
+    *   [ ] **35.6 — Background Sync Worker:** Push/pull with retry backoff; must not block POS transaction flow.
+    *   [ ] **35.7 — Admin Diagnostics:** Add queue length, last success, last error panel for support/debug.
+    *   [ ] **35.8 — Pilot Validation:** Test 48h offline operation then reconnect and reconcile without data loss.

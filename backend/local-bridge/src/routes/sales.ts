@@ -12,6 +12,7 @@ const salesQuerySchema = z.object({
 const saleCreateSchema = z.object({
   store_id: z.string().optional(),
   worker_id: z.string().nullable().optional(),
+  client_id: z.string().nullable().optional(),
   customer_name: z.string().nullable().optional(),
   customer_phone: z.string().nullable().optional(),
   sale_type: z.enum(['detail', 'gros', 'proforma']).optional(),
@@ -120,6 +121,7 @@ export async function registerSalesRoutes(app: FastifyInstance) {
       id: saleId,
       store_id: storeId,
       worker_id: parsed.data.worker_id ?? claims.sub ?? null,
+      client_id: parsed.data.client_id ?? null,
       customer_name: parsed.data.customer_name ?? null,
       customer_phone: parsed.data.customer_phone ?? null,
       sale_type: parsed.data.sale_type ?? 'detail',
@@ -147,7 +149,18 @@ export async function registerSalesRoutes(app: FastifyInstance) {
         total: item.total,
         created_at: now,
       });
+
+      // Stock Deduction
+      if (item.product_id) {
+        db.db.prepare(`UPDATE products SET quantity = MAX(0, quantity - ?) WHERE id = ? AND store_id = ?`)
+          .run(item.quantity, item.product_id, storeId);
+      }
     });
+
+    // Credit Balance Update
+    if (parsed.data.payment_method === 'credit' && parsed.data.client_id) {
+      db.updateClientBalance(parsed.data.client_id, parsed.data.total_price || 0);
+    }
 
     return reply.status(201).send(db.getSaleById(saleId));
   });
