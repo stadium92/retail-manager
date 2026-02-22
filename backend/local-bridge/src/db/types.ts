@@ -291,6 +291,29 @@ export interface LocalPendingMutation {
   status: 'pending' | 'synced' | 'failed';
 }
 
+export interface SyncOutboxEntry {
+  id: string;
+  store_id: string;
+  entity_type: string;
+  entity_id: string;
+  op_type: 'create' | 'update' | 'delete';
+  payload_json: string;
+  base_version: number | null;
+  created_at: string;
+  status: 'pending' | 'sent' | 'acked' | 'failed';
+  retry_count: number;
+  last_error: string | null;
+  idempotency_key: string;
+}
+
+export interface SyncState {
+  store_id: string;
+  last_push_at: string | null;
+  last_pull_cursor: string | null;
+  last_success_at: string | null;
+  last_error: string | null;
+}
+
 export interface LocalReplenishmentRequest {
   id: string;
   store_id: string;

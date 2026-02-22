@@ -1,7 +1,21 @@
 import Database from 'better-sqlite3';
+import crypto from 'crypto';
 import { LocalClient } from '../types.js';
 
-export const createClientsRepo = (db: Database.Database) => ({
+export const createClientsRepo = (db: Database.Database) => {
+  const emitOutbox = (storeId: string, entityType: string, entityId: string, opType: 'create' | 'update' | 'delete', payload: Record<string, unknown>, baseVersion?: number | null) => {
+    const now = new Date().toISOString();
+    const id = crypto.randomUUID();
+    const idempotencyKey = `${storeId}:${entityType}:${entityId}:${opType}:${now}`;
+    try {
+      db.prepare(
+        `INSERT OR IGNORE INTO sync_outbox (id, store_id, entity_type, entity_id, op_type, payload_json, base_version, created_at, status, retry_count, last_error, idempotency_key)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, NULL, ?)`
+      ).run(id, storeId, entityType, entityId, opType, JSON.stringify(payload), baseVersion ?? null, now, idempotencyKey);
+    } catch (_) { /* sync outbox write should never block main flow */ }
+  };
+
+  return {
   listClients(storeId?: string): LocalClient[] {
     if (storeId) {
       const rows = db
@@ -72,6 +86,7 @@ export const createClientsRepo = (db: Database.Database) => ({
       loyalty_points: client.loyalty_points ?? 0,
       notes: client.notes ?? null,
     });
+    emitOutbox(client.store_id, 'client', client.id, 'create', client as unknown as Record<string, unknown>);
   },
 
   updateClient(
@@ -85,17 +100,25 @@ export const createClientsRepo = (db: Database.Database) => ({
     }
 
     const assignments = normalizedEntries.map(([key]) => `${key} = @${key}`).join(', ');
-    db.prepare(`UPDATE clients SET ${assignments} WHERE id = @id`).run({
+    db.prepare(`UPDATE clients SET ${assignments}, version = version + 1 WHERE id = @id`).run({
       id: clientId,
       ...Object.fromEntries(normalizedEntries),
     });
     
     const row = db.prepare('SELECT * FROM clients WHERE id = ? LIMIT 1').get(clientId);
-    return row as LocalClient | undefined;
+    const updated = row as LocalClient | undefined;
+    if (updated) {
+      emitOutbox(updated.store_id, 'client', clientId, 'update', updated as unknown as Record<string, unknown>, (updated as any).version);
+    }
+    return updated;
   },
 
   deleteClient(clientId: string) {
+    const existing = db.prepare('SELECT store_id FROM clients WHERE id = ? LIMIT 1').get(clientId) as { store_id: string } | undefined;
     db.prepare('DELETE FROM clients WHERE id = ?').run(clientId);
+    if (existing) {
+      emitOutbox(existing.store_id, 'client', clientId, 'delete', { id: clientId });
+    }
   },
 
   updateClientBalance(clientId: string, amount: number) {
@@ -105,4 +128,5 @@ export const createClientsRepo = (db: Database.Database) => ({
       WHERE id = ?
     `).run(amount, new Date().toISOString(), clientId);
   },
-});
+};
+};

@@ -357,6 +357,32 @@ export const initializeSchema = (db: Database.Database) => {
     CREATE INDEX IF NOT EXISTS idx_inventory_movements_product ON inventory_movements(product_id);
     CREATE INDEX IF NOT EXISTS idx_pending_mutations_status ON pending_mutations(status);
     CREATE INDEX IF NOT EXISTS idx_pending_mutations_store ON pending_mutations(store_id);
+
+    CREATE TABLE IF NOT EXISTS sync_outbox (
+      id TEXT PRIMARY KEY,
+      store_id TEXT NOT NULL,
+      entity_type TEXT NOT NULL,
+      entity_id TEXT NOT NULL,
+      op_type TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      base_version INTEGER,
+      created_at TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      retry_count INTEGER NOT NULL DEFAULT 0,
+      last_error TEXT,
+      idempotency_key TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_sync_outbox_store_status_created ON sync_outbox(store_id, status, created_at);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_sync_outbox_idempotency ON sync_outbox(idempotency_key);
+
+    CREATE TABLE IF NOT EXISTS sync_state (
+      store_id TEXT PRIMARY KEY,
+      last_push_at TEXT,
+      last_pull_cursor TEXT,
+      last_success_at TEXT,
+      last_error TEXT
+    );
     CREATE INDEX IF NOT EXISTS idx_replenishment_requests_store ON replenishment_requests(store_id);
     CREATE INDEX IF NOT EXISTS idx_replenishment_requests_status ON replenishment_requests(status);
     CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp);
@@ -429,4 +455,29 @@ export const initializeSchema = (db: Database.Database) => {
   ensureColumn('stores', 'default_price_tier', `ALTER TABLE stores ADD COLUMN default_price_tier INTEGER NOT NULL DEFAULT 1`);
   ensureColumn('inventory_movements', 'batch_id', `ALTER TABLE inventory_movements ADD COLUMN batch_id TEXT REFERENCES product_batches(id)`);
   ensureColumn('sales', 'client_id', `ALTER TABLE sales ADD COLUMN client_id TEXT REFERENCES clients(id)`);
+
+  // Sync version columns for offline→online sync
+  ensureColumn('products', 'version', `ALTER TABLE products ADD COLUMN version INTEGER NOT NULL DEFAULT 1`);
+  ensureColumn('products', 'deleted_at', `ALTER TABLE products ADD COLUMN deleted_at TEXT`);
+
+  ensureColumn('clients', 'version', `ALTER TABLE clients ADD COLUMN version INTEGER NOT NULL DEFAULT 1`);
+  ensureColumn('clients', 'deleted_at', `ALTER TABLE clients ADD COLUMN deleted_at TEXT`);
+
+  ensureColumn('client_services', 'version', `ALTER TABLE client_services ADD COLUMN version INTEGER NOT NULL DEFAULT 1`);
+  ensureColumn('client_services', 'deleted_at', `ALTER TABLE client_services ADD COLUMN deleted_at TEXT`);
+
+  ensureColumn('sales', 'version', `ALTER TABLE sales ADD COLUMN version INTEGER NOT NULL DEFAULT 1`);
+  ensureColumn('sales', 'deleted_at', `ALTER TABLE sales ADD COLUMN deleted_at TEXT`);
+
+  ensureColumn('sale_items', 'version', `ALTER TABLE sale_items ADD COLUMN version INTEGER NOT NULL DEFAULT 1`);
+  ensureColumn('sale_items', 'deleted_at', `ALTER TABLE sale_items ADD COLUMN deleted_at TEXT`);
+
+  ensureColumn('purchase_orders', 'version', `ALTER TABLE purchase_orders ADD COLUMN version INTEGER NOT NULL DEFAULT 1`);
+  ensureColumn('purchase_orders', 'deleted_at', `ALTER TABLE purchase_orders ADD COLUMN deleted_at TEXT`);
+
+  ensureColumn('purchase_items', 'version', `ALTER TABLE purchase_items ADD COLUMN version INTEGER NOT NULL DEFAULT 1`);
+  ensureColumn('purchase_items', 'deleted_at', `ALTER TABLE purchase_items ADD COLUMN deleted_at TEXT`);
+
+  ensureColumn('stores', 'version', `ALTER TABLE stores ADD COLUMN version INTEGER NOT NULL DEFAULT 1`);
+  ensureColumn('stores', 'deleted_at', `ALTER TABLE stores ADD COLUMN deleted_at TEXT`);
 };
