@@ -17,6 +17,8 @@ const supplierCreateSchema = z.object({
   email: z.string().nullable().optional(),
   address: z.string().nullable().optional(),
   balance: z.number().optional(),
+  default_purchase_type: z.string().nullable().optional(),
+  price_notes: z.string().nullable().optional(),
 });
 
 const supplierUpdateSchema = z.object({
@@ -25,6 +27,8 @@ const supplierUpdateSchema = z.object({
   email: z.string().nullable().optional(),
   address: z.string().nullable().optional(),
   balance: z.number().optional(),
+  default_purchase_type: z.string().nullable().optional(),
+  price_notes: z.string().nullable().optional(),
 });
 
 const orderCreateSchema = z.object({
@@ -319,6 +323,8 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
       email: parsed.data.email ?? null,
       address: parsed.data.address ?? null,
       balance: parsed.data.balance ?? 0,
+      default_purchase_type: parsed.data.default_purchase_type ?? null,
+      price_notes: parsed.data.price_notes ?? null,
       created_at: now,
       updated_at: now,
     });
