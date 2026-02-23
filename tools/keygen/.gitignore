@@ -1,0 +1,6 @@
+# Ignore generated keys
+*.pem
+
+# Ignore build artifacts
+target/
+Cargo.lock
