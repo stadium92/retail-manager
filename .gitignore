@@ -8,10 +8,15 @@ target/
 src-tauri/target/
 src-tauri/binaries/
 src-tauri/gen/
+backend/sidecar-wrapper/target/
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Database
+*.sqlite-wal
+*.sqlite-shm
 
 # VS Code
 .vscode
