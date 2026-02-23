@@ -25,11 +25,11 @@ This project demonstrates a sophisticated **Hybrid Desktop Architecture** that c
 
 ```mermaid
 graph TD
-    A[Desktop Shell (Tauri/Rust)] -->|Manages| B[Sidecar Process (Node.js Binary)]
-    B -->|Fastify API| C[Local Database (SQLite)]
-    A -->|WebView| D[React Frontend]
-    D -->|HTTP/REST| B
-    B -->|Sync Outbox| E[Cloud (Supabase) - Optional]
+    A["Desktop Shell (Tauri/Rust)"] -->|Manages| B["Sidecar Process (Node.js Binary)"]
+    B -->|"Fastify API"| C["Local Database (SQLite)"]
+    A -->|WebView| D["React Frontend"]
+    D -->|"HTTP/REST"| B
+    B -->|"Sync Outbox"| E["Cloud (Supabase) - Optional"]
 ```
 
 ### 1. The Rust Sidecar Wrapper 🦀
