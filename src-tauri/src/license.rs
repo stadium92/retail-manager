@@ -6,6 +6,34 @@ use std::fs;
 use std::path::PathBuf;
 use tauri::AppHandle;
 use tauri::Manager;
+use ed25519_dalek::{Verifier, VerifyingKey, Signature};
+use base32;
+use aes_gcm::{
+    aead::{Aead, KeyInit},
+    Aes256Gcm, Nonce // Or `Aes128Gcm`
+};
+use rand::{Rng, thread_rng};
+
+// -----------------------------------------------------------------------------
+// CONFIGURATION
+// -----------------------------------------------------------------------------
+
+// TODO: REPLACE THIS WITH YOUR REAL PUBLIC KEY FROM tools/keygen/src/main.rs
+// Run `cargo run --bin keygen -- --device-id TEST` to get this array.
+const PUBLIC_KEY_BYTES: [u8; 32] = [
+    0x9C, 0xAB, 0x1B, 0x1C, 0x12, 0xBC, 0x66, 0x9F, 
+    0x2D, 0xDE, 0x28, 0x7F, 0xD0, 0xD1, 0x12, 0x49, 
+    0x56, 0xA3, 0xA5, 0xF5, 0x06, 0x93, 0xF6, 0xBF, 
+    0x84, 0x19, 0x29, 0xD9, 0xBE, 0x28, 0x9C, 0x01, 
+];
+
+// AES Key for local storage (Not for transmission). 
+// Ideally derived from machine ID, but hardcoded is okay for local obfuscation against casual copying.
+const LOCAL_STORAGE_KEY: &[u8; 32] = b"RETAIL-MANAGER-LOCAL-SECURE-KEY!"; // Must be 32 bytes
+
+// -----------------------------------------------------------------------------
+// TYPES
+// -----------------------------------------------------------------------------
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LicenseStore {
@@ -32,14 +60,10 @@ pub struct LicenseStatus {
 }
 
 const TRIAL_DAYS: i32 = 30;
-const SECRET_KEY: &[u8] = b"RETAIL-MANAGER-SECURE-KEY-2026";
 
-fn encrypt_decrypt(data: &[u8]) -> Vec<u8> {
-    data.iter()
-        .enumerate()
-        .map(|(i, &b)| b ^ SECRET_KEY[i % SECRET_KEY.len()])
-        .collect()
-}
+// -----------------------------------------------------------------------------
+// HELPERS
+// -----------------------------------------------------------------------------
 
 pub fn get_device_hash() -> String {
     let uid = machine_uid::get().unwrap_or_else(|_| "UNKNOWN_DEVICE".to_string());
@@ -47,50 +71,14 @@ pub fn get_device_hash() -> String {
     hasher.update(uid.as_bytes());
     let result = hasher.finalize();
     let hex_hash = hex::encode(result);
-    // Take first 4 chars as per PRD
+    // Take first 4 chars to match the key format
     hex_hash[..4].to_uppercase()
 }
 
-pub fn validate_checksum(data: &str, provided_checksum: &str) -> bool {
-    let calculated = calculate_luhn_mod36(data);
-    calculated == provided_checksum
-}
-
-fn calculate_luhn_mod36(data: &str) -> String {
-    let chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    let mut sum = 0;
-    let n = chars.len() as u32;
-
-    for (i, c) in data.chars().rev().enumerate() {
-        let mut val = chars.find(c).unwrap_or(0) as u32;
-        if i % 2 == 0 {
-            val *= 2;
-            val = (val / n) + (val % n);
-        }
-        sum += val;
-    }
-
-    let check_digit_index = (n - (sum % n)) % n;
-    // Return a 4-char "hash" based on this sum for more robustness than a single digit
-    // But PRD asks for 4-char VVVV. Let's make it a simple hash-based 4-char string.
-    let mut hasher = Sha256::new();
-    hasher.update(format!("{}{}", data, sum).as_bytes());
-    let result = hasher.finalize();
-    let hex_hash = hex::encode(result);
-    hex_hash[..4].to_uppercase()
-}
-
-pub fn parse_key(key: &str) -> Result<(String, String, String, String), String> {
-    let parts: Vec<&str> = key.split('-').collect();
-    if parts.len() != 5 || parts[0] != "RM" {
-        return Err("Invalid format. Use: RM-YYYY-SSSS-HHHH-VVVV".to_string());
-    }
-    Ok((
-        parts[1].to_string(), // YYYY
-        parts[2].to_string(), // SSSS
-        parts[3].to_string(), // HHHH
-        parts[4].to_string(), // VVVV
-    ))
+fn get_license_path(app_handle: &AppHandle) -> PathBuf {
+    let mut path = app_handle.path().app_data_dir().unwrap_or_default();
+    path.push("license.bin"); // Changed extension to .bin for binary
+    path
 }
 
 fn get_install_date_path(app_handle: &AppHandle) -> PathBuf {
@@ -99,47 +87,147 @@ fn get_install_date_path(app_handle: &AppHandle) -> PathBuf {
     path
 }
 
-fn get_license_path(app_handle: &AppHandle) -> PathBuf {
-    let mut path = app_handle.path().app_data_dir().unwrap_or_default();
-    path.push("license.enc");
-    path
+// AES-GCM Encryption for local storage
+fn encrypt_data(data: &[u8]) -> Result<Vec<u8>, String> {
+    let cipher = Aes256Gcm::new(LOCAL_STORAGE_KEY.into());
+    let nonce_bytes: [u8; 12] = thread_rng().gen();
+    let nonce = Nonce::from_slice(&nonce_bytes);
+    
+    let ciphertext = cipher.encrypt(nonce, data)
+        .map_err(|_| "Encryption failed".to_string())?;
+        
+    // Prepend nonce to ciphertext
+    let mut result = nonce_bytes.to_vec();
+    result.extend(ciphertext);
+    Ok(result)
 }
 
-pub fn get_status(app_handle: &AppHandle) -> LicenseStatus {
-    let device_hash = get_device_hash();
-    let license_path = get_license_path(app_handle);
+fn decrypt_data(data: &[u8]) -> Result<Vec<u8>, String> {
+    if data.len() < 12 {
+        return Err("Invalid data length".to_string());
+    }
+    let nonce = Nonce::from_slice(&data[..12]);
+    let ciphertext = &data[12..];
     
-    // 1. Check if activated
+    let cipher = Aes256Gcm::new(LOCAL_STORAGE_KEY.into());
+    cipher.decrypt(nonce, ciphertext)
+        .map_err(|_| "Decryption failed".to_string())
+}
+
+// -----------------------------------------------------------------------------
+// CORE LOGIC
+// -----------------------------------------------------------------------------
+
+pub fn verify_signature(key: &str, device_id: &str) -> Result<bool, String> {
+    // Expected Format: RM-YYYY-DEVICEID-<SIGNATURE_BASE32>
+    // Example: RM-2026-ABCD-KB2...
+    
+    let parts: Vec<&str> = key.split('-').collect();
+    if parts.len() < 4 {
+        return Err("Invalid key format.".to_string());
+    }
+
+    let prefix = parts[0];
+    let year = parts[1];
+    let key_device_id = parts[2];
+    let signature_encoded = parts[3];
+
+    if prefix != "RM" {
+        return Err("Invalid license prefix.".to_string());
+    }
+
+    if key_device_id != device_id {
+        return Err(format!("Key is for device {}, but this is {}.", key_device_id, device_id));
+    }
+
+    // Reconstruct Payload: RM-YYYY-DEVICEID
+    let payload = format!("{}-{}-{}", prefix, year, key_device_id);
+    let payload_bytes = payload.as_bytes();
+
+    // Decode Signature
+    let signature_bytes = base32::decode(base32::Alphabet::Crockford, signature_encoded)
+        .ok_or("Invalid signature encoding (Base32).")?;
+
+    if signature_bytes.len() != 64 {
+        return Err("Invalid signature length.".to_string());
+    }
+
+    let signature = Signature::from_bytes(signature_bytes.try_into().unwrap());
+    
+    // Verify
+    // Handle all-zero placeholder key
+    if PUBLIC_KEY_BYTES == [0u8; 32] {
+        return Err("Dev Error: PUBLIC_KEY_BYTES not set in license.rs".to_string());
+    }
+
+    let verifying_key = VerifyingKey::from_bytes(&PUBLIC_KEY_BYTES)
+        .map_err(|_| "Invalid public key".to_string())?;
+
+    verifying_key.verify(payload_bytes, &signature)
+        .map_err(|_| "Invalid signature. Key has been tampered with.".to_string())?;
+
+    Ok(true)
+}
+
+// -----------------------------------------------------------------------------
+// TAURI COMMANDS
+// -----------------------------------------------------------------------------
+
+#[tauri::command]
+pub fn validate_license_command(key: String) -> Result<bool, String> {
+    let device_hash = get_device_hash();
+    verify_signature(&key, &device_hash)
+}
+
+#[tauri::command]
+pub fn get_device_hash_command() -> Result<String, String> {
+    Ok(get_device_hash())
+}
+
+#[tauri::command]
+pub fn get_license_status_command(app_handle: AppHandle) -> Result<LicenseStatus, String> {
+    let device_hash = get_device_hash();
+    let license_path = get_license_path(&app_handle);
+    
+    // 1. Check for Valid License File
     if license_path.exists() {
         if let Ok(encrypted_content) = fs::read(&license_path) {
-            let decrypted_vec = encrypt_decrypt(&encrypted_content);
-            if let Ok(content) = String::from_utf8(decrypted_vec) {
-                if let Ok(data) = serde_json::from_str::<LicenseData>(&content) {
-                    if data.hardware_hash == device_hash {
-                        return LicenseStatus {
-                            status: "active".to_string(),
-                            days_remaining: 9999,
-                            stores: data.stores,
-                            device_hash,
-                        };
+            if let Ok(decrypted_bytes) = decrypt_data(&encrypted_content) {
+                if let Ok(content) = String::from_utf8(decrypted_bytes) {
+                    if let Ok(data) = serde_json::from_str::<LicenseData>(&content) {
+                        // Double check device binding
+                        if data.hardware_hash == device_hash {
+                            // Triple check: Verify signature again (in case file was copied)
+                            if verify_signature(&data.activation_key, &device_hash).is_ok() {
+                                return Ok(LicenseStatus {
+                                    status: "active".to_string(),
+                                    days_remaining: 9999,
+                                    stores: data.stores,
+                                    device_hash,
+                                });
+                            }
+                        }
                     }
                 }
             }
         }
     }
 
-    // 2. Check trial
-    let install_path = get_install_date_path(app_handle);
+    // 2. Check Trial Status
+    let install_path = get_install_date_path(&app_handle);
     if !install_path.exists() {
+        // First run
         let now = chrono::Utc::now().to_rfc3339();
-        let _ = fs::create_dir_all(install_path.parent().unwrap());
+        if let Some(parent) = install_path.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
         let _ = fs::write(&install_path, format!("{{\"date\": \"{}\"}}", now));
-        return LicenseStatus {
+        return Ok(LicenseStatus {
             status: "trial".to_string(),
             days_remaining: TRIAL_DAYS,
             stores: vec![],
             device_hash,
-        };
+        });
     }
 
     if let Ok(content) = fs::read_to_string(&install_path) {
@@ -150,77 +238,56 @@ pub fn get_status(app_handle: &AppHandle) -> LicenseStatus {
                     let elapsed = now.signed_duration_since(install_date).num_days() as i32;
                     let remaining = TRIAL_DAYS - elapsed;
                     
-                    return LicenseStatus {
+                    return Ok(LicenseStatus {
                         status: if remaining > 0 { "trial".to_string() } else { "expired".to_string() },
                         days_remaining: remaining.max(0),
                         stores: vec![],
                         device_hash,
-                    };
+                    });
                 }
             }
         }
     }
 
-    LicenseStatus {
+    // Fallback: Expired
+    Ok(LicenseStatus {
         status: "expired".to_string(),
         days_remaining: 0,
         stores: vec![],
         device_hash,
-    }
-}
-
-#[tauri::command]
-pub fn validate_license_command(key: String) -> Result<bool, String> {
-    let (year, ssss, hhhh, vvvv) = parse_key(&key)?;
-    let device_hash = get_device_hash();
-    
-    if hhhh != device_hash {
-        return Err("This key is for another device.".to_string());
-    }
-
-    let data_to_check = format!("RM-{}-{}-{}", year, ssss, hhhh);
-    if !validate_checksum(&data_to_check, &vvvv) {
-        return Err("Invalid checksum. Please check the key.".to_string());
-    }
-
-    Ok(true)
+    })
 }
 
 #[tauri::command]
 pub fn activate_license_command(app_handle: AppHandle, key: String, store_name: String) -> Result<(), String> {
-    validate_license_command(key.clone())?;
+    let device_hash = get_device_hash();
     
-    let (year, _, hhhh, _) = parse_key(&key)?;
+    // 1. Verify Cryptography
+    verify_signature(&key, &device_hash)?;
+    
+    // 2. Prepare Data
+    let parts: Vec<&str> = key.split('-').collect();
+    let year = parts[1].to_string();
     let now = chrono::Utc::now().to_rfc3339();
     
     let data = LicenseData {
         activation_key: key,
         purchase_year: year,
-        hardware_hash: hhhh,
+        hardware_hash: device_hash,
         stores: vec![LicenseStore {
-            store_id: "store-001".to_string(),
+            store_id: "store-001".to_string(), // In V1, we assume single main store
             store_name,
             activated_at: now,
         }],
-        version: "1".to_string(),
+        version: "2".to_string(), // Secure Schema V2
     };
 
+    // 3. Encrypt & Save
     let path = get_license_path(&app_handle);
-    let content = serde_json::to_string(&data).map_err(|e| e.to_string())?;
+    let json_content = serde_json::to_string(&data).map_err(|e| e.to_string())?;
     
-    // Encrypt content before writing
-    let encrypted_vec = encrypt_decrypt(content.as_bytes());
-    fs::write(path, encrypted_vec).map_err(|e| e.to_string())?;
+    let encrypted_bytes = encrypt_data(json_content.as_bytes())?;
+    fs::write(path, encrypted_bytes).map_err(|e| e.to_string())?;
     
     Ok(())
-}
-
-#[tauri::command]
-pub fn get_license_status_command(app_handle: AppHandle) -> Result<LicenseStatus, String> {
-    Ok(get_status(&app_handle))
-}
-
-#[tauri::command]
-pub fn get_device_hash_command() -> Result<String, String> {
-    Ok(get_device_hash())
 }
