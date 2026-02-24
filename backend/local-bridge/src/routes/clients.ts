@@ -317,6 +317,30 @@ export async function registerClientsRoutes(app: FastifyInstance) {
     return reply.send({ message: 'Service deleted.' });
   });
 
+  // --- Transactions & History ---
+
+  app.get('/rest/v1/client_transactions', async (request, reply) => {
+    const claims = authenticateRequest(request, reply);
+    if (!claims) return;
+
+    const query = z.object({
+      store_id: z.string().optional(),
+      client_id: z.string().min(1),
+    }).safeParse(request.query ?? {});
+
+    if (!query.success) {
+      return reply.status(400).send({ error: 'ValidationFailed', details: query.error.flatten() });
+    }
+
+    const storeId = query.data.store_id ?? claims.store_id;
+    if (!storeId) {
+      return reply.status(400).send({ error: 'StoreRequired' });
+    }
+
+    const transactions = db.listClientTransactions(storeId, query.data.client_id);
+    return reply.send(transactions);
+  });
+
   // --- Client Payments ---
 
   app.post('/rest/v1/client_payments', async (request, reply) => {
@@ -337,8 +361,23 @@ export async function registerClientsRoutes(app: FastifyInstance) {
       return reply.status(403).send({ error: 'Forbidden', message: 'Access denied.' });
     }
 
-    // Record payment (reduces balance)
-    // Note: We might want to store a transaction record later, but for now just update balance as requested
+    const now = new Date().toISOString();
+
+    // 1. Log as Cash Transaction (Inflow)
+    db.insertCashTransaction({
+      id: crypto.randomUUID(),
+      store_id: client.store_id,
+      worker_id: claims.sub,
+      type: 'in',
+      amount: parsed.data.amount,
+      category: 'client_payment',
+      description: `Règlement Client: ${client.name}`,
+      reference: client.id, // Store client_id in reference for statement mapping
+      created_at: now,
+      updated_at: now,
+    });
+
+    // 2. Update Balance (reduces balance)
     db.updateClientBalance(client.id, -parsed.data.amount);
 
     return reply.send(db.getClientById(client.id));

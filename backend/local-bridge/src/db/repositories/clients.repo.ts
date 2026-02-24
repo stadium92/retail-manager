@@ -116,5 +116,30 @@ export const createClientsRepo = (db: Database.Database) => {
       WHERE id = ?
     `).run(amount, new Date().toISOString(), clientId);
   },
+
+  listClientTransactions(storeId: string, clientId: string): any[] {
+    // 1. Get Sales (Ventes)
+    const sales = db.prepare(`
+      SELECT id, 'sale' as type, total_price as amount, payment_method as method, 
+             invoice_number as reference, created_at
+      FROM sales
+      WHERE store_id = ? AND client_id = ?
+    `).all(storeId, clientId) as any[];
+
+    // 2. Get Payments (Règlements)
+    // We'll use cash_transactions category 'client_payment' for this
+    const payments = db.prepare(`
+      SELECT id, 'payment' as type, amount, 'cash' as method,
+             reference, created_at
+      FROM cash_transactions
+      WHERE store_id = ? AND category = 'client_payment' AND reference = ?
+    `).all(storeId, clientId) as any[];
+
+    // Note: reference in cash_transactions for client_payment will store the clientId
+    
+    return [...sales, ...payments].sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  },
 };
 };
