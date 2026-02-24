@@ -64,8 +64,16 @@ export const createSalesRepo = (db: Database.Database) => {
       params.push(limit);
     }
 
-    const rows = db.prepare(sql).all(...params);
-    return rows as LocalSale[];
+    const rows = db.prepare(sql).all(...params) as any[];
+    
+    // Enrich with items
+    return rows.map(sale => {
+      const items = stmts.listItems.all(sale.id);
+      return {
+        ...sale,
+        items
+      };
+    }) as LocalSale[];
   },
 
   getSaleById(saleId: string): LocalSale | undefined {
@@ -176,6 +184,5 @@ export const createSalesRepo = (db: Database.Database) => {
       emitOutbox(db, sale.store_id, 'sale_item', item.id, 'create', item as unknown as Record<string, unknown>);
     }
   },
-};
 };
 };
