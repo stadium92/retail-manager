@@ -393,6 +393,26 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
     return reply.send(needs);
   });
 
+  app.get('/rest/v1/purchasing/all_items', async (request, reply) => {
+    const claims = authenticateRequest(request, reply);
+    if (!claims) return;
+
+    const query = z.object({
+      store_id: z.string().optional(),
+      date_from: z.string().optional(),
+      date_to: z.string().optional(),
+    }).safeParse(request.query ?? {});
+
+    if (!query.success) {
+      return reply.status(400).send({ error: 'ValidationFailed', details: query.error.flatten() });
+    }
+
+    const storeId = query.data.store_id ?? claims.store_id;
+    if (!storeId) return reply.status(400).send({ error: 'StoreRequired' });
+
+    return reply.send(db.listAllPurchaseItems(storeId, query.data.date_from, query.data.date_to));
+  });
+
   app.get('/rest/v1/purchase_orders', async (request, reply) => {
     const claims = authenticateRequest(request, reply);
     if (!claims) return;

@@ -174,6 +174,30 @@ export const createPurchasingRepo = (db: Database.Database) => ({
     db.prepare('DELETE FROM purchase_items WHERE id = ?').run(itemId);
   },
 
+  listAllPurchaseItems(storeId: string, dateFrom?: string, dateTo?: string): any[] {
+    let sql = `
+      SELECT pi.*, p.name as product_name, pf.name as category_name, po.created_at
+      FROM purchase_items pi
+      JOIN purchase_orders po ON pi.order_id = po.id
+      JOIN products p ON pi.product_id = p.id
+      LEFT JOIN product_families pf ON p.category = pf.id
+      WHERE po.store_id = ?
+    `;
+    const params: any[] = [storeId];
+
+    if (dateFrom) {
+      sql += ' AND po.created_at >= ?';
+      params.push(dateFrom);
+    }
+    if (dateTo) {
+      sql += ' AND po.created_at <= ?';
+      params.push(dateTo);
+    }
+
+    sql += ' ORDER BY po.created_at DESC';
+    return db.prepare(sql).all(...params);
+  },
+
   listSupplierPayments(storeId: string, supplierId?: string): LocalSupplierPayment[] {
     let sql = 'SELECT * FROM supplier_payments WHERE store_id = ?';
     const params: any[] = [storeId];

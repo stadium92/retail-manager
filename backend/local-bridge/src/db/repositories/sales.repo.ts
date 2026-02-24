@@ -27,7 +27,7 @@ export const createSalesRepo = (db: Database.Database) => {
     `),
     getSale: db.prepare('SELECT * FROM sales WHERE id = ? LIMIT 1'),
     listItems: db.prepare(`
-      SELECT si.*, pf.name as category_name
+      SELECT si.*, pf.name as category_name, p.name as current_product_name
       FROM sale_items si
       LEFT JOIN products p ON si.product_id = p.id
       LEFT JOIN product_families pf ON p.category = pf.id

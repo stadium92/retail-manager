@@ -14,7 +14,7 @@ const deliveriesQuerySchema = z.object({
 
 export async function registerTeamRoutes(app: FastifyInstance) {
   app.get('/rest/v1/users', async (request, reply) => {
-    const claims = authenticateRequest(request, reply, ['master']);
+    const claims = authenticateRequest(request, reply, ['master', 'worker']);
     if (!claims) return;
 
     const users = db.listUsers();
@@ -31,7 +31,7 @@ export async function registerTeamRoutes(app: FastifyInstance) {
   });
 
   app.get('/rest/v1/user_roles', async (request, reply) => {
-    const claims = authenticateRequest(request, reply, ['master']);
+    const claims = authenticateRequest(request, reply, ['master', 'worker']);
     if (!claims) return;
 
     const parsed = rolesQuerySchema.safeParse(request.query ?? {});
