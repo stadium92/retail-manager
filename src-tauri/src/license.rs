@@ -87,6 +87,12 @@ fn get_install_date_path(app_handle: &AppHandle) -> PathBuf {
     path
 }
 
+fn get_last_run_path(app_handle: &AppHandle) -> PathBuf {
+    let mut path = app_handle.path().app_data_dir().unwrap_or_default();
+    path.push("last_run.bin");
+    path
+}
+
 // AES-GCM Encryption for local storage
 fn encrypt_data(data: &[u8]) -> Result<Vec<u8>, String> {
     let cipher = Aes256Gcm::new(LOCAL_STORAGE_KEY.into());
@@ -188,7 +194,37 @@ pub fn get_device_hash_command() -> Result<String, String> {
 pub fn get_license_status_command(app_handle: AppHandle) -> Result<LicenseStatus, String> {
     let device_hash = get_device_hash();
     let license_path = get_license_path(&app_handle);
+    let last_run_path = get_last_run_path(&app_handle);
     
+    // --- DeLorean (Clock Check) ---
+    let now = chrono::Utc::now();
+    let now_ts = now.timestamp();
+    
+    if last_run_path.exists() {
+        if let Ok(encrypted_last_run) = fs::read(&last_run_path) {
+            if let Ok(decrypted_last_run) = decrypt_data(&encrypted_last_run) {
+                if let Ok(last_run_str) = String::from_utf8(decrypted_last_run) {
+                    if let Ok(last_run_ts) = last_run_str.parse::<i64>() {
+                        if now_ts < last_run_ts {
+                            // User traveled back in time!
+                            return Ok(LicenseStatus {
+                                status: "clock_error".to_string(),
+                                days_remaining: 0,
+                                stores: vec![],
+                                device_hash,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Update last run (encrypted)
+    if let Ok(encrypted_now) = encrypt_data(now_ts.to_string().as_bytes()) {
+        let _ = fs::write(&last_run_path, encrypted_now);
+    }
+
     // 1. Check for Valid License File
     if license_path.exists() {
         if let Ok(encrypted_content) = fs::read(&license_path) {

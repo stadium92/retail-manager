@@ -42,6 +42,8 @@ export const createReplenishmentRepo = (db: Database.Database) => ({
       .prepare(`
         SELECT rr.*, p.name as product_name, p.sku, p.quantity as current_stock, p.min_quantity,
                p.unit_type, p.packaging, p.unit_price, p.cost_price,
+               p.wholesale_price_ht, p.wholesale_price_ttc,
+               p.selling_price_2, p.selling_price_3, p.selling_price_4,
                u.full_name as requester_name
         FROM replenishment_requests rr
         JOIN products p ON rr.product_id = p.id
@@ -57,6 +59,11 @@ export const createReplenishmentRepo = (db: Database.Database) => ({
         packaging: string;
         unit_price: number;
         cost_price: number;
+        wholesale_price_ht: number;
+        wholesale_price_ttc: number;
+        selling_price_2: number;
+        selling_price_3: number;
+        selling_price_4: number;
         requester_name?: string;
       })[];
 
@@ -75,9 +82,14 @@ export const createReplenishmentRepo = (db: Database.Database) => ({
         unit_type: p.unit_type || 'Pièce',
         unit_price: p.unit_price || 0,
         cost_price: p.cost_price || 0,
+        wholesale_price_ht: p.wholesale_price_ht || 0,
+        wholesale_price_ttc: p.wholesale_price_ttc || 0,
+        selling_price_2: p.selling_price_2 || 0,
+        selling_price_3: p.selling_price_3 || 0,
+        selling_price_4: p.selling_price_4 || 0,
         source: 'low_stock',
         suggested_qty: Math.max(10, (p.min_quantity || 10) * 2 - (p.quantity || 0)),
-      });
+      } as any);
     }
 
     // Add Requests (override or add)
@@ -100,12 +112,17 @@ export const createReplenishmentRepo = (db: Database.Database) => ({
           unit_type: req.unit_type || 'Pièce',
           unit_price: req.unit_price || 0,
           cost_price: req.cost_price || 0,
+          wholesale_price_ht: req.wholesale_price_ht || 0,
+          wholesale_price_ttc: req.wholesale_price_ttc || 0,
+          selling_price_2: req.selling_price_2 || 0,
+          selling_price_3: req.selling_price_3 || 0,
+          selling_price_4: req.selling_price_4 || 0,
           source: 'worker_request',
           suggested_qty: req.quantity_requested || 10,
           request_id: req.id,
           request_reason: req.reason || undefined,
           requester_name: req.requester_name || undefined,
-        });
+        } as any);
       }
     }
 
