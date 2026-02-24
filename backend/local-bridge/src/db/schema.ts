@@ -261,6 +261,19 @@ export const initializeSchema = (db: Database.Database) => {
       created_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS cash_transactions (
+      id TEXT PRIMARY KEY,
+      store_id TEXT NOT NULL,
+      worker_id TEXT,
+      type TEXT NOT NULL, -- 'in' (income), 'out' (expense)
+      amount REAL NOT NULL,
+      category TEXT NOT NULL, -- 'petty_cash', 'bill', 'transfer', etc.
+      description TEXT,
+      reference TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
     -- Trigger to deduct inventory when a sale item is recorded
     CREATE TRIGGER IF NOT EXISTS sale_items_ai AFTER INSERT ON sale_items
     BEGIN

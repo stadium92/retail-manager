@@ -27,12 +27,14 @@ export async function registerAnalyticsRoutes(app: FastifyInstance) {
     const weeklyRevenue = db.getWeeklyRevenue(storeId);
     const topProducts = db.getTopProducts(storeId, 5);
     const topWorkers = db.getTopWorkers(storeId, 5);
+    const stockHealth = db.getStockHealth(storeId);
 
     return reply.send({
       daily_revenue: dailyRevenue,
       weekly_revenue: weeklyRevenue,
       top_products: topProducts,
       top_workers: topWorkers,
+      stock_health: stockHealth,
     });
   });
 

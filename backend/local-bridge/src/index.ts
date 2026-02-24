@@ -15,6 +15,7 @@ import { registerClientsRoutes } from './routes/clients.js';
 import { registerSyncRoutes } from './routes/sync.js';
 import { registerAnalyticsRoutes } from './routes/analytics.js';
 import { registerAuditRoutes } from './routes/audit.js';
+import { registerCashRoutes } from './routes/cash.js';
 import { db } from './db/index.js';
 import { runScheduler } from './scheduler.js';
 
@@ -56,6 +57,23 @@ async function start() {
     credentials: true
   });
 
+  // Centralized Error Handler
+  app.setErrorHandler((error, request, reply) => {
+    if (error.validation) {
+      return reply.status(400).send({
+        error: 'ValidationError',
+        message: 'Invalid input data.',
+        details: error.validation
+      });
+    }
+    
+    request.log.error(error);
+    reply.status(error.statusCode || 500).send({
+      error: error.name || 'InternalServerError',
+      message: error.message || 'An unexpected error occurred.'
+    });
+  });
+
   app.get('/health', async () => ({
     status: 'ok',
     dataPath: db.dbFile,
@@ -73,6 +91,7 @@ async function start() {
   await registerSyncRoutes(app);
   await registerAnalyticsRoutes(app);
   await registerAuditRoutes(app);
+  await registerCashRoutes(app);
 
   // Run Startup Scheduler
   try {

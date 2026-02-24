@@ -117,7 +117,8 @@ export async function registerSalesRoutes(app: FastifyInstance) {
 
     const now = new Date().toISOString();
     const saleId = crypto.randomUUID();
-    db.insertSale({
+    
+    const saleData = {
       id: saleId,
       store_id: storeId,
       worker_id: parsed.data.worker_id ?? claims.sub ?? null,
@@ -134,33 +135,22 @@ export async function registerSalesRoutes(app: FastifyInstance) {
       invoice_number: parsed.data.invoice_number ?? null,
       created_at: now,
       updated_at: now,
-    });
+    };
 
-    const items = parsed.data.items ?? [];
-    items.forEach((item) => {
-      db.insertSaleItem({
-        id: crypto.randomUUID(),
-        sale_id: saleId,
-        product_id: item.product_id ?? null,
-        product_name: item.product_name,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        discount: item.discount ?? 0,
-        total: item.total,
-        created_at: now,
-      });
+    const items = (parsed.data.items ?? []).map(item => ({
+      id: crypto.randomUUID(),
+      sale_id: saleId,
+      product_id: item.product_id ?? null,
+      product_name: item.product_name,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      discount: item.discount ?? 0,
+      total: item.total,
+      created_at: now,
+    }));
 
-      // Stock Deduction
-      if (item.product_id) {
-        db.db.prepare(`UPDATE products SET quantity = MAX(0, quantity - ?) WHERE id = ? AND store_id = ?`)
-          .run(item.quantity, item.product_id, storeId);
-      }
-    });
-
-    // Credit Balance Update
-    if (parsed.data.payment_method === 'credit' && parsed.data.client_id) {
-      db.updateClientBalance(parsed.data.client_id, parsed.data.total_price || 0);
-    }
+    // Use atomic transaction
+    db.createSaleWithItems(saleData as any, items as any);
 
     return reply.status(201).send(db.getSaleById(saleId));
   });
