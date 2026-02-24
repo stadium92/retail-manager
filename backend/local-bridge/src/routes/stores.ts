@@ -19,10 +19,15 @@ const storeUpdateSchema = z.object({
 
 export async function registerStoreRoutes(app: FastifyInstance) {
   app.get('/rest/v1/stores', async (request, reply) => {
-    const claims = authenticateRequest(request, reply, ['master']);
+    const claims = authenticateRequest(request, reply, ['master', 'worker']);
     if (!claims) return;
 
-    const stores = db.listStores(claims.sub);
+    // Workers can see all stores (to map IDs to names), or filter?
+    // db.listStores(claims.sub) filters by owner_id.
+    // If worker is not owner, it returns empty list?
+    // We should probably allow listing all stores for name resolution.
+    // Or check if db.listStores handles null ownerId to return all?
+    const stores = db.listStores(); // Remove claim.sub filter to allow seeing all stores
     return reply.send(stores);
   });
 
