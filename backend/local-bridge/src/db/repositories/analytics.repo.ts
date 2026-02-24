@@ -85,9 +85,9 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
   getStockHealth(storeId: string): { ok: number; low: number; out: number } {
     const row = db.prepare(`
       SELECT 
-        SUM(CASE WHEN quantity > COALESCE(min_quantity, 10) THEN 1 ELSE 0 END) as ok,
-        SUM(CASE WHEN quantity > 0 AND quantity <= COALESCE(min_quantity, 10) THEN 1 ELSE 0 END) as low,
-        SUM(CASE WHEN quantity <= 0 THEN 1 ELSE 0 END) as out
+        COALESCE(SUM(CASE WHEN quantity > COALESCE(min_quantity, 10) THEN 1 ELSE 0 END), 0) as ok,
+        COALESCE(SUM(CASE WHEN quantity > 0 AND quantity <= COALESCE(min_quantity, 10) THEN 1 ELSE 0 END), 0) as low,
+        COALESCE(SUM(CASE WHEN quantity <= 0 THEN 1 ELSE 0 END), 0) as out
       FROM products
       WHERE (? = '' OR store_id = ?)
     `).get(storeId, storeId) as any;
