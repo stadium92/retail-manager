@@ -6,9 +6,9 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
       .prepare(`
         SELECT SUM(COALESCE(CAST(total_price AS REAL), 0)) as total
         FROM sales
-        WHERE store_id = ? AND date(created_at) = date('now')
+        WHERE (? = '' OR store_id = ?) AND date(created_at) = date('now')
       `)
-      .get(storeId) as { total: number };
+      .get(storeId, storeId) as { total: number };
     return row?.total || 0;
   },
 
@@ -17,11 +17,11 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
       .prepare(`
         SELECT date(created_at) as date, SUM(COALESCE(CAST(total_price AS REAL), 0)) as revenue
         FROM sales
-        WHERE store_id = ? AND created_at >= date('now', '-6 days')
+        WHERE (? = '' OR store_id = ?) AND created_at >= date('now', '-6 days')
         GROUP BY date(created_at)
         ORDER BY date(created_at) ASC
       `)
-      .all(storeId) as { date: string; revenue: number }[];
+      .all(storeId, storeId) as { date: string; revenue: number }[];
     return rows;
   },
 
@@ -34,12 +34,12 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
           SUM(COALESCE(CAST(si.total AS REAL), 0)) as revenue
         FROM sale_items si
         JOIN sales s ON s.id = si.sale_id
-        WHERE s.store_id = ?
+        WHERE (? = '' OR s.store_id = ?)
         GROUP BY si.product_name
         ORDER BY quantity DESC
         LIMIT ?
       `)
-      .all(storeId, limit) as { name: string; quantity: number; revenue: number }[];
+      .all(storeId, storeId, limit) as { name: string; quantity: number; revenue: number }[];
     return rows;
   },
 
@@ -52,12 +52,12 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
           SUM(COALESCE(CAST(s.total_price AS REAL), 0)) as revenue
         FROM sales s
         LEFT JOIN users u ON s.worker_id = u.id
-        WHERE s.store_id = ?
+        WHERE (? = '' OR s.store_id = ?)
         GROUP BY u.full_name
         ORDER BY revenue DESC
         LIMIT ?
       `)
-      .all(storeId, limit) as { name: string; sales_count: number; revenue: number }[];
+      .all(storeId, storeId, limit) as { name: string; sales_count: number; revenue: number }[];
     return rows;
   },
 
@@ -89,8 +89,8 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
         SUM(CASE WHEN quantity > 0 AND quantity <= COALESCE(min_quantity, 10) THEN 1 ELSE 0 END) as low,
         SUM(CASE WHEN quantity <= 0 THEN 1 ELSE 0 END) as out
       FROM products
-      WHERE store_id = ?
-    `).get(storeId) as any;
+      WHERE (? = '' OR store_id = ?)
+    `).get(storeId, storeId) as any;
 
     return {
       ok: row?.ok || 0,

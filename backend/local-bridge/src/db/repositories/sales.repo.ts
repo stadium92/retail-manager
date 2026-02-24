@@ -38,18 +38,33 @@ export const createSalesRepo = (db: Database.Database) => {
   };
 
   return {
-  listSales(storeId?: string, limit?: number): LocalSale[] {
+  listSales(storeId?: string, limit?: number, dateFrom?: string, dateTo?: string): LocalSale[] {
+    let sql = 'SELECT * FROM sales WHERE 1=1';
+    const params: any[] = [];
+
     if (storeId) {
-      const rows = db
-        .prepare(
-          `SELECT * FROM sales WHERE store_id = ? ORDER BY created_at DESC${limit ? ' LIMIT ?' : ''}`
-        )
-        .all(limit ? [storeId, limit] : [storeId]);
-      return rows as LocalSale[];
+      sql += ' AND store_id = ?';
+      params.push(storeId);
     }
-    const rows = db
-      .prepare(`SELECT * FROM sales ORDER BY created_at DESC${limit ? ' LIMIT ?' : ''}`)
-      .all(limit ? [limit] : []);
+
+    if (dateFrom) {
+      sql += ' AND created_at >= ?';
+      params.push(dateFrom);
+    }
+
+    if (dateTo) {
+      sql += ' AND created_at <= ?';
+      params.push(dateTo);
+    }
+
+    sql += ' ORDER BY created_at DESC';
+
+    if (limit) {
+      sql += ' LIMIT ?';
+      params.push(limit);
+    }
+
+    const rows = db.prepare(sql).all(...params);
     return rows as LocalSale[];
   },
 

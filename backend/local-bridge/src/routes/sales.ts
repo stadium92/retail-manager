@@ -7,6 +7,8 @@ import { authenticateRequest } from './utils/auth.js';
 const salesQuerySchema = z.object({
   store_id: z.string().optional(),
   limit: z.string().optional(),
+  date_from: z.string().optional(),
+  date_to: z.string().optional(),
 });
 
 const saleCreateSchema = z.object({
@@ -66,14 +68,16 @@ export async function registerSalesRoutes(app: FastifyInstance) {
 
     const requestedStoreId = parsed.data.store_id;
     const limit = parsed.data.limit ? Number(parsed.data.limit) : undefined;
+    const dateFrom = parsed.data.date_from;
+    const dateTo = parsed.data.date_to;
 
     if (requestedStoreId) {
-      const sales = db.listSales(requestedStoreId, limit);
+      const sales = db.listSales(requestedStoreId, limit, dateFrom, dateTo);
       return reply.send(sales);
     }
 
     if (claims.role === 'master') {
-      return reply.send(db.listSales(undefined, limit));
+      return reply.send(db.listSales(undefined, limit, dateFrom, dateTo));
     }
 
     const storeId = claims.store_id;
@@ -81,7 +85,7 @@ export async function registerSalesRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'StoreRequired', message: 'Store is required.' });
     }
 
-    const sales = db.listSales(storeId, limit);
+    const sales = db.listSales(storeId, limit, dateFrom, dateTo);
     return reply.send(sales);
   });
 
