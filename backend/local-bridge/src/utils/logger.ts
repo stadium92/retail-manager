@@ -1,5 +1,3 @@
-import pino from 'pify';
-
 // Simple logger for the backend
 export const logger = {
   info: (msg: string, data?: any) => {

@@ -358,7 +358,6 @@ export interface ReplenishmentNeed {
   request_id?: string;
   request_reason?: string;
   requester_name?: string;
-  cost_price?: number;
   wholesale_price_ht?: number;
   wholesale_price_ttc?: number;
   selling_price_2?: number;
