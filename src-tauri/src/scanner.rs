@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Runtime};
 use std::time::Duration;
 use tokio::time::sleep;
+use crate::license::check_license_gate;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ScanEvent {
@@ -11,6 +12,7 @@ pub struct ScanEvent {
 
 #[tauri::command]
 pub async fn start_hardware_scan_listener<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    check_license_gate(&app)?;
     println!("Initializing hardware serial scanner listener...");
     
     // In a real production environment, we would use the `serialport` crate here:
@@ -29,7 +31,8 @@ pub async fn start_hardware_scan_listener<R: Runtime>(app: AppHandle<R>) -> Resu
 }
 
 #[tauri::command]
-pub async fn list_connected_scanners() -> Result<Vec<String>, String> {
+pub async fn list_connected_scanners(app: AppHandle) -> Result<Vec<String>, String> {
+    check_license_gate(&app)?;
     // This would use system APIs to list USB/Serial devices
     Ok(vec![
         "Internal HID Scanner".into(),
@@ -40,6 +43,7 @@ pub async fn list_connected_scanners() -> Result<Vec<String>, String> {
 // Helper command to simulate a scan for testing purposes
 #[tauri::command]
 pub async fn simulate_hardware_scan<R: Runtime>(app: AppHandle<R>, code: String) -> Result<(), String> {
+    check_license_gate(&app)?;
     app.emit("hardware-scan", ScanEvent { 
         code, 
         source: "Simulated-Serial".into() 

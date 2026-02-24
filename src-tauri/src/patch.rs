@@ -4,6 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tauri::AppHandle;
 use dirs_next::data_local_dir;
+use crate::license::check_license_gate;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PatchManifest {
@@ -23,6 +24,7 @@ pub async fn install_patch(
     app: AppHandle,
     patch_path: String,
 ) -> Result<String, String> {
+    check_license_gate(&app)?;
     let patch_file = Path::new(&patch_path);
     
     if !patch_file.exists() {

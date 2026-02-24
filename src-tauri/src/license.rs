@@ -294,6 +294,19 @@ pub fn get_license_status_command(app_handle: AppHandle) -> Result<LicenseStatus
     })
 }
 
+/// Gatekeeper: Check if the license is valid (Active or Trial)
+/// Returns Error if license is expired or tampered.
+pub fn check_license_gate(app_handle: &AppHandle) -> Result<(), String> {
+    let status = get_license_status_command(app_handle.clone())?;
+    if status.status == "active" || status.status == "trial" {
+        Ok(())
+    } else if status.status == "clock_error" {
+        Err("SECURITY ALERT: System clock tampered. Please restore correct date.".to_string())
+    } else {
+        Err("LICENSE REQUIRED: Trial expired or no active license found.".to_string())
+    }
+}
+
 #[tauri::command]
 pub fn activate_license_command(app_handle: AppHandle, key: String, store_name: String) -> Result<(), String> {
     let device_hash = get_device_hash();
