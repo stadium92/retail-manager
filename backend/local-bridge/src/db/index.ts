@@ -21,6 +21,15 @@ import { createClientServicesRepo } from './repositories/client_services.repo.js
 import { createSyncOutboxRepo } from './repositories/sync_outbox.repo.js';
 import { createCashRepo } from './repositories/cash.repo.js';
 
+// 1. Initialize Schema & Migrations first! 
+// This ensures tables exist before repositories try to prepare statements.
+try {
+  initializeSchema(rawDb);
+  runMigrations(rawDb);
+} catch (e) {
+  console.error('[DB] Initialization failed:', e);
+}
+
 const db = {
   db: rawDb,
   dbFile,
@@ -46,22 +55,6 @@ const db = {
   ...createSyncOutboxRepo(rawDb),
   ...createCashRepo(rawDb),
 };
-
-// Auto-initialize on import (simulating class constructor behavior)
-// Though constructor logic was "new LocalBridgeDatabase()" at the end of db.ts
-// connection.ts does "new Database()"
-// We need to run initialize() and migrate() once.
-// Ideally, the app entry point should call this, but for backward compatibility, 
-// we can run it here or assume connection.ts setup is enough + db.ts constructor behavior.
-// The old db.ts constructor called initialize() and migrate().
-// So we should call them.
-
-try {
-  initializeSchema(rawDb);
-  runMigrations(rawDb);
-} catch (e) {
-  console.error('[DB] Initialization failed:', e);
-}
 
 export { db };
 export * from './types.js';
