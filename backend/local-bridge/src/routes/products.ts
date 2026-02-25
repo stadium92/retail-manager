@@ -658,47 +658,6 @@ export async function registerProductRoutes(app: FastifyInstance) {
 
     return reply.send(db.listProductBatches(storeId, query.data.product_id));
   });
-
-  // Emergency System Routes (Moved here to ensure they are picked up)
-  app.post('/system-repair', async (request, reply) => {
-    const claims = authenticateRequest(request, reply, ['master']);
-    if (!claims) return;
-    try {
-      db.db.exec('REINDEX;');
-      db.db.pragma('integrity_check');
-      try {
-        db.db.prepare("DELETE FROM products WHERE name LIKE '%Vody%'").run();
-      } catch (e) {}
-      db.db.exec('VACUUM;');
-      return reply.send({ success: true, message: 'Repair complete.' });
-    } catch (error: any) {
-      return reply.status(500).send({ error: 'RepairFailed', message: error.message });
-    }
-  });
-
-  app.post('/system-hard-reset', async (request, reply) => {
-    const claims = authenticateRequest(request, reply, ['master']);
-    if (!claims) return;
-    try {
-      console.log('[System] HARD RESET REQUESTED');
-      // We can't easily delete the file while it's open, but we can drop all tables.
-      const tables = db.db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as any[];
-      db.db.exec('PRAGMA foreign_keys = OFF;');
-      for (const table of tables) {
-        if (table.name !== 'sqlite_sequence') {
-          db.db.exec(`DROP TABLE IF EXISTS ${table.name}`);
-        }
-      }
-      db.db.exec('PRAGMA foreign_keys = ON;');
-      // The DB class constructor will recreate tables on next access if we were to restart, 
-      // but here we just manually trigger initialize.
-      // @ts-ignore - reaching into private for emergency
-      db.initialize();
-      return reply.send({ success: true, message: 'Database wiped and reset to factory defaults.' });
-    } catch (error: any) {
-      return reply.status(500).send({ error: 'ResetFailed', message: error.message });
-    }
-  });
 }
 const familyCreateSchema = z.object({
   store_id: z.string().min(1).optional(),

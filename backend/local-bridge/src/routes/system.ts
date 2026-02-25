@@ -19,21 +19,41 @@ export async function registerSystemRoutes(app: FastifyInstance) {
       // 2. Reindex all tables
       db.db.exec('REINDEX;');
       
+      // 2.5 Rebuild FTS Index for Products
+      console.log('[System] Rebuilding Products FTS Index...');
+      try {
+          db.db.prepare("INSERT INTO products_fts(products_fts) VALUES('rebuild')").run();
+      } catch (e) {
+          console.warn('[System] FTS Rebuild failed, attempting recreation...');
+          db.db.exec(`
+            DROP TABLE IF EXISTS products_fts;
+            CREATE VIRTUAL TABLE products_fts USING fts5(
+                id UNINDEXED,
+                store_id UNINDEXED,
+                name,
+                sku,
+                barcode,
+                description,
+                content='products',
+                content_rowid='rowid'
+            );
+            INSERT INTO products_fts(rowid, id, store_id, name, sku, barcode, description)
+            SELECT rowid, id, store_id, name, sku, barcode, description FROM products;
+          `);
+      }
+      
       // 3. Emergency Cleanup: Delete 'Vody' if it's the known corrupt record
-      // We use a raw try-catch here because the record itself might be unreadable
       try {
         db.db.prepare("DELETE FROM products WHERE name LIKE '%Vody%'").run();
         console.log('[System] Emergency cleanup: Vody removed.');
-      } catch (e) {
-        console.warn('[System] Could not delete Vody via standard SQL, corruption might be severe.');
-      }
+      } catch (e) {}
       
       // 4. Vacuum
       db.db.exec('VACUUM;');
       
       return reply.send({ 
         success: true, 
-        message: 'Database repaired and optimized. Corrupt records (Vody) attempted removal.', 
+        message: 'Database repaired and optimized. Corrupt records attempted removal.', 
         integrity 
       });
     } catch (error) {
@@ -42,6 +62,27 @@ export async function registerSystemRoutes(app: FastifyInstance) {
         error: 'RepairFailed', 
         message: 'Failed to repair database. Physical corruption detected.' 
       });
+    }
+  });
+
+  app.post('/rest/v1/system-hard-reset', async (request, reply) => {
+    const claims = authenticateRequest(request, reply, ['master']);
+    if (!claims) return;
+    try {
+      console.log('[System] HARD RESET REQUESTED');
+      const tables = db.db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as any[];
+      db.db.exec('PRAGMA foreign_keys = OFF;');
+      for (const table of tables) {
+        if (table.name !== 'sqlite_sequence') {
+          db.db.exec(`DROP TABLE IF EXISTS ${table.name}`);
+        }
+      }
+      db.db.exec('PRAGMA foreign_keys = ON;');
+      // @ts-ignore
+      db.initialize();
+      return reply.send({ success: true, message: 'Database wiped and reset to factory defaults.' });
+    } catch (error: any) {
+      return reply.status(500).send({ error: 'ResetFailed', message: error.message });
     }
   });
 
