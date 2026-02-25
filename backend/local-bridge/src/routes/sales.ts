@@ -12,6 +12,7 @@ const salesQuerySchema = z.object({
 });
 
 const saleCreateSchema = z.object({
+  id: z.string().optional(),
   store_id: z.string().optional(),
   worker_id: z.string().nullable().optional(),
   client_id: z.string().nullable().optional(),
@@ -28,6 +29,7 @@ const saleCreateSchema = z.object({
   items: z
     .array(
       z.object({
+        id: z.string().optional(),
         product_id: z.string().nullable().optional(),
         product_name: z.string().min(1),
         quantity: z.number().min(0.01),
@@ -120,7 +122,7 @@ export async function registerSalesRoutes(app: FastifyInstance) {
     }
 
     const now = new Date().toISOString();
-    const saleId = crypto.randomUUID();
+    const saleId = parsed.data.id || crypto.randomUUID();
     
     const saleData = {
       id: saleId,
@@ -142,7 +144,7 @@ export async function registerSalesRoutes(app: FastifyInstance) {
     };
 
     const items = (parsed.data.items ?? []).map(item => ({
-      id: crypto.randomUUID(),
+      id: item.id || crypto.randomUUID(),
       sale_id: saleId,
       product_id: item.product_id ?? null,
       product_name: item.product_name,
