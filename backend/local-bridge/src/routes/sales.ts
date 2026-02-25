@@ -26,6 +26,7 @@ const saleCreateSchema = z.object({
   payment_status: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   invoice_number: z.string().nullable().optional(),
+  created_at: z.string().optional(),
   items: z
     .array(
       z.object({
@@ -139,7 +140,7 @@ export async function registerSalesRoutes(app: FastifyInstance) {
       payment_status: parsed.data.payment_status ?? 'paid',
       notes: parsed.data.notes ?? null,
       invoice_number: parsed.data.invoice_number ?? null,
-      created_at: now,
+      created_at: parsed.data.created_at || now,
       updated_at: now,
     };
 
