@@ -52,20 +52,29 @@ export async function registerSystemRoutes(app: FastifyInstance) {
     try {
       console.log('[System] Running Sale Name Repair...');
       
-      const stmt = db.db.prepare(`
+      const fixStmt = db.db.prepare(`
         UPDATE sale_items 
         SET product_name = (SELECT name FROM products WHERE products.id = sale_items.product_id)
         WHERE (product_name IS NULL OR product_name = 'Unknown' OR product_name = '')
         AND EXISTS (SELECT 1 FROM products WHERE products.id = sale_items.product_id)
       `);
       
-      const result = stmt.run();
-      console.log(`[System] Repaired ${result.changes} sale items.`);
+      const fixResult = fixStmt.run();
+
+      const orphanStmt = db.db.prepare(`
+        SELECT COUNT(*) as count FROM sale_items 
+        WHERE (product_name IS NULL OR product_name = 'Unknown' OR product_name = '')
+        AND (product_id IS NULL OR NOT EXISTS (SELECT 1 FROM products WHERE products.id = sale_items.product_id))
+      `);
+      const orphanResult = orphanStmt.get() as { count: number };
+
+      console.log(`[System] Repaired ${fixResult.changes}, Orphans: ${orphanResult.count}`);
       
       return reply.send({ 
         success: true, 
-        changes: result.changes,
-        message: `Successfully repaired ${result.changes} sales records.` 
+        repaired: fixResult.changes,
+        orphans: orphanResult.count,
+        message: `Repaired ${fixResult.changes} records. ${orphanResult.count} unrecoverable.` 
       });
     } catch (error: any) {
       console.error('[System] Name Repair Failed:', error);
