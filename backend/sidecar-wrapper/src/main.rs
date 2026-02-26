@@ -1,0 +1,217 @@
+use std::fs::{self, OpenOptions};
+use std::io::{self, Write};
+use std::process::Command;
+use std::env;
+use std::path::PathBuf;
+
+fn get_log_path() -> PathBuf {
+    let mut path = if let Ok(local_app_data) = env::var("LOCALAPPDATA") {
+        PathBuf::from(local_app_data).join("retail-manager-logs")
+    } else {
+        env::temp_dir().join("retail-manager-logs")
+    };
+    
+    if !path.exists() {
+        let _ = fs::create_dir_all(&path);
+    }
+    path.join("wrapper-debug.log")
+}
+
+fn main() {
+    if let Err(e) = run() {
+        let log_path = get_log_path();
+        if let Ok(mut log_file) = OpenOptions::new().create(true).append(true).open(log_path) {
+            let _ = writeln!(log_file, "CRITICAL ERROR: {}", e);
+        }
+        eprintln!("Error: {}", e);
+        std::process::exit(1);
+    }
+}
+
+fn run() -> Result<(), Box<dyn std::error::Error>> {
+    let log_path = get_log_path();
+    let mut log_file = OpenOptions::new().create(true).append(true).open(log_path)?;
+
+    writeln!(log_file, "--- Wrapper Starting (v2.1) ---")?;
+
+    // EMERGENCY CLEANUP: Kill any process on 8787
+    #[cfg(windows)]
+    {
+        writeln!(log_file, "Cleaning up port 8787...")?;
+        let _ = Command::new("powershell")
+            .args(["-Command", "Get-NetTCPConnection -LocalPort 8787 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"])
+            .status();
+    }
+
+    // Embed the architecture-specific payload zip
+    // The PAYLOAD_FILE env var is set by the build script
+    let payload = include_bytes!(env!("PAYLOAD_FILE"));
+    let reader = std::io::Cursor::new(payload);
+    let mut archive = zip::ZipArchive::new(reader)?;
+
+    // Extract to a known temp directory
+    let temp_dir = env::temp_dir().join("retail-manager-sidecar");
+    writeln!(log_file, "Temp Dir: {:?}", temp_dir)?;
+    
+    // Create directory if it doesn't exist
+    if !temp_dir.exists() {
+        writeln!(log_file, "Creating temp dir...")?;
+        fs::create_dir_all(&temp_dir)?;
+    } else {
+        writeln!(log_file, "Temp dir exists.")?;
+    }
+
+    // VERSION CHECK: Compare version.txt in zip with version.txt in temp_dir
+    let mut needs_extraction = true;
+    let local_version_path = temp_dir.join("version.txt");
+    
+    if local_version_path.exists() {
+        if let Ok(mut zip_version_file) = archive.by_name("version.txt") {
+            let mut zip_version = String::new();
+            use std::io::Read;
+            if zip_version_file.read_to_string(&mut zip_version).is_ok() {
+                if let Ok(local_version) = fs::read_to_string(&local_version_path) {
+                    if zip_version.trim() == local_version.trim() {
+                        needs_extraction = false;
+                        writeln!(log_file, "Version matches ({}). Skipping extraction.", zip_version.trim())?;
+                    } else {
+                        writeln!(log_file, "Version mismatch (Local: {}, Zip: {}). Re-extracting...", local_version.trim(), zip_version.trim())?;
+                    }
+                }
+            }
+        }
+    }
+
+    // EXTRACTION
+    if needs_extraction {
+        writeln!(log_file, "Extracting {} files...", archive.len())?;
+        for i in 0..archive.len() {
+            let mut file = archive.by_index(i)?;
+            let outpath = match file.enclosed_name() {
+                Some(path) => temp_dir.join(path),
+                None => continue,
+            };
+
+            // Check for directory (handles both / and \)
+            if (*file.name()).ends_with('/') || (*file.name()).ends_with('\\') {
+                fs::create_dir_all(&outpath)?;
+            } else {
+                if let Some(p) = outpath.parent() {
+                    if !p.exists() {
+                        fs::create_dir_all(p)?;
+                    }
+                }
+                let mut outfile = fs::File::create(&outpath)?;
+                io::copy(&mut file, &mut outfile)?;
+            }
+        }
+    }
+
+    // Path to the entry script
+    let script_path = temp_dir.join("dist").join("index.js");
+    // Path to the bundled node executable
+    let node_path = temp_dir.join("node.exe");
+
+    writeln!(log_file, "Node Path: {:?}", node_path)?;
+    writeln!(log_file, "Script Path: {:?}", script_path)?;
+
+    if !node_path.exists() {
+        writeln!(log_file, "CRITICAL: node.exe not found!")?;
+        return Err(format!("Critical Error: node.exe not found at {:?}", node_path).into());
+    }
+
+    // Collect args passed to this executable
+    let args: Vec<String> = env::args().skip(1).collect();
+    writeln!(log_file, "Args: {:?}", args)?;
+
+    writeln!(log_file, "Starting backend server via bundled Node...")?;
+    writeln!(log_file, "Wrapper Architecture: {}", std::env::consts::ARCH)?;
+    
+    // WATCHDOG: Start a thread to monitor if the parent process dies
+    let parent_pid = {
+        #[cfg(windows)]
+        {
+            use std::os::windows::io::AsRawHandle;
+            // On Windows, we can use the current process to find our parent
+            // But a simpler way is to just let the child die when the job object closes.
+            // However, a dedicated thread is safer.
+            std::process::id()
+        }
+        #[cfg(not(windows))]
+        { std::process::id() }
+    };
+
+    // Spawn the node process
+    let mut child = Command::new(&node_path)
+        .arg(&script_path)
+        .args(args)
+        .current_dir(&temp_dir) // Important for require() resolution
+        .spawn();
+
+    match child {
+        Ok(mut child) => {
+            let child_id = child.id();
+            writeln!(log_file, "Node process spawned successfully (PID: {:?})", child_id)?;
+            
+            // Get current process info to find parent
+            let current_pid = std::process::id();
+            
+            // WATCHDOG thread: Terminate if parent process dies
+            std::thread::spawn(move || {
+                use sysinfo::{System, Pid};
+                let mut sys = System::new_all();
+                
+                // Find our parent PID
+                let parent_pid = sys.process(Pid::from_u32(current_pid))
+                    .and_then(|p| p.parent());
+
+                if let Some(ppid) = parent_pid {
+                    loop {
+                        std::thread::sleep(std::time::Duration::from_secs(3));
+                        sys.refresh_all();
+                        if sys.process(ppid).is_none() {
+                            // Parent is gone! Kill children and exit.
+                            std::process::exit(0);
+                        }
+                    }
+                }
+            });
+
+            #[cfg(windows)]
+            {
+                use windows_sys::Win32::System::JobObjects::*;
+                use windows_sys::Win32::Foundation::*;
+                use std::mem;
+                use std::os::windows::io::AsRawHandle;
+
+                unsafe {
+                    let job = CreateJobObjectA(std::ptr::null(), std::ptr::null());
+                    if job != 0 {
+                        let mut info: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = mem::zeroed();
+                        info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+                        
+                        SetInformationJobObject(
+                            job,
+                            JobObjectExtendedLimitInformation,
+                            &info as *const _ as *const _,
+                            mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
+                        );
+
+                        let handle = child.as_raw_handle();
+                        AssignProcessToJobObject(job, handle as HANDLE);
+                    }
+                }
+            }
+
+            // Wait for it to finish (keep this process alive)
+            let status = child.wait()?;
+            writeln!(log_file, "Node process exited with status: {:?}", status)?;
+        }
+        Err(e) => {
+             writeln!(log_file, "FAILED to spawn node process: {}", e)?;
+             return Err(e.into());
+        }
+    }
+
+    Ok(())
+}

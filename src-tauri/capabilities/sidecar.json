@@ -1,0 +1,17 @@
+{
+  "identifier": "sidecar-capability",
+  "description": "Allows executing the local-bridge sidecar",
+  "windows": ["main"],
+  "permissions": [
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "args": [],
+          "sidecar": true,
+          "name": "binaries/local-bridge"
+        }
+      ]
+    }
+  ]
+}

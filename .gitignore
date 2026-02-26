@@ -1,0 +1,39 @@
+# Node
+node_modules
+dist
+build
+
+# Rust/Tauri
+target/
+src-tauri/target/
+src-tauri/binaries/
+src-tauri/gen/
+backend/sidecar-wrapper/target/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+*.sqlite-wal
+*.sqlite-shm
+
+# VS Code
+.vscode
+.idea
+
+# Large Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+*.dmg
+*.zip
+*.tar.gz
+
+# Local Bridge
+backend/local-bridge/node_modules
+backend/local-bridge/dist
+backend/local-bridge/payload.zip
+backend/local-bridge/*.exe
+backend/local-bridge/retail-manager-logs/

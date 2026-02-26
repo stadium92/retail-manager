@@ -1,0 +1,4 @@
+{
+  "main": "dist-bundled-incl-sqlite/index.js",
+  "output": "sea-prep.blob"
+}

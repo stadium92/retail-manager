@@ -11,6 +11,8 @@ This index provides navigation for the Retail Manager memory-bank directory, org
 Pro/retail-manager/memory-bank/
 ├── INDEX.md (this file)
 ├── core/                     # Core operations hub
+├── tech/                     # Technical setup and build patterns
+├── chat/                     # Session logs and chat history
 ├── planning/                 # Planning and strategy center
 ├── ai/                       # AI systems and intelligence
 ├── analysis/                 # Analysis and insights
@@ -20,6 +22,25 @@ Pro/retail-manager/memory-bank/
 │   └── Notes/               # Project notes
 └── van-docs/                 # VAN mode documentation
 ```
+
+---
+
+## 🛠️ Technical Setup & Build Patterns
+
+### Tech Directory Structure
+Located in: `tech/`
+- **[`tech/windows_arm64_setup.md`](tech/windows_arm64_setup.md)** - Blueprint for rebuilding the development environment on Windows ARM64.
+- **[`tech/cross_architecture_build_bible.md`](tech/cross_architecture_build_bible.md)** - **CRITICAL**: The "Bible" for solving the architecture mismatch and library compatibility hell. Essential for builds.
+- **[`tech/sidecar_wrapper_strategy.md`](tech/sidecar_wrapper_strategy.md)** - Deep dive into the Rust Wrapper pattern.
+- **[`tech/dynamic_port_discovery.md`](tech/dynamic_port_discovery.md)** - Strategy for automated backend port discovery to ensure frontend connectivity across different network environments.
+
+---
+
+## 💬 Session Logs & Chat History
+
+### Chat Directory Structure
+Located in: `chat/`
+- **[`chat/2026-02-08_sidecar_dependency_resolution.md`](chat/2026-02-08_sidecar_dependency_resolution.md)** - **Problem to Solution (A-Z)**: Comprehensive log of resolving the "Failed to fetch data" issue. Covers missing transitive dependencies (`fastq`), emergency logging implementation, and Tauri resource path corrections.
 
 ---
 
@@ -37,6 +58,11 @@ Located in: `core/`
 Located in: `planning/`
 - Ready for implementation plans and strategic documentation
 
+### Plans Directory
+Located in: `plans/`
+- **[`plans/PRD-004-Smart-Replenishment.md`](plans/PRD-004-Smart-Replenishment.md)** - Smart replenishment / auto-order scheduling PRD
+- **[`plans/PRD-005-Multi-Price-Tiers-And-Batch-Tracking.md`](plans/PRD-005-Multi-Price-Tiers-And-Batch-Tracking.md)** - **ACTIVE**: Multi-price tiers (4 selling prices), purchase batch tracking, supplier price integration, batch-level margin analysis. Full DB schema, authorization matrix, frontend specs, and 8-phase implementation plan.
+
 ---
 
 ## 🤖 AI Systems & Intelligence
@@ -52,7 +78,7 @@ Located in: `ai/`
 
 ### Analysis Directory Structure
 Located in: `analysis/`
-- Ready for research data and analytical findings
+- **[`analysis/CLIENT-SERVICE-ANALYSIS-006.md`](analysis/CLIENT-SERVICE-ANALYSIS-006.md)** - **Team audit report**: 11 findings (3 critical, 3 high, 3 medium, 2 low) covering the missing client-service backend, disconnected discount flow, hardcoded client groups, and supplier-vs-client symmetry gap. Includes priority matrix, team Q/A, and 6-phase fix plan.
 - Sales pattern analysis results
 
 ---
@@ -62,6 +88,12 @@ Located in: `analysis/`
 ### Docs Directory Structure
 Located in: `docs/`
 - **`prd.txt`** - Product Requirements Document (complete specification)
+- **[`docs/PROMPT-005-Multi-Price-Batch-Implementation.md`](docs/PROMPT-005-Multi-Price-Batch-Implementation.md)** - **Agent-ready prompt** for Gemini 3 Pro (1M context). Contains file index, 10x dev persona, raw client Q/A session, and 8 atomic implementation phases (A–H) for PRD-005.
+- **[`docs/PROMPT-006-Client-Service-Backend-And-Discount-Fix.md`](docs/PROMPT-006-Client-Service-Backend-And-Discount-Fix.md)** - **Agent-ready prompt** for Gemini 3 Pro (1M context). Fixes 11 client-service bugs: creates `clients` + `client_services` DB tables, backend repos + routes, wires frontend to API, auto-applies client group discounts in POS, adds stock deduction on sale, credit balance tracking, and i18n. 7 phases (0–6).
+- **[`docs/PRD-014-Offline-Online-Sync-MVP.md`](docs/PRD-014-Offline-Online-Sync-MVP.md)** - Offline→online hybrid sync execution spec for Mali-ready rollout. Defines outbox/inbox protocol, schema additions, conflict rules, sync endpoints (`/sync/push`, `/sync/pull`), idempotency strategy, 4-week implementation plan, acceptance criteria, and hosting recommendations.
+- **[`docs/STAKEHOLDER-OUTREACH-PLAYBOOK-MLI.md`](docs/STAKEHOLDER-OUTREACH-PLAYBOOK-MLI.md)** - Stakeholder map and go-to-market outreach playbook for Mali + sub-region. Includes priority target segments, who to contact first, 30-day pipeline targets, French interview script (15 questions), and first-contact message templates.
+- **[`docs/CLIENT-BRIEF-005-Multi-Price-Raw.md`](docs/CLIENT-BRIEF-005-Multi-Price-Raw.md)** - Original unedited client brief for PRD-005. Raw requirements verbatim.
+- **[`docs/CLIENT-BRIEF-006-Client-Service-Raw.md`](docs/CLIENT-BRIEF-006-Client-Service-Raw.md)** - Original unedited team brief for ANALYSIS-006. Raw client voice defining team roles (analysts, QA, clients, beta testers) and requesting deep analysis of client-service vs supplier asymmetry, discount flow, and sale integrity.
 - **`lovable_frontend_prompt.md`** - Frontend generation prompt for Lovable.dev (complete, all phases)
 - **`lovable_frontend_prompt_phase1.md`** - Phase 1: Core Foundation & Master Interface
 - **`lovable_frontend_prompt_phase2.md`** - Phase 2: Worker, Deliverer & Customer Interfaces
@@ -69,11 +101,13 @@ Located in: `docs/`
 - **`interface_architecture_privileges.md`** - Interface architecture, privilege system, and access control design
 - **`four_sided_architecture.md`** - Four-sided architecture: Master, Worker, Deliverer, Customer interfaces
 - **`feature_brainstorming.md`** - Deep feature brainstorming and analysis for each user type
+- **`offline_hybrid_refactor_prd.md`** - Offline-first + hybrid deployment PRD outlining dual data-plane strategy
+- **`offline_hybrid_refactor_plan.md`** - Execution plan with phased roadmap and checkbox subtask tracker
 - **`Notes/`** - Project notes and documentation
 
 #### Key Files
 - **[`docs/prd.txt`](docs/prd.txt)** - Complete PRD with technical architecture, roadmap, and requirements
-- **[`docs/lovable_frontend_prompt.md`](docs/lovable_frontend_prompt.md)** - Comprehensive prompt for generating frontend with four separate interfaces (Master, Worker, Deliverer, Customer). Includes design brainstorming framework and feature requirements. **Complete version with all phases.**
+- **[`docs/CI_CD_PIPELINE.md`](docs/CI_CD_PIPELINE.md)** - **NEW**: Detailed documentation for the automated GitHub Actions CI/CD pipeline and sidecar build process.`r`n- **[`docs/lovable_frontend_prompt.md`](docs/lovable_frontend_prompt.md)** - Comprehensive prompt for generating frontend with four separate interfaces (Master, Worker, Deliverer, Customer). Includes design brainstorming framework and feature requirements. **Complete version with all phases.**
 - **[`docs/lovable_frontend_prompt_phase1.md`](docs/lovable_frontend_prompt_phase1.md)** - **Phase 1**: Core Foundation & Master Interface - Authentication, Master dashboard, Sales, Inventory, Workers, Stores, Basic Analytics
 - **[`docs/lovable_frontend_prompt_phase2.md`](docs/lovable_frontend_prompt_phase2.md)** - **Phase 2**: Worker, Deliverer & Customer Interfaces - Worker sales entry, Deliverer delivery management, Customer product browsing, Offline support
 - **[`docs/lovable_frontend_prompt_phase3.md`](docs/lovable_frontend_prompt_phase3.md)** - **Phase 3**: AI Features & Advanced Analytics - Conversational AI, AI Suggestions, Predictive Analytics, Automated Alerts, Pattern Analysis
@@ -116,6 +150,7 @@ Located in: `van-docs/`
 
 | Need | Go To | Primary File |
 |------|-------|--------------|
+| **ARM64 Setup Guide** | `tech/` | `windows_arm64_setup.md` |
 | **PRD Document** | `docs/` | `prd.txt` |
 | **Frontend Prompt (Complete)** | `docs/` | `lovable_frontend_prompt.md` |
 | **Frontend Prompt - Phase 1** | `docs/` | `lovable_frontend_prompt_phase1.md` |
@@ -124,6 +159,8 @@ Located in: `van-docs/`
 | **Interface Architecture & Privileges** | `docs/` | `interface_architecture_privileges.md` |
 | **Four-Sided Architecture** | `docs/` | `four_sided_architecture.md` |
 | **Feature Brainstorming** | `docs/` | `feature_brainstorming.md` |
+| **Offline/Hybrid PRD** | `docs/` | `offline_hybrid_refactor_prd.md` |
+| **Offline/Hybrid Plan** | `docs/` | `offline_hybrid_refactor_plan.md` |
 | **Core Operations** | `core/` | Future core files |
 | **Planning** | `planning/` | Future planning docs |
 | **AI Features** | `ai/` | Future AI implementations |

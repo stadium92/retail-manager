@@ -1,0 +1,13 @@
+[package]
+name = "keygen"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ed25519-dalek = { version = "2.1.0", features = ["rand_core"] }
+rand = "0.8.5"
+base32 = "0.4.0"
+hex = "0.4.3"
+anyhow = "1.0"
+pem = "3.0"
+clap = { version = "4.4", features = ["derive"] }

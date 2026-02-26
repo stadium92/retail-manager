@@ -1,0 +1,158 @@
+import Database from 'better-sqlite3';
+import crypto from 'crypto';
+import { SyncOutboxEntry, SyncState } from '../types.js';
+
+export const createSyncOutboxRepo = (db: Database.Database) => ({
+  listOutboxEntries(
+    storeId: string,
+    status: SyncOutboxEntry['status'] = 'pending',
+    limit: number = 100
+  ): SyncOutboxEntry[] {
+    const rows = db
+      .prepare(
+        'SELECT * FROM sync_outbox WHERE store_id = ? AND status = ? ORDER BY created_at ASC LIMIT ?'
+      )
+      .all(storeId, status, limit);
+    return rows as SyncOutboxEntry[];
+  },
+
+  insertOutboxEntry(entry: SyncOutboxEntry) {
+    db.prepare(
+      `
+      INSERT OR IGNORE INTO sync_outbox (
+        id, store_id, entity_type, entity_id, op_type,
+        payload_json, base_version, created_at, status,
+        retry_count, last_error, idempotency_key
+      ) VALUES (
+        @id, @store_id, @entity_type, @entity_id, @op_type,
+        @payload_json, @base_version, @created_at, @status,
+        @retry_count, @last_error, @idempotency_key
+      )
+    `
+    ).run({
+      ...entry,
+      base_version: entry.base_version ?? null,
+      last_error: entry.last_error ?? null,
+    });
+  },
+
+  updateOutboxStatus(
+    id: string,
+    status: SyncOutboxEntry['status'],
+    lastError?: string | null
+  ) {
+    db.prepare(
+      'UPDATE sync_outbox SET status = ?, last_error = ? WHERE id = ?'
+    ).run(status, lastError ?? null, id);
+  },
+
+  incrementOutboxRetry(id: string, error: string) {
+    db.prepare(
+      'UPDATE sync_outbox SET retry_count = retry_count + 1, last_error = ?, status = ? WHERE id = ?'
+    ).run(error, 'pending', id);
+  },
+
+  getSyncState(storeId: string): SyncState | undefined {
+    const row = db
+      .prepare('SELECT * FROM sync_state WHERE store_id = ? LIMIT 1')
+      .get(storeId);
+    return row as SyncState | undefined;
+  },
+
+  upsertSyncState(storeId: string, updates: Partial<Omit<SyncState, 'store_id'>>) {
+    const existing = db
+      .prepare('SELECT * FROM sync_state WHERE store_id = ? LIMIT 1')
+      .get(storeId);
+
+    if (!existing) {
+      db.prepare(
+        `INSERT INTO sync_state (store_id, last_push_at, last_pull_cursor, last_success_at, last_error)
+         VALUES (?, ?, ?, ?, ?)`
+      ).run(
+        storeId,
+        updates.last_push_at ?? null,
+        updates.last_pull_cursor ?? null,
+        updates.last_success_at ?? null,
+        updates.last_error ?? null
+      );
+      return;
+    }
+
+    const normalizedEntries = Object.entries(updates).filter(
+      ([, value]) => value !== undefined
+    );
+    if (normalizedEntries.length === 0) return;
+
+    const assignments = normalizedEntries
+      .map(([key]) => `${key} = @${key}`)
+      .join(', ');
+    db.prepare(
+      `UPDATE sync_state SET ${assignments} WHERE store_id = @store_id`
+    ).run({ store_id: storeId, ...Object.fromEntries(normalizedEntries) });
+  },
+
+  getOutboxStats(storeId: string): {
+    pending: number;
+    sent: number;
+    acked: number;
+    failed: number;
+    total: number;
+    oldest_pending_at: string | null;
+  } {
+    const row = db
+      .prepare(
+        `SELECT
+           COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) as pending,
+           COALESCE(SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END), 0) as sent,
+           COALESCE(SUM(CASE WHEN status = 'acked' THEN 1 ELSE 0 END), 0) as acked,
+           COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) as failed,
+           COUNT(*) as total,
+           MIN(CASE WHEN status = 'pending' THEN created_at END) as oldest_pending_at
+         FROM sync_outbox
+         WHERE store_id = ?`
+      )
+      .get(storeId) as any;
+
+    return {
+      pending: row?.pending ?? 0,
+      sent: row?.sent ?? 0,
+      acked: row?.acked ?? 0,
+      failed: row?.failed ?? 0,
+      total: row?.total ?? 0,
+      oldest_pending_at: row?.oldest_pending_at ?? null,
+    };
+  },
+
+  emitSyncEvent(params: {
+    storeId: string;
+    entityType: string;
+    entityId: string;
+    opType: 'create' | 'update' | 'delete';
+    payload: Record<string, unknown>;
+    baseVersion?: number | null;
+  }) {
+    const now = new Date().toISOString();
+    const id = crypto.randomUUID();
+    const idempotencyKey = `${params.storeId}:${params.entityType}:${params.entityId}:${params.opType}:${now}`;
+
+    db.prepare(
+      `
+      INSERT OR IGNORE INTO sync_outbox (
+        id, store_id, entity_type, entity_id, op_type,
+        payload_json, base_version, created_at, status,
+        retry_count, last_error, idempotency_key
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, NULL, ?)
+    `
+    ).run(
+      id,
+      params.storeId,
+      params.entityType,
+      params.entityId,
+      params.opType,
+      JSON.stringify(params.payload),
+      params.baseVersion ?? null,
+      now,
+      idempotencyKey
+    );
+  },
+});
