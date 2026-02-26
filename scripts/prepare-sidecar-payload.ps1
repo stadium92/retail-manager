@@ -1,7 +1,7 @@
 # Prepare Sidecar Payload and Wrapper Script (Architecture-Specific)
 $ErrorActionPreference = "Stop"
 
-$PROJECT_ROOT = "C:\Users\Mohamed\MVP\Pro\retail-manager"
+$PROJECT_ROOT = Resolve-Path "$PSScriptRoot\.."
 $BACKEND_DIR = "$PROJECT_ROOT\backend\local-bridge"
 $WRAPPER_DIR = "$PROJECT_ROOT\backend\sidecar-wrapper"
 $TAURI_BIN_DIR = "$PROJECT_ROOT\src-tauri\binaries"
@@ -107,7 +107,7 @@ foreach ($item in $architectures) {
     Write-Host "Compiling Rust Wrapper for $triple..." -ForegroundColor Yellow
     Push-Location $WRAPPER_DIR
     $env:PAYLOAD_FILE = "../$payload_name"
-    & C:\Users\Mohamed\.cargo\bin\cargo.exe build --release --target $triple
+    & cargo.exe build --release --target $triple
     Pop-Location
     
     # f. Move to Tauri Binaries

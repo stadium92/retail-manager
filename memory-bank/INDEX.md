@@ -107,7 +107,7 @@ Located in: `docs/`
 
 #### Key Files
 - **[`docs/prd.txt`](docs/prd.txt)** - Complete PRD with technical architecture, roadmap, and requirements
-- **[`docs/lovable_frontend_prompt.md`](docs/lovable_frontend_prompt.md)** - Comprehensive prompt for generating frontend with four separate interfaces (Master, Worker, Deliverer, Customer). Includes design brainstorming framework and feature requirements. **Complete version with all phases.**
+- **[`docs/CI_CD_PIPELINE.md`](docs/CI_CD_PIPELINE.md)** - **NEW**: Detailed documentation for the automated GitHub Actions CI/CD pipeline and sidecar build process.`r`n- **[`docs/lovable_frontend_prompt.md`](docs/lovable_frontend_prompt.md)** - Comprehensive prompt for generating frontend with four separate interfaces (Master, Worker, Deliverer, Customer). Includes design brainstorming framework and feature requirements. **Complete version with all phases.**
 - **[`docs/lovable_frontend_prompt_phase1.md`](docs/lovable_frontend_prompt_phase1.md)** - **Phase 1**: Core Foundation & Master Interface - Authentication, Master dashboard, Sales, Inventory, Workers, Stores, Basic Analytics
 - **[`docs/lovable_frontend_prompt_phase2.md`](docs/lovable_frontend_prompt_phase2.md)** - **Phase 2**: Worker, Deliverer & Customer Interfaces - Worker sales entry, Deliverer delivery management, Customer product browsing, Offline support
 - **[`docs/lovable_frontend_prompt_phase3.md`](docs/lovable_frontend_prompt_phase3.md)** - **Phase 3**: AI Features & Advanced Analytics - Conversational AI, AI Suggestions, Predictive Analytics, Automated Alerts, Pattern Analysis
