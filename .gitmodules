@@ -1,3 +1,4 @@
 [submodule "frontend"]
 	path = frontend
 	url = https://github.com/mohcly/retailscope-pro.git
+	branch = frontend-test-1
