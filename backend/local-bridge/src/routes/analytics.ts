@@ -5,6 +5,8 @@ import { authenticateRequest } from './utils/auth.js';
 
 const analyticsQuerySchema = z.object({
   store_id: z.string().optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
 });
 
 export async function registerAnalyticsRoutes(app: FastifyInstance) {
@@ -18,16 +20,19 @@ export async function registerAnalyticsRoutes(app: FastifyInstance) {
     }
 
     const storeId = parsed.data.store_id ?? claims.store_id;
-    if (!storeId) {
+    if (!storeId && storeId !== '') { // Allow empty string for Master (All Stores)
       return reply.status(400).send({ error: 'StoreRequired', message: 'Store ID is required for analytics.' });
     }
 
+    const fromDate = parsed.data.from;
+    const toDate = parsed.data.to;
+
     // Parallelize queries for performance
-    const dailyRevenue = db.getDailyRevenue(storeId);
-    const weeklyRevenue = db.getWeeklyRevenue(storeId);
-    const topProducts = db.getTopProducts(storeId, 5);
-    const topWorkers = db.getTopWorkers(storeId, 5);
-    const stockHealth = db.getStockHealth(storeId);
+    const dailyRevenue = db.getDailyRevenue(storeId || '', fromDate, toDate);
+    const weeklyRevenue = db.getWeeklyRevenue(storeId || '', fromDate, toDate);
+    const topProducts = db.getTopProducts(storeId || '', 5, fromDate, toDate);
+    const topWorkers = db.getTopWorkers(storeId || '', 5, fromDate, toDate);
+    const stockHealth = db.getStockHealth(storeId || '');
 
     return reply.send({
       daily_revenue: dailyRevenue,

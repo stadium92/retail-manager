@@ -1,33 +1,48 @@
 import Database from 'better-sqlite3';
 
 export const createAnalyticsRepo = (db: Database.Database) => ({
-  getDailyRevenue(storeId: string): number {
-    const row = db
-      .prepare(`
+  getDailyRevenue(storeId: string, from?: string, to?: string): number {
+    let sql = `
         SELECT SUM(COALESCE(CAST(total_price AS REAL), 0)) as total
         FROM sales
-        WHERE (? = '' OR store_id = ?) AND date(created_at) = date('now')
-      `)
-      .get(storeId, storeId) as { total: number };
+        WHERE (? = '' OR store_id = ?)
+    `;
+    const params: any[] = [storeId, storeId];
+
+    if (from && to) {
+      sql += ` AND created_at BETWEEN ? AND ? `;
+      params.push(from, to);
+    } else {
+      sql += ` AND date(created_at) = date('now') `;
+    }
+
+    const row = db.prepare(sql).get(...params) as { total: number };
     return row?.total || 0;
   },
 
-  getWeeklyRevenue(storeId: string): { date: string; revenue: number }[] {
-    const rows = db
-      .prepare(`
+  getWeeklyRevenue(storeId: string, from?: string, to?: string): { date: string; revenue: number }[] {
+    let sql = `
         SELECT date(created_at) as date, SUM(COALESCE(CAST(total_price AS REAL), 0)) as revenue
         FROM sales
-        WHERE (? = '' OR store_id = ?) AND created_at >= date('now', '-6 days')
-        GROUP BY date(created_at)
-        ORDER BY date(created_at) ASC
-      `)
-      .all(storeId, storeId) as { date: string; revenue: number }[];
+        WHERE (? = '' OR store_id = ?)
+    `;
+    const params: any[] = [storeId, storeId];
+
+    if (from && to) {
+      sql += ` AND created_at BETWEEN ? AND ? `;
+      params.push(from, to);
+    } else {
+      sql += ` AND created_at >= date('now', '-6 days') `;
+    }
+
+    sql += ` GROUP BY date(created_at) ORDER BY date(created_at) ASC `;
+
+    const rows = db.prepare(sql).all(...params) as { date: string; revenue: number }[];
     return rows;
   },
 
-  getTopProducts(storeId: string, limit = 5): { name: string; quantity: number; revenue: number }[] {
-    const rows = db
-      .prepare(`
+  getTopProducts(storeId: string, limit = 5, from?: string, to?: string): { name: string; quantity: number; revenue: number }[] {
+    let sql = `
         SELECT 
           si.product_name as name, 
           SUM(si.quantity) as quantity, 
@@ -35,17 +50,27 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
         FROM sale_items si
         JOIN sales s ON s.id = si.sale_id
         WHERE (? = '' OR s.store_id = ?)
+    `;
+    const params: any[] = [storeId, storeId];
+
+    if (from && to) {
+      sql += ` AND s.created_at BETWEEN ? AND ? `;
+      params.push(from, to);
+    }
+
+    sql += `
         GROUP BY si.product_name
         ORDER BY quantity DESC
         LIMIT ?
-      `)
-      .all(storeId, storeId, limit) as { name: string; quantity: number; revenue: number }[];
+    `;
+    params.push(limit);
+
+    const rows = db.prepare(sql).all(...params) as { name: string; quantity: number; revenue: number }[];
     return rows;
   },
 
-  getTopWorkers(storeId: string, limit = 5): { name: string; sales_count: number; revenue: number }[] {
-    const rows = db
-      .prepare(`
+  getTopWorkers(storeId: string, limit = 5, from?: string, to?: string): { name: string; sales_count: number; revenue: number }[] {
+    let sql = `
         SELECT 
           u.full_name as name, 
           COUNT(s.id) as sales_count, 
@@ -53,11 +78,22 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
         FROM sales s
         LEFT JOIN users u ON s.worker_id = u.id
         WHERE (? = '' OR s.store_id = ?)
+    `;
+    const params: any[] = [storeId, storeId];
+
+    if (from && to) {
+      sql += ` AND s.created_at BETWEEN ? AND ? `;
+      params.push(from, to);
+    }
+
+    sql += `
         GROUP BY u.full_name
         ORDER BY revenue DESC
         LIMIT ?
-      `)
-      .all(storeId, storeId, limit) as { name: string; sales_count: number; revenue: number }[];
+    `;
+    params.push(limit);
+
+    const rows = db.prepare(sql).all(...params) as { name: string; sales_count: number; revenue: number }[];
     return rows;
   },
 
