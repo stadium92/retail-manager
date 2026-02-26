@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - main
+      - frontend-test-1
   pull_request:
     branches:
       - main
+      - frontend-test-1
   workflow_dispatch:
 
 jobs:
@@ -54,3 +56,4 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: --target x86_64-pc-windows-msvc
+
