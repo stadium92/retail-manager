@@ -12,8 +12,10 @@
     "tauri:build": "npm run clean:dist && npm run build:backend && npm run build --prefix frontend && tauri build && mkdir -p release && cp -R src-tauri/target/release/bundle/macos/*.app release/ && cp -R src-tauri/target/release/bundle/dmg/*.dmg release/"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.2.0",
-    
+    "@tauri-apps/cli": "^2.2.0"
+  },
+  "optionalDependencies": {
+    "@tauri-apps/cli-win32-arm64-msvc": "2.10.0"
   },
   "dependencies": {
     "minimist": "^1.2.8",
