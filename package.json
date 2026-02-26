@@ -13,7 +13,7 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.2.0",
-    "@tauri-apps/cli-win32-arm64-msvc": "2.10.0"
+    
   },
   "dependencies": {
     "minimist": "^1.2.8",
