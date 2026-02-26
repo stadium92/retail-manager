@@ -34,13 +34,13 @@ jobs:
         working-directory: backend/local-bridge
         run: |
           npm install
-          npm run build --prefix frontend
+          npm run build
 
       - name: Build Frontend
         working-directory: frontend
         run: |
           npm install
-          npm run build --prefix frontend
+          npm run build
 
       - name: Prepare Sidecar Payload
         run: powershell -ExecutionPolicy Bypass -File scripts/prepare-sidecar-payload.ps1
@@ -56,4 +56,5 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: --target x86_64-pc-windows-msvc
+
 
