@@ -29,7 +29,8 @@ fn main() -> Result<()> {
 
     // 2. Prepare Payload
     // Format: RM-YYYY-DEVICEID
-    let payload_str = format!("RM-{}-{}", args.year, args.device_id.to_uppercase());
+    let clean_device_id = args.device_id.replace("-", "").to_uppercase();
+    let payload_str = format!("RM-{}-{}", args.year, clean_device_id);
     let payload_bytes = payload_str.as_bytes();
 
     // 3. Sign

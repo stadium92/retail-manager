@@ -70,9 +70,22 @@ pub fn get_device_hash() -> String {
     let mut hasher = Sha256::new();
     hasher.update(uid.as_bytes());
     let result = hasher.finalize();
-    let hex_hash = hex::encode(result);
-    // Take first 4 chars to match the key format
-    hex_hash[..4].to_uppercase()
+    
+    // Take first 5 bytes
+    let first_5 = &result[..5];
+    
+    // Encode to Base32 (RFC4648, without padding)
+    let b32_str = base32::encode(base32::Alphabet::RFC4648 { padding: false }, first_5);
+    
+    // Truncate to 8 characters just in case
+    let b32_str: String = b32_str.chars().take(8).collect();
+    
+    // Format as XXXX-XXXX
+    if b32_str.len() == 8 {
+        format!("{}-{}", &b32_str[..4], &b32_str[4..])
+    } else {
+        b32_str // Fallback if somehow shorter
+    }
 }
 
 fn get_license_path(app_handle: &AppHandle) -> PathBuf {
@@ -126,7 +139,9 @@ fn decrypt_data(data: &[u8]) -> Result<Vec<u8>, String> {
 
 pub fn verify_signature(key: &str, device_id: &str) -> Result<bool, String> {
     // Expected Format: RM-YYYY-DEVICEID-<SIGNATURE_BASE32>
-    // Example: RM-2026-ABCD-KB2...
+    // Example: RM-2026-KV7M9X2P-KB2...
+    
+    let clean_device_id = device_id.replace("-", "");
     
     let parts: Vec<&str> = key.split('-').collect();
     if parts.len() < 4 {
@@ -142,8 +157,8 @@ pub fn verify_signature(key: &str, device_id: &str) -> Result<bool, String> {
         return Err("Invalid license prefix.".to_string());
     }
 
-    if key_device_id != device_id {
-        return Err(format!("Key is for device {}, but this is {}.", key_device_id, device_id));
+    if key_device_id != clean_device_id {
+        return Err(format!("Key is for device {}, but this is {}.", key_device_id, clean_device_id));
     }
 
     // Reconstruct Payload: RM-YYYY-DEVICEID
