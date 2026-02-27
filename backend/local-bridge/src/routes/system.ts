@@ -4,6 +4,11 @@ import { authenticateRequest } from './utils/auth.js';
 
 export async function registerSystemRoutes(app: FastifyInstance) {
   console.log('[System] Registering System Routes...');
+
+  app.get('/rest/v1/ping', async (request, reply) => {
+    // The server Date header will be automatically set by Fastify/Node.js
+    return reply.send({ status: 'ok', time: new Date().toISOString() });
+  });
   
   app.post('/rest/v1/system-repair', async (request, reply) => {
     const claims = authenticateRequest(request, reply, ['master']);
