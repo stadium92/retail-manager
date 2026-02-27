@@ -275,7 +275,9 @@ export const initializeSchema = (db: Database.Database) => {
     );
 
     -- Trigger to deduct inventory when a sale item is recorded
-    CREATE TRIGGER IF NOT EXISTS sale_items_ai AFTER INSERT ON sale_items
+    DROP TRIGGER IF EXISTS sale_items_ai;
+    CREATE TRIGGER sale_items_ai AFTER INSERT ON sale_items
+    WHEN (SELECT sale_type FROM sales WHERE id = new.sale_id) != 'proforma'
     BEGIN
       UPDATE products
       SET quantity = quantity - new.quantity
