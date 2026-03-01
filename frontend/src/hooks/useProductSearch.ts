@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getDataClient } from '@/lib/dataClient';
+import { getDataClient, smartFetch } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { Product } from '@/types';
 
