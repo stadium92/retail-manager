@@ -27,13 +27,14 @@ export const createProductsRepo = (db: Database.Database) => {
   },
 
   searchProducts(
-    storeId: string,
+    storeId: string | null | undefined,
     query: string,
     limit: number = 50,
     offset: number = 0,
     filter?: 'in_stock' | 'out_of_stock' | 'low_stock'
   ): { data: LocalProduct[]; total: number } {
     const searchQuery = query.trim();
+    const useStoreFilter = storeId && storeId !== 'all';
     
     // If query is empty, use standard fast scan
     if (!searchQuery) {
@@ -42,9 +43,12 @@ export const createProductsRepo = (db: Database.Database) => {
       else if (filter === 'out_of_stock') filterClause = 'AND quantity <= 0';
       else if (filter === 'low_stock') filterClause = 'AND quantity > 0 AND quantity <= COALESCE(min_quantity, 10)';
 
-      const total = (db.prepare(`SELECT COUNT(*) as count FROM products WHERE store_id = ? ${filterClause}`).get(storeId) as any).count;
-      const rows = db.prepare(`SELECT * FROM products WHERE store_id = ? ${filterClause} ORDER BY name ASC LIMIT ? OFFSET ?`).all(storeId, limit, offset);
-      return { data: rows as LocalProduct[], total };
+      const whereClause = useStoreFilter ? `WHERE store_id = ? ${filterClause}` : (filterClause ? `WHERE ${filterClause.slice(4)}` : '');
+      const params = useStoreFilter ? [storeId] : [];
+
+      const totalResult = db.prepare(`SELECT COUNT(*) as count FROM products ${whereClause}`).get(...params) as { count: number };
+      const rows = db.prepare(`SELECT * FROM products ${whereClause} ORDER BY name ASC LIMIT ? OFFSET ?`).all(...params, limit, offset);
+      return { data: rows as LocalProduct[], total: totalResult.count };
     }
 
     // FTS5 MATCH pattern (prefix search for each word)
@@ -55,18 +59,19 @@ export const createProductsRepo = (db: Database.Database) => {
     else if (filter === 'out_of_stock') filterClause = 'AND p.quantity <= 0';
     else if (filter === 'low_stock') filterClause = 'AND p.quantity > 0 AND p.quantity <= COALESCE(p.min_quantity, 10)';
 
+    const whereClauseFTS = useStoreFilter ? `WHERE f.store_id = ? AND products_fts MATCH ? ${filterClause}` : `WHERE products_fts MATCH ? ${filterClause}`;
+    const paramsFTS = useStoreFilter ? [storeId, matchPattern] : [matchPattern];
+
     const countResult = db
       .prepare(
         `
       SELECT COUNT(*) as count 
       FROM products_fts f
       JOIN products p ON f.id = p.id
-      WHERE f.store_id = ? 
-      AND products_fts MATCH ?
-      ${filterClause}
+      ${whereClauseFTS}
     `
       )
-      .get(storeId, matchPattern) as { count: number };
+      .get(...paramsFTS) as { count: number };
 
     const rows = db
       .prepare(
@@ -75,14 +80,12 @@ export const createProductsRepo = (db: Database.Database) => {
       FROM products_fts f
       JOIN products p ON f.id = p.id
       LEFT JOIN product_families pf ON p.category = pf.id
-      WHERE f.store_id = ? 
-      AND products_fts MATCH ?
-      ${filterClause}
+      ${whereClauseFTS}
       ORDER BY rank -- FTS5 built-in relevance ranking
       LIMIT ? OFFSET ?
     `
       )
-      .all(storeId, matchPattern, limit, offset);
+      .all(...paramsFTS, limit, offset);
 
     const mappedRows = rows.map((row: any) => ({
       ...row,

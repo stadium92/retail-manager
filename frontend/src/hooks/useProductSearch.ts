@@ -41,9 +41,11 @@ export function useProductSearch(storeId: string, enabled: boolean = true) {
         }
 
         const params = new URLSearchParams({
-          store_id: storeId,
           limit: '50',
         });
+
+        // Always send store_id to prevent backend from defaulting to claims.store_id
+        params.append('store_id', storeId || 'all');
 
         if (debouncedSearch) {
           params.append('search', debouncedSearch);

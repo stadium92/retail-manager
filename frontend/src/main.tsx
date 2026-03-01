@@ -6,7 +6,7 @@ import "./i18n/config";
 console.log('ðŸš€ Bootstrapping Retail Manager...');
 
 // Emergency: Wipe browser storage once to clear corrupt data
-if (!localStorage.getItem('system_reset_v1')) {
+if (!localStorage.getItem('system_reset_v2')) {
   console.log('System reset requested: Clearing browser storage...');
   localStorage.clear();
   // Clear all IndexedDB databases
@@ -15,7 +15,7 @@ if (!localStorage.getItem('system_reset_v1')) {
       if (db.name) indexedDB.deleteDatabase(db.name);
     });
   });
-  localStorage.setItem('system_reset_v1', 'true');
+  localStorage.setItem('system_reset_v2', 'true');
   window.location.reload();
 }
 

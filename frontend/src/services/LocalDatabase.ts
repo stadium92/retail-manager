@@ -199,17 +199,33 @@ class LocalDatabaseService {
 
   async deletePurchaseOrder(id: string): Promise<void> {
     const db = await this.ensureDb();
-    const tx = db.transaction(['purchase_orders', 'purchase_items'], 'readwrite');
+    
+    // Safety check: only delete if stores exist (prevents crash on old schemas)
+    const hasOrders = db.objectStoreNames.contains('purchase_orders');
+    const hasItems = db.objectStoreNames.contains('purchase_items');
+    
+    if (!hasOrders) {
+        console.warn('LocalDatabase: purchase_orders store missing, skipping delete');
+        return;
+    }
+
+    console.log('LocalDatabase: Deleting purchase order:', id);
+    const stores = hasItems ? ['purchase_orders', 'purchase_items'] : ['purchase_orders'];
+    const tx = db.transaction(stores, 'readwrite');
     tx.objectStore('purchase_orders').delete(id);
     
-    // Also delete items for this order
-    const itemStore = tx.objectStore('purchase_items');
-    const index = itemStore.index('order_id');
-    const request = index.getAllKeys(id);
-    request.onsuccess = () => {
-      const keys = request.result;
-      keys.forEach(key => itemStore.delete(key));
-    };
+    if (hasItems) {
+        const itemStore = tx.objectStore('purchase_items');
+        // Items might not have an index yet if schema is old but store exists
+        if (itemStore.indexNames.contains('order_id')) {
+            const index = itemStore.index('order_id');
+            const request = index.getAllKeys(id);
+            request.onsuccess = () => {
+                const keys = request.result;
+                keys.forEach(key => itemStore.delete(key));
+            };
+        }
+    }
   }
 
   async getPurchaseOrders(storeId?: string): Promise<LocalPurchaseOrder[]> {

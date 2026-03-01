@@ -406,6 +406,9 @@ export const initializeSchema = (db: Database.Database) => {
     CREATE INDEX IF NOT EXISTS idx_scheduled_orders_next_run ON scheduled_orders(next_run_date);
     CREATE INDEX IF NOT EXISTS idx_product_batches_product ON product_batches(product_id);
     CREATE INDEX IF NOT EXISTS idx_product_batches_store ON product_batches(store_id);
+
+    -- Rebuild FTS index to ensure existing data is searchable
+    INSERT INTO products_fts(products_fts) VALUES('rebuild');
   `);
 
   const ensureColumn = (table: string, column: string, ddl: string) => {

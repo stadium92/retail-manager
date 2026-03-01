@@ -35,10 +35,17 @@ export function ProductLookupDialog({
   const { t, i18n } = useTranslation();
   const { stores } = useMasterDataStore();
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const { search, setSearch, results, isLoading } = useProductSearch(storeId, open);
+  const { search, setSearch, results = [], isLoading } = useProductSearch(storeId, open);
 
-  const formatCurrency = (amount: number) => {
-    return amount.toLocaleString(i18n.language === 'bm' ? 'fr-ML' : i18n.language);
+  console.log('[ProductLookupDialog] storeId:', storeId, 'open:', open, 'results:', results?.length);
+
+  const formatCurrency = (amount: any) => {
+    if (amount === undefined || amount === null) return '0';
+    try {
+        return Number(amount).toLocaleString(i18n.language === 'bm' ? 'fr-ML' : i18n.language);
+    } catch (e) {
+        return '0';
+    }
   };
 
   useEffect(() => {
@@ -47,6 +54,7 @@ export function ProductLookupDialog({
 
   useEffect(() => {
     if (open) {
+      console.log('[ProductLookupDialog] Dialog opened, results:', results?.length);
       setSearch('');
       setSelectedIndex(0);
     }
@@ -54,9 +62,9 @@ export function ProductLookupDialog({
 
   const getPrice = useCallback((product: Product) => {
     if (mode === 'wholesale') {
-      return product.wholesale_price || product.unit_price;
+      return product.wholesale_price || product.unit_price || 0;
     }
-    return product.unit_price;
+    return product.unit_price || 0;
   }, [mode]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

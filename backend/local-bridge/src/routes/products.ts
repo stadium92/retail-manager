@@ -115,25 +115,26 @@ export async function registerProductRoutes(app: FastifyInstance) {
       return reply.send([product]);
     }
 
-    if (claims.role === 'master' && !store_id) {
-       // Master listing all products across all stores (careful with size!)
-       // For now, let's keep it as is, or maybe restrict it.
-       return reply.send(db.listAllProducts());
-    }
-
-    const targetStoreId = store_id || claims.store_id;
-    if (!targetStoreId) {
-      return reply.status(400).send({
-        error: 'StoreRequired',
-        message: 'No store specified for this request.',
-      });
-    }
+    const targetStoreId = store_id === 'all' ? undefined : (store_id || claims.store_id);
 
     // If search or explicit pagination is requested, use the optimized search method
     if (search !== undefined || parsed.data.page !== undefined || parsed.data.limit !== undefined || parsed.data.filter !== undefined) {
        const offset = (page - 1) * limit;
        const result = db.searchProducts(targetStoreId, search || '', limit, offset, parsed.data.filter);
        return reply.send(result); // Returns { data: [...], total: N }
+    }
+
+    if (claims.role === 'master' && !targetStoreId) {
+       // Master listing all products across all stores (careful with size!)
+       // For now, let's keep it as is, or maybe restrict it.
+       return reply.send(db.listAllProducts());
+    }
+
+    if (!targetStoreId) {
+      return reply.status(400).send({
+        error: 'StoreRequired',
+        message: 'No store specified for this request.',
+      });
     }
 
     // Fallback to legacy behavior (fetch all) for backward compatibility

@@ -248,24 +248,35 @@ export const usePurchasingStore = create<PurchasingState>((set, get) => ({
   },
 
   deleteOrder: async (orderId) => {
-    await LocalDatabase.init();
-    await LocalDatabase.deletePurchaseOrder(orderId);
-    set(state => ({ orders: state.orders.filter(o => o.id !== orderId) }));
-
-    const dc = getDataClient();
     try {
+      console.log('[PurchasingStore] Deleting order:', orderId);
+      await LocalDatabase.init();
+      await LocalDatabase.deletePurchaseOrder(orderId);
+      set(state => ({ orders: state.orders.filter(o => o.id !== orderId) }));
+
+      const dc = getDataClient();
       if (dc.isLocalFirst) {
         const headers = await OfflineAuthService.getAuthHeaders();
         if (headers) {
-          await fetch(`${dc.localBridgeBaseUrl}/rest/v1/purchase_orders/${orderId}`, {
+          const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/purchase_orders/${orderId}`, {
             method: 'DELETE',
             headers
           });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            console.error('[PurchasingStore] Backend delete failed:', res.status, errData);
+            throw new Error(errData.message || `Server error: ${res.status}`);
+          }
         }
       } else {
-        await supabase.from('purchase_orders').delete().eq('id', orderId);
+        const { error } = await supabase.from('purchase_orders').delete().eq('id', orderId);
+        if (error) throw error;
       }
-    } catch (e) {}
+      console.log('[PurchasingStore] Order deleted successfully');
+    } catch (e: any) {
+      console.error('[PurchasingStore] deleteOrder failed:', e);
+      throw e;
+    }
   },
 
   addSupplier: async (supplier) => {
