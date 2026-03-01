@@ -1,284 +1,204 @@
 /**
- * OfflineInventoryService - Handles inventory operations with offline support
- * Uses 'products' table in Supabase and 'inventory' store in LocalDatabase
+ * OfflineInventoryService - Handles inventory operations with backend-first priority
  */
 
-import { LocalDatabase, LocalInventory, LocalProductFamily } from './LocalDatabase';
-import { InventoryItem, Product } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
-import { getDataClient, smartFetch } from '@/lib/dataClient';
-import { OfflineAuthService } from './OfflineAuthService';
-import { SyncService } from './SyncService';
+import { LocalDatabase, LocalInventory } from './LocalDatabase';
+import { getDataClient } from '@/lib/dataClient';
+import { OfflineAuthService } from '@/services/OfflineAuthService';
 
-// --- MAPPING HELPERS ---
-
-function mapDbToInventoryItem(product: any): InventoryItem {
-  return {
-    id: product.id,
-    store_id: product.store_id,
-    name: product.name,
-    sku: product.sku,
-    quantity: Number(product.quantity) || 0,
-    price: Number(product.price) || 0,
-    wholesale_price: Number(product.wholesale_price) || 0,
-    wholesale_price_ht: Number(product.wholesale_price_ht) || 0,
-    wholesale_price_ttc: Number(product.wholesale_price_ttc) || 0,
-    selling_price_2: Number(product.selling_price_2) || 0,
-    selling_price_3: Number(product.selling_price_3) || 0,
-    selling_price_4: Number(product.selling_price_4) || 0,
-    cost: Number(product.cost) || 0,
-    category_id: product.category_id,
-    aisle: product.aisle,
-    brand: product.brand,
-    unit_type: product.unit_type,
-    packaging: product.packaging,
-    expiry_date: product.expiry_date,
-    reorder_quantity: Number(product.reorder_quantity) || 0,
-    low_stock_threshold: Number(product.low_stock_threshold) || 10,
-    image_url: product.image_url,
-    created_at: product.created_at,
-    updated_at: product.updated_at,
-  };
+export interface InventoryItem {
+  id: string;
+  store_id: string;
+  name: string;
+  sku?: string;
+  barcode?: string;
+  description?: string;
+  cost_price: number;
+  unit_price: number;
+  wholesale_price?: number;
+  wholesale_price_ht?: number;
+  wholesale_price_ttc?: number;
+  selling_price_2?: number;
+  selling_price_3?: number;
+  selling_price_4?: number;
+  min_quantity: number;
+  quantity: number;
+  category?: string;
+  category_name?: string;
+  image_url?: string;
+  aisle?: string;
+  brand?: string;
+  unit_type?: string;
+  packaging?: string;
+  expiry_date?: string;
+  reorder_quantity?: number;
+  low_stock_threshold?: number;
+  created_at?: string;
+  updated_at: string;
+  synced?: boolean;
 }
 
-function mapLocalInventoryToItem(local: LocalInventory): InventoryItem {
+function mapLocalInventoryToItem(local: any): InventoryItem {
+  if (!local) return {} as InventoryItem;
   return {
-    id: local.id,
+    ...local,
+    id: local.id, // ENSURE ID IS PRESENT
     store_id: local.store_id,
-    name: local.product_name,
-    sku: local.sku,
-    quantity: local.quantity,
-    price: local.unit_price,
-    wholesale_price: local.wholesale_price,
-    wholesale_price_ht: local.wholesale_price_ht,
-    wholesale_price_ttc: local.wholesale_price_ttc,
-    selling_price_2: local.selling_price_2,
-    selling_price_3: local.selling_price_3,
-    selling_price_4: local.selling_price_4,
-    cost: local.cost,
-    category_id: local.category,
-    aisle: local.aisle,
-    brand: local.brand,
-    unit_type: local.unit_type,
-    packaging: local.packaging,
-    expiry_date: local.expiry_date,
-    reorder_quantity: local.reorder_quantity,
-    updated_at: local.updated_at,
-  };
+    name: local.name || local.product_name || 'Sans nom',
+    cost_price: Number(local.cost_price ?? local.cost ?? 0),
+    unit_price: Number(local.unit_price ?? local.price ?? 0),
+    wholesale_price: Number(local.wholesale_price || 0),
+    wholesale_price_ht: Number(local.wholesale_price_ht || 0),
+    wholesale_price_ttc: Number(local.wholesale_price_ttc || 0),
+    quantity: Number(local.quantity || 0),
+    low_stock_threshold: Number(local.low_stock_threshold || local.min_quantity || 0),
+    updated_at: local.updated_at || new Date().toISOString(),
+  } as InventoryItem;
 }
 
-function mapToLocalInventory(item: InventoryItem | any, synced: boolean = true): LocalInventory {
+function mapToLocalInventory(item: any, synced: boolean = true): LocalInventory {
+  if (!item || !item.id) {
+      console.error("LocalDatabase: Attempted to map item without ID", item);
+      throw new Error("Item ID is required for storage");
+  }
+  
   return {
     id: item.id,
     store_id: item.store_id,
-    product_name: item.name || item.product_name,
+    name: item.name || item.product_name || 'Sans nom',
     sku: item.sku,
-    quantity: Number(item.quantity) || 0,
-    unit_price: Number(item.price) || Number(item.unit_price) || 0,
-    wholesale_price: Number(item.wholesale_price) || 0,
-    wholesale_price_ht: Number(item.wholesale_price_ht) || 0,
-    wholesale_price_ttc: Number(item.wholesale_price_ttc) || 0,
-    selling_price_2: Number(item.selling_price_2) || 0,
-    selling_price_3: Number(item.selling_price_3) || 0,
-    selling_price_4: Number(item.selling_price_4) || 0,
-    cost: Number(item.cost) || 0,
-    category: item.category_id || item.category,
+    barcode: item.barcode,
+    description: item.description,
+    cost_price: Number(item.cost_price ?? item.cost ?? item.price ?? 0),
+    unit_price: Number(item.unit_price ?? item.price ?? 0),
+    wholesale_price: Number(item.wholesale_price || 0),
+    wholesale_price_ht: Number(item.wholesale_price_ht || 0),
+    wholesale_price_ttc: Number(item.wholesale_price_ttc || 0),
+    selling_price_2: Number(item.selling_price_2 || 0),
+    selling_price_3: Number(item.selling_price_3 || 0),
+    selling_price_4: Number(item.selling_price_4 || 0),
+    min_quantity: Number(item.min_quantity || 0),
+    quantity: Number(item.quantity || 0),
+    category: item.category || item.category_id,
+    image_url: item.image_url,
     aisle: item.aisle,
     brand: item.brand,
     unit_type: item.unit_type,
     packaging: item.packaging,
-    sub_packaging: (item as any).sub_packaging,
     expiry_date: item.expiry_date,
-    reorder_quantity: Number(item.reorder_quantity) || 0,
+    reorder_quantity: Number(item.reorder_quantity || 0),
+    low_stock_threshold: Number(item.low_stock_threshold || item.min_quantity || 0),
+    created_at: item.created_at,
     updated_at: item.updated_at || new Date().toISOString(),
     synced,
-  };
+  } as LocalInventory;
 }
 
-export class OfflineInventoryService {
-  /**
-   * Get all inventory items (Strict Offline First)
-   */
-  static async getInventory(
-    storeId?: string,
-    options?: { notify?: boolean }
-  ): Promise<{ data?: InventoryItem[]; error?: any }> {
+export const OfflineInventoryService = {
+  async getInventory(storeId: string, options?: { notify?: boolean }) {
     try {
       await LocalDatabase.init();
+      const dc = getDataClient();
       
-      // 1. OFFLINE-FIRST: Immediate local data
-      const localInventory = await LocalDatabase.getInventory(storeId);
-      
-      // 2. BACKGROUND SYNC (Non-blocking)
-      const syncProc = async () => {
-        let remoteProducts: any[] = [];
-        let success = false;
-        const dc = getDataClient();
-
+      // BACKEND FIRST
+      if (dc.isLocalFirst) {
         try {
-          if (dc.isLocalFirst) {
-            const headers = await OfflineAuthService.getAuthHeaders();
-            if (headers) {
-              const params = new URLSearchParams();
-              if (storeId) params.set('store_id', storeId);
-              const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/products?${params.toString()}`, { headers });
-              if (res.ok) {
-                remoteProducts = await res.json();
-                success = true;
+          const headers = await OfflineAuthService.getAuthHeaders();
+          if (headers) {
+            const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/products?store_id=${storeId}`, { headers });
+            if (res.ok) {
+              const remoteProducts = await res.json();
+              
+              const localInventory = await LocalDatabase.getInventory(storeId);
+              for (const remote of remoteProducts) {
+                if (!remote || !remote.id) continue;
+                const localMatch = localInventory.find(l => l.id === remote.id);
+                if (!localMatch || localMatch.synced) {
+                  await LocalDatabase.saveInventoryItem(mapToLocalInventory(remote, true));
+                }
               }
-            }
-          } else if (navigator.onLine) {
-            let q = supabase.from('products').select('*');
-            if (storeId) q = q.eq('store_id', storeId);
-            const { data, error } = await q.order('name');
-            if (!error && data) {
-              remoteProducts = data;
-              success = true;
-            }
-          }
-
-          if (success) {
-            // Reconcile Deletions
-            const remoteIds = new Set(remoteProducts.map(p => p.id));
-            for (const local of localInventory) {
-              if (local.synced && !remoteIds.has(local.id)) {
-                await LocalDatabase.deleteInventoryItem(local.id);
-              }
-            }
-            
-            // Reconcile Updates/Adds
-            for (const remote of remoteProducts) {
-              await LocalDatabase.saveInventoryItem(mapToLocalInventory(remote, true));
-            }
-
-            if (options?.notify !== false) {
-              window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
+              return { data: remoteProducts.map(mapLocalInventoryToItem) };
             }
           }
         } catch (e) {
-          console.warn('[OfflineInventory] Background sync failed:', e);
+          console.error("Inventory fetch failed:", e);
         }
-      };
+      }
 
-      syncProc(); // Fire and forget
-
-      return { data: localInventory.map(mapLocalInventoryToItem) };
-    } catch (error) {
-      console.error('Get inventory error:', error);
-      return { error };
-    }
-  }
-
-  static async getInventoryItem(id: string): Promise<{ data?: InventoryItem; error?: any }> {
-    try {
-      await LocalDatabase.init();
-      const local = await LocalDatabase.getInventoryItem(id);
-      if (local) return { data: mapLocalInventoryToItem(local) };
-
-      const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
-      if (error) return { error };
-      return { data: mapDbToInventoryItem(data) };
+      const finalLocal = await LocalDatabase.getInventory(storeId);
+      return { data: finalLocal.map(mapLocalInventoryToItem) };
     } catch (error) {
       return { error };
     }
-  }
+  },
 
-  static async createItem(item: any): Promise<{ data?: InventoryItem; error?: any }> {
-    try {
-      const id = crypto.randomUUID();
-      const newItem = { ...item, id, updated_at: new Date().toISOString() };
-      
-      await LocalDatabase.init();
-      await LocalDatabase.saveInventoryItem(mapToLocalInventory(newItem, false));
-      
-      await SyncService.addToQueue({
-        type: 'inventory_update',
-        data: newItem
-      });
-
-      return { data: mapLocalInventoryToItem(mapToLocalInventory(newItem, false)) };
-    } catch (error) {
-      console.error('Create item error:', error);
-      return { error };
-    }
-  }
-
-  static async updateItem(id: string, updates: any): Promise<{ data?: InventoryItem; error?: any }> {
+  async getProductFamilies(storeId: string) {
     try {
       await LocalDatabase.init();
-      const local = await LocalDatabase.getInventoryItem(id);
-      
-      // Ensure we merge with local data to not lose fields
-      const updated = { 
-        ...mapLocalInventoryToItem(local || {} as any), 
-        ...updates, 
-        id, 
-        updated_at: new Date().toISOString() 
-      };
-      
-      await LocalDatabase.saveInventoryItem(mapToLocalInventory(updated, false));
-      
-      await SyncService.addToQueue({
-        type: 'inventory_update',
-        data: updated
-      });
-
-      return { data: updated as InventoryItem };
-    } catch (error) {
-      console.error('Update item error:', error);
-      return { error };
-    }
-  }
-
-  static async deleteItem(id: string): Promise<{ error?: any }> {
-    try {
-      await LocalDatabase.init();
-      await LocalDatabase.deleteInventoryItem(id);
-      
-      await SyncService.addToQueue({
-        type: 'inventory_delete',
-        data: { id }
-      });
-
-      return {};
-    } catch (error) {
-      return { error };
-    }
-  }
-
-  static async getProductFamilies(storeId?: string): Promise<{ data?: LocalProductFamily[]; error?: any }> {
-    try {
-      await LocalDatabase.init();
+      const dc = getDataClient();
+      if (dc.isLocalFirst) {
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (headers) {
+          const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/product_families?store_id=${storeId}`, { headers });
+          if (res.ok) return { data: await res.json() };
+        }
+      }
       const local = await LocalDatabase.getProductFamilies(storeId);
-      
-      // Background sync families
-      const syncFams = async () => {
-        let remote: any[] = [];
-        const dc = getDataClient();
-        try {
-          if (dc.isLocalFirst) {
-            const headers = await OfflineAuthService.getAuthHeaders();
-            if (headers) {
-              const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/product_families`, { headers });
-              if (res.ok) remote = await res.json();
-            }
-          } else if (navigator.onLine) {
-            const { data } = await supabase.from('product_families').select('*');
-            if (data) remote = data;
-          }
-          
-          if (remote.length > 0) {
-            for (const f of remote) {
-              await LocalDatabase.saveProductFamily({ ...f, synced: true });
-            }
-          }
-        } catch (e) {}
-      };
-      syncFams();
-
       return { data: local };
     } catch (error) {
       return { error };
     }
+  },
+
+  async createItem(product: any) {
+    const dc = getDataClient();
+    try {
+      const headers = await OfflineAuthService.getAuthHeaders();
+      const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/products`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(product)
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      if (data && data.id) {
+        await LocalDatabase.saveInventoryItem(mapToLocalInventory(data, true));
+      }
+      return { data };
+    } catch (error) {
+      return { error };
+    }
+  },
+
+  async updateItem(id: string, product: any) {
+    const dc = getDataClient();
+    try {
+      const headers = await OfflineAuthService.getAuthHeaders();
+      const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/products/${id}`, {
+        method: 'PATCH',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(product)
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      if (data && data.id) {
+        await LocalDatabase.saveInventoryItem(mapToLocalInventory(data, true));
+      }
+      return { data };
+    } catch (error) {
+      return { error };
+    }
+  },
+
+  async deleteItem(id: string) {
+    const dc = getDataClient();
+    try {
+      const headers = await OfflineAuthService.getAuthHeaders();
+      await fetch(`${dc.localBridgeBaseUrl}/rest/v1/products/${id}`, { method: 'DELETE', headers });
+      await LocalDatabase.deleteInventoryItem(id);
+      return { data: true };
+    } catch (error) {
+      return { error };
+    }
   }
-}
+};

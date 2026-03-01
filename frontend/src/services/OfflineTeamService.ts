@@ -200,44 +200,31 @@ export class OfflineTeamService {
    */
   static async getAllUsers(): Promise<{ data?: TeamMember[]; error?: any }> {
     const dataClient = getDataClient();
-    let users: any[] = [];
-
-    // 1. Try Local Bridge
     if (dataClient.isLocalFirst) {
       try {
         const headers = await OfflineAuthService.getAuthHeaders();
         if (headers) {
           const response = await smartFetch(`${dataClient.localBridgeBaseUrl}/rest/v1/users`, { headers });
           if (response.ok) {
-            users = await response.json();
+            const users = await response.json();
+            return {
+              data: users.map((u: any) => ({
+                id: u.id, // User ID
+                user_id: u.id, // Same
+                email: u.email,
+                full_name: u.full_name,
+                role: 'worker', // Dummy role, we just need names
+                is_active: true,
+                created_at: u.created_at
+              }))
+            };
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error('Failed to fetch all users:', e);
+      }
     }
-
-    // 2. Fallback to Local Database cache
-    if (users.length === 0) {
-      await LocalDatabase.init();
-      users = await LocalDatabase.getAllUsers();
-    }
-
-    // 3. Fallback to Supabase if online
-    if (users.length === 0 && navigator.onLine && !dataClient.isLocalFirst) {
-      const { data } = await supabase.from('profiles').select('*');
-      if (data) users = data;
-    }
-
-    return {
-      data: users.map((u: any) => ({
-        id: u.id,
-        user_id: u.id,
-        email: u.email || '',
-        full_name: u.full_name || u.email || 'Unknown',
-        role: 'worker', 
-        is_active: u.is_active ?? true,
-        created_at: u.created_at
-      }))
-    };
+    return { data: [] };
   }
 
   /**

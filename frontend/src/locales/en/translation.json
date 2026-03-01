@@ -6,6 +6,7 @@
     "edit": "Edit",
     "create": "Create",
     "update": "Update",
+    "name": "Name",
     "search": "Search",
     "filter": "Filter",
     "loading": "Loading...",
@@ -931,7 +932,8 @@
       "selectSupplier": "Select Supplier",
       "selectSupplierAndConfirm": "Please select the single supplier for this order and verify items.",
       "selectItemsPrompt": "Please select at least one item to order.",
-      "assignSuppliersPrompt": "Select products and assign suppliers"
+      "assignSuppliersPrompt": "Select products and assign suppliers",
+      "selectOrderPrompt": "Please select an order from the list to begin reception."
     },
     "files": {
       "title": "Files",
@@ -970,6 +972,15 @@
       "statistics": "Statistics",
       "lossExit": "LOSS EXIT",
       "lossExitDescription": "Use this screen to record products that are no longer sellable due to expiration, damage, or theft. This ensures your stock levels remain accurate for accounting.",
+      "recordLoss": "Record a Loss",
+      "validateLoss": "Validate Exit",
+      "confirmLoss": "Confirm loss of {{qty}} units of {{name}}?",
+      "lossHistory": "Loss History (Today)",
+      "noLossToday": "No loss recorded today",
+      "currentStock": "Current Stock",
+      "stockStatus": "Stock Status",
+      "recordExpense": "Record Expense",
+      "recordExpenseDescription": "Use this screen to record miscellaneous expenses (petty cash, supplies, etc.).",
       "reasons": {
         "expired": "Expired",
         "broken": "Damaged / Broken",
