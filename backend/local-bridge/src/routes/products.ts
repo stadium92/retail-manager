@@ -138,7 +138,7 @@ export async function registerProductRoutes(app: FastifyInstance) {
 
     // Fallback to legacy behavior (fetch all) for backward compatibility
     // until frontend is fully migrated.
-    const products = db.listProducts(targetStoreId);
+    const products = targetStoreId ? db.listProducts(targetStoreId) : db.listAllProducts();
     return reply.send(products);
   });
 
