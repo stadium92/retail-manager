@@ -63,6 +63,7 @@ export const initializeSchema = (db: Database.Database) => {
       unit_price REAL,
       wholesale_price REAL,
       min_quantity INTEGER DEFAULT 0,
+      low_stock_threshold INTEGER DEFAULT 0,
       quantity INTEGER DEFAULT 0,
       category TEXT,
       image_url TEXT,
@@ -474,6 +475,7 @@ export const initializeSchema = (db: Database.Database) => {
   // Sync version columns for offline→online sync
   ensureColumn('products', 'version', `ALTER TABLE products ADD COLUMN version INTEGER NOT NULL DEFAULT 1`);
   ensureColumn('products', 'deleted_at', `ALTER TABLE products ADD COLUMN deleted_at TEXT`);
+  ensureColumn('products', 'low_stock_threshold', `ALTER TABLE products ADD COLUMN low_stock_threshold INTEGER DEFAULT 0`);
 
   ensureColumn('clients', 'version', `ALTER TABLE clients ADD COLUMN version INTEGER NOT NULL DEFAULT 1`);
   ensureColumn('clients', 'deleted_at', `ALTER TABLE clients ADD COLUMN deleted_at TEXT`);

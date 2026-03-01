@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import { LocalPurchaseOrder, LocalPurchaseItem, LocalSupplier, LocalSupplierPayment } from '../types.js';
+import { emitOutbox } from './sync_helpers.js';
 
 export const createPurchasingRepo = (db: Database.Database) => ({
   listPurchaseOrders(storeId: string, status?: string): (LocalPurchaseOrder & { supplier?: LocalSupplier })[] {
@@ -44,9 +45,32 @@ export const createPurchasingRepo = (db: Database.Database) => ({
     }));
   },
 
-  getPurchaseOrderById(orderId: string): LocalPurchaseOrder | undefined {
-    const row = db.prepare('SELECT * FROM purchase_orders WHERE id = ? LIMIT 1').get(orderId);
-    return row as LocalPurchaseOrder | undefined;
+  getPurchaseOrderById(orderId: string): (LocalPurchaseOrder & { supplier?: LocalSupplier }) | undefined {
+    const row = db.prepare(`
+      SELECT po.*, 
+             s.id as s_id, s.name as s_name, s.phone as s_phone, s.email as s_email, s.address as s_address, s.balance as s_balance
+      FROM purchase_orders po
+      LEFT JOIN suppliers s ON po.supplier_id = s.id
+      WHERE po.id = ?
+      LIMIT 1
+    `).get(orderId) as any;
+
+    if (!row) return undefined;
+
+    return {
+      ...row,
+      supplier: row.s_id ? {
+        id: row.s_id,
+        store_id: row.store_id,
+        name: row.s_name,
+        phone: row.s_phone,
+        email: row.s_email,
+        address: row.s_address,
+        balance: row.s_balance,
+        created_at: '', 
+        updated_at: ''
+      } : undefined
+    };
   },
 
   insertPurchaseOrder(order: LocalPurchaseOrder) {
@@ -76,6 +100,7 @@ export const createPurchasingRepo = (db: Database.Database) => ({
       ...order,
       notes: order.notes ?? null,
     });
+    emitOutbox(db, order.store_id, 'purchase_order', order.id, 'create', order as any);
   },
 
   updatePurchaseOrder(
@@ -88,17 +113,25 @@ export const createPurchasingRepo = (db: Database.Database) => ({
       return row as LocalPurchaseOrder | undefined;
     }
     const assignments = normalizedEntries.map(([key]) => `${key} = @${key}`).join(', ');
-    db.prepare(`UPDATE purchase_orders SET ${assignments} WHERE id = @id`).run({
+    db.prepare(`UPDATE purchase_orders SET ${assignments}, version = version + 1 WHERE id = @id`).run({
       id: orderId,
       ...Object.fromEntries(normalizedEntries),
     });
     const row = db.prepare('SELECT * FROM purchase_orders WHERE id = ? LIMIT 1').get(orderId);
-    return row as LocalPurchaseOrder | undefined;
+    const updated = row as LocalPurchaseOrder | undefined;
+    if (updated) {
+      emitOutbox(db, updated.store_id, 'purchase_order', orderId, 'update', updated as any, (updated as any).version - 1);
+    }
+    return updated;
   },
 
   deletePurchaseOrder(orderId: string) {
+    const existing = db.prepare('SELECT store_id FROM purchase_orders WHERE id = ?').get(orderId) as any;
     db.prepare('DELETE FROM purchase_orders WHERE id = ?').run(orderId);
     db.prepare('DELETE FROM purchase_items WHERE order_id = ?').run(orderId);
+    if (existing) {
+      emitOutbox(db, existing.store_id, 'purchase_order', orderId, 'delete', { id: orderId });
+    }
   },
 
   listPurchaseItems(orderId: string): (LocalPurchaseItem & { product?: { id: string; name: string; packaging: string } })[] {
@@ -150,6 +183,11 @@ export const createPurchasingRepo = (db: Database.Database) => ({
       )
     `
     ).run(item);
+    // Fetch store_id for outbox
+    const order = db.prepare('SELECT store_id FROM purchase_orders WHERE id = ?').get(item.order_id) as any;
+    if (order) {
+      emitOutbox(db, order.store_id, 'purchase_item', item.id, 'create', item as any);
+    }
   },
 
   updatePurchaseItem(
@@ -162,12 +200,19 @@ export const createPurchasingRepo = (db: Database.Database) => ({
       return row as LocalPurchaseItem | undefined;
     }
     const assignments = normalizedEntries.map(([key]) => `${key} = @${key}`).join(', ');
-    db.prepare(`UPDATE purchase_items SET ${assignments} WHERE id = @id`).run({
+    db.prepare(`UPDATE purchase_items SET ${assignments}, version = version + 1 WHERE id = @id`).run({
       id: itemId,
       ...Object.fromEntries(normalizedEntries),
     });
     const row = db.prepare('SELECT * FROM purchase_items WHERE id = ? LIMIT 1').get(itemId);
-    return row as LocalPurchaseItem | undefined;
+    const updated = row as LocalPurchaseItem | undefined;
+    if (updated) {
+      const order = db.prepare('SELECT store_id FROM purchase_orders WHERE id = ?').get(updated.order_id) as any;
+      if (order) {
+        emitOutbox(db, order.store_id, 'purchase_item', itemId, 'update', updated as any, (updated as any).version - 1);
+      }
+    }
+    return updated;
   },
 
   deletePurchaseItem(itemId: string) {
