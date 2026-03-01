@@ -646,15 +646,16 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
     if (!claims) return;
 
     const orderId = (request.params as { id: string }).id;
-    const itemsPayload = z
-      .array(
+    const itemsPayload = z.object({
+      items: z.array(
         z.object({
           id: z.string().min(1),
           quantity_received: z.number().min(0),
           unit_cost: z.number().min(0),
         })
       )
-      .safeParse(request.body ?? []);
+    }).safeParse(request.body ?? { items: [] });
+
     if (!itemsPayload.success) {
       return reply.status(400).send({ error: 'ValidationFailed', details: itemsPayload.error.flatten() });
     }
@@ -668,7 +669,7 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
     }
 
     let newTotalAmount = 0;
-    itemsPayload.data.forEach((item) => {
+    itemsPayload.data.items.forEach((item) => {
       db.updatePurchaseItem(item.id, {
         quantity_received: item.quantity_received,
         unit_cost: item.unit_cost,
@@ -678,7 +679,7 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
 
     const updatedItems = db.listPurchaseItems(orderId);
     updatedItems.forEach((item) => {
-      const received = itemsPayload.data.find((payload) => payload.id === item.id);
+      const received = itemsPayload.data.items.find((payload) => payload.id === item.id);
       if (received) {
         updateProductInventory(
           item.product_id, 
