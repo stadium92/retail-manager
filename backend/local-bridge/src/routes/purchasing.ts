@@ -495,6 +495,19 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
           unit_cost: item.unit_cost,
           created_at: now,
         });
+
+        // CRITICAL: Update inventory if the order is already received (Direct Purchase)
+        if (parsed.data.status === 'received' && item.quantity_received > 0) {
+          updateProductInventory(
+            item.product_id,
+            item.quantity_received,
+            item.unit_cost,
+            storeId,
+            claims.sub,
+            orderId,
+            parsed.data.supplier_id
+          );
+        }
       }
     }
 
