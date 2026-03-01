@@ -65,9 +65,9 @@ export class ExportService {
         fontStyle: 'bold',
         halign: 'left' 
       },
-      willDrawCell: function(hookData) {
-        if (hookData.section === 'body' && hookData.column.index === totalColIndex) {
-          const val = parseFloat(String(hookData.cell.raw).replace(/[^0-9.-]+/g, ''));
+      didParseCell: function(data: any) {
+        if (data.section === 'body' && data.column.index === totalColIndex) {
+          const val = parseFloat(String(data.cell.raw).replace(/[^0-9.-]+/g, ''));
           if (!isNaN(val)) {
             runningTotal += val;
           }

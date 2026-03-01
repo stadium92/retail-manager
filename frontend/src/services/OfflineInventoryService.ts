@@ -85,6 +85,7 @@ function mapToLocalInventory(item: any, synced: boolean = true): LocalInventory 
     brand: item.brand,
     unit_type: item.unit_type,
     packaging: item.packaging,
+    sub_packaging: (item as any).sub_packaging,
     expiry_date: item.expiry_date,
     reorder_quantity: Number(item.reorder_quantity || 0),
     low_stock_threshold: Number(item.low_stock_threshold || item.min_quantity || 0),

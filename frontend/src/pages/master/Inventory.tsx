@@ -33,6 +33,7 @@ export default function InventoryPage() {
         // We trigger a store list reload just in case
         initStores();
       }
+      setLoading(false);
     };
     window.addEventListener('localDbDataUpdated', handleDbUpdate);
     return () => window.removeEventListener('localDbDataUpdated', handleDbUpdate);

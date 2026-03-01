@@ -480,6 +480,160 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     );
   };
 
+  const renderProductFields = (data: typeof initialFormState, update: (field: keyof typeof initialFormState, val: any) => void, index?: number) => {
+    const margin = Number(data.selling_price_detail) > 0 && Number(data.purchase_price) > 0
+        ? (((Number(data.selling_price_detail) - Number(data.purchase_price)) / Number(data.purchase_price)) * 100).toFixed(1)
+        : '0';
+
+    return (
+        <>
+            {/* Column 1: General */}
+            <div className="space-y-6 border-r pr-6">
+                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground border-b pb-2 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                    {t('inventory.sectionIdentification')}
+                </h3>
+                <div className="space-y-4">
+                <div className="space-y-2">
+                    <Label className="font-bold">{t('inventory.fields.name')} *</Label>
+                    <Input value={data.name} onChange={e => update('name', e.target.value)} required className="h-12 text-lg font-semibold bg-muted/20" placeholder="ex: Coca Cola 1.5L" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase">{t('inventory.fields.sku')}</Label>
+                    <Input value={data.sku} onChange={e => update('sku', e.target.value)} className="h-10 font-mono" placeholder="REF-001" />
+                    </div>
+                    <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase">{t('inventory.fields.barcode')}</Label>
+                    <div className="flex gap-2">
+                        <Input value={data.barcode} onChange={e => update('barcode', e.target.value)} className="h-10 font-mono" placeholder="12345678" />
+                        <Button type="button" variant="outline" size="icon" onClick={() => update('barcode', `PRD${Date.now().toString(36).toUpperCase()}`)} className="h-10 w-10 shrink-0"><Barcode className="h-4 w-4" /></Button>
+                    </div>
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase text-primary">{t('inventory.fields.family')}</Label>
+                    <Select value={data.family_id} onValueChange={v => update('family_id', v)}>
+                    <SelectTrigger className="h-10 bg-primary/5 border-primary/20"><SelectValue placeholder={t('inventory.fields.selectFamily')} /></SelectTrigger>
+                    <SelectContent>
+                        {families.map(fam => <SelectItem key={fam.id} value={fam.id}>{fam.name}</SelectItem>)}
+                    </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase">{t('inventory.fields.brand')}</Label>
+                    <Input value={data.brand} onChange={e => update('brand', e.target.value)} className="h-10" />
+                </div>
+                </div>
+            </div>
+
+            {/* Column 2: Pricing */}
+            <div className="space-y-6 border-r px-6">
+                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground border-b pb-2 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-success" />
+                    {t('inventory.sectionPrices')}
+                </h3>
+                <div className="space-y-4">
+                <div className="space-y-2">
+                    <Label className="text-sm font-black text-primary uppercase tracking-wider">{t('inventory.fields.price1Detail')} *</Label>
+                    <div className="relative">
+                    <Input type="number" value={data.selling_price_detail} onChange={handleNumChange('selling_price_detail', index)} onBlur={handleNumBlur('selling_price_detail', index)} required className="h-14 text-2xl font-black border-primary/40 bg-primary/5 pl-4 pr-12 text-primary" />
+                    <span className="absolute right-4 top-4 font-black text-primary/40 text-xl">F</span>
+                    </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase">{t('inventory.fields.price2Discount')}</Label>
+                    <Input type="number" value={data.selling_price_2} onChange={handleNumChange('selling_price_2', index)} onBlur={handleNumBlur('selling_price_2', index)} className="h-10" />
+                    </div>
+                    <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase">{t('inventory.fields.price3Bulk')}</Label>
+                    <Input type="number" value={data.selling_price_3} onChange={handleNumChange('selling_price_3', index)} onBlur={handleNumBlur('selling_price_3', index)} className="h-10" />
+                    </div>
+                    <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase">{t('inventory.fields.price4Resale')}</Label>
+                    <Input type="number" value={data.selling_price_4} onChange={handleNumChange('selling_price_4', index)} onBlur={handleNumBlur('selling_price_4', index)} className="h-10" />
+                    </div>
+                </div>
+                <div className="space-y-2 pt-2">
+                    <Label className="text-xs font-bold uppercase">{t('inventory.fields.purchasePrice')}</Label>
+                    <div className="relative">
+                    <Input type="number" value={data.purchase_price} onChange={handleNumChange('purchase_price', index)} onBlur={handleNumBlur('purchase_price', index)} className="h-10 font-bold bg-muted/30" />
+                    <span className="absolute right-3 top-2.5 text-muted-foreground text-xs font-bold">F</span>
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                    <Label className="text-xs font-black uppercase text-danger">{t('inventory.fields.wholesalePriceHT')}</Label>
+                    <Input type="number" value={data.selling_price_ht} onChange={handleNumChange('selling_price_ht', index)} onBlur={handleNumBlur('selling_price_ht', index)} className="h-10 border-danger/20" />
+                    </div>
+                    <div className="space-y-2">
+                    <Label className="text-xs font-black uppercase text-danger">{t('inventory.fields.wholesalePriceTTC')}</Label>
+                    <Input type="number" value={data.selling_price_ttc} onChange={handleNumChange('selling_price_ttc', index)} onBlur={handleNumBlur('selling_price_ttc', index)} className="h-10 border-danger/20 font-bold" />
+                    </div>
+                </div>
+                <div className="p-6 rounded-2xl bg-success/5 border border-success/10 mt-4 shadow-inner">
+                    <div className="flex justify-between items-center">
+                    <span className="text-xs font-black uppercase tracking-widest text-success/60">{t('menu.program.calculatedMargin')}:</span>
+                    <span className="text-3xl font-black text-success">{margin}%</span>
+                    </div>
+                </div>
+                </div>
+            </div>
+
+            {/* Column 3: Logistics */}
+            <div className="space-y-6 pl-6">
+                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground border-b pb-2 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                    {t('inventory.sectionLogistics')}
+                </h3>
+                <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase">{t('menu.program.unit')}</Label>
+                    <Select value={data.unit_type} onValueChange={v => update('unit_type', v)}>
+                        <SelectTrigger className="h-10 font-bold"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                        <SelectItem value="Pièce">{t('inventory.unitTypes.piece')}</SelectItem>
+                        <SelectItem value="Carton">{t('inventory.unitTypes.carton')}</SelectItem>
+                        <SelectItem value="KG">Kilogramme (KG)</SelectItem>
+                        <SelectItem value="Litre">Litre (L)</SelectItem>
+                        <SelectItem value="Paquet">Paquet</SelectItem>
+                        <SelectItem value="Sac">Sac</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    </div>
+                    <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase text-primary">{t('inventory.fields.packaging')}</Label>
+                    <Input value={data.packaging} onChange={e => update('packaging', e.target.value)} placeholder="Ex: 12" className="h-10 font-bold border-primary/20" />
+                    </div>
+                </div>
+                <div className="space-y-2 bg-primary/5 p-3 rounded-lg border border-primary/10">
+                    <Label className="text-xs font-black uppercase text-primary flex items-center gap-2">
+                        <Package className="h-3 w-3" />
+                        Sous-Conditionnement
+                    </Label>
+                    <Input 
+                        value={data.sub_packaging || ''} 
+                        onChange={e => update('sub_packaging', e.target.value)} 
+                        placeholder="Ex: 10" 
+                        className="h-9 font-bold bg-white" 
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase">{t('inventory.fields.minStock')}</Label>
+                    <Input type="number" value={data.min_stock_alert} onChange={handleNumChange('min_stock_alert', index)} onBlur={handleNumBlur('min_stock_alert', index)} className="h-10" />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase">{t('inventory.fields.image')}</Label>
+                    <ImageUpload value={data.image_url} onChange={url => update('image_url', url)} />
+                </div>
+                </div>
+            </div>
+        </>
+    );
+  };
+
   return (
     <div className={cn("h-full flex flex-col p-4 gap-4 transition-colors", !isMasterView && "bg-[hsl(60,80%,85%)]", "dark:bg-transparent")}>
       <div className="flex items-center gap-4 bg-card p-3 rounded-xl border-2 border-border/50 shadow-lg">
