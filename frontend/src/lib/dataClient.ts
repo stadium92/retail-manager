@@ -52,29 +52,46 @@ export const smartFetch = async (input: RequestInfo | URL, init?: RequestInit): 
   const isLocal = urlStr.startsWith(localBridgeBaseUrl) || 
                   urlStr.includes('127.0.0.1:8787');
 
-  console.log(`ðŸ” [smartFetch] input: ${urlStr}, isLocal: ${isLocal}, isTauri: ${isTauri}, isPROD: ${import.meta.env.PROD}`);
+  // Hard timeout for requests
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-  // Only use Tauri's specialized fetch if we are actually running inside Tauri
-  // In Production build, we assume we want the Tauri plugin for local bridge requests
-  if (isLocal && (isTauri || import.meta.env.PROD)) {
-    console.log('ðŸ” [smartFetch] Routing via Tauri HTTP Plugin');
-    try {
-      // Cast init to any because Tauri's FetchOptions might slightly differ from standard RequestInit
-      // but they are compatible for standard usages.
-      console.log('ðŸ” [smartFetch] Attempting Tauri Plugin Fetch...');
-      const response = await tauriFetch(urlStr, init as any);
-      console.log('ðŸ” [smartFetch] Tauri Plugin Fetch Success:', response.status);
-      return response;
-    } catch (e) {
-      console.error('ðŸš« [smartFetch] Tauri Fetch Plugin CRASHED:', e);
-      console.log('ðŸ” [smartFetch] FALLING BACK to standard fetch...');
-      return fetch(urlStr, init);
+  const fetchInit = {
+    ...init,
+    signal: controller.signal,
+  };
+
+  console.log(`ðŸ” [smartFetch] START: ${urlStr} (Local: ${isLocal}, Tauri: ${isTauri})`);
+
+  try {
+    let response: Response;
+
+    // Only use Tauri's specialized fetch if we are actually running inside Tauri
+    if (isLocal && (isTauri || import.meta.env.PROD)) {
+      try {
+        console.log('ðŸ” [smartFetch] Routing via Tauri HTTP Plugin...');
+        // Cast to any for plugin-specific options if needed
+        response = await tauriFetch(urlStr, fetchInit as any);
+        console.log(`ðŸ” [smartFetch] Tauri Plugin SUCCESS: ${response.status} (${urlStr})`);
+      } catch (e) {
+        console.error('ðŸš« [smartFetch] Tauri Fetch Plugin FAILED:', e);
+        console.log('ðŸ” [smartFetch] Falling back to standard browser fetch...');
+        response = await fetch(urlStr, fetchInit);
+      }
+    } else {
+      response = await fetch(urlStr, fetchInit);
     }
+
+    clearTimeout(timeoutId);
+    console.log(`ðŸ” [smartFetch] DONE: ${response.status} (${urlStr})`);
+    return response;
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      console.error(`ðŸš« [smartFetch] TIMEOUT EXCEEDED: ${urlStr}`);
+    } else {
+      console.error(`ðŸš« [smartFetch] NETWORK ERROR: ${urlStr}`, err);
+    }
+    throw err;
   }
-  
-  if (isLocal) {
-    console.log('ðŸ” [smartFetch] Local request but NOT in Tauri. Using standard fetch.');
-  }
-  
-  return fetch(urlStr, init);
 };

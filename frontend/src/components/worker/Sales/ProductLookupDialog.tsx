@@ -135,7 +135,12 @@ export function ProductLookupDialog({
               <div className="text-right">COÛT</div>
             </div>
 
-            {results.length === 0 && !isLoading ? (
+            {isLoading ? (
+              <div className="py-20 flex flex-col items-center justify-center space-y-4 opacity-50">
+                <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+                <p className="font-black uppercase tracking-widest text-xs">Recherche en cours...</p>
+              </div>
+            ) : results.length === 0 ? (
               <div className="py-20 text-center text-muted-foreground font-black uppercase tracking-[0.2em] opacity-20">
                 {t('common.noData')}
               </div>

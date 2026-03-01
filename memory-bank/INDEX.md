@@ -87,6 +87,7 @@ Located in: `analysis/`
 
 ### Docs Directory Structure
 Located in: `docs/`
+- **[`PRODUCT_FAMILY_FIX_PRD.md`](PRODUCT_FAMILY_FIX_PRD.md)** - **NEW**: Detailed PRD for fixing product family selection and ensuring proper categorization across Master and Worker interfaces.
 - **`prd.txt`** - Product Requirements Document (complete specification)
 - **[`docs/PROMPT-005-Multi-Price-Batch-Implementation.md`](docs/PROMPT-005-Multi-Price-Batch-Implementation.md)** - **Agent-ready prompt** for Gemini 3 Pro (1M context). Contains file index, 10x dev persona, raw client Q/A session, and 8 atomic implementation phases (A–H) for PRD-005.
 - **[`docs/PROMPT-006-Client-Service-Backend-And-Discount-Fix.md`](docs/PROMPT-006-Client-Service-Backend-And-Discount-Fix.md)** - **Agent-ready prompt** for Gemini 3 Pro (1M context). Fixes 11 client-service bugs: creates `clients` + `client_services` DB tables, backend repos + routes, wires frontend to API, auto-applies client group discounts in POS, adds stock deduction on sale, credit balance tracking, and i18n. 7 phases (0–6).
