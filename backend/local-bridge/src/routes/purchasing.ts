@@ -649,19 +649,19 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
       return reply.status(403).send({ error: 'Forbidden', message: 'Cannot receive order.' });
     }
 
+    let newTotalAmount = 0;
     itemsPayload.data.forEach((item) => {
       db.updatePurchaseItem(item.id, {
         quantity_received: item.quantity_received,
         unit_cost: item.unit_cost,
       });
+      newTotalAmount += (item.quantity_received * item.unit_cost);
     });
 
     const updatedItems = db.listPurchaseItems(orderId);
     updatedItems.forEach((item) => {
       const received = itemsPayload.data.find((payload) => payload.id === item.id);
       if (received) {
-        // Fix: Frontend now consistently sends Base Units (Pieces) and Base Cost (Piece Price).
-        // Do NOT multiply by packSize here. Inventory operates in Base Units.
         updateProductInventory(
           item.product_id, 
           received.quantity_received, 
@@ -676,7 +676,22 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
 
     const allReceived = updatedItems.every((item) => item.quantity_received >= item.quantity_ordered);
     const status = allReceived ? 'received' : 'partial';
-    db.updatePurchaseOrder(orderId, { status, updated_at: new Date().toISOString() });
+    
+    // Update order with actual received total
+    db.updatePurchaseOrder(orderId, { 
+      status, 
+      total_amount: newTotalAmount,
+      updated_at: new Date().toISOString() 
+    });
+
+    // Update supplier balance based on actual received total
+    const supplier = db.getSupplierById(order.supplier_id);
+    if (supplier) {
+      db.updateSupplier(order.supplier_id, {
+        balance: (supplier.balance || 0) + newTotalAmount,
+        updated_at: new Date().toISOString()
+      });
+    }
 
     return reply.send({
       order: db.getPurchaseOrderById(orderId),
