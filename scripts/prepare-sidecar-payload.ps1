@@ -93,6 +93,10 @@ foreach ($item in $architectures) {
     if (!(Test-Path $bs3_dest)) { New-Item -ItemType Directory -Path $bs3_dest -Force }
     Copy-Item "$bs3_extract\build\Release\better_sqlite3.node" -Destination "$bs3_dest\better_sqlite3.node" -Force
     
+    # Also copy to TAURI_BIN_DIR for tauri.conf.json resources
+    if (!(Test-Path $TAURI_BIN_DIR)) { New-Item -ItemType Directory -Path $TAURI_BIN_DIR -Force }
+    Copy-Item "$bs3_extract\build\Release\better_sqlite3.node" -Destination "$TAURI_BIN_DIR\better_sqlite3.node" -Force
+    
     # d. Create payload zip
     $payload_name = "payload-$triple.zip"
     $payload_path = "$WRAPPER_DIR\$payload_name"
