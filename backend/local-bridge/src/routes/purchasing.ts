@@ -1,8 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import crypto from 'crypto';
-import { db } from '../db/index.js';
+import { db, rawDb } from '../db/index.js';
 import { authenticateRequest } from './utils/auth.js';
+import { emitOutbox } from '../db/repositories/sync_helpers.js';
 
 const listSchema = z.object({
   store_id: z.string().optional(),
@@ -130,7 +131,7 @@ const updateProductInventory = (
     updated_by: actorId ?? null,
   });
 
-  // CRITICAL FIX: Ensure the product update is synced to Supabase
+  // Ensure the product update is synced to Supabase
   if (storeId) {
     db.insertPendingMutation({
       id: crypto.randomUUID(),
@@ -181,25 +182,17 @@ const updateProductInventory = (
       created_by: actorId ?? null,
     });
 
-    db.insertPendingMutation({
-      id: crypto.randomUUID(),
+    emitOutbox(rawDb, storeId, 'inventory_movement', movementId, 'create', {
+      id: movementId,
       store_id: storeId,
-      mutation_type: 'upsert',
-      entity: 'inventory_movements',
-      payload: JSON.stringify({
-        id: movementId,
-        store_id: storeId,
-        product_id: productId,
-        product_name: product.name,
-        movement_type: 'in',
-        quantity: receivedQty,
-        reason: 'Purchase receipt',
-        source: 'purchase_order',
-        batch_id: batchId,
-        created_at: now,
-      }),
+      product_id: productId,
+      product_name: product.name,
+      movement_type: 'in',
+      quantity: receivedQty,
+      reason: 'Purchase receipt',
+      source: 'purchase_order',
+      batch_id: batchId,
       created_at: now,
-      status: 'pending',
     });
   }
 };
@@ -668,14 +661,23 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
       return reply.status(403).send({ error: 'Forbidden', message: 'Cannot receive order.' });
     }
 
+    console.log(`[Purchasing] Receiving order ${orderId} with ${itemsPayload.data.items.length} items`);
+
     let newTotalAmount = 0;
     itemsPayload.data.items.forEach((item) => {
-      db.updatePurchaseItem(item.id, {
+      const updated = db.updatePurchaseItem(item.id, {
         quantity_received: item.quantity_received,
         unit_cost: item.unit_cost,
       });
-      newTotalAmount += (item.quantity_received * item.unit_cost);
+      if (updated) {
+        console.log(`  - Updated item ${item.id}: qty=${item.quantity_received}, cost=${item.unit_cost}`);
+        newTotalAmount += (item.quantity_received * item.unit_cost);
+      } else {
+        console.warn(`  - FAILED to update item ${item.id} (not found)`);
+      }
     });
+
+    console.log(`  - Calculated new total: ${newTotalAmount}`);
 
     const updatedItems = db.listPurchaseItems(orderId);
     updatedItems.forEach((item) => {
