@@ -12,6 +12,7 @@ import { Product } from '@/types';
 import { useProductSearch } from '@/hooks/useProductSearch';
 import { useTranslation } from 'react-i18next';
 import { useMasterDataStore } from '@/stores/useMasterDataStore';
+import { RefreshCw } from 'lucide-react';
 
 interface ProductLookupDialogProps {
   open: boolean;
