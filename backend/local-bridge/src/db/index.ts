@@ -56,5 +56,5 @@ const db = {
   ...createCashRepo(rawDb),
 };
 
-export { db };
+export { db, rawDb };
 export * from './types.js';
