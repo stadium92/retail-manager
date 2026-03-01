@@ -127,8 +127,8 @@ export const createPurchasingRepo = (db: Database.Database) => ({
 
   deletePurchaseOrder(orderId: string) {
     const existing = db.prepare('SELECT store_id FROM purchase_orders WHERE id = ?').get(orderId) as any;
-    db.prepare('DELETE FROM purchase_orders WHERE id = ?').run(orderId);
     db.prepare('DELETE FROM purchase_items WHERE order_id = ?').run(orderId);
+    db.prepare('DELETE FROM purchase_orders WHERE id = ?').run(orderId);
     if (existing) {
       emitOutbox(db, existing.store_id, 'purchase_order', orderId, 'delete', { id: orderId });
     }

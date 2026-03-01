@@ -59,6 +59,15 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     if (storeId) {
       fetchData();
     }
+
+    const handleRefresh = (e: any) => {
+      if (e.detail?.type === 'inventory') {
+        fetchData();
+      }
+    };
+
+    window.addEventListener('localDbDataUpdated', handleRefresh);
+    return () => window.removeEventListener('localDbDataUpdated', handleRefresh);
   }, [storeId]);
 
   const handleNumChange = (field: keyof typeof initialFormState, index?: number) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,6 +114,12 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     })));
   };
 
+  const resetForm = () => {
+    setFormData(initialFormState);
+    setMultiItems([{ ...initialFormState, id: crypto.randomUUID(), isOpen: true }]);
+    setEditingProduct(null);
+  };
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -115,11 +130,11 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
       if (inventoryRes.data) {
         const mapped = inventoryRes.data.map(item => ({
           ...item,
-          purchase_price: item.cost_price,
-          selling_price_detail: item.unit_price,
-          current_stock: (item as any).quantity ?? 0,
+          purchase_price: item.cost || (item as any).cost_price || 0,
+          selling_price_detail: item.price || (item as any).unit_price || 0,
+          current_stock: item.quantity ?? (item as any).current_stock ?? 0,
           unit_type: item.unit_type || 'Pièce',
-          family_id: (item as any).category_id,
+          family_id: item.category_id || (item as any).family_id,
           brand: item.brand || '',
           packaging: item.packaging || '1',
           aisle: item.aisle || '',

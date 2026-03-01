@@ -3,7 +3,7 @@
  */
 
 const DB_NAME = 'retail_manager_offline';
-const DB_VERSION = 6; // Upgraded for Purchase Orders
+const DB_VERSION = 7; // Upgraded for Purchase Items support
 
 export interface LocalProductFamily {
   id: string;
@@ -161,6 +161,7 @@ class LocalDatabaseService {
             { name: 'supplier_payments', indexes: ['store_id', 'synced'] },
             { name: 'product_families', indexes: ['store_id', 'synced'] },
             { name: 'purchase_orders', indexes: ['store_id', 'status', 'synced'] },
+            { name: 'purchase_items', indexes: ['order_id'] },
             { name: 'sync_queue', indexes: ['type', 'timestamp'] }
         ];
 

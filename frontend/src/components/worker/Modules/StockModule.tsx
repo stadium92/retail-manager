@@ -346,9 +346,11 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
                   </TableHeader>
                   <TableBody>
                     {products.map(p => {
-                      const value = p.quantity * p.unit_price;
-                      const margin = p.unit_price > 0 && p.cost_price 
-                        ? (((p.unit_price - p.cost_price) / p.unit_price) * 100).toFixed(1) 
+                      const unitPrice = p.unit_price || (p as any).price || 0;
+                      const costPrice = p.cost_price || (p as any).cost || 0;
+                      const value = p.quantity * unitPrice;
+                      const margin = unitPrice > 0 && costPrice 
+                        ? (((unitPrice - costPrice) / unitPrice) * 100).toFixed(1) 
                         : '0';
                       
                       return (
@@ -359,7 +361,7 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
                           <TableCell className="text-xs text-center">{p.packaging || '1'}</TableCell>
                           <TableCell className="text-xs">{p.category || '—'}</TableCell>
                           <TableCell className={cn("text-xs text-center font-bold", p.quantity <= 0 ? 'text-danger' : p.quantity <= (p.min_quantity || 10) ? 'text-warning' : '')}>{p.quantity}</TableCell>
-                          <TableCell className="text-xs text-right">{formatCurrency(p.unit_price)}</TableCell>
+                          <TableCell className="text-xs text-right">{formatCurrency(unitPrice)}</TableCell>
                           <TableCell className="text-xs text-right">{formatCurrency(p.wholesale_price_ttc || 0)}</TableCell>
                           <TableCell className="text-xs text-right font-medium">{formatCurrency(value)}</TableCell>
                           <TableCell className="text-center">{p.quantity <= 0 ? <XCircle className="h-4 w-4 text-danger inline" /> : p.quantity <= (p.min_quantity || 10) ? <AlertTriangle className="h-4 w-4 text-warning inline" /> : <CheckCircle className="h-4 w-4 text-success inline" />}</TableCell>

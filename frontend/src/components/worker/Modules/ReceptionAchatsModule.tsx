@@ -34,7 +34,7 @@ interface ReceiptItem {
 
 export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
   const { t, i18n } = useTranslation();
-  const { suppliers, orders, orderItems, fetchSuppliers, fetchOrders, fetchOrderItems, receiveOrder, deleteOrder } = usePurchasingStore();
+  const { suppliers, orders, orderItems, fetchSuppliers, fetchOrders, fetchOrderItems, receiveOrder, deleteOrder, clearOrderItems } = usePurchasingStore();
   const [selectedOrderId, setSelectedOrderId] = useState<string>('');
   const [receiptItems, setReceiptItems] = useState<ReceiptItem[]>([]);
   const [isAdHoc, setIsAdHoc] = useState(false);
@@ -53,6 +53,9 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
       fetchSuppliers(storeId);
       fetchOrders(storeId, 'ordered');
     }
+    return () => {
+      clearOrderItems();
+    };
   }, [storeId]);
 
   useEffect(() => {
@@ -60,6 +63,7 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
       fetchOrderItems(selectedOrderId);
     } else {
       setReceiptItems([]);
+      if (!isAdHoc) clearOrderItems();
     }
   }, [selectedOrderId, isAdHoc]);
 
@@ -73,6 +77,7 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
       toast.success(t('common.success'));
       setSelectedOrderId('');
       setReceiptItems([]);
+      clearOrderItems();
       fetchOrders(storeId, 'ordered');
     } catch (err) {
       toast.error(t('common.error'));
@@ -82,7 +87,7 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
   };
 
   useEffect(() => {
-    if (orderItems.length > 0 && !isAdHoc) {
+    if (selectedOrderId && orderItems.length > 0 && !isAdHoc) {
       setReceiptItems(orderItems.map(item => {
         const pkgStr = item.product?.packaging || '1';
         const match = pkgStr.match(/(\d+)/);

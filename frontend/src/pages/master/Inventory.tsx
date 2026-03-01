@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { OfflineStoreService } from '@/services/OfflineStoreService';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,7 +8,7 @@ import { useMasterDashboardStore } from '@/stores/useMasterDashboardStore';
 import { FichiersProduitsModule } from '@/components/worker/Modules/FichiersProduitsModule';
 import { ValorisationStock } from '@/components/worker/Modules/Stock/ValorisationStock';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Package, ShieldCheck } from 'lucide-react';
+import { Package, ShieldCheck, Plus, X } from 'lucide-react';
 
 export default function InventoryPage() {
   const { t } = useTranslation();
@@ -16,6 +16,8 @@ export default function InventoryPage() {
   const { stores, setStores } = useMasterDataStore();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('list');
+  const [isAddingNew, setIsAddingNew] = useState(false);
+  const fichiersModuleRef = useRef<any>(null);
 
   // Initial load
   useEffect(() => {
@@ -47,7 +49,26 @@ export default function InventoryPage() {
           <h1 className="text-3xl font-bold font-black uppercase tracking-tighter">{t('inventory.title')}</h1>
           <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest opacity-60">{t('inventory.manageInventory')}</p>
         </div>
+        <div className="flex items-center gap-3">
+            <Button onClick={() => setIsAddingNew(true)} className="h-11 px-8 font-black uppercase tracking-widest text-xs shadow-xl shadow-primary/20">
+                <Plus className="h-5 w-5 mr-2" />
+                {t('inventory.addItem')}
+            </Button>
+        </div>
       </div>
+
+      {isAddingNew && (
+          <div className="bg-primary/5 border-2 border-primary/20 rounded-2xl p-6 mb-6 animate-in slide-in-from-top duration-300">
+              <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-black uppercase tracking-tighter flex items-center gap-2">
+                      <Plus className="h-5 w-5 text-primary" />
+                      AJOUTER UN NOUVEL ARTICLE
+                  </h2>
+                  <Button variant="ghost" size="sm" onClick={() => setIsAddingNew(false)} className="h-8 w-8 rounded-full"><X className="h-4 w-4" /></Button>
+              </div>
+              <p className="text-sm text-muted-foreground mb-6 uppercase font-bold tracking-widest opacity-60">Veuillez sélectionner un magasin ci-dessous pour ajouter un article.</p>
+          </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <div className="flex items-center justify-between bg-card/50 p-1 rounded-xl border border-border/50 backdrop-blur-sm shadow-sm">

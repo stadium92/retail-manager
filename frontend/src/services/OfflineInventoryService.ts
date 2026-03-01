@@ -19,22 +19,23 @@ function mapDbToInventoryItem(product: any): InventoryItem {
     name: product.name,
     sku: product.sku,
     quantity: Number(product.quantity) || 0,
-    price: Number(product.price) || 0,
+    price: Number(product.unit_price || product.price) || 0,
     wholesale_price: Number(product.wholesale_price) || 0,
     wholesale_price_ht: Number(product.wholesale_price_ht) || 0,
     wholesale_price_ttc: Number(product.wholesale_price_ttc) || 0,
     selling_price_2: Number(product.selling_price_2) || 0,
     selling_price_3: Number(product.selling_price_3) || 0,
     selling_price_4: Number(product.selling_price_4) || 0,
-    cost: Number(product.cost) || 0,
-    category_id: product.category_id,
+    cost: Number(product.cost_price || product.cost) || 0,
+    category_id: product.category || product.category_id,
     aisle: product.aisle,
     brand: product.brand,
     unit_type: product.unit_type,
     packaging: product.packaging,
+    sub_packaging: product.sub_packaging,
     expiry_date: product.expiry_date,
     reorder_quantity: Number(product.reorder_quantity) || 0,
-    low_stock_threshold: Number(product.low_stock_threshold) || 10,
+    low_stock_threshold: Number(product.min_quantity || product.low_stock_threshold) || 10,
     image_url: product.image_url,
     created_at: product.created_at,
     updated_at: product.updated_at,
@@ -52,18 +53,20 @@ function mapLocalInventoryToItem(local: LocalInventory): InventoryItem {
     wholesale_price: local.wholesale_price,
     wholesale_price_ht: local.wholesale_price_ht,
     wholesale_price_ttc: local.wholesale_price_ttc,
-    selling_price_2: local.selling_price_2,
-    selling_price_3: local.selling_price_3,
-    selling_price_4: local.selling_price_4,
-    cost: local.cost,
+    selling_price_2: local.selling_price_2 || 0,
+    selling_price_3: local.selling_price_3 || 0,
+    selling_price_4: local.selling_price_4 || 0,
+    cost: local.cost || 0,
     category_id: local.category,
     aisle: local.aisle,
     brand: local.brand,
     unit_type: local.unit_type,
     packaging: local.packaging,
+    sub_packaging: local.sub_packaging,
     expiry_date: local.expiry_date,
-    reorder_quantity: local.reorder_quantity,
+    reorder_quantity: local.reorder_quantity || 0,
     updated_at: local.updated_at,
+    created_at: (local as any).created_at || local.updated_at,
   };
 }
 
@@ -74,20 +77,20 @@ function mapToLocalInventory(item: InventoryItem | any, synced: boolean = true):
     product_name: item.name || item.product_name,
     sku: item.sku,
     quantity: Number(item.quantity) || 0,
-    unit_price: Number(item.price) || Number(item.unit_price) || 0,
+    unit_price: Number(item.unit_price || item.price) || 0,
     wholesale_price: Number(item.wholesale_price) || 0,
     wholesale_price_ht: Number(item.wholesale_price_ht) || 0,
     wholesale_price_ttc: Number(item.wholesale_price_ttc) || 0,
     selling_price_2: Number(item.selling_price_2) || 0,
     selling_price_3: Number(item.selling_price_3) || 0,
     selling_price_4: Number(item.selling_price_4) || 0,
-    cost: Number(item.cost) || 0,
-    category: item.category_id || item.category,
+    cost: Number(item.cost_price || item.cost) || 0,
+    category: item.category || item.category_id,
     aisle: item.aisle,
     brand: item.brand,
     unit_type: item.unit_type,
     packaging: item.packaging,
-    sub_packaging: (item as any).sub_packaging,
+    sub_packaging: item.sub_packaging,
     expiry_date: item.expiry_date,
     reorder_quantity: Number(item.reorder_quantity) || 0,
     updated_at: item.updated_at || new Date().toISOString(),
@@ -124,6 +127,7 @@ export class OfflineInventoryService {
               const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/products?${params.toString()}`, { headers });
               if (res.ok) {
                 remoteProducts = await res.json();
+                console.log('[OfflineInventory] Remote products fetched:', remoteProducts.length, remoteProducts[0]);
                 success = true;
               }
             }
@@ -138,8 +142,10 @@ export class OfflineInventoryService {
           }
 
           if (success) {
+            const productList = Array.isArray(remoteProducts) ? remoteProducts : (remoteProducts as any).data || [];
+            
             // Reconcile Deletions
-            const remoteIds = new Set(remoteProducts.map(p => p.id));
+            const remoteIds = new Set(productList.map((p: any) => p.id));
             for (const local of localInventory) {
               if (local.synced && !remoteIds.has(local.id)) {
                 await LocalDatabase.deleteInventoryItem(local.id);
@@ -147,7 +153,7 @@ export class OfflineInventoryService {
             }
             
             // Reconcile Updates/Adds
-            for (const remote of remoteProducts) {
+            for (const remote of productList) {
               await LocalDatabase.saveInventoryItem(mapToLocalInventory(remote, true));
             }
 

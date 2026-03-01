@@ -64,6 +64,7 @@ interface PurchasingState {
   fetchSuppliers: (storeId: string) => Promise<void>;
   fetchOrders: (storeId: string, status?: string) => Promise<void>;
   fetchOrderItems: (orderId: string) => Promise<void>;
+  clearOrderItems: () => void;
   
   createOrder: (order: Partial<PurchaseOrder>, items: any[]) => Promise<void>;
   updateOrderStatus: (orderId: string, status: string) => Promise<void>;
@@ -177,6 +178,8 @@ export const usePurchasingStore = create<PurchasingState>((set, get) => ({
       if (data) set({ orderItems: data });
     } catch (e) {}
   },
+
+  clearOrderItems: () => set({ orderItems: [] }),
 
   createOrder: async (order, items) => {
     const orderId = crypto.randomUUID();
