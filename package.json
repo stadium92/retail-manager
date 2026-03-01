@@ -6,6 +6,7 @@
     "scripts":  {
                     "dev":  "tauri dev",
                     "build":  "tauri build",
+                    "tauri": "tauri",
                     "install:all":  "npm install \u0026\u0026 cd frontend \u0026\u0026 npm install \u0026\u0026 cd ../backend/local-bridge \u0026\u0026 npm install",
                     "clean:dist":  "rm -rf frontend/dist",
                     "build:backend":  "./scripts/build-sidecar.sh",
