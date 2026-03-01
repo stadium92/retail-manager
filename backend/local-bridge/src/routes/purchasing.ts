@@ -130,6 +130,24 @@ const updateProductInventory = (
     updated_by: actorId ?? null,
   });
 
+  // CRITICAL FIX: Ensure the product update is synced to Supabase
+  if (storeId) {
+    db.insertPendingMutation({
+      id: crypto.randomUUID(),
+      store_id: storeId,
+      mutation_type: 'update',
+      entity: 'products',
+      payload: JSON.stringify({
+        id: productId,
+        ...updates,
+        updated_at: now,
+        updated_by: actorId ?? null,
+      }),
+      created_at: now,
+      status: 'pending',
+    });
+  }
+
   // Create Product Batch
   if (receivedQty > 0 && storeId && typeof unitCost === 'number') {
     const batchId = crypto.randomUUID();
