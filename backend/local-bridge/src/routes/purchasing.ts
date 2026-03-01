@@ -1,8 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import crypto from 'crypto';
-import { db } from '../db/index.js';
+import { db, rawDb } from '../db/index.js';
 import { authenticateRequest } from './utils/auth.js';
+import { emitOutbox } from '../db/repositories/sync_helpers.js';
 
 const listSchema = z.object({
   store_id: z.string().optional(),
@@ -32,11 +33,19 @@ const supplierUpdateSchema = z.object({
 });
 
 const orderCreateSchema = z.object({
+  id: z.string().optional(),
   store_id: z.string().optional(),
   supplier_id: z.string().min(1),
   status: z.enum(['draft', 'ordered', 'received', 'partial']).optional(),
   total_amount: z.number().optional(),
   notes: z.string().nullable().optional(),
+  items: z.array(z.object({
+    id: z.string().optional(),
+    product_id: z.string().min(1),
+    quantity_ordered: z.number().min(0),
+    quantity_received: z.number().min(0),
+    unit_cost: z.number().min(0),
+  })).optional()
 });
 
 const orderUpdateSchema = z.object({
@@ -122,6 +131,24 @@ const updateProductInventory = (
     updated_by: actorId ?? null,
   });
 
+  // Ensure the product update is synced to Supabase
+  if (storeId) {
+    db.insertPendingMutation({
+      id: crypto.randomUUID(),
+      store_id: storeId,
+      mutation_type: 'update',
+      entity: 'products',
+      payload: JSON.stringify({
+        id: productId,
+        ...updates,
+        updated_at: now,
+        updated_by: actorId ?? null,
+      }),
+      created_at: now,
+      status: 'pending',
+    });
+  }
+
   // Create Product Batch
   if (receivedQty > 0 && storeId && typeof unitCost === 'number') {
     const batchId = crypto.randomUUID();
@@ -155,25 +182,17 @@ const updateProductInventory = (
       created_by: actorId ?? null,
     });
 
-    db.insertPendingMutation({
-      id: crypto.randomUUID(),
+    emitOutbox(rawDb, storeId, 'inventory_movement', movementId, 'create', {
+      id: movementId,
       store_id: storeId,
-      mutation_type: 'upsert',
-      entity: 'inventory_movements',
-      payload: JSON.stringify({
-        id: movementId,
-        store_id: storeId,
-        product_id: productId,
-        product_name: product.name,
-        movement_type: 'in',
-        quantity: receivedQty,
-        reason: 'Purchase receipt',
-        source: 'purchase_order',
-        batch_id: batchId,
-        created_at: now,
-      }),
+      product_id: productId,
+      product_name: product.name,
+      movement_type: 'in',
+      quantity: receivedQty,
+      reason: 'Purchase receipt',
+      source: 'purchase_order',
+      batch_id: batchId,
       created_at: now,
-      status: 'pending',
     });
   }
 };
@@ -453,7 +472,7 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
     }
 
     const now = new Date().toISOString();
-    const orderId = crypto.randomUUID();
+    const orderId = parsed.data.id || crypto.randomUUID();
     db.insertPurchaseOrder({
       id: orderId,
       store_id: storeId,
@@ -464,6 +483,33 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
       created_at: now,
       updated_at: now,
     });
+
+    if (parsed.data.items && parsed.data.items.length > 0) {
+      for (const item of parsed.data.items) {
+        db.insertPurchaseItem({
+          id: item.id || crypto.randomUUID(),
+          order_id: orderId,
+          product_id: item.product_id,
+          quantity_ordered: item.quantity_ordered,
+          quantity_received: item.quantity_received,
+          unit_cost: item.unit_cost,
+          created_at: now,
+        });
+
+        // CRITICAL: Update inventory if the order is already received (Direct Purchase)
+        if (parsed.data.status === 'received' && item.quantity_received > 0) {
+          updateProductInventory(
+            item.product_id,
+            item.quantity_received,
+            item.unit_cost,
+            storeId,
+            claims.sub,
+            orderId,
+            parsed.data.supplier_id
+          );
+        }
+      }
+    }
 
     return reply.status(201).send(db.getPurchaseOrderById(orderId));
   });
@@ -606,15 +652,16 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
     if (!claims) return;
 
     const orderId = (request.params as { id: string }).id;
-    const itemsPayload = z
-      .array(
+    const itemsPayload = z.object({
+      items: z.array(
         z.object({
           id: z.string().min(1),
           quantity_received: z.number().min(0),
           unit_cost: z.number().min(0),
         })
       )
-      .safeParse(request.body ?? []);
+    }).safeParse(request.body ?? { items: [] });
+
     if (!itemsPayload.success) {
       return reply.status(400).send({ error: 'ValidationFailed', details: itemsPayload.error.flatten() });
     }
@@ -627,19 +674,28 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
       return reply.status(403).send({ error: 'Forbidden', message: 'Cannot receive order.' });
     }
 
-    itemsPayload.data.forEach((item) => {
-      db.updatePurchaseItem(item.id, {
+    console.log(`[Purchasing] Receiving order ${orderId} with ${itemsPayload.data.items.length} items`);
+
+    let newTotalAmount = 0;
+    itemsPayload.data.items.forEach((item) => {
+      const updated = db.updatePurchaseItem(item.id, {
         quantity_received: item.quantity_received,
         unit_cost: item.unit_cost,
       });
+      if (updated) {
+        console.log(`  - Updated item ${item.id}: qty=${item.quantity_received}, cost=${item.unit_cost}`);
+        newTotalAmount += (item.quantity_received * item.unit_cost);
+      } else {
+        console.warn(`  - FAILED to update item ${item.id} (not found)`);
+      }
     });
+
+    console.log(`  - Calculated new total: ${newTotalAmount}`);
 
     const updatedItems = db.listPurchaseItems(orderId);
     updatedItems.forEach((item) => {
-      const received = itemsPayload.data.find((payload) => payload.id === item.id);
+      const received = itemsPayload.data.items.find((payload) => payload.id === item.id);
       if (received) {
-        // Fix: Frontend now consistently sends Base Units (Pieces) and Base Cost (Piece Price).
-        // Do NOT multiply by packSize here. Inventory operates in Base Units.
         updateProductInventory(
           item.product_id, 
           received.quantity_received, 
@@ -654,7 +710,22 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
 
     const allReceived = updatedItems.every((item) => item.quantity_received >= item.quantity_ordered);
     const status = allReceived ? 'received' : 'partial';
-    db.updatePurchaseOrder(orderId, { status, updated_at: new Date().toISOString() });
+    
+    // Update order with actual received total
+    db.updatePurchaseOrder(orderId, { 
+      status, 
+      total_amount: newTotalAmount,
+      updated_at: new Date().toISOString() 
+    });
+
+    // Update supplier balance based on actual received total
+    const supplier = db.getSupplierById(order.supplier_id);
+    if (supplier) {
+      db.updateSupplier(order.supplier_id, {
+        balance: (supplier.balance || 0) + newTotalAmount,
+        updated_at: new Date().toISOString()
+      });
+    }
 
     return reply.send({
       order: db.getPurchaseOrderById(orderId),
