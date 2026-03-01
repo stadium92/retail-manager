@@ -289,8 +289,50 @@ class OfflineDataServiceClass {
     return true; 
   }
 
-  async getStockMovements(storeId: string): Promise<{ movements: any[] }> {
-    return { movements: [] };
+  async getStockMovements(storeId: string): Promise<{ movements: any[], offlineMessage?: string }> {
+    try {
+        const { isLocalFirst, localBridgeBaseUrl, supabase } = getDataClient();
+        let movements: any[] = [];
+        let offlineMessage: string | undefined;
+
+        if (isLocalFirst) {
+            const { OfflineAuthService } = await import('./OfflineAuthService');
+            const headers = await OfflineAuthService.getAuthHeaders();
+            if (headers) {
+                const res = await fetch(`${localBridgeBaseUrl}/rest/v1/inventory_movements?store_id=${storeId}`, { headers });
+                if (res.ok) {
+                    movements = await res.json();
+                } else {
+                    offlineMessage = "Impossible de charger les mouvements depuis le serveur local.";
+                }
+            }
+        } else if (navigator.onLine) {
+            const { data, error } = await supabase
+                .from('inventory_movements')
+                .select('*, product:products(name)')
+                .eq('store_id', storeId)
+                .order('created_at', { ascending: false });
+            
+            if (!error && data) {
+                movements = data;
+            }
+        }
+
+        // Map to standard format
+        const mapped = movements.map(m => ({
+            id: m.id,
+            product_name: m.product?.name || m.product_name || 'Article inconnu',
+            type: m.movement_type || (m.quantity > 0 ? 'in' : 'out'),
+            quantity: Math.abs(m.quantity),
+            reason: m.reason || m.action_type || 'Ajustement',
+            date: m.created_at || m.date
+        }));
+
+        return { movements: mapped, offlineMessage };
+    } catch (error) {
+        console.error('getStockMovements error:', error);
+        return { movements: [], offlineMessage: "Erreur lors du chargement des mouvements." };
+    }
   }
 
   async updateProductStock(productId: string, newQuantity: number, reason: string): Promise<void> {

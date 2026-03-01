@@ -98,84 +98,89 @@ function mapToLocalInventory(item: InventoryItem | any, synced: boolean = true):
   };
 }
 
-export class OfflineInventoryService {
-  /**
-   * Get all inventory items (Strict Offline First)
-   */
-  static async getInventory(
-    storeId?: string,
-    options?: { notify?: boolean }
-  ): Promise<{ data?: InventoryItem[]; error?: any }> {
+export const OfflineInventoryService = {
+  async getInventory(storeId: string, options?: { notify?: boolean }): Promise<{ data?: InventoryItem[]; error?: any }> {
     try {
+      const dc = getDataClient();
       await LocalDatabase.init();
-      
-      // 1. OFFLINE-FIRST: Immediate local data
       const localInventory = await LocalDatabase.getInventory(storeId);
       
-      // 2. BACKGROUND SYNC (Non-blocking)
-      const syncProc = async () => {
-        let remoteProducts: any[] = [];
-        let success = false;
-        const dc = getDataClient();
+      let remoteProducts: any[] = [];
+      let success = false;
 
+      // 1. If Local-First (Worker/Hybrid), try to fetch from Bridge IMMEDIATELY
+      if (dc.isLocalFirst) {
         try {
-          if (dc.isLocalFirst) {
-            const headers = await OfflineAuthService.getAuthHeaders();
-            if (headers) {
-              const params = new URLSearchParams();
-              if (storeId) params.set('store_id', storeId);
-              const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/products?${params.toString()}`, { headers });
-              if (res.ok) {
-                remoteProducts = await res.json();
-                console.log('[OfflineInventory] Remote products fetched:', remoteProducts.length, remoteProducts[0]);
-                success = true;
-              }
-            }
-          } else if (navigator.onLine) {
-            let q = supabase.from('products').select('*');
-            if (storeId) q = q.eq('store_id', storeId);
-            const { data, error } = await q.order('name');
-            if (!error && data) {
-              remoteProducts = data;
+          const { OfflineAuthService } = await import('./OfflineAuthService');
+          const headers = await OfflineAuthService.getAuthHeaders();
+          if (headers) {
+            const params = new URLSearchParams();
+            if (storeId) params.set('store_id', storeId);
+            const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/products?${params.toString()}`, { headers });
+            if (res.ok) {
+              const payload = await res.json();
+              remoteProducts = Array.isArray(payload) ? payload : payload.data || [];
+              console.log('[OfflineInventory] Bridge products fetched:', remoteProducts.length);
               success = true;
             }
           }
-
-          if (success) {
-            const productList = Array.isArray(remoteProducts) ? remoteProducts : (remoteProducts as any).data || [];
-            
-            // Reconcile Deletions
-            const remoteIds = new Set(productList.map((p: any) => p.id));
-            for (const local of localInventory) {
-              if (local.synced && !remoteIds.has(local.id)) {
-                await LocalDatabase.deleteInventoryItem(local.id);
-              }
-            }
-            
-            // Reconcile Updates/Adds
-            for (const remote of productList) {
-              await LocalDatabase.saveInventoryItem(mapToLocalInventory(remote, true));
-            }
-
-            if (options?.notify !== false) {
-              window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
-            }
-          }
         } catch (e) {
-          console.warn('[OfflineInventory] Background sync failed:', e);
+          console.warn('[OfflineInventory] Bridge fetch failed, using local DB:', e);
         }
-      };
+      }
 
-      syncProc(); // Fire and forget
+      // 2. If we got fresh data from Bridge, update LocalDatabase and return it
+      if (success && remoteProducts.length > 0) {
+        // Reconcile Deletions
+        const remoteIds = new Set(remoteProducts.map((p: any) => p.id));
+        for (const local of localInventory) {
+          if (local.synced && !remoteIds.has(local.id)) {
+            await LocalDatabase.deleteInventoryItem(local.id);
+          }
+        }
+        
+        // Reconcile Updates/Adds
+        const mappedItems: InventoryItem[] = [];
+        for (const remote of remoteProducts) {
+          const mapped = mapDbToInventoryItem(remote);
+          await LocalDatabase.saveInventoryItem(mapToLocalInventory(remote, true));
+          mappedItems.push(mapped);
+        }
 
-      return { data: localInventory.map(mapLocalInventoryToItem) };
+        if (options?.notify !== false) {
+          window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
+        }
+
+        return { data: mappedItems };
+      }
+
+      // 3. Fallback: Return what we have in LocalDatabase
+      if (localInventory.length > 0) {
+        return { data: localInventory.map(mapLocalInventoryToItem) };
+      }
+
+      // 4. If Local-First failed and DB empty, OR if Online Mode: Background sync from Supabase
+      if (!dc.isLocalFirst && navigator.onLine) {
+        const { data, error } = await supabase.from('products').select('*').eq('store_id', storeId).order('name');
+        if (data) {
+            const mapped = data.map(mapDbToInventoryItem);
+            // Sync to local DB in background
+            for (const item of data) {
+                await LocalDatabase.saveInventoryItem(mapToLocalInventory(item, true));
+            }
+            return { data: mapped };
+        }
+        if (error) throw error;
+      }
+
+      return { data: [] };
     } catch (error) {
-      console.error('Get inventory error:', error);
+      console.error('getInventory error:', error);
       return { error };
     }
-  }
+  },
 
-  static async getInventoryItem(id: string): Promise<{ data?: InventoryItem; error?: any }> {
+  async getInventoryItem(id: string): Promise<{ data?: InventoryItem; error?: any }> {
     try {
       await LocalDatabase.init();
       const local = await LocalDatabase.getInventoryItem(id);
@@ -187,9 +192,9 @@ export class OfflineInventoryService {
     } catch (error) {
       return { error };
     }
-  }
+  },
 
-  static async createItem(item: any): Promise<{ data?: InventoryItem; error?: any }> {
+  async createItem(item: any): Promise<{ data?: InventoryItem; error?: any }> {
     try {
       const id = crypto.randomUUID();
       const newItem = { ...item, id, updated_at: new Date().toISOString() };
@@ -207,9 +212,9 @@ export class OfflineInventoryService {
       console.error('Create item error:', error);
       return { error };
     }
-  }
+  },
 
-  static async updateItem(id: string, updates: any): Promise<{ data?: InventoryItem; error?: any }> {
+  async updateItem(id: string, updates: any): Promise<{ data?: InventoryItem; error?: any }> {
     try {
       await LocalDatabase.init();
       const local = await LocalDatabase.getInventoryItem(id);
@@ -234,9 +239,9 @@ export class OfflineInventoryService {
       console.error('Update item error:', error);
       return { error };
     }
-  }
+  },
 
-  static async deleteItem(id: string): Promise<{ error?: any }> {
+  async deleteItem(id: string): Promise<{ error?: any }> {
     try {
       await LocalDatabase.init();
       await LocalDatabase.deleteInventoryItem(id);
@@ -250,9 +255,9 @@ export class OfflineInventoryService {
     } catch (error) {
       return { error };
     }
-  }
+  },
 
-  static async getProductFamilies(storeId?: string): Promise<{ data?: LocalProductFamily[]; error?: any }> {
+  async getProductFamilies(storeId?: string): Promise<{ data?: LocalProductFamily[]; error?: any }> {
     try {
       await LocalDatabase.init();
       const local = await LocalDatabase.getProductFamilies(storeId);
@@ -286,5 +291,21 @@ export class OfflineInventoryService {
     } catch (error) {
       return { error };
     }
+  },
+
+  async getProductBatches(storeId: string, productId: string): Promise<{ data?: any[]; error?: any }> {
+    try {
+      const dc = getDataClient();
+      if (dc.isLocalFirst) {
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (headers) {
+          const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/product_batches?store_id=${storeId}&product_id=${productId}`, { headers });
+          if (res.ok) return { data: await res.json() };
+        }
+      }
+      return { data: [] };
+    } catch (error) {
+      return { error };
+    }
   }
-}
+};
