@@ -27,13 +27,13 @@ export const createReplenishmentRepo = (db: Database.Database) => ({
   },
 
   getReplenishmentNeeds(storeId: string): ReplenishmentNeed[] {
-    // 1. Get Low Stock Products (quantity <= min_quantity)
+    // 1. Get Low Stock Products (quantity <= threshold)
     const lowStockProducts = db
       .prepare(`
         SELECT p.*, pf.name as category_name
         FROM products p
         LEFT JOIN product_families pf ON p.category = pf.id
-        WHERE p.store_id = ? AND p.quantity <= COALESCE(p.min_quantity, 10)
+        WHERE p.store_id = ? AND p.quantity <= COALESCE(p.low_stock_threshold, p.min_quantity, 0)
       `)
       .all(storeId) as LocalProduct[];
 

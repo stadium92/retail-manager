@@ -80,6 +80,7 @@ export interface LocalProduct {
   selling_price_4?: number | null;
 
   min_quantity?: number;
+  low_stock_threshold?: number;
   quantity?: number;
   category?: string | null;
   image_url?: string | null;
