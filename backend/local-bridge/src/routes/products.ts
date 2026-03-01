@@ -125,12 +125,11 @@ export async function registerProductRoutes(app: FastifyInstance) {
     }
 
     if (claims.role === 'master' && !targetStoreId) {
-       // Master listing all products across all stores (careful with size!)
-       // For now, let's keep it as is, or maybe restrict it.
+       // Master listing all products across all stores
        return reply.send(db.listAllProducts());
     }
 
-    if (!targetStoreId) {
+    if (!targetStoreId && store_id !== 'all') {
       return reply.status(400).send({
         error: 'StoreRequired',
         message: 'No store specified for this request.',

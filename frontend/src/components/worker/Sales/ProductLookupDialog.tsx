@@ -6,6 +6,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Product } from '@/types';
@@ -113,27 +114,33 @@ export function ProductLookupDialog({
         </DialogHeader>
 
         <div className={cn("p-4 shrink-0", standalone ? "bg-muted/30" : "bg-[hsl(180,60%,75%)]")}>
-          <div className="relative">
-            <Input
-                autoFocus
-                placeholder={t('common.search')}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className={cn("bg-white border-2 font-mono h-12 text-lg", standalone ? "border-primary/20" : "border-[hsl(180,60%,40%)]")}
-            />
-            {isLoading && <div className="absolute right-4 top-3.5 animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-transparent" />}
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+                <Input
+                    autoFocus
+                    placeholder={t('common.search')}
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className={cn("bg-white border-2 font-mono h-12 text-lg", standalone ? "border-primary/20" : "border-[hsl(180,60%,40%)]")}
+                />
+                {isLoading && <div className="absolute right-4 top-3.5 animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-transparent" />}
+            </div>
+            <Button variant="outline" onClick={() => setSearch(search)} className="h-12 w-12 border-2"><RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} /></Button>
           </div>
         </div>
 
         <ScrollArea className="flex-1">
           <div className="p-4 pt-0">
-            <div className="grid grid-cols-[1fr_120px_100px_80px_100px_80px] font-black uppercase tracking-widest text-[10px] bg-primary text-white py-3 px-4 rounded-t-xl sticky top-0 z-10 shadow-md">
+            <div className="grid grid-cols-[40px_1fr_100px_120px_90px_90px_80px_100px_80px] font-black uppercase tracking-widest text-[9px] bg-primary text-white py-3 px-4 rounded-t-xl sticky top-0 z-10 shadow-md">
+              <div className="text-center">#</div>
               <div>{t('pos.grid.headers.designation')}</div>
-              <div className="text-center">Magasin</div>
               <div className="text-center">{t('pos.grid.headers.sku')}</div>
-              <div className="text-center">{t('pos.grid.headers.qty')}</div>
-              <div className="text-right">{mode === 'wholesale' ? t('inventory.fields.wholesalePriceHT') : t('inventory.fields.retailPriceShort')}</div>
-              <div className="text-right">COÛT</div>
+              <div className="text-center">{t('inventory.fields.family')}</div>
+              <div className="text-right">P. ACHAT</div>
+              <div className="text-right">P. DÉTAIL</div>
+              <div className="text-center">CNDT.</div>
+              <div className="text-right">{t('pos.grid.headers.qty')}</div>
+              <div className="text-center">STATUS</div>
             </div>
 
             {isLoading ? (
@@ -148,7 +155,8 @@ export function ProductLookupDialog({
             ) : (
               results.map((product, index) => {
                 const isSelected = index === selectedIndex;
-                const price = getPrice(product);
+                const retailPrice = product.unit_price || product.price || 0;
+                const costPrice = product.cost_price || product.cost || 0;
                 const stockStatus = product.quantity <= 0 ? 'rupture' : product.quantity <= (product.min_quantity || 10) ? 'low' : 'ok';
 
                 return (
@@ -160,29 +168,42 @@ export function ProductLookupDialog({
                     }}
                     onMouseEnter={() => setSelectedIndex(index)}
                     className={cn(
-                      'grid grid-cols-[1fr_120px_100px_80px_100px_80px] font-mono text-xs py-3 px-4 cursor-pointer border-b transition-all items-center',
+                      'grid grid-cols-[40px_1fr_100px_120px_90px_90px_80px_100px_80px] font-mono text-xs py-3 px-4 cursor-pointer border-b transition-all items-center',
                       isSelected 
                         ? 'bg-primary text-white scale-[1.01] rounded-lg shadow-lg z-20 relative' 
                         : 'bg-white hover:bg-muted/50 text-black border-muted'
                     )}
                   >
+                    <div className="text-center text-[10px] opacity-40 font-black">{index + 1}</div>
                     <div className="font-bold uppercase truncate">{product.name}</div>
-                    <div className="text-center text-[10px] font-black uppercase tracking-tighter opacity-60">
-                        {getStoreName((product as any).store_id)}
+                    <div className="text-center text-[10px] opacity-60">{product.sku || '—'}</div>
+                    <div className="text-center text-[10px] font-black uppercase tracking-tighter opacity-60 truncate">
+                        {product.category || (product as any).category_name || '—'}
                     </div>
-                    <div className="text-center text-[10px] opacity-60">{product.sku || product.barcode || '—'}</div>
+                    <div className="text-right tabular-nums opacity-70">
+                      {formatCurrency(costPrice)}
+                    </div>
+                    <div className="text-right tabular-nums font-black">
+                      {formatCurrency(retailPrice)}
+                    </div>
+                    <div className="text-center text-[10px] opacity-60">
+                        {product.packaging || '1'}
+                    </div>
                     <div className={cn(
-                      'text-center font-bold',
+                      'text-right font-black',
                       !isSelected && stockStatus === 'rupture' && 'text-red-600',
                       !isSelected && stockStatus === 'low' && 'text-orange-600'
                     )}>
                       {product.quantity}
                     </div>
-                    <div className="text-right tabular-nums font-black">
-                      {formatCurrency(price)}
-                    </div>
-                    <div className="text-right tabular-nums text-[10px] opacity-70">
-                      {formatCurrency(product.cost_price || 0)}
+                    <div className="text-center">
+                        {stockStatus === 'rupture' ? (
+                            <div className="w-2 h-2 rounded-full bg-red-500 mx-auto animate-pulse" title="Rupture" />
+                        ) : stockStatus === 'low' ? (
+                            <div className="w-2 h-2 rounded-full bg-orange-500 mx-auto" title="Faible" />
+                        ) : (
+                            <div className="w-2 h-2 rounded-full bg-green-500 mx-auto" title="OK" />
+                        )}
                     </div>
                   </div>
                 );

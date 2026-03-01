@@ -99,7 +99,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
   const addMultiItemRow = () => {
     setMultiItems(prev => [
         ...prev.map(item => ({ ...item, isOpen: false })),
-        { ...initialFormState, id: crypto.randomUUID(), isOpen: true }
+        { ...initialFormState, id: crypto.randomUUID(), isOpen: false }
     ]);
   };
 
@@ -116,7 +116,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
 
   const resetForm = () => {
     setFormData(initialFormState);
-    setMultiItems([{ ...initialFormState, id: crypto.randomUUID(), isOpen: true }]);
+    setMultiItems([{ ...initialFormState, id: crypto.randomUUID(), isOpen: false }]);
     setEditingProduct(null);
   };
 
@@ -481,13 +481,13 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
               ) : (
                 <div className="p-6 space-y-4">
                   {multiItems.map((item, index) => (
-                    <Card key={item.id} className={cn("border-4 transition-all overflow-hidden", item.isOpen ? "border-primary shadow-2xl scale-[1.01]" : "border-border/40 opacity-60")}>
-                      <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/30" onClick={() => toggleMultiItemRow(item.id)}>
+                    <Card key={item.id} className={cn("border-4 transition-all overflow-hidden cursor-pointer", item.isOpen ? "border-primary shadow-2xl scale-[1.01]" : "border-muted/60 shadow-md hover:border-primary/40 hover:bg-muted/10")}>
+                      <div className="flex items-center justify-between p-4" onClick={() => toggleMultiItemRow(item.id)}>
                         <div className="flex items-center gap-3">
                           <div className={cn("p-2 rounded-lg bg-primary/10 text-primary transition-transform", item.isOpen && "rotate-180")}>
                             {item.isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                           </div>
-                          <span className="font-black uppercase tracking-widest text-sm">{item.name || `NOUVEL ARTICLE #${index + 1}`}</span>
+                          <span className="font-black uppercase tracking-widest text-sm text-primary/80">{item.name || `NOUVEL ARTICLE #${index + 1}`}</span>
                         </div>
                         <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); removeMultiItemRow(item.id); }}>
                           <Minus className="h-4 w-4" />
