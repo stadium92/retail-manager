@@ -196,6 +196,21 @@ class LocalDatabaseService {
     tx.objectStore('purchase_orders').put(order);
   }
 
+  async deletePurchaseOrder(id: string): Promise<void> {
+    const db = await this.ensureDb();
+    const tx = db.transaction(['purchase_orders', 'purchase_items'], 'readwrite');
+    tx.objectStore('purchase_orders').delete(id);
+    
+    // Also delete items for this order
+    const itemStore = tx.objectStore('purchase_items');
+    const index = itemStore.index('order_id');
+    const request = index.getAllKeys(id);
+    request.onsuccess = () => {
+      const keys = request.result;
+      keys.forEach(key => itemStore.delete(key));
+    };
+  }
+
   async getPurchaseOrders(storeId?: string): Promise<LocalPurchaseOrder[]> {
     const db = await this.ensureDb();
     return new Promise(r => {

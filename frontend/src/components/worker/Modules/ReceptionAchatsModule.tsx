@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Package, Check, Search, RefreshCw } from 'lucide-react';
+import { Package, Check, Search, RefreshCw, Trash2 } from 'lucide-react';
 import { ProductLookupDialog } from '../Sales/ProductLookupDialog';
 import { Product } from '@/types';
 import { cn } from '@/lib/utils';
@@ -34,7 +34,7 @@ interface ReceiptItem {
 
 export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
   const { t, i18n } = useTranslation();
-  const { suppliers, orders, orderItems, fetchSuppliers, fetchOrders, fetchOrderItems, receiveOrder } = usePurchasingStore();
+  const { suppliers, orders, orderItems, fetchSuppliers, fetchOrders, fetchOrderItems, receiveOrder, deleteOrder } = usePurchasingStore();
   const [selectedOrderId, setSelectedOrderId] = useState<string>('');
   const [receiptItems, setReceiptItems] = useState<ReceiptItem[]>([]);
   const [isAdHoc, setIsAdHoc] = useState(false);
@@ -58,8 +58,28 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
   useEffect(() => {
     if (selectedOrderId && !isAdHoc) {
       fetchOrderItems(selectedOrderId);
+    } else {
+      setReceiptItems([]);
     }
-  }, [selectedOrderId]);
+  }, [selectedOrderId, isAdHoc]);
+
+  const handleDeleteOrder = async () => {
+    if (!selectedOrderId) return;
+    if (!confirm(t('inventory.deleteConfirm') || "Are you sure you want to delete this order?")) return;
+    
+    setLoading(true);
+    try {
+      await deleteOrder(selectedOrderId);
+      toast.success(t('common.success'));
+      setSelectedOrderId('');
+      setReceiptItems([]);
+      fetchOrders(storeId, 'ordered');
+    } catch (err) {
+      toast.error(t('common.error'));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (orderItems.length > 0 && !isAdHoc) {
@@ -222,7 +242,7 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
                 </Select>
               </div>
             ) : (
-              <div className="flex-1 flex gap-2 items-end">
+              <div className="flex-[2] flex gap-2 items-end">
                 <div className="flex-1">
                   <label className="text-xs font-black uppercase tracking-widest mb-1 block">{t('menu.program.order')}</label>
                   <Select value={selectedOrderId} onValueChange={setSelectedOrderId}>
@@ -238,7 +258,16 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button variant="secondary" size="icon" onClick={() => fetchOrders(storeId, 'ordered')} className="h-10 w-10"><RefreshCw className="h-4 w-4" /></Button>
+                <div className="flex gap-1">
+                    <Button variant="secondary" size="icon" onClick={() => fetchOrders(storeId, 'ordered')} className="h-10 w-10" title={t('common.refresh')}>
+                        <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+                    </Button>
+                    {selectedOrderId && (
+                        <Button variant="destructive" size="icon" onClick={handleDeleteOrder} className="h-10 w-10 shadow-lg shadow-danger/20" title={t('common.delete')}>
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    )}
+                </div>
               </div>
             )}
           </div>

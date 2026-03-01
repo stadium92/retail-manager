@@ -68,6 +68,7 @@ interface PurchasingState {
   createOrder: (order: Partial<PurchaseOrder>, items: any[]) => Promise<void>;
   updateOrderStatus: (orderId: string, status: string) => Promise<void>;
   receiveOrder: (orderId: string, items: { id: string; quantity_received: number; unit_cost: number }[]) => Promise<void>;
+  deleteOrder: (orderId: string) => Promise<void>;
   
   addSupplier: (supplier: Partial<Supplier>) => Promise<Supplier | null>;
   addPayment: (payment: Partial<SupplierPayment>) => Promise<void>;
@@ -240,6 +241,27 @@ export const usePurchasingStore = create<PurchasingState>((set, get) => ({
         await supabase.rpc('receive_purchase_order', { p_order_id: orderId, p_items: items });
       }
       set(state => ({ orders: state.orders.map(o => o.id === orderId ? { ...o, status: 'received' } : o) }));
+    } catch (e) {}
+  },
+
+  deleteOrder: async (orderId) => {
+    await LocalDatabase.init();
+    await LocalDatabase.deletePurchaseOrder(orderId);
+    set(state => ({ orders: state.orders.filter(o => o.id !== orderId) }));
+
+    const dc = getDataClient();
+    try {
+      if (dc.isLocalFirst) {
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (headers) {
+          await fetch(`${dc.localBridgeBaseUrl}/rest/v1/purchase_orders/${orderId}`, {
+            method: 'DELETE',
+            headers
+          });
+        }
+      } else {
+        await supabase.from('purchase_orders').delete().eq('id', orderId);
+      }
     } catch (e) {}
   },
 
