@@ -56,7 +56,7 @@ export function useStockSearch(storeId: string, enabled: boolean = true) {
         const headers = await OfflineAuthService.getAuthHeaders();
         if (!headers) throw new Error('Not authenticated');
 
-        const response = await fetch(`${localBridgeBaseUrl}/rest/v1/products?${params.toString()}`, {
+        const response = await smartFetch(`${localBridgeBaseUrl}/rest/v1/products?${params.toString()}`, {
           headers,
         });
 

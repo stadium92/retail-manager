@@ -125,7 +125,7 @@ class OfflineDataServiceClass {
                             const params = new URLSearchParams();
                             if (storeId) params.set('store_id', storeId);
                             if (dateFrom) params.set('date_from', dateFrom.toISOString());
-                            const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/sales?${params.toString()}`, { headers });
+                            const res = await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/sales?${params.toString()}`, { headers });
                             if (res.ok) {
                                 remoteSales = await res.json();
                                 success = true;
@@ -213,7 +213,7 @@ class OfflineDataServiceClass {
                         from: from.toISOString(),
                         to: to.toISOString()
                     });
-                    const res = await fetch(`${localBridgeBaseUrl}/analytics/dashboard?${params.toString()}`, { headers });
+                    const res = await smartFetch(`${localBridgeBaseUrl}/analytics/dashboard?${params.toString()}`, { headers });
                     if (res.ok) {
                         const remoteAnalytics = await res.json();
                         return remoteAnalytics;
@@ -250,7 +250,7 @@ class OfflineDataServiceClass {
             const { OfflineAuthService } = await import('./OfflineAuthService');
             const headers = await OfflineAuthService.getAuthHeaders();
             if (headers) {
-              const response = await fetch(`${localBridgeBaseUrl}/rest/v1/stock-valuation?store_id=${storeId}`, { headers });
+              const response = await smartFetch(`${localBridgeBaseUrl}/rest/v1/stock-valuation?store_id=${storeId}`, { headers });
               if (response.ok) return await response.json();
             }
           } catch (error) {
@@ -299,7 +299,7 @@ class OfflineDataServiceClass {
             const { OfflineAuthService } = await import('./OfflineAuthService');
             const headers = await OfflineAuthService.getAuthHeaders();
             if (headers) {
-                const res = await fetch(`${localBridgeBaseUrl}/rest/v1/inventory_movements?store_id=${storeId}`, { headers });
+                const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/inventory_movements?store_id=${storeId}`, { headers });
                 if (res.ok) {
                     movements = await res.json();
                 } else {
@@ -352,10 +352,15 @@ class OfflineDataServiceClass {
         const { OfflineAuthService } = await import('./OfflineAuthService');
         const headers = await OfflineAuthService.getAuthHeaders();
         if (headers) {
-          await fetch(`${localBridgeBaseUrl}/rest/v1/products/${productId}/stock`, {
-            method: 'PATCH',
+          await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/inventory_movements`, {
+            method: 'POST',
             headers: { ...headers, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ quantity: newQuantity, reason })
+            body: JSON.stringify({ 
+                product_id: productId,
+                movement_type: 'adjustment',
+                quantity: newQuantity, // Backend handles delta calculation if needed or sets absolute
+                reason
+            })
           });
         }
       } else {

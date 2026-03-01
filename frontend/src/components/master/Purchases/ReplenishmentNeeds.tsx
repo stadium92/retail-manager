@@ -110,7 +110,7 @@ export function ReplenishmentNeeds({ storeId }: Props) {
       
       let data = [];
       if (isLocalFirst && headers) {
-        const res = await fetch(`${localBridgeBaseUrl}/rest/v1/purchasing/needs?store_id=${storeId}`, { headers });
+        const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/purchasing/needs?store_id=${storeId}`, { headers });
         if (res.ok) data = await res.json();
       } else {
         // Master view fallback or online mode
@@ -137,7 +137,7 @@ export function ReplenishmentNeeds({ storeId }: Props) {
         const isBox = isGroupingUnit(item.unit_type);
         
         let qty = item.suggested_qty;
-        let cost = item.cost_price || item.unit_price || 0;
+        let cost = item.cost_price || item.cost || item.unit_price || item.price || 0;
 
         if (isBox && packSize > 1) {
             qty = qty / packSize;

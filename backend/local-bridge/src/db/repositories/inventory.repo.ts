@@ -4,16 +4,18 @@ import { LocalInventoryMovement } from '../types.js';
 export const createInventoryRepo = (db: Database.Database) => ({
   listInventoryMovements(storeId?: string, limit?: number): LocalInventoryMovement[] {
     if (storeId) {
+      const params = limit ? [storeId, limit] : [storeId];
       const rows = db
         .prepare(
           `SELECT * FROM inventory_movements WHERE store_id = ? ORDER BY created_at DESC${limit ? ' LIMIT ?' : ''}`
         )
-        .all(limit ? [storeId, limit] : [storeId]);
+        .all(...params);
       return rows as LocalInventoryMovement[];
     }
+    const params = limit ? [limit] : [];
     const rows = db
       .prepare(`SELECT * FROM inventory_movements ORDER BY created_at DESC${limit ? ' LIMIT ?' : ''}`)
-      .all(limit ? [limit] : []);
+      .all(...params);
     return rows as LocalInventoryMovement[];
   },
 

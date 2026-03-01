@@ -18,9 +18,9 @@ function mapDbToInventoryItem(product: any): InventoryItem {
     store_id: product.store_id,
     name: product.name,
     sku: product.sku,
-    quantity: Number(product.quantity) || 0,
+    quantity: Number(product.quantity ?? product.stock ?? product.current_stock) || 0,
     price: Number(product.unit_price || product.price) || 0,
-    wholesale_price: Number(product.wholesale_price) || 0,
+    wholesale_price: Number(product.wholesale_price_ttc || product.wholesale_price) || 0,
     wholesale_price_ht: Number(product.wholesale_price_ht) || 0,
     wholesale_price_ttc: Number(product.wholesale_price_ttc) || 0,
     selling_price_2: Number(product.selling_price_2) || 0,
@@ -116,7 +116,7 @@ export const OfflineInventoryService = {
           if (headers) {
             const params = new URLSearchParams();
             if (storeId) params.set('store_id', storeId);
-            const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/products?${params.toString()}`, { headers });
+            const res = await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/products?${params.toString()}`, { headers });
             if (res.ok) {
               const payload = await res.json();
               remoteProducts = Array.isArray(payload) ? payload : payload.data || [];
@@ -270,7 +270,7 @@ export const OfflineInventoryService = {
           if (dc.isLocalFirst) {
             const headers = await OfflineAuthService.getAuthHeaders();
             if (headers) {
-              const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/product_families`, { headers });
+              const res = await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/product_families`, { headers });
               if (res.ok) remote = await res.json();
             }
           } else if (navigator.onLine) {
@@ -299,7 +299,7 @@ export const OfflineInventoryService = {
       if (dc.isLocalFirst) {
         const headers = await OfflineAuthService.getAuthHeaders();
         if (headers) {
-          const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/product_batches?store_id=${storeId}&product_id=${productId}`, { headers });
+          const res = await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/product_batches?store_id=${storeId}&product_id=${productId}`, { headers });
           if (res.ok) return { data: await res.json() };
         }
       }

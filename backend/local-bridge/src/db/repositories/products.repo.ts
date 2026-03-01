@@ -36,65 +36,89 @@ export const createProductsRepo = (db: Database.Database) => {
     const searchQuery = query.trim();
     const useStoreFilter = storeId && storeId !== 'all';
     
-    // If query is empty, use standard fast scan
-    if (!searchQuery) {
-      let filterClause = '';
-      if (filter === 'in_stock') filterClause = 'AND quantity > 0';
-      else if (filter === 'out_of_stock') filterClause = 'AND quantity <= 0';
-      else if (filter === 'low_stock') filterClause = 'AND quantity > 0 AND quantity <= COALESCE(min_quantity, 10)';
-
-      const whereClause = useStoreFilter ? `WHERE store_id = ? ${filterClause}` : (filterClause ? `WHERE ${filterClause.slice(4)}` : '');
-      const params = useStoreFilter ? [storeId] : [];
-
-      const totalResult = db.prepare(`SELECT COUNT(*) as count FROM products ${whereClause}`).get(...params) as { count: number };
-      const rows = db.prepare(`SELECT * FROM products ${whereClause} ORDER BY name ASC LIMIT ? OFFSET ?`).all(...params, limit, offset);
-      return { data: rows as LocalProduct[], total: totalResult.count };
-    }
-
-    // FTS5 MATCH pattern (prefix search for each word)
-    const matchPattern = searchQuery.split(/\s+/).map(word => `${word}*`).join(' ');
-    
+    // Base filter conditions
     let filterClause = '';
     if (filter === 'in_stock') filterClause = 'AND p.quantity > 0';
     else if (filter === 'out_of_stock') filterClause = 'AND p.quantity <= 0';
     else if (filter === 'low_stock') filterClause = 'AND p.quantity > 0 AND p.quantity <= COALESCE(p.min_quantity, 10)';
 
-    const whereClauseFTS = useStoreFilter ? `WHERE f.store_id = ? AND products_fts MATCH ? ${filterClause}` : `WHERE products_fts MATCH ? ${filterClause}`;
-    const paramsFTS = useStoreFilter ? [storeId, matchPattern] : [matchPattern];
+    // 1. If query is empty, use standard fast scan
+    if (!searchQuery) {
+      const whereClause = useStoreFilter ? `WHERE p.store_id = ? ${filterClause}` : (filterClause ? `WHERE ${filterClause.slice(4)}` : '');
+      const params = useStoreFilter ? [storeId] : [];
 
-    const countResult = db
-      .prepare(
-        `
-      SELECT COUNT(*) as count 
-      FROM products_fts f
-      JOIN products p ON f.id = p.id
-      ${whereClauseFTS}
-    `
-      )
-      .get(...paramsFTS) as { count: number };
+      const totalResult = db.prepare(`SELECT COUNT(*) as count FROM products p ${whereClause}`).get(...params) as { count: number };
+      const rows = db.prepare(`
+        SELECT p.*, pf.name as category_name 
+        FROM products p 
+        LEFT JOIN product_families pf ON p.category = pf.id
+        ${whereClause} 
+        ORDER BY p.name ASC 
+        LIMIT ? OFFSET ?
+      `).all(...params, limit, offset);
+      
+      return { 
+        data: rows.map((r: any) => ({ ...r, category_name: r.category_name || null })) as LocalProduct[], 
+        total: totalResult.count 
+      };
+    }
 
-    const rows = db
-      .prepare(
-        `
-      SELECT p.*, pf.name as category_name
-      FROM products_fts f
-      JOIN products p ON f.id = p.id
-      LEFT JOIN product_families pf ON p.category = pf.id
-      ${whereClauseFTS}
-      ORDER BY rank -- FTS5 built-in relevance ranking
-      LIMIT ? OFFSET ?
-    `
-      )
-      .all(...paramsFTS, limit, offset);
+    // 2. Optimized FTS5 Search
+    try {
+        const matchPattern = searchQuery.split(/\s+/).filter(Boolean).map(word => `${word}*`).join(' ');
+        const whereClauseFTS = useStoreFilter ? `WHERE f.store_id = ? AND products_fts MATCH ? ${filterClause}` : `WHERE products_fts MATCH ? ${filterClause}`;
+        const paramsFTS = useStoreFilter ? [storeId, matchPattern] : [matchPattern];
 
-    const mappedRows = rows.map((row: any) => ({
-      ...row,
-      category_name: row.category_name || null,
-    }));
+        const countResult = db.prepare(`
+            SELECT COUNT(*) as count 
+            FROM products_fts f
+            JOIN products p ON f.rowid = p.rowid
+            ${whereClauseFTS}
+        `).get(...paramsFTS) as { count: number };
+
+        if (countResult.count > 0) {
+            const rows = db.prepare(`
+                SELECT p.*, pf.name as category_name
+                FROM products_fts f
+                JOIN products p ON f.rowid = p.rowid
+                LEFT JOIN product_families pf ON p.category = pf.id
+                ${whereClauseFTS}
+                ORDER BY rank
+                LIMIT ? OFFSET ?
+            `).all(...paramsFTS, limit, offset);
+
+            return {
+                data: rows.map((r: any) => ({ ...r, category_name: r.category_name || null })) as LocalProduct[],
+                total: countResult.count,
+            };
+        }
+    } catch (ftsError) {
+        console.warn('[ProductsRepo] FTS search failed, falling back to LIKE:', ftsError);
+    }
+
+    // 3. Fallback: Standard LIKE search (if FTS fails or returns no results)
+    const likePattern = `%${searchQuery}%`;
+    const whereClauseLike = useStoreFilter 
+        ? `WHERE p.store_id = ? AND (p.name LIKE ? OR p.sku LIKE ? OR p.barcode LIKE ?) ${filterClause}` 
+        : `WHERE (p.name LIKE ? OR p.sku LIKE ? OR p.barcode LIKE ?) ${filterClause}`;
+    
+    const paramsLike = useStoreFilter 
+        ? [storeId, likePattern, likePattern, likePattern] 
+        : [likePattern, likePattern, likePattern];
+
+    const totalResult = db.prepare(`SELECT COUNT(*) as count FROM products p ${whereClauseLike}`).get(...paramsLike) as { count: number };
+    const rows = db.prepare(`
+        SELECT p.*, pf.name as category_name 
+        FROM products p 
+        LEFT JOIN product_families pf ON p.category = pf.id
+        ${whereClauseLike} 
+        ORDER BY p.name ASC 
+        LIMIT ? OFFSET ?
+    `).all(...paramsLike, limit, offset);
 
     return {
-      data: mappedRows as LocalProduct[],
-      total: countResult.count,
+        data: rows.map((r: any) => ({ ...r, category_name: r.category_name || null })) as LocalProduct[],
+        total: totalResult.count,
     };
   },
 
