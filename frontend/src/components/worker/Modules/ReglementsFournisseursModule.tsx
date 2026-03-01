@@ -15,7 +15,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { CreditCard, Coins, History, Search, CalendarIcon, Filter, RefreshCw } from 'lucide-react';
+import { CreditCard, Coins, History, Search, CalendarIcon, Filter } from 'lucide-react';
 import { format, startOfDay, endOfDay, subDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
@@ -39,16 +39,8 @@ interface Payment {
 
 export function ReglementsFournisseursModule({ storeId, isMasterView }: ReglementsFournisseursModuleProps) {
   const { t, i18n } = useTranslation();
-  const { storeSuppliers, fetchSuppliers, addPayment } = usePurchasingStore();
-  const suppliers = storeSuppliers[storeId] || [];
+  const { suppliers, fetchSuppliers, addPayment } = usePurchasingStore();
   const [payments, setPayments] = useState<Payment[]>([]);
-  
-  const handleRefresh = () => {
-    if (storeId) {
-      fetchSuppliers(storeId);
-      fetchPayments();
-    }
-  };
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
@@ -232,22 +224,6 @@ export function ReglementsFournisseursModule({ storeId, isMasterView }: Reglemen
         !isMasterView && "bg-[hsl(60,80%,85%)]",
         "dark:bg-transparent"
     )}>
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="text-sm font-black uppercase tracking-[0.3em] text-muted-foreground flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-primary" />
-          {t('menu.program.supplierSettlement')}
-        </h2>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => { fetchSuppliers(storeId); fetchPayments(); }}
-          className="h-8 border-2 font-black uppercase text-[10px] tracking-widest px-4"
-        >
-          <RefreshCw className="h-3 w-3 mr-2" />
-          {t('common.refresh')}
-        </Button>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border-l-4 border-red-600 shadow-sm">
           <CardContent className="p-4">

@@ -189,70 +189,12 @@ class OfflineDataServiceClass {
         });
 
         const localInventory = await LocalDatabase.getInventory(storeId);
-        const users = useMasterDataStore.getState().users;
-
-        // --- Calculate Top Products ---
-        const productMap: Record<string, { name: string; quantity: number; revenue: number }> = {};
-        filteredSales.forEach(s => {
-            // Support both 'sale_items' and 'items'
-            let items = (s as any).sale_items || (s as any).items || [];
-            if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e) { items = []; } }
-            
-            if (Array.isArray(items)) {
-                items.forEach((item: any) => {
-                    const name = item.product_name || item.name || 'Unknown';
-                    if (!productMap[name]) productMap[name] = { name, quantity: 0, revenue: 0 };
-                    productMap[name].quantity += Number(item.quantity) || 0;
-                    productMap[name].revenue += Number(item.total || (item.quantity * item.unit_price)) || 0;
-                });
-            }
-        });
-
-        const topProducts = Object.values(productMap)
-            .sort((a, b) => b.quantity - a.quantity)
-            .slice(0, 10);
-
-        // --- Calculate Worker Performance ---
-        const workerMap: Record<string, { name: string; sales_count: number; revenue: number }> = {};
-        filteredSales.forEach(s => {
-            const workerId = s.worker_id;
-            const worker = users.find(u => u.id === workerId);
-            const workerName = worker?.full_name || worker?.username || workerId?.slice(0,8) || 'Caissier';
-            const revenue = Number((s as any).total_price || (s as any).total_amount || 0);
-            
-            if (!workerMap[workerName]) workerMap[workerName] = { name: workerName, sales_count: 0, revenue: 0 };
-            workerMap[workerName].sales_count += 1;
-            workerMap[workerName].revenue += revenue;
-        });
-
-        const topWorkers = Object.values(workerMap)
-            .sort((a, b) => b.revenue - a.revenue);
-
-        // --- Calculate Weekly Revenue (Last 7 Days) ---
-        const weeklyMap: Record<string, number> = {};
-        for (let i = 6; i >= 0; i--) {
-            // Use ISO-like format for stable keys
-            const d = subDays(new Date(), i);
-            const key = d.toISOString().split('T')[0];
-            weeklyMap[key] = 0;
-        }
-
-        filteredSales.forEach(s => {
-            if (s.created_at) {
-                const dateKey = new Date(s.created_at).toISOString().split('T')[0];
-                if (weeklyMap[dateKey] !== undefined) {
-                    weeklyMap[dateKey] += Number((s as any).total_price || (s as any).total_amount || 0);
-                }
-            }
-        });
-
-        const weeklyRevenue = Object.entries(weeklyMap).map(([date, revenue]) => ({ date, revenue }));
 
         const localAnalytics: DashboardAnalytics = {
-            daily_revenue: filteredSales.reduce((sum, s) => sum + Number((s as any).total_price || (s as any).total_amount || 0), 0),
-            weekly_revenue: weeklyRevenue, 
-            top_products: topProducts,
-            top_workers: topWorkers,
+            daily_revenue: filteredSales.reduce((sum, s) => sum + Number(s.total_price), 0),
+            weekly_revenue: [], 
+            top_products: [],
+            top_workers: [],
             stock_health: {
                 ok: localInventory.filter(i => i.quantity > (i.reorder_quantity || 10)).length,
                 low: localInventory.filter(i => i.quantity <= (i.reorder_quantity || 10) && i.quantity > 0).length,
@@ -274,10 +216,7 @@ class OfflineDataServiceClass {
                     const res = await fetch(`${localBridgeBaseUrl}/analytics/dashboard?${params.toString()}`, { headers });
                     if (res.ok) {
                         const remoteAnalytics = await res.json();
-                        // Only return remote if it has actual data, otherwise use local
-                        if (remoteAnalytics && (remoteAnalytics.weekly_revenue?.length > 0 || remoteAnalytics.top_products?.length > 0)) {
-                            return remoteAnalytics;
-                        }
+                        return remoteAnalytics;
                     }
                 }
             } catch (e) {

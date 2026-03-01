@@ -6,7 +6,6 @@
     "edit": "Ka fura",
     "create": "Ka kɛ",
     "update": "Ka yɛlɛma",
-    "name": "Tɔgɔ",
     "search": "Ka ɲini",
     "filter": "Ka fili",
     "loading": "Ka se ka taa...",
@@ -1016,8 +1015,7 @@
       "selectSupplierAndConfirm": "Fournisseur kelen sugandi ani ka bɛnɛw sɛgɛsɛgɛ.",
       "selectItemsPrompt": "Bɛnɛ kelen sugandi ka commande kɛ.",
       "assignSuppliersPrompt": "Fournisseur sugandi",
-      "supplierSettlement": "Fournisseur sara",
-      "selectOrderPrompt": "Commande sugandi tɔgɔ la ka tila."
+      "supplierSettlement": "Fournisseur sara"
     },
     "files": {
       "trigger": "Dosiyew",
@@ -1073,7 +1071,6 @@
       "paymentModes": "Sara cogoya",
       "recordLoss": "Tɔgɔma bɔli kɛ",
       "validateLoss": "Ka bɔli dafa",
-      "confirmLoss": "Ka bɛn {{qty}} denfɛn kɛ {{name}} la ka tila?",
       "revenueEvolution": "Wari sɔrɔ yɛlɛmali",
       "workerPerformance": "Baarakɛla baara",
       "categoryDistribution": "Sugu cɛmancɛ",

@@ -45,8 +45,7 @@ interface Props {
 export function ReplenishmentNeeds({ storeId }: Props) {
   const { t } = useTranslation();
   const { formatCurrency } = useFormatters();
-  const { storeSuppliers, fetchSuppliers, createOrder } = usePurchasingStore();
-  const suppliers = storeSuppliers[storeId] || [];
+  const { suppliers, fetchSuppliers, createOrder } = usePurchasingStore();
   const [needs, setNeeds] = useState<ReplenishmentNeed[]>([]);
   const [loading, setLoading] = useState(false);
   const [isLookupOpen, setIsLookupOpen] = useState(false);
@@ -118,21 +117,19 @@ export function ReplenishmentNeeds({ storeId }: Props) {
         const { supabase } = getDataClient();
         const { data: remoteData } = await (supabase as any).from('products')
             .select('*')
-            .eq('store_id', storeId);
-            
-        data = (remoteData || [])
-            .filter((p: any) => p.quantity <= (p.low_stock_threshold ?? p.min_quantity ?? 0))
-            .map((p: any) => ({
-                product_id: p.id,
-                product_name: p.name,
-                sku: p.sku,
-                current_stock: p.quantity,
-                min_stock: p.low_stock_threshold ?? p.min_quantity ?? 0,
-                suggested_qty: Math.max(0, (p.reorder_quantity || 20) - p.quantity),
-                source: 'low_stock',
-                unit_type: p.unit_type,
-                packaging: p.packaging
-            }));
+            .eq('store_id', storeId)
+            .lt('quantity', 10); // Simple logic for needs if endpoint unavailable
+        data = (remoteData || []).map((p: any) => ({
+            product_id: p.id,
+            product_name: p.name,
+            sku: p.sku,
+            current_stock: p.quantity,
+            min_stock: p.min_quantity,
+            suggested_qty: Math.max(0, (p.reorder_quantity || 20) - p.quantity),
+            source: 'low_stock',
+            unit_type: p.unit_type,
+            packaging: p.packaging
+        }));
       }
 
       const needsData = data.map((item: any) => {
@@ -149,7 +146,6 @@ export function ReplenishmentNeeds({ storeId }: Props) {
         return {
           ...item,
           selected: true,
-          min_stock: item.low_stock_threshold ?? item.min_stock ?? 0,
           order_qty: qty,
           unit_cost: cost,
           packSize: packSize,
@@ -204,7 +200,6 @@ export function ReplenishmentNeeds({ storeId }: Props) {
       }, orderItems.map(i => {
         const qtyInPieces = (i.order_qty || 0) * (i.isBox ? (i.packSize || 1) : 1);
         return {
-          id: crypto.randomUUID(),
           product_id: i.product_id,
           quantity_ordered: qtyInPieces,
           quantity_received: 0,

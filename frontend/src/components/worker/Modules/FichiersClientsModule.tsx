@@ -24,7 +24,7 @@ export function FichiersClientsModule({ storeId }: FichiersClientsModuleProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
-  const { isLocalFirst, localBridgeBaseUrl, supabase } = getDataClient();
+  const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
   const [formData, setFormData] = useState({
     name: '',
     code: '',
@@ -35,18 +35,38 @@ export function FichiersClientsModule({ storeId }: FichiersClientsModuleProps) {
     service_id: '',
   });
 
+  const useLocalBridge = isLocalFirst;
+
   const localBridgeRequest = useCallback(async <T,>(path: string, init: RequestInit = {}) => {
+    if (!useLocalBridge) {
+      throw new Error('LocalBridge mode is not enabled.');
+    }
     const headers = await OfflineAuthService.getAuthHeaders();
-    if (!headers) throw new Error('Not authenticated');
-    
+    if (!headers) {
+      throw new Error('LocalBridge session expired. Please sign in again.');
+    }
     const response = await fetch(`${localBridgeBaseUrl}${path}`, {
       ...init,
-      headers: { 'Content-Type': 'application/json', ...(init.headers || {}), ...headers },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(init.headers || {}),
+        ...headers,
+      },
     });
-    
-    if (!response.ok) throw new Error('LocalBridge request failed');
-    return (response.status !== 204 ? await response.json() : null) as T;
-  }, [localBridgeBaseUrl]);
+    let payload: any = null;
+    if (response.status !== 204) {
+      try {
+        payload = await response.json();
+      } catch (error) {
+        // ignore
+      }
+    }
+    if (!response.ok) {
+      const message = payload?.message || 'LocalBridge request failed';
+      throw new Error(message);
+    }
+    return payload as T;
+  }, [localBridgeBaseUrl, useLocalBridge]);
 
   const formatCurrency = (amount: number) => {
     return amount.toLocaleString(i18n.language === 'bm' ? 'fr-ML' : i18n.language) + ' XAF';
@@ -60,63 +80,31 @@ export function FichiersClientsModule({ storeId }: FichiersClientsModuleProps) {
   }, [storeId]);
 
   const fetchClients = async () => {
+    if (!useLocalBridge) return;
     setLoading(true);
-    let allClients: Client[] = [];
-    let success = false;
-
-    // 1. Try Local Bridge
-    if (isLocalFirst) {
-      try {
-        const data = await localBridgeRequest<Client[]>(`/rest/v1/clients?store_id=${storeId}`);
-        if (data) {
-          allClients = data;
-          success = true;
-        }
-      } catch (e) {
-        console.warn('Bridge fetch failed, trying Supabase...');
-      }
+    try {
+      const data = await localBridgeRequest<Client[]>(
+        `/rest/v1/clients?${new URLSearchParams({ store_id: storeId }).toString()}`
+      );
+      setClients(data || []);
+    } catch (error) {
+      console.error('Failed to fetch clients:', error);
+      toast({ title: t('common.error'), description: 'Failed to load clients', variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
-
-    // 2. Try Supabase (Master/Online mode or Fallback)
-    if (!success && navigator.onLine) {
-      try {
-        const { data, error } = await supabase.from('clients').select('*').eq('store_id', storeId).order('name');
-        if (!error && data) {
-          allClients = data;
-          success = true;
-        }
-      } catch (e) {
-        console.error('Supabase fetch failed:', e);
-      }
-    }
-
-    if (success) {
-      setClients(allClients);
-    } else {
-      toast({ title: t('common.error'), description: 'Impossible de charger les clients (Erreur de liaison)', variant: 'destructive' });
-    }
-    setLoading(false);
   };
 
   const fetchServices = async () => {
-    let allServices: ClientService[] = [];
-    let success = false;
-
-    if (isLocalFirst) {
-      try {
-        const data = await localBridgeRequest<ClientService[]>(`/rest/v1/client_services?store_id=${storeId}`);
-        if (data) { allServices = data; success = true; }
-      } catch (e) {}
+    if (!useLocalBridge) return;
+    try {
+      const data = await localBridgeRequest<ClientService[]>(
+        `/rest/v1/client_services?${new URLSearchParams({ store_id: storeId }).toString()}`
+      );
+      setServices(data || []);
+    } catch (error) {
+      console.error('Failed to fetch services:', error);
     }
-
-    if (!success && navigator.onLine) {
-      try {
-        const { data, error } = await supabase.from('client_services').select('*').eq('store_id', storeId).order('name');
-        if (!error && data) { allServices = data; success = true; }
-      } catch (e) {}
-    }
-
-    if (success) setServices(allServices);
   };
 
   const filteredClients = useMemo(() => {
@@ -130,7 +118,10 @@ export function FichiersClientsModule({ storeId }: FichiersClientsModuleProps) {
   }, [clients, searchQuery, storeId]);
 
   const handleSave = async () => {
-    if (!formData.name.trim()) return;
+    if (!formData.name.trim()) {
+      toast({ title: t('common.error'), description: t('inventory.fields.name'), variant: 'destructive' });
+      return;
+    }
 
     const clientData = {
       store_id: storeId,
@@ -143,36 +134,34 @@ export function FichiersClientsModule({ storeId }: FichiersClientsModuleProps) {
       service_id: formData.service_id || null,
     };
 
-    try {
-      if (isLocalFirst) {
+    if (useLocalBridge) {
+      try {
         if (editingClient) {
           const updated = await localBridgeRequest<Client>(`/rest/v1/clients/${editingClient.id}`, {
             method: 'PATCH',
             body: JSON.stringify(clientData),
           });
           updateClient(editingClient.id, updated);
+          toast({ title: t('common.success'), description: t('menu.program.editClient') });
         } else {
           const created = await localBridgeRequest<Client>(`/rest/v1/clients`, {
             method: 'POST',
             body: JSON.stringify(clientData),
           });
           addClient(created);
+          toast({ title: t('common.success'), description: t('menu.program.newClient') });
         }
-      } else {
-        if (editingClient) {
-          const { data, error } = await supabase.from('clients').update(clientData).eq('id', editingClient.id).select().single();
-          if (!error && data) updateClient(editingClient.id, data);
-        } else {
-          const { data, error } = await supabase.from('clients').insert([clientData]).select().single();
-          if (!error && data) addClient(data);
-        }
+      } catch (error) {
+        console.error('Client save error:', error);
+        toast({ title: t('common.error'), variant: 'destructive' });
       }
-      toast({ title: t('common.success') });
-      setIsDialogOpen(false);
-      resetForm();
-    } catch (error) {
-      toast({ title: t('common.error'), variant: 'destructive' });
+    } else {
+      // Fallback or online mode if needed later
+      // For now we assume local bridge is primary
     }
+
+    setIsDialogOpen(false);
+    resetForm();
   };
 
   const handleEdit = (client: Client) => {
@@ -191,16 +180,16 @@ export function FichiersClientsModule({ storeId }: FichiersClientsModuleProps) {
 
   const handleDelete = async (id: string) => {
     if (!confirm(t('inventory.deleteConfirm'))) return;
-    try {
-      if (isLocalFirst) {
+    
+    if (useLocalBridge) {
+      try {
         await localBridgeRequest(`/rest/v1/clients/${id}`, { method: 'DELETE' });
-      } else {
-        await supabase.from('clients').delete().eq('id', id);
+        deleteClient(id);
+        toast({ title: t('common.success') });
+      } catch (error) {
+        console.error('Client delete error:', error);
+        toast({ title: t('common.error'), variant: 'destructive' });
       }
-      deleteClient(id);
-      toast({ title: t('common.success') });
-    } catch (error) {
-      toast({ title: t('common.error'), variant: 'destructive' });
     }
   };
 

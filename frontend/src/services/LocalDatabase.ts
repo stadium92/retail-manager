@@ -71,23 +71,15 @@ export interface LocalSale {
 export interface LocalInventory {
   id: string;
   store_id: string;
-  name: string;
+  product_name: string;
   sku?: string;
-  barcode?: string;
-  description?: string;
-  cost_price?: number;
-  unit_price?: number;
+  quantity: number;
+  unit_price: number;
   wholesale_price?: number;
   wholesale_price_ht?: number;
   wholesale_price_ttc?: number;
-  selling_price_2?: number;
-  selling_price_3?: number;
-  selling_price_4?: number;
-  min_quantity?: number;
-  quantity: number;
+  cost?: number;
   category?: string;
-  category_name?: string;
-  image_url?: string;
   aisle?: string;
   brand?: string;
   unit_type?: string;
@@ -95,8 +87,6 @@ export interface LocalInventory {
   sub_packaging?: string;
   expiry_date?: string;
   reorder_quantity?: number;
-  low_stock_threshold?: number;
-  created_at?: string;
   updated_at: string;
   synced: boolean;
 }
@@ -213,11 +203,6 @@ class LocalDatabaseService {
       const req = storeId ? s.index('store_id').getAll(storeId) : s.getAll();
       req.onsuccess = () => r(req.result || []);
     });
-  }
-
-  async deletePurchaseOrder(id: string): Promise<void> {
-    const db = await this.ensureDb();
-    db.transaction('purchase_orders', 'readwrite').objectStore('purchase_orders').delete(id);
   }
 
   // ==================== SUPPLIERS ====================

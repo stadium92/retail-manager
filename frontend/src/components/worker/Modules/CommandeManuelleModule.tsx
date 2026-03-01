@@ -242,7 +242,7 @@ export function CommandeManuelleModule({ storeId }: CommandeManuelleModuleProps)
           const pieceCost = item.unit_cost;
           
           return {
-            id: crypto.randomUUID(),
+            order_id: '',
             product_id: item.product_id,
             quantity_ordered: qtyInPieces, 
             quantity_received: 0,

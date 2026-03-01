@@ -6,7 +6,6 @@
     "edit": "Modifier",
     "create": "Créer",
     "update": "Mettre à jour",
-    "name": "Nom",
     "search": "Rechercher",
     "filter": "Filtrer",
     "loading": "Chargement...",
@@ -359,8 +358,8 @@
       "price2Discount": "2ème prix (Remise)",
       "price3Bulk": "3ème prix (Gros)",
       "price4Resale": "4ème prix (Revente)",
-      "wholesalePriceHT": "Prix en gros HT",
-      "wholesalePriceTTC": "Prix en gros TTC",
+      "wholesalePriceHT": "Prix Gros HT",
+      "wholesalePriceTTC": "Prix Gros TTC",
       "aisle": "Rayon / Emplacement",
       "packaging": "Conditionnement",
       "expiryDate": "Date de Péremption",
@@ -1007,8 +1006,7 @@
       "assignSuppliersPrompt": "Sélectionner les fournisseurs et confirmer les articles",
       "selectItemsPrompt": "Veuillez sélectionner au moins un article à commander.",
       "selectSupplier": "Sélectionner le fournisseur",
-      "selectSupplierAndConfirm": "Veuillez sélectionner le fournisseur unique pour cette commande et vérifier les articles.",
-      "selectOrderPrompt": "Veuillez sélectionner une commande dans la liste pour commencer la réception."
+      "selectSupplierAndConfirm": "Veuillez sélectionner le fournisseur unique pour cette commande et vérifier les articles."
     },
     "files": {
       "subtitle": "Gestion des tiers (Clients, Fournisseurs)",
@@ -1053,9 +1051,6 @@
       "lossHistory": "Historique des Pertes (Aujourd'hui)",
       "noLossToday": "Aucune perte enregistrée aujourd'hui",
       "currentStock": "Stock Actuel",
-      "stockStatus": "Statut des Stocks",
-      "recordExpense": "Enregistrer une Dépense",
-      "recordExpenseDescription": "Utilisez cet écran pour enregistrer les dépenses diverses (petty cash, fournitures, etc.).",
       "reasons": {
         "expired": "Périmé",
         "broken": "Cassé / Endommagé",

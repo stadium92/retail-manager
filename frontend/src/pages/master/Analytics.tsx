@@ -9,41 +9,22 @@ import { OfflineStoreService } from '@/services/OfflineStoreService';
 
 export default function AnalyticsPage() {
   const { t } = useTranslation();
-  const { stores, setStores, setUsers } = useMasterDataStore();
+  const { stores, setStores } = useMasterDataStore();
   const { selectedStoreIds, isAllStoresSelected, version } = useMasterDashboardStore();
 
   const [activeTab, setActiveTab] = useState<'tableau-bord' | 'statistiques' | 'journal-caisse'>(() => {
     return (localStorage.getItem('master_analytics_tab') as any) || 'tableau-bord';
   });
 
-  // Fetch stores and users if not available
+  // Fetch stores if not available (fixes "no data" when "All stores" is selected)
   useEffect(() => {
-    const loadGlobalData = async () => {
-      const { getDataClient } = await import('@/lib/dataClient');
-      const { OfflineAuthService } = await import('@/services/OfflineAuthService');
-      const dc = getDataClient();
-      
-      // Load Stores
+    const loadStores = async () => {
       if (!stores || stores.length === 0) {
         const { data } = await OfflineStoreService.getStores();
         if (data) setStores(data);
       }
-
-      // Load Users for name resolution
-      try {
-        if (dc.isLocalFirst) {
-            const headers = await OfflineAuthService.getAuthHeaders();
-            const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/users`, { headers });
-            if (res.ok) setUsers(await res.json());
-        } else {
-            const { data } = await dc.supabase.from('profiles').select('*');
-            if (data) setUsers(data as any);
-        }
-      } catch (e) {
-          console.warn('Failed to load users for analytics');
-      }
     };
-    loadGlobalData();
+    loadStores();
   }, []);
 
   const activeStoreIds = useMemo(() => {

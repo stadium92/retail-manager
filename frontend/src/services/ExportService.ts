@@ -47,7 +47,10 @@ export class ExportService {
     doc.setFontSize(10);
     doc.text(`Exported on: ${new Date().toLocaleString()}`, 14, 22);
 
-    const totalColIndex = columns.findIndex(c => c.dataKey.toLowerCase().includes('total') || c.dataKey.toLowerCase().includes('valeur'));
+    const totalColIndex = columns.findIndex(c => 
+        c.dataKey.toLowerCase().includes('total') || 
+        c.dataKey.toLowerCase().includes('valeur')
+    );
     let runningTotal = 0;
     
     // Add table
@@ -57,7 +60,7 @@ export class ExportService {
       foot: [columns.map((col, idx) => idx === 0 ? 'TOTAL (Cumul)' : '')],
       showFoot: 'everyPage',
       startY: 30,
-      styles: { fontSize: 7 },
+      styles: { fontSize: 6 }, // Slightly smaller for more columns
       headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
       footStyles: { 
         fillColor: [22, 163, 74], 
@@ -72,9 +75,9 @@ export class ExportService {
             runningTotal += val;
           }
         }
-        if (hookData.section === 'foot' && hookData.column.index === totalColIndex) {
-          hookData.cell.text = [runningTotal.toLocaleString() + ' F'];
-          hookData.cell.styles.halign = 'right'; 
+        if (data.section === 'foot' && data.column.index === totalColIndex) {
+          data.cell.text = [runningTotal.toLocaleString() + ' F'];
+          data.cell.styles.halign = 'right'; 
         }
       }
     });
@@ -169,6 +172,9 @@ export class ExportService {
       quantity: labels.quantity || 'Qté (PCS)',
       price: labels.price || 'Prix Détail',
       wholesale: labels.wholesale || 'Prix Gros',
+      wholesaleHT: labels.wholesaleHT || 'Prix Gros HT',
+      discount: labels.discount || 'Prix Remise',
+      resale: labels.resale || 'Prix Revente',
       cost: labels.cost || 'Prix Achat',
       value: labels.value || 'Valeur (Détail)',
       threshold: labels.threshold || 'Seuil',
@@ -183,7 +189,10 @@ export class ExportService {
       [l.packaging]: item.packaging || '1',
       [l.quantity]: item.quantity,
       [l.price]: Number(item.price || 0),
-      [l.wholesale]: Number(item.selling_price_wholesale || item.wholesale_price_ttc || 0),
+      [l.discount]: Number(item.selling_price_2 || 0),
+      [l.wholesale]: Number(item.wholesale_price_ttc || item.selling_price_3 || 0),
+      [l.wholesaleHT]: Number(item.wholesale_price_ht || 0),
+      [l.resale]: Number(item.selling_price_4 || 0),
       [l.cost]: Number(item.cost || 0),
       [l.value]: Number(item.quantity || 0) * Number(item.price || 0),
       [l.threshold]: item.low_stock_threshold || '',
