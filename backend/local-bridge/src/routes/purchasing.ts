@@ -32,11 +32,19 @@ const supplierUpdateSchema = z.object({
 });
 
 const orderCreateSchema = z.object({
+  id: z.string().optional(),
   store_id: z.string().optional(),
   supplier_id: z.string().min(1),
   status: z.enum(['draft', 'ordered', 'received', 'partial']).optional(),
   total_amount: z.number().optional(),
   notes: z.string().nullable().optional(),
+  items: z.array(z.object({
+    id: z.string().optional(),
+    product_id: z.string().min(1),
+    quantity_ordered: z.number().min(0),
+    quantity_received: z.number().min(0),
+    unit_cost: z.number().min(0),
+  })).optional()
 });
 
 const orderUpdateSchema = z.object({
@@ -453,7 +461,7 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
     }
 
     const now = new Date().toISOString();
-    const orderId = crypto.randomUUID();
+    const orderId = parsed.data.id || crypto.randomUUID();
     db.insertPurchaseOrder({
       id: orderId,
       store_id: storeId,
@@ -464,6 +472,20 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
       created_at: now,
       updated_at: now,
     });
+
+    if (parsed.data.items && parsed.data.items.length > 0) {
+      for (const item of parsed.data.items) {
+        db.insertPurchaseItem({
+          id: item.id || crypto.randomUUID(),
+          order_id: orderId,
+          product_id: item.product_id,
+          quantity_ordered: item.quantity_ordered,
+          quantity_received: item.quantity_received,
+          unit_cost: item.unit_cost,
+          created_at: now,
+        });
+      }
+    }
 
     return reply.status(201).send(db.getPurchaseOrderById(orderId));
   });
