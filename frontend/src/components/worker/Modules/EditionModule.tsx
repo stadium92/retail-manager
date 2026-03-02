@@ -410,7 +410,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                         <TableHead className="text-[10px] uppercase font-bold">{t('menu.program.time')}</TableHead>
                         <TableHead className="text-[10px] uppercase font-bold">{t('common.type')}</TableHead>
                         <TableHead className="text-[10px] uppercase font-bold">{t('inventory.fields.description')}</TableHead>
-                        <TableHead className="text-[10px] uppercase font-bold text-center">Réf. Commande</TableHead>
+                        <TableHead className="text-[10px] uppercase font-bold text-center">{t('edition.orderRef')}</TableHead>
                         <TableHead className="text-[10px] uppercase font-bold text-right">{t('menu.program.debit')}</TableHead>
                         <TableHead className="text-[10px] uppercase font-bold text-right">{t('menu.program.credit')}</TableHead>
                       </TableRow>
@@ -483,14 +483,14 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                     <TableHeader className="sticky top-0 bg-background">
                       <TableRow>
                         <TableHead className="text-xs">{t('menu.program.time')}</TableHead>
-                        <TableHead className="text-xs">Réf. Commande</TableHead>
-                        <TableHead className="text-xs">Type</TableHead>
-                        <TableHead className="text-xs">Statut</TableHead>
+                        <TableHead className="text-xs">{t('edition.orderRef')}</TableHead>
+                        <TableHead className="text-xs">{t('common.type')}</TableHead>
+                        <TableHead className="text-xs">{t('common.status')}</TableHead>
                         <TableHead className="text-xs">{t('inventory.table.name')}</TableHead>
-                        <TableHead className="text-xs text-center">Qté</TableHead>
-                        <TableHead className="text-xs text-right">P.U.</TableHead>
-                        <TableHead className="text-xs text-right">Total</TableHead>
-                        <TableHead className="text-xs">Vendeur</TableHead>
+                        <TableHead className="text-xs text-center">{t('pos.grid.headers.qty')}</TableHead>
+                        <TableHead className="text-xs text-right">{t('pos.grid.headers.price')}</TableHead>
+                        <TableHead className="text-xs text-right">{t('common.total')}</TableHead>
+                        <TableHead className="text-xs">{t('edition.seller')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -503,12 +503,12 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                             <TableCell className="text-xs font-mono">{sale.order_ref || '—'}</TableCell>
                             <TableCell>
                               <Badge variant={sale.sale_type === 'proforma' ? 'secondary' : 'default'} className="text-[9px] uppercase font-bold px-1">
-                                {sale.sale_type === 'proforma' ? 'Sauvegardé' : sale.sale_type === 'gros' ? 'Gros' : 'Détail'}
+                                {sale.sale_type === 'proforma' ? t('edition.saved') : sale.sale_type === 'gros' ? t('edition.wholesale') : t('edition.retail')}
                               </Badge>
                             </TableCell>
                             <TableCell>
                               <Badge variant={sale.payment_status === 'paid' ? 'success' : 'warning'} className={cn("text-[9px] uppercase font-bold px-1", sale.payment_status === 'paid' && "bg-success text-white")}>
-                                {sale.payment_status === 'paid' ? 'Payé' : 'En attente'}
+                                {sale.payment_status === 'paid' ? t('edition.paid') : t('edition.pending')}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-xs font-medium uppercase">{getProductName(item)}</TableCell>
@@ -583,14 +583,14 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                       <TableRow className="bg-muted/30">
                         <TableHead className="text-[10px] uppercase font-bold">{t('storeDetails.sales.table.date')}</TableHead>
                         <TableHead className="text-[10px] uppercase font-bold">{t('sales.invoice_number', 'N° Facture')}</TableHead>
-                        <TableHead className="text-[10px] uppercase font-bold">Réf. Commande</TableHead>
-                        <TableHead className="text-[10px] uppercase font-bold">Type</TableHead>
-                        <TableHead className="text-[10px] uppercase font-bold">Statut</TableHead>
+                        <TableHead className="text-[10px] uppercase font-bold">{t('edition.orderRef')}</TableHead>
+                        <TableHead className="text-[10px] uppercase font-bold">{t('common.type')}</TableHead>
+                        <TableHead className="text-[10px] uppercase font-bold">{t('common.status')}</TableHead>
                         <TableHead className="text-[10px] uppercase font-bold">{t('pos.totals.customer')}</TableHead>
-                        <TableHead className="text-[10px] uppercase font-bold">Produits</TableHead>
-                        <TableHead className="text-[10px] uppercase font-bold">Vendeur</TableHead>
-                        <TableHead className="text-[10px] uppercase font-bold text-right">Total</TableHead>
-                        <TableHead className="text-[10px] uppercase font-bold text-center">Actions</TableHead>
+                        <TableHead className="text-[10px] uppercase font-bold">{t('menu.program.items')}</TableHead>
+                        <TableHead className="text-[10px] uppercase font-bold">{t('edition.seller')}</TableHead>
+                        <TableHead className="text-[10px] uppercase font-bold text-right">{t('common.total')}</TableHead>
+                        <TableHead className="text-[10px] uppercase font-bold text-center">{t('common.actions')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -603,12 +603,12 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                           <TableCell className="text-xs font-mono">{sale.order_ref || '—'}</TableCell>
                           <TableCell>
                             <Badge variant={sale.sale_type === 'proforma' ? 'secondary' : 'default'} className="text-[9px] uppercase font-bold px-1">
-                              {sale.sale_type === 'proforma' ? 'Sauvegardé' : sale.sale_type === 'gros' ? 'Gros' : 'Détail'}
+                              {sale.sale_type === 'proforma' ? t('edition.saved') : sale.sale_type === 'gros' ? t('edition.wholesale') : t('edition.retail')}
                             </Badge>
                           </TableCell>
                           <TableCell>
                             <Badge variant={sale.payment_status === 'paid' ? 'success' : 'warning'} className={cn("text-[9px] uppercase font-bold px-1", sale.payment_status === 'paid' && "bg-success text-white")}>
-                              {sale.payment_status === 'paid' ? 'Payé' : 'En attente'}
+                              {sale.payment_status === 'paid' ? t('edition.paid') : t('edition.pending')}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-xs font-bold uppercase">{sale.customer_name || t('customer.counterClient')}</TableCell>
@@ -680,7 +680,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                         <TableHead className="text-[10px] uppercase font-bold w-12">#</TableHead>
                         <TableHead className="text-[10px] uppercase font-bold">{t('inventory.table.name')}</TableHead>
                         <TableHead className="text-[10px] uppercase font-bold text-center">{t('inventory.table.quantity')}</TableHead>
-                        <TableHead className="text-[10px] uppercase font-bold text-right">Total CA</TableHead>
+                        <TableHead className="text-[10px] uppercase font-bold text-right">{t('edition.totalRevenue')}</TableHead>
                         <TableHead className="text-[10px] uppercase font-bold text-right">%</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -729,7 +729,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                 </PopoverContent>
               </Popover>
               <div className="flex items-center gap-2 ml-auto">
-                <span className="text-lg font-black text-primary font-mono">TOTAL: {formatCurrency(totalPurchases)}</span>
+                <span className="text-lg font-black text-primary font-mono">{t('common.total')}: {formatCurrency(totalPurchases)}</span>
                 <OfflineIndicator />
               </div>
             </div>

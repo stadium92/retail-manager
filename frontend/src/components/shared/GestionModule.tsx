@@ -712,7 +712,7 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
                       <AlertTriangle className="h-5 w-5 text-warning" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Alertes Stock</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t('inventory.stockAlerts')}</p>
                       <p className="text-lg font-bold text-warning">{lowStockQuery.total}</p>
                     </div>
                   </div>

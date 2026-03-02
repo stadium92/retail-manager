@@ -62,11 +62,11 @@ export default function InventoryPage() {
               <div className="flex justify-between items-center mb-4">
                   <h2 className="text-lg font-black uppercase tracking-tighter flex items-center gap-2">
                       <Plus className="h-5 w-5 text-primary" />
-                      AJOUTER UN NOUVEL ARTICLE
+                      {t('inventory.addNewItem')}
                   </h2>
                   <Button variant="ghost" size="sm" onClick={() => setIsAddingNew(false)} className="h-8 w-8 rounded-full"><X className="h-4 w-4" /></Button>
               </div>
-              <p className="text-sm text-muted-foreground mb-6 uppercase font-bold tracking-widest opacity-60">Veuillez sélectionner un magasin ci-dessous pour ajouter un article.</p>
+              <p className="text-sm text-muted-foreground mb-6 uppercase font-bold tracking-widest opacity-60">{t('inventory.selectStoreToAdd')}</p>
           </div>
       )}
 
@@ -75,11 +75,11 @@ export default function InventoryPage() {
             <TabsList className="bg-transparent border-none">
                 <TabsTrigger value="list" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold uppercase tracking-widest text-[10px] rounded-lg transition-all px-6">
                     <Package className="h-3.5 w-3.5 mr-2" />
-                    Inventaire Global
+                    {t('inventory.globalInventory')}
                 </TabsTrigger>
                 <TabsTrigger value="valuation" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold uppercase tracking-widest text-[10px] rounded-lg transition-all px-6">
                     <ShieldCheck className="h-3.5 w-3.5 mr-2" />
-                    Valorisation
+                    {t('inventory.valuation')}
                 </TabsTrigger>
             </TabsList>
         </div>

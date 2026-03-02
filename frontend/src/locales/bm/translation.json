@@ -58,7 +58,10 @@
     "about": "Kan na",
     "searching": "Ɲinini bɛ kɛ...",
     "alreadyAdded": "A bɛ yen lisɛ la kaban",
-    "added": "A fàrala lisɛ la"
+    "added": "A fàrala lisɛ la",
+    "enterConfirm": "ENTER: Dɔn",
+    "escClose": "ESC: Datugu",
+    "itemsFound": "{{count}} bɛnɛ sɔrɔla"
   },
   "helpCenter": {
     "title": "Dɛmɛ Yɔrɔ",
@@ -405,7 +408,12 @@
       "reorderQuantity": "Hakɛ ka Dɔ",
       "packagingShort": "Cndt.",
       "initialQuantity": "Jɛlen fɔlɔ",
-      "packagingPlaceholder": "Misali: 12"
+      "packagingPlaceholder": "Misali: 12",
+      "barcodeOrSku": "Barcode / SKU",
+      "familyOrCategory": "Jamu / Bɔlɔ",
+      "price2": "Sɔngɔ 2nan",
+      "price3": "Sɔngɔ 3nan",
+      "price4": "Sɔngɔ 4nan"
     },
     "selectStore": "Ka magasin sugandi",
     "editItemDescription": "Ka bɛnɛ kunnafoni yɛlɛma",
@@ -465,7 +473,25 @@
       "paquet": "Paquet",
       "sac": "Sac"
     },
-    "saveMultipleItems": "{{count}} bɛnɛ mara"
+    "saveMultipleItems": "{{count}} bɛnɛ mara",
+    "margin": "Nafolo",
+    "calculatedMargin": "Nafolo jatelen:",
+    "generalInfo": "Kunnafoni Jamanaw",
+    "pricesAndMargins": "Sɔngɔw ni Nafolow",
+    "stockAndPackaging": "Bɛnɛ ni Siratigɛ",
+    "importFromExisting": "Ka bɔ bɛnɛ bɛ yen la",
+    "addNewItem": "Bɛnɛ kura fàra",
+    "selectStoreToAdd": "Magasin sugandi ka bɛnɛ fàra.",
+    "globalInventory": "Bɛnɛ bɛɛ",
+    "valuation": "Sɔngɔ jateli",
+    "stockAlerts": "Bɛnɛ lasɔmini",
+    "availableStock": "Bɛnɛ bɛ yen",
+    "alertThreshold": "Lasɔmini dàn: {{threshold}}",
+    "units": "{{count}}",
+    "sellingPrice": "Feere sɔngɔ",
+    "purchasePrice": "San sɔngɔ",
+    "currentLine": "Sira bɛ yen",
+    "lineTotal": "Sira bɛɛ"
   },
   "stores": {
     "title": "Magasin",
@@ -998,7 +1024,9 @@
     "realTimeDetails": "ka kɛnɛ dɔn sisan",
     "stockOut": "Bɛnɛ banna",
     "stockLow": "Bɛnɛ dɔgɔma",
-    "stockNormal": "Bɛnɛ bɛ"
+    "stockNormal": "Bɛnɛ bɛ",
+    "currentLine": "Sira bɛ yen",
+    "lineTotal": "Sira bɛɛ"
   },
   "menu": {
     "sales": {
@@ -1587,5 +1615,15 @@
     "success": {
       "deleted": "A bɔra ni ɲɛ ye."
     }
+  },
+  "edition": {
+    "orderRef": "Cikan jɛtigɛlan",
+    "seller": "Feerekɛla",
+    "saved": "A marala",
+    "wholesale": "Janfa",
+    "retail": "Yɛlɛnkan",
+    "paid": "A sara",
+    "pending": "A bɛ makɔnɔ",
+    "totalRevenue": "Bɛɛ Wari"
   }
 }

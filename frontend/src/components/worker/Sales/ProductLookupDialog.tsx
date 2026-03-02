@@ -214,10 +214,10 @@ export function ProductLookupDialog({
         <div className={cn("px-6 py-3 font-black uppercase tracking-widest text-[10px] flex items-center justify-between shrink-0 border-t", standalone ? "bg-card text-muted-foreground" : "bg-[hsl(180,60%,75%)] text-black/70")}>
           <div className="flex gap-6">
             <span>↑↓ Navigation</span>
-            <span>ENTRÉE: Confirmer</span>
-            <span>ESC: Fermer</span>
+            <span>{t('common.enterConfirm')}</span>
+            <span>{t('common.escClose')}</span>
           </div>
-          <span>{results.length} ARTICLES TROUVÉS</span>
+          <span>{t('common.itemsFound', { count: results.length })}</span>
         </div>
       </DialogContent>
     </Dialog>

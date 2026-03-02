@@ -58,7 +58,10 @@
     "about": "About",
     "searching": "Searching...",
     "alreadyAdded": "Already added to list",
-    "added": "Added to list"
+    "added": "Added to list",
+    "enterConfirm": "ENTER: Confirm",
+    "escClose": "ESC: Close",
+    "itemsFound": "{{count}} items found"
   },
   "helpCenter": {
     "title": "Help Center",
@@ -324,7 +327,12 @@
       "minStock": "Min Stock",
       "packagingShort": "Pkg.",
       "initialQuantity": "Initial Quantity",
-      "packagingPlaceholder": "e.g. 12"
+      "packagingPlaceholder": "e.g. 12",
+      "barcodeOrSku": "Barcode / SKU",
+      "familyOrCategory": "Family / Category",
+      "price2": "Price 2",
+      "price3": "Price 3",
+      "price4": "Price 4"
     },
     "selectStore": "Select store",
     "editItemDescription": "Update inventory item information",
@@ -383,7 +391,25 @@
       "sac": "Bag"
     },
     "allFamilies": "All Families",
-    "saveMultipleItems": "Save {{count}} Items"
+    "saveMultipleItems": "Save {{count}} Items",
+    "margin": "Margin",
+    "calculatedMargin": "Calculated margin:",
+    "generalInfo": "General Information",
+    "pricesAndMargins": "Prices & Margins",
+    "stockAndPackaging": "Stock & Packaging",
+    "importFromExisting": "Import from existing item",
+    "addNewItem": "Add a New Item",
+    "selectStoreToAdd": "Please select a store below to add an item.",
+    "globalInventory": "Global Inventory",
+    "valuation": "Valuation",
+    "stockAlerts": "Stock Alerts",
+    "availableStock": "Available Stock",
+    "alertThreshold": "Alert threshold: {{threshold}} units",
+    "units": "{{count}} units",
+    "sellingPrice": "Selling Price",
+    "purchasePrice": "Purchase Price",
+    "currentLine": "Current Line",
+    "lineTotal": "Line Total"
   },
   "stores": {
     "title": "Stores",
@@ -916,7 +942,9 @@
     "realTimeDetails": "to see details in real time",
     "stockOut": "Out of Stock",
     "stockLow": "Low Stock",
-    "stockNormal": "In Stock"
+    "stockNormal": "In Stock",
+    "currentLine": "Current Line",
+    "lineTotal": "Line Total"
   },
   "menu": {
     "sales": {
@@ -1644,5 +1672,15 @@
       "databaseRepaired": "Database repaired and optimized.",
       "databaseReset": "Database wiped and reset to factory defaults."
     }
+  },
+  "edition": {
+    "orderRef": "Order Ref.",
+    "seller": "Seller",
+    "saved": "Saved",
+    "wholesale": "Wholesale",
+    "retail": "Retail",
+    "paid": "Paid",
+    "pending": "Pending",
+    "totalRevenue": "Total Revenue"
   }
 }

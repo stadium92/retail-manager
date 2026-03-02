@@ -58,7 +58,10 @@
     "about": "À propos",
     "searching": "Recherche en cours...",
     "alreadyAdded": "Déjà ajouté à la liste",
-    "added": "Ajouté à la liste"
+    "added": "Ajouté à la liste",
+    "enterConfirm": "ENTRÉE: Confirmer",
+    "escClose": "ESC: Fermer",
+    "itemsFound": "{{count}} articles trouvés"
   },
   "helpCenter": {
     "title": "Centre d'Aide",
@@ -387,7 +390,12 @@
       "allFamilies": "Toutes les Familles",
       "packagingShort": "Cndt.",
       "initialQuantity": "Quantité Initiale",
-      "packagingPlaceholder": "Ex: 12"
+      "packagingPlaceholder": "Ex: 12",
+      "barcodeOrSku": "Code Barre / SKU",
+      "familyOrCategory": "Famille / Catégorie",
+      "price2": "2ème Prix",
+      "price3": "3ème Prix",
+      "price4": "4ème Prix"
     },
     "failedToDeleteItem": "Échec de la suppression de l'article",
     "itemDeletedSuccessfully": "Article supprimé avec succès",
@@ -457,7 +465,25 @@
       "paquet": "Paquet",
       "sac": "Sac"
     },
-    "saveMultipleItems": "Enregistrer les {{count}} Articles"
+    "saveMultipleItems": "Enregistrer les {{count}} Articles",
+    "margin": "Marge",
+    "calculatedMargin": "Marge calculée :",
+    "generalInfo": "Informations Générales",
+    "pricesAndMargins": "Prix et Marges",
+    "stockAndPackaging": "Stock et Conditionnement",
+    "importFromExisting": "Importer depuis un article existant",
+    "addNewItem": "Ajouter un Nouvel Article",
+    "selectStoreToAdd": "Veuillez sélectionner un magasin ci-dessous pour ajouter un article.",
+    "globalInventory": "Inventaire Global",
+    "valuation": "Valorisation",
+    "stockAlerts": "Alertes Stock",
+    "availableStock": "Stock Disponible",
+    "alertThreshold": "Seuil d'alerte : {{threshold}} unités",
+    "units": "{{count}} unités",
+    "sellingPrice": "Prix de vente",
+    "purchasePrice": "Prix d'achat",
+    "currentLine": "Ligne actuelle",
+    "lineTotal": "Total ligne"
   },
   "stores": {
     "title": "Magasins",
@@ -990,7 +1016,9 @@
     "realTimeDetails": "pour voir les détails en temps réel",
     "stockOut": "Rupture",
     "stockLow": "Stock Bas",
-    "stockNormal": "En Stock"
+    "stockNormal": "En Stock",
+    "currentLine": "Ligne actuelle",
+    "lineTotal": "Total ligne"
   },
   "menu": {
     "sales": {
@@ -1644,5 +1672,15 @@
       "databaseRepaired": "Base de données réparée et optimisée.",
       "databaseReset": "Base de données effacée et réinitialisée aux paramètres d'usine."
     }
+  },
+  "edition": {
+    "orderRef": "Réf. Commande",
+    "seller": "Vendeur",
+    "saved": "Sauvegardé",
+    "wholesale": "Gros",
+    "retail": "Détail",
+    "paid": "Payé",
+    "pending": "En attente",
+    "totalRevenue": "Total CA"
   }
 }

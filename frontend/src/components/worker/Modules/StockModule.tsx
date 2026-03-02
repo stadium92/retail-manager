@@ -341,7 +341,7 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
                       <TableHead className="text-xs text-right">{t('inventory.fields.wholesalePriceShort')}</TableHead>
                       <TableHead className="text-xs text-right">{t('menu.program.value')}</TableHead>
                       <TableHead className="text-xs text-center">{t('purchases.status')}</TableHead>
-                      <TableHead className="text-xs text-right">Marge</TableHead>
+                      <TableHead className="text-xs text-right">{t('inventory.margin')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -389,47 +389,47 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
                 <div className="flex-1 overflow-y-auto p-6">
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="space-y-6">
-                      <h3 className="text-lg font-semibold border-b pb-2">Informations Générales</h3>
+                      <h3 className="text-lg font-semibold border-b pb-2">{t('inventory.generalInfo')}</h3>
                       <div className="space-y-4">
                         <div className="space-y-2"><Label>{t('inventory.fields.name')} *</Label><Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required className="h-12 text-lg" /></div>
                         <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2"><Label>Code Barre / SKU</Label>
+                          <div className="space-y-2"><Label>{t('inventory.fields.barcodeOrSku')}</Label>
                             <div className="flex gap-2">
                               <Input value={formData.sku} onChange={e => setFormData({...formData, sku: e.target.value})} />
                               <Button type="button" variant="outline" size="icon" onClick={() => setIsScanningForSku(true)}><Barcode className="h-4 w-4" /></Button>
                             </div>
                           </div>
-                          <div className="space-y-2"><Label>Famille / Catégorie</Label>
+                          <div className="space-y-2"><Label>{t('inventory.fields.familyOrCategory')}</Label>
                             <Select value={formData.category_id} onValueChange={v => setFormData({...formData, category_id: v})}>
                               <SelectTrigger><SelectValue placeholder={t('common.search')} /></SelectTrigger>
                               <SelectContent>{families.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent>
                             </Select>
                           </div>
                         </div>
-                        <div className="space-y-2"><Label>Marque</Label><Input value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} /></div>
-                        <div className="space-y-2"><Label>Rayon / Emplacement</Label><Input value={formData.aisle} onChange={e => setFormData({...formData, aisle: e.target.value})} /></div>
-                        <div className="space-y-2"><Label>Description</Label><Textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} rows={3} /></div>
+                        <div className="space-y-2"><Label>{t('inventory.fields.brand')}</Label><Input value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} /></div>
+                        <div className="space-y-2"><Label>{t('inventory.fields.aisle')}</Label><Input value={formData.aisle} onChange={e => setFormData({...formData, aisle: e.target.value})} /></div>
+                        <div className="space-y-2"><Label>{t('inventory.description')}</Label><Textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} rows={3} /></div>
                       </div>
                     </div>
                     <div className="space-y-6">
-                      <h3 className="text-lg font-semibold border-b pb-2">Prix et Marges</h3>
+                      <h3 className="text-lg font-semibold border-b pb-2">{t('inventory.pricesAndMargins')}</h3>
                       <div className="space-y-4">
                         <div className="space-y-2"><Label className="text-primary font-bold">{t('inventory.fields.retailPrice')} *</Label><Input type="number" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} required className="h-12 text-lg font-bold border-primary/50" /></div>
                         <div className="grid grid-cols-3 gap-3">
-                          <div className="space-y-2"><Label className="text-xs">2ème Prix</Label><Input type="number" value={formData.selling_price_2} onChange={e => setFormData({...formData, selling_price_2: e.target.value})} /></div>
-                          <div className="space-y-2"><Label className="text-xs">3ème Prix</Label><Input type="number" value={formData.selling_price_3} onChange={e => setFormData({...formData, selling_price_3: e.target.value})} /></div>
-                          <div className="space-y-2"><Label className="text-xs">4ème Prix</Label><Input type="number" value={formData.selling_price_4} onChange={e => setFormData({...formData, selling_price_4: e.target.value})} /></div>
+                          <div className="space-y-2"><Label className="text-xs">{t('inventory.fields.price2')}</Label><Input type="number" value={formData.selling_price_2} onChange={e => setFormData({...formData, selling_price_2: e.target.value})} /></div>
+                          <div className="space-y-2"><Label className="text-xs">{t('inventory.fields.price3')}</Label><Input type="number" value={formData.selling_price_3} onChange={e => setFormData({...formData, selling_price_3: e.target.value})} /></div>
+                          <div className="space-y-2"><Label className="text-xs">{t('inventory.fields.price4')}</Label><Input type="number" value={formData.selling_price_4} onChange={e => setFormData({...formData, selling_price_4: e.target.value})} /></div>
                         </div>
                         <div className="space-y-2"><Label>{t('inventory.fields.purchasePrice')}</Label><Input type="number" value={formData.cost} onChange={e => setFormData({...formData, cost: e.target.value})} /></div>
                         <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2"><Label>Prix de Gros (HT)</Label><Input type="number" value={formData.wholesale_price_ht} onChange={e => setFormData({...formData, wholesale_price_ht: e.target.value})} /></div>
-                          <div className="space-y-2"><Label>Prix de Gros (TTC)</Label><Input type="number" value={formData.wholesale_price_ttc} onChange={e => setFormData({...formData, wholesale_price_ttc: e.target.value})} /></div>
+                          <div className="space-y-2"><Label>{t('inventory.fields.wholesalePriceHT')}</Label><Input type="number" value={formData.wholesale_price_ht} onChange={e => setFormData({...formData, wholesale_price_ht: e.target.value})} /></div>
+                          <div className="space-y-2"><Label>{t('inventory.fields.wholesalePriceTTC')}</Label><Input type="number" value={formData.wholesale_price_ttc} onChange={e => setFormData({...formData, wholesale_price_ttc: e.target.value})} /></div>
                         </div>
-                        <Card className="bg-muted/50 border-none mt-4"><CardContent className="p-4"><div className="flex justify-between items-center"><span className="text-muted-foreground">Marge calculée:</span><span className="text-xl font-bold text-primary">{marginPercent}%</span></div></CardContent></Card>
+                        <Card className="bg-muted/50 border-none mt-4"><CardContent className="p-4"><div className="flex justify-between items-center"><span className="text-muted-foreground">{t('inventory.calculatedMargin')}</span><span className="text-xl font-bold text-primary">{marginPercent}%</span></div></CardContent></Card>
                       </div>
                     </div>
                     <div className="space-y-6">
-                      <h3 className="text-lg font-semibold border-b pb-2">Stock et Conditionnement</h3>
+                      <h3 className="text-lg font-semibold border-b pb-2">{t('inventory.stockAndPackaging')}</h3>
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2"><Label>{t('inventory.fields.unitType')}</Label>
@@ -438,7 +438,7 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
                               <SelectContent><SelectItem value="Pièce">{t('inventory.unitTypes.piece')}</SelectItem><SelectItem value="Kg">{t('inventory.unitTypes.kg')}</SelectItem><SelectItem value="L">{t('inventory.unitTypes.litre')}</SelectItem><SelectItem value="Carton">{t('inventory.unitTypes.carton')}</SelectItem></SelectContent>
                             </Select>
                           </div>
-                          <div className="space-y-2"><Label>{t('inventory.fields.packaging')}</Label><Input value={formData.packaging} onChange={e => setFormData({...formData, packaging: e.target.value})} placeholder="Ex: 12" /></div>
+                          <div className="space-y-2"><Label>{t('inventory.fields.packaging')}</Label><Input value={formData.packaging} onChange={e => setFormData({...formData, packaging: e.target.value})} placeholder={t('inventory.fields.packagingPlaceholder')} /></div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2"><Label>{t('inventory.fields.quantity')} *</Label><Input type="number" value={formData.quantity} onChange={e => setFormData({...formData, quantity: e.target.value})} required /></div>
