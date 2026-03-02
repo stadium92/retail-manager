@@ -130,14 +130,16 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
         let newQtyReceived = item.quantity_received;
         let newCost = item.unit_cost;
 
+        const formatValue = (num: number) => Number(Number(num).toFixed(4));
+
         if (newIsBox) {
-            newQtyOrdered = newQtyOrdered / item.packSize;
-            newQtyReceived = newQtyReceived / item.packSize;
-            newCost = newCost * item.packSize;
+            newQtyOrdered = formatValue(newQtyOrdered / item.packSize);
+            newQtyReceived = formatValue(newQtyReceived / item.packSize);
+            newCost = formatValue(newCost * item.packSize);
         } else {
-            newQtyOrdered = newQtyOrdered * item.packSize;
-            newQtyReceived = newQtyReceived * item.packSize;
-            newCost = newCost / item.packSize;
+            newQtyOrdered = formatValue(newQtyOrdered * item.packSize);
+            newQtyReceived = formatValue(newQtyReceived * item.packSize);
+            newCost = formatValue(newCost / item.packSize);
         }
 
         return { ...item, isBox: newIsBox, quantity_ordered: newQtyOrdered, quantity_received: newQtyReceived, unit_cost: newCost };

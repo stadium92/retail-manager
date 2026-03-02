@@ -185,12 +185,14 @@ export function ReplenishmentNeeds({ storeId }: Props) {
       let newQty = item.order_qty || 0;
       let newCost = item.unit_cost || 0;
 
+      const formatValue = (num: number) => Number(Number(num).toFixed(4));
+
       if (newIsBox) {
-        newQty = newQty / item.packSize;
-        newCost = newCost * item.packSize;
+        newQty = formatValue(newQty / item.packSize);
+        newCost = formatValue(newCost * item.packSize);
       } else {
-        newQty = newQty * item.packSize;
-        newCost = newCost / item.packSize;
+        newQty = formatValue(newQty * item.packSize);
+        newCost = formatValue(newCost / item.packSize);
       }
       
       return { ...item, isBox: newIsBox, order_qty: newQty, unit_cost: newCost };

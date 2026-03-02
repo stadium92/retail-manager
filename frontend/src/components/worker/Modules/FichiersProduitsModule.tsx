@@ -47,6 +47,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     selling_price_wholesale: 0 as number | string,
     selling_price_ht: 0 as number | string, 
     selling_price_ttc: 0 as number | string, 
+    quantity: 0 as number | string,
     min_stock_alert: 10 as number | string,
     unit_type: 'Pièce', family_id: '', brand: '', aisle: '', preferred_supplier_id: '',
     packaging: '1', reorder_quantity: 0 as number | string, expiry_date: '', image_url: '',
@@ -94,7 +95,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
         const isNewUnitBox = isBoxUnit(newUnit);
         const isOldUnitBox = isBoxUnit(item.unit_type);
 
-        const formatValue = (num: number) => Number(num.toFixed(4));
+        const formatValue = (num: number) => Number(Number(num).toFixed(4));
 
         if (isNewUnitBox !== isOldUnitBox && packSize > 1) {
             const multiplier = isNewUnitBox ? packSize : (1 / packSize);
@@ -251,8 +252,9 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
 
         toast({ title: t('common.success') });
         setIsDialogOpen(false);
-        fetchData();
+        await fetchData();
     } catch (err: any) {
+        console.error('[FichiersProduits] Save error:', err);
         toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
     } finally {
         setIsSaving(false);
