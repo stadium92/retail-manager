@@ -133,6 +133,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
           purchase_price: item.cost || (item as any).cost_price || 0,
           selling_price_detail: item.price || (item as any).unit_price || 0,
           current_stock: item.quantity ?? (item as any).stock ?? (item as any).current_stock ?? 0,
+          min_stock_alert: item.low_stock_threshold ?? (item as any).min_quantity ?? 0,
           unit_type: item.unit_type || 'Pièce',
           family_id: item.category_id || (item as any).category || (item as any).family_id,
           brand: item.brand || '',
