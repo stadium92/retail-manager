@@ -39,7 +39,7 @@ export interface PurchaseItem {
   quantity_ordered: number;
   quantity_received: number;
   unit_cost: number;
-  product?: { id: string; name: string; quantity: number; min_quantity: number; cost_price: number; packaging: string };
+  product?: { id: string; name: string; quantity: number; min_quantity: number; cost_price: number; packaging: string; unit_type?: string };
 }
 
 export interface SupplierPayment {
