@@ -39,7 +39,7 @@ export function RegularisationStock({ storeId }: RegularisationStockProps) {
   // Regularisation state
   const [regProduct, setRegProduct] = useState<Product | null>(null);
   const [regAdjustmentType, setRegAdjustmentType] = useState<'real' | 'delta'>('real');
-  const [regQuantity, setRegQuantity] = useState<number | string>(0);
+  const [regQuantity, setRegQuantity] = useState<number>(0);
   const [regReason, setRegReason] = useState<string>('');
   const [regSearchCode, setRegSearchCode] = useState('');
   const [isBox, setIsBox] = useState(false);
