@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePurchasingStore } from '@/stores/usePurchasingStore';
-import { getDataClient } from '@/lib/dataClient';
+import { getDataClient, smartFetch } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -111,14 +111,29 @@ export function ReplenishmentNeeds({ storeId }: Props) {
       let data = [];
       if (isLocalFirst && headers) {
         const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/purchasing/needs?store_id=${storeId}`, { headers });
-        if (res.ok) data = await res.json();
+        if (res.ok) {
+           try {
+             data = await res.json();
+           } catch(e) {
+             console.error('[loadNeeds] JSON parse error:', e);
+             data = [];
+           }
+        } else {
+           console.error('[loadNeeds] Fetch returned:', res.status, res.statusText);
+        }
       } else {
         // Master view fallback or online mode
         const { supabase } = getDataClient();
-        const { data: remoteData } = await (supabase as any).from('products')
+        const { data: remoteData, error } = await (supabase as any).from('products')
             .select('*')
             .eq('store_id', storeId)
             .lt('quantity', 10); // Simple logic for needs if endpoint unavailable
+            
+        if (error) {
+           console.error('[loadNeeds] Supabase fetch error:', error);
+           throw error;
+        }
+            
         data = (remoteData || []).map((p: any) => ({
             product_id: p.id,
             product_name: p.name,
@@ -153,9 +168,9 @@ export function ReplenishmentNeeds({ storeId }: Props) {
         };
       });
       setNeeds(needsData);
-    } catch (err) {
-      console.error(err);
-      toast.error(t('common.error'));
+    } catch (err: any) {
+      console.error('[loadNeeds] Critical error:', err);
+      toast.error(`${t('common.error')}: ${err.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
