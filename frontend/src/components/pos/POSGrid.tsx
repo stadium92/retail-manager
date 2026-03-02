@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { usePOSStore, CartItem } from '@/stores/usePOSStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Minus, Plus, Trash2, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -221,15 +222,11 @@ export function POSGrid({ onRowSelect }: POSGridProps) {
 
               {/* Discount */}
               <div className="flex items-center justify-end">
-                <Input
-                  type="number"
+                <NumericInput
                   min={0}
                   max={100}
                   value={item.discount}
-                  onChange={(e) => {
-                    const val = parseFloat(e.target.value) || 0;
-                    updateDiscount(index, val);
-                  }}
+                  onValueChange={(v) => updateDiscount(index, v)}
                   className="h-6 w-16 text-right text-sm p-1 input-numeric bg-transparent border-none focus:ring-1 focus:ring-primary/50"
                   onClick={(e) => e.stopPropagation()}
                 />
