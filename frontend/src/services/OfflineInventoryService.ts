@@ -198,11 +198,15 @@ export const OfflineInventoryService = {
       
       await LocalDatabase.init();
       await LocalDatabase.saveInventoryItem(mapToLocalInventory(newItem, false));
-      
-      await SyncService.addToQueue({
-        type: 'inventory_update',
-        data: newItem
-      });
+
+      // In local-first mode the bridge handles Supabase sync; skip double-queueing
+      const dc = getDataClient();
+      if (!dc.isLocalFirst) {
+        await SyncService.addToQueue({
+          type: 'inventory_update',
+          data: newItem
+        });
+      }
 
       return { data: mapLocalInventoryToItem(mapToLocalInventory(newItem, false)) };
     } catch (error) {
@@ -226,11 +230,15 @@ export const OfflineInventoryService = {
       };
       
       await LocalDatabase.saveInventoryItem(mapToLocalInventory(updated, false));
-      
-      await SyncService.addToQueue({
-        type: 'inventory_update',
-        data: updated
-      });
+
+      // In local-first mode the bridge handles Supabase sync; skip double-queueing
+      const dc = getDataClient();
+      if (!dc.isLocalFirst) {
+        await SyncService.addToQueue({
+          type: 'inventory_update',
+          data: updated
+        });
+      }
 
       return { data: updated as InventoryItem };
     } catch (error) {
@@ -243,11 +251,15 @@ export const OfflineInventoryService = {
     try {
       await LocalDatabase.init();
       await LocalDatabase.deleteInventoryItem(id);
-      
-      await SyncService.addToQueue({
-        type: 'inventory_delete',
-        data: { id }
-      });
+
+      // In local-first mode the bridge handles Supabase sync; skip double-queueing
+      const dc = getDataClient();
+      if (!dc.isLocalFirst) {
+        await SyncService.addToQueue({
+          type: 'inventory_delete',
+          data: { id }
+        });
+      }
 
       return {};
     } catch (error) {

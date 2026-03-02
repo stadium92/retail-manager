@@ -231,7 +231,8 @@ export const createProductsRepo = (db: Database.Database) => {
         created_by: product.created_by ?? null,
         updated_by: product.updated_by ?? null,
       });
-    emitOutbox(db, product.store_id, 'product', product.id, 'create', product as unknown as Record<string, unknown>);
+    const inserted = db.prepare('SELECT * FROM products WHERE id = ? LIMIT 1').get(product.id) as LocalProduct | undefined;
+    emitOutbox(db, product.store_id, 'product', product.id, 'create', (inserted ?? product) as unknown as Record<string, unknown>);
   },
 
   updateProduct(
