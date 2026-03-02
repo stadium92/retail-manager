@@ -49,7 +49,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     selling_price_ttc: 0 as number | string, 
     min_stock_alert: 10 as number | string,
     unit_type: 'Pièce', family_id: '', brand: '', aisle: '', preferred_supplier_id: '',
-    packaging: '1', sub_packaging: '' as string, reorder_quantity: 0 as number | string, expiry_date: '', image_url: '',
+    packaging: '1', reorder_quantity: 0 as number | string, expiry_date: '', image_url: '',
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -89,10 +89,42 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
   };
 
   const updateField = (field: keyof typeof initialFormState, val: any, index?: number) => {
+    const scaleFields = (item: any, newUnit: string) => {
+        const packSize = getPackSize(item.packaging);
+        const isNewUnitBox = isBoxUnit(newUnit);
+        const isOldUnitBox = isBoxUnit(item.unit_type);
+
+        if (isNewUnitBox !== isOldUnitBox && packSize > 1) {
+            const multiplier = isNewUnitBox ? packSize : (1 / packSize);
+            return {
+                ...item,
+                unit_type: newUnit,
+                purchase_price: Number(item.purchase_price || 0) * multiplier,
+                selling_price_detail: Number(item.selling_price_detail || 0) * multiplier,
+                selling_price_2: Number(item.selling_price_2 || 0) * multiplier,
+                selling_price_3: Number(item.selling_price_3 || 0) * multiplier,
+                selling_price_4: Number(item.selling_price_4 || 0) * multiplier,
+                selling_price_ht: Number(item.selling_price_ht || 0) * multiplier,
+                selling_price_ttc: Number(item.selling_price_ttc || 0) * multiplier,
+                quantity: Number(item.quantity || 0) / multiplier,
+                reorder_quantity: Number(item.reorder_quantity || 0) / multiplier,
+                min_stock_alert: Number(item.min_stock_alert || 0) / multiplier,
+            };
+        }
+        return { ...item, [field]: val };
+    };
+
     if (index !== undefined) {
-        setMultiItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: val } : item));
+        setMultiItems(prev => prev.map((item, i) => {
+            if (i !== index) return item;
+            if (field === 'unit_type') return scaleFields(item, val);
+            return { ...item, [field]: val };
+        }));
     } else {
-        setFormData(f => ({ ...f, [field]: val }));
+        setFormData(f => {
+            if (field === 'unit_type') return scaleFields(f, val) as typeof f;
+            return { ...f, [field]: val };
+        });
     }
   };
 
@@ -133,6 +165,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
           purchase_price: item.cost || (item as any).cost_price || 0,
           selling_price_detail: item.price || (item as any).unit_price || 0,
           current_stock: item.quantity ?? (item as any).stock ?? (item as any).current_stock ?? 0,
+          min_stock_alert: item.low_stock_threshold ?? (item as any).min_quantity ?? 0,
           unit_type: item.unit_type || 'Pièce',
           family_id: item.category_id || (item as any).category || (item as any).family_id,
           brand: item.brand || '',
@@ -200,7 +233,6 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                 min_quantity: Number(item.min_stock_alert),
                 unit_type: item.unit_type,
                 packaging: item.packaging,
-                sub_packaging: item.sub_packaging,
                 category_id: item.family_id || undefined,
                 brand: item.brand || undefined,
                 aisle: item.aisle || undefined,
@@ -246,7 +278,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
       min_stock_alert: isBox ? ((p.min_stock_alert || 0) / packSize) : (p.min_stock_alert || 0),
       unit_type: p.unit_type || 'Pièce',
       family_id: p.family_id || '', brand: p.brand || '', aisle: p.aisle || '',
-      packaging: p.packaging || '1', sub_packaging: (p as any).sub_packaging || '',
+      packaging: p.packaging || '1',
       expiry_date: p.expiry_date || '', image_url: p.image_url || '',
     });
     setIsDialogOpen(true);
@@ -379,10 +411,6 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                         </div>
                         <div className="space-y-2"><Label className="text-xs font-bold uppercase text-primary">{t('inventory.fields.packaging')}</Label><Input value={data.packaging} onChange={e => update('packaging', e.target.value)} placeholder="Ex: 12" className="h-10 font-bold border-primary/20" /></div>
                     </div>
-                    <div className="space-y-2 bg-primary/5 p-3 rounded-lg border border-primary/10">
-                        <Label className="text-[10px] font-black uppercase text-primary flex items-center gap-2"><Package className="h-3 w-3" />Sous-Conditionnement</Label>
-                        <Input value={data.sub_packaging} onChange={e => update('sub_packaging', e.target.value)} placeholder="Ex: 10" className="h-9 font-bold bg-white" />
-                    </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2"><Label className="text-xs font-black uppercase text-primary">{registrationMode === 'single' ? 'QUANTITÉ INITIALE' : 'QUANTITÉ'}</Label><Input type="number" value={registrationMode === 'single' ? data.reorder_quantity : data.quantity} onChange={handleNumChange(registrationMode === 'single' ? 'reorder_quantity' : 'quantity', index)} className="h-10 font-black bg-primary/5 border-primary/20" /></div>
                         <div className="space-y-2"><Label className="text-xs font-bold uppercase">{t('inventory.fields.minStock')}</Label><Input type="number" value={data.min_stock_alert} onChange={handleNumChange('min_stock_alert', index)} onBlur={handleNumBlur('min_stock_alert', index)} className="h-10" /></div>
@@ -475,7 +503,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
               {registrationMode === 'single' ? (
                 <div className="p-8">
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
-                    {renderProductFields(formData, (field, val) => setFormData(f => ({ ...f, [field]: val })))}
+                    {renderProductFields(formData, (field, val) => updateField(field, val))}
                   </div>
                 </div>
               ) : (

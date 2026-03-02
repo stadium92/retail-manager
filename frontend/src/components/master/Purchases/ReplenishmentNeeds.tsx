@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePurchasingStore } from '@/stores/usePurchasingStore';
-import { getDataClient } from '@/lib/dataClient';
+import { getDataClient, smartFetch } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -111,14 +111,29 @@ export function ReplenishmentNeeds({ storeId }: Props) {
       let data = [];
       if (isLocalFirst && headers) {
         const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/purchasing/needs?store_id=${storeId}`, { headers });
-        if (res.ok) data = await res.json();
+        if (res.ok) {
+           try {
+             data = await res.json();
+           } catch(e) {
+             console.error('[loadNeeds] JSON parse error:', e);
+             data = [];
+           }
+        } else {
+           console.error('[loadNeeds] Fetch returned:', res.status, res.statusText);
+        }
       } else {
         // Master view fallback or online mode
         const { supabase } = getDataClient();
-        const { data: remoteData } = await (supabase as any).from('products')
+        const { data: remoteData, error } = await (supabase as any).from('products')
             .select('*')
             .eq('store_id', storeId)
             .lt('quantity', 10); // Simple logic for needs if endpoint unavailable
+            
+        if (error) {
+           console.error('[loadNeeds] Supabase fetch error:', error);
+           throw error;
+        }
+            
         data = (remoteData || []).map((p: any) => ({
             product_id: p.id,
             product_name: p.name,
@@ -153,9 +168,9 @@ export function ReplenishmentNeeds({ storeId }: Props) {
         };
       });
       setNeeds(needsData);
-    } catch (err) {
-      console.error(err);
-      toast.error(t('common.error'));
+    } catch (err: any) {
+      console.error('[loadNeeds] Critical error:', err);
+      toast.error(`${t('common.error')}: ${err.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -168,14 +183,17 @@ export function ReplenishmentNeeds({ storeId }: Props) {
 
       const newIsBox = !item.isBox;
       let newQty = item.order_qty || 0;
+      let newCost = item.unit_cost || 0;
 
       if (newIsBox) {
         newQty = newQty / item.packSize;
+        newCost = newCost * item.packSize;
       } else {
         newQty = newQty * item.packSize;
+        newCost = newCost / item.packSize;
       }
       
-      return { ...item, isBox: newIsBox, order_qty: newQty };
+      return { ...item, isBox: newIsBox, order_qty: newQty, unit_cost: newCost };
     }));
   };
 
@@ -188,7 +206,7 @@ export function ReplenishmentNeeds({ storeId }: Props) {
     setLoading(true);
     try {
       const totalAmount = orderItems.reduce((sum, item) => {
-        const lineTotal = (item.order_qty || 0) * (item.unit_cost || 0) * (item.isBox ? (item.packSize || 1) : 1);
+        const lineTotal = (item.order_qty || 0) * (item.unit_cost || 0);
         return sum + lineTotal;
       }, 0);
 
@@ -250,9 +268,13 @@ export function ReplenishmentNeeds({ storeId }: Props) {
           <Table>
             <TableHeader className="bg-card border-b-2">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-10"><Checkbox /></TableHead>
-                <TableHead className="font-black uppercase tracking-widest text-[9px]">{t('menu.stock.trigger')}</TableHead>
-                <TableHead className="text-center font-black uppercase tracking-widest text-[9px]">{t('menu.program.currentStock')}</TableHead>
+                <TableHead className="w-10">
+                  <Checkbox 
+                      checked={needs.length > 0 && needs.every(n => n.selected)}
+                      onCheckedChange={(c) => setNeeds(needs.map(n => ({ ...n, selected: !!c })))}
+                  />
+                </TableHead>
+                <TableHead className="font-black uppercase tracking-widest text-[9px]">{t('menu.stock.trigger')}</TableHead>                <TableHead className="text-center font-black uppercase tracking-widest text-[9px]">{t('menu.program.currentStock')}</TableHead>
                 <TableHead className="font-black uppercase tracking-widest text-[9px]">{t('menu.purchases.source')}</TableHead>
                 <TableHead className="w-24 font-black uppercase tracking-widest text-[9px]">{t('menu.purchases.suggestedQtyShort')}</TableHead>
               </TableRow>
@@ -320,7 +342,7 @@ export function ReplenishmentNeeds({ storeId }: Props) {
                     <TableHead className="w-20 text-center font-black uppercase tracking-widest text-[9px]">{t('inventory.fields.packaging')}</TableHead>
                     <TableHead className="w-24 text-center font-black uppercase tracking-widest text-[9px]">{t('menu.program.unit')}</TableHead>
                     <TableHead className="w-24 font-black uppercase tracking-widest text-[9px]">{t('inventory.table.quantity')}</TableHead>
-                    <TableHead className="w-32 font-black uppercase tracking-widest text-[9px]">{t('inventory.price')} ({t('inventory.unitPiece')})</TableHead>
+                    <TableHead className="w-32 font-black uppercase tracking-widest text-[9px]">{t('inventory.price')}</TableHead>
                     <TableHead className="w-32 text-right font-black uppercase tracking-widest text-[9px]">TOTAL</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -330,16 +352,16 @@ export function ReplenishmentNeeds({ storeId }: Props) {
                       <TableCell className="font-black uppercase text-sm tracking-tighter">{item.product_name}</TableCell>
                       <TableCell className="text-center font-mono text-[10px] font-black opacity-50">{item.packaging || '-'}</TableCell>
                       <TableCell className="text-center">
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className={cn("h-7 px-3 font-black text-[9px] tracking-widest border-2", item.isBox && "bg-primary text-white border-primary shadow-lg shadow-primary/20")}
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!item.packSize || item.packSize <= 1}
+                            className={cn("h-7 px-3 font-black text-[9px] tracking-widest border-2", item.isBox && "bg-primary text-white border-primary shadow-lg shadow-primary/20", (!item.packSize || item.packSize <= 1) && "opacity-50 cursor-not-allowed")}
                             onClick={() => toggleOrderUnit(item.product_id)}
                         >
                           {item.isBox ? item.unit_type?.toUpperCase() || 'UNIT' : t('inventory.unitPiece')}
                         </Button>
-                      </TableCell>
-                      <TableCell>
+                      </TableCell>                      <TableCell>
                         <Input type="number" value={item.order_qty} onChange={(e) => setOrderItems(orderItems.map(oi => oi.product_id === item.product_id ? { ...oi, order_qty: parseInt(e.target.value) || 0 } : oi))} className="h-9 font-black border-2" />
                       </TableCell>
                       <TableCell>
