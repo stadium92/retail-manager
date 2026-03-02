@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -377,10 +378,9 @@ export function FichiersClientsModule({ storeId }: FichiersClientsModuleProps) {
                 <Label className="flex items-center gap-1">
                   <CreditCard className="h-4 w-4" /> {t('menu.program.creditLimit')}
                 </Label>
-                <Input
-                  type="number"
+                <NumericInput
                   value={formData.credit_limit}
-                  onChange={(e) => setFormData((f) => ({ ...f, credit_limit: Number(e.target.value) }))}
+                  onValueChange={(v) => setFormData((f) => ({ ...f, credit_limit: v }))}
                   placeholder="0"
                 />
               </div>

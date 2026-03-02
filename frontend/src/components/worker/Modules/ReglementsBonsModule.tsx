@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -375,13 +376,12 @@ export function ReglementsBonsModule({ storeId }: ReglementsBonsModuleProps) {
 
               <div className="space-y-2">
                 <Label htmlFor="paymentAmount">{t('menu.program.amount')}</Label>
-                <Input
+                <NumericInput
                   id="paymentAmount"
-                  type="number"
                   min={0}
                   max={selectedSale.total_price - selectedSale.amount_paid}
                   value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(Number(e.target.value))}
+                  onValueChange={(v) => setPaymentAmount(v)}
                   className="text-lg font-bold"
                 />
                 <div className="flex gap-2">
