@@ -55,7 +55,10 @@
     "amount": "Amount",
     "balanceDue": "Balance Due",
     "general": "General",
-    "about": "About"
+    "about": "About",
+    "searching": "Searching...",
+    "alreadyAdded": "Already added to list",
+    "added": "Added to list"
   },
   "helpCenter": {
     "title": "Help Center",
@@ -134,7 +137,8 @@
     "stockLow": "Low Stock",
     "workerRequest": "Worker Request",
     "noNeedsIdentified": "No needs identified.",
-    "status": "Status"
+    "status": "Status",
+    "productSearch": "Product Search (Global)"
   },
   "dashboard": {
     "title": "Dashboard",

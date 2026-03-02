@@ -77,7 +77,7 @@ export function ReplenishmentNeeds({ storeId }: Props) {
   const handleProductSelected = (product: Product) => {
     const existing = needs.find(n => n.product_id === product.id);
     if (existing) {
-        toast.info(t('common.alreadyAdded') || "Product already in list");
+        toast.info(t('common.alreadyAdded'));
     } else {
         const packSize = parsePackSize(product.packaging);
         const newNeed: ReplenishmentNeed = {
@@ -97,7 +97,7 @@ export function ReplenishmentNeeds({ storeId }: Props) {
             packaging: product.packaging || '1'
         };
         setNeeds(prev => [newNeed, ...prev]);
-        toast.success(t('common.added') || "Added to list");
+        toast.success(t('common.added'));
     }
     setIsLookupOpen(false);
   };
