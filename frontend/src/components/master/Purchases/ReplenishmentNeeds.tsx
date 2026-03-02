@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePurchasingStore } from '@/stores/usePurchasingStore';
-import { getDataClient } from '@/lib/dataClient';
+import { getDataClient, smartFetch } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
