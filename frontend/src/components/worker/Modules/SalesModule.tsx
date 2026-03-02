@@ -206,7 +206,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         invoice_number: invoiceNumber,
         order_ref: orderRef,
         storeName: "Magasin", 
-        workerName: user?.full_name || "Vendeur",
+        workerName: user?.full_name || t('edition.seller'),
         customerName: customerName,
         customerPhone: (currentSession as any).customerPhone,
         customerAddress: customerAddress,
