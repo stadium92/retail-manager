@@ -250,9 +250,13 @@ export function ReplenishmentNeeds({ storeId }: Props) {
           <Table>
             <TableHeader className="bg-card border-b-2">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-10"><Checkbox /></TableHead>
-                <TableHead className="font-black uppercase tracking-widest text-[9px]">{t('menu.stock.trigger')}</TableHead>
-                <TableHead className="text-center font-black uppercase tracking-widest text-[9px]">{t('menu.program.currentStock')}</TableHead>
+                <TableHead className="w-10">
+                  <Checkbox 
+                      checked={needs.length > 0 && needs.every(n => n.selected)}
+                      onCheckedChange={(c) => setNeeds(needs.map(n => ({ ...n, selected: !!c })))}
+                  />
+                </TableHead>
+                <TableHead className="font-black uppercase tracking-widest text-[9px]">{t('menu.stock.trigger')}</TableHead>                <TableHead className="text-center font-black uppercase tracking-widest text-[9px]">{t('menu.program.currentStock')}</TableHead>
                 <TableHead className="font-black uppercase tracking-widest text-[9px]">{t('menu.purchases.source')}</TableHead>
                 <TableHead className="w-24 font-black uppercase tracking-widest text-[9px]">{t('menu.purchases.suggestedQtyShort')}</TableHead>
               </TableRow>
@@ -330,16 +334,16 @@ export function ReplenishmentNeeds({ storeId }: Props) {
                       <TableCell className="font-black uppercase text-sm tracking-tighter">{item.product_name}</TableCell>
                       <TableCell className="text-center font-mono text-[10px] font-black opacity-50">{item.packaging || '-'}</TableCell>
                       <TableCell className="text-center">
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className={cn("h-7 px-3 font-black text-[9px] tracking-widest border-2", item.isBox && "bg-primary text-white border-primary shadow-lg shadow-primary/20")}
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!item.packSize || item.packSize <= 1}
+                            className={cn("h-7 px-3 font-black text-[9px] tracking-widest border-2", item.isBox && "bg-primary text-white border-primary shadow-lg shadow-primary/20", (!item.packSize || item.packSize <= 1) && "opacity-50 cursor-not-allowed")}
                             onClick={() => toggleOrderUnit(item.product_id)}
                         >
                           {item.isBox ? item.unit_type?.toUpperCase() || 'UNIT' : t('inventory.unitPiece')}
                         </Button>
-                      </TableCell>
-                      <TableCell>
+                      </TableCell>                      <TableCell>
                         <Input type="number" value={item.order_qty} onChange={(e) => setOrderItems(orderItems.map(oi => oi.product_id === item.product_id ? { ...oi, order_qty: parseInt(e.target.value) || 0 } : oi))} className="h-9 font-black border-2" />
                       </TableCell>
                       <TableCell>
