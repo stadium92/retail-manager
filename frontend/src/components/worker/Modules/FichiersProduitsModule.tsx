@@ -243,10 +243,15 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                 store_id: storeId,
             };
 
+            let result;
             if (editingProduct) {
-                await OfflineInventoryService.updateItem(editingProduct.id, data);
+                result = await OfflineInventoryService.updateItem(editingProduct.id, data);
             } else {
-                await OfflineInventoryService.createItem(data);
+                result = await OfflineInventoryService.createItem(data);
+            }
+
+            if (result.error) {
+                throw result.error;
             }
         }
 
@@ -255,7 +260,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
         await fetchData();
     } catch (err: any) {
         console.error('[FichiersProduits] Save error:', err);
-        toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
+        toast({ title: t('common.error'), description: err.message || t('common.error'), variant: 'destructive' });
     } finally {
         setIsSaving(false);
     }
