@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -574,11 +575,11 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
                             <TableCell className="text-xs text-center">{p.packaging || '1'}</TableCell>
                             <TableCell className="text-xs text-center">{p.quantity}</TableCell>
                             <TableCell className="text-center">
-                              <Input 
-                                type="number" 
+                              <NumericInput 
                                 min={0} 
                                 value={physical} 
-                                onChange={(e) => updatePhysicalStock(p.id, parseInt(e.target.value) || 0)}
+                                onValueChange={(v) => updatePhysicalStock(p.id, v)}
+                                integer
                                 className={cn(
                                   "h-8 w-20 text-center mx-auto",
                                   inventoryChanges[p.id] !== undefined && "border-primary bg-primary/5 font-bold"

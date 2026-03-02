@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -188,10 +189,9 @@ export function FicheCaisseModule({ storeId }: FicheCaisseModuleProps) {
             </div>
             <div className="flex items-center gap-2">
               <Label className="font-bold whitespace-nowrap">{t('menu.program.cashFund')}:</Label>
-              <Input 
-                type="number"
-                value={fondsCaisse === 0 ? '' : fondsCaisse}
-                onChange={(e) => setFondsCaisse(e.target.value === '' ? 0 : Number(e.target.value))}
+              <NumericInput 
+                value={fondsCaisse}
+                onValueChange={(v) => setFondsCaisse(v)}
                 className="w-24 h-8 bg-success/30 text-right"
               />
             </div>
@@ -213,10 +213,10 @@ export function FicheCaisseModule({ storeId }: FicheCaisseModuleProps) {
                   
                   {bills.map((bill) => (
                     <div key={`bill-${bill.denomination}`} className="contents">
-                      <Input 
-                        type="number"
-                        value={bill.count || ''}
-                        onChange={(e) => updateBillCount(bill.denomination, parseInt(e.target.value) || 0)}
+                      <NumericInput 
+                        value={bill.count}
+                        onValueChange={(v) => updateBillCount(bill.denomination, v)}
+                        integer
                         className="w-12 h-7 text-center bg-success/30"
                       />
                       <span>x {formatCurrency(bill.denomination)}</span>
@@ -229,10 +229,10 @@ export function FicheCaisseModule({ storeId }: FicheCaisseModuleProps) {
                   
                   <span className="col-span-2 mt-2">{t('menu.program.tokens')} ...=</span>
                   <span></span>
-                  <Input 
-                    type="number"
-                    value={jetons || ''}
-                    onChange={(e) => setJetons(parseInt(e.target.value) || 0)}
+                  <NumericInput 
+                    value={jetons}
+                    onValueChange={(v) => setJetons(v)}
+                    integer
                     className="w-20 h-7 text-right bg-success/30"
                   />
                 </div>
@@ -326,10 +326,9 @@ export function FicheCaisseModule({ storeId }: FicheCaisseModuleProps) {
                   
                   <div className="flex justify-between items-center mt-2">
                     <span>{t('menu.program.bankTransfer')}.......:</span>
-                    <Input 
-                      type="number"
-                      value={dayData.versementBanque || ''}
-                      onChange={(e) => setDayData(prev => ({ ...prev, versementBanque: Number(e.target.value) }))}
+                    <NumericInput 
+                      value={dayData.versementBanque}
+                      onValueChange={(v) => setDayData(prev => ({ ...prev, versementBanque: v }))}
                       className="w-28 h-7 text-right"
                     />
                   </div>
