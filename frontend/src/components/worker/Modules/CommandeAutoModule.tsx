@@ -4,6 +4,7 @@ import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -583,13 +584,13 @@ export function CommandeAutoModule({ storeId }: CommandeAutoModuleProps) {
                   />
                   <div className="flex-1 text-sm">{p.name} <span className="text-[10px] text-muted-foreground">(Stock: {p.quantity})</span></div>
                   {newSchedule.products.includes(p.id) && (
-                    <Input 
-                      type="number" 
+                    <NumericInput 
                       value={newSchedule.quantities[p.id]} 
-                      onChange={e => setNewSchedule({
+                      onValueChange={v => setNewSchedule({
                         ...newSchedule, 
-                        quantities: { ...newSchedule.quantities, [p.id]: parseInt(e.target.value) || 0 }
+                        quantities: { ...newSchedule.quantities, [p.id]: v }
                       })}
+                      integer
                       className="h-7 w-20 text-center"
                     />
                   )}

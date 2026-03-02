@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -443,10 +444,10 @@ export function FichiersFournisseursModule({ storeId }: FichiersFournisseursModu
                     <Label className="text-xs font-bold uppercase flex items-center gap-1">
                       <Clock className="h-3 w-3" /> {t('menu.program.leadTimeDays')}
                     </Label>
-                    <Input
-                      type="number"
+                    <NumericInput
                       value={formData.lead_time_days}
-                      onChange={(e) => setFormData((f) => ({ ...f, lead_time_days: Number(e.target.value) }))}
+                      onValueChange={(v) => setFormData((f) => ({ ...f, lead_time_days: v }))}
+                      integer
                       className="h-10"
                     />
                   </div>

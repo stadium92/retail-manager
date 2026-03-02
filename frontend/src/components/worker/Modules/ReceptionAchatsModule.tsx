@@ -5,6 +5,7 @@ import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { OfflineDataService } from '@/services/OfflineDataService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -331,10 +332,10 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
                       </TableCell>
                       <TableCell className="text-center font-mono text-xs">{item.quantity_ordered}</TableCell>
                       <TableCell className="p-1">
-                        <Input type="number" value={item.quantity_received} onChange={(e) => handleQuantityChange(item.id, Number(e.target.value))} className="h-9 text-center font-bold" />
+                        <NumericInput value={item.quantity_received} onValueChange={(v) => handleQuantityChange(item.id, v)} integer className="h-9 text-center font-bold" />
                       </TableCell>
                       <TableCell className="p-1">
-                        <Input type="number" value={displayCost} onChange={(e) => handleCostChange(item.id, Number(e.target.value))} className="h-9 text-right font-mono text-xs" />
+                        <NumericInput value={displayCost} onValueChange={(v) => handleCostChange(item.id, v)} className="h-9 text-right font-mono text-xs" />
                       </TableCell>
                       <TableCell className="text-right font-black text-primary">
                         {formatCurrency(item.quantity_received * item.unit_cost)}

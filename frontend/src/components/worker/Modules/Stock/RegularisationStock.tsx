@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -226,11 +227,11 @@ export function RegularisationStock({ storeId }: RegularisationStockProps) {
                       <Label className="text-[10px] font-bold uppercase text-muted-foreground">
                          {regAdjustmentType === 'real' ? t('menu.program.countedQty') : t('menu.program.adjustQty')}
                       </Label>
-                      <Input
-                        type="number"
+                      <NumericInput
                         min={0}
                         value={regQuantity}
-                        onChange={(e) => setRegQuantity(parseInt(e.target.value) || 0)}
+                        onValueChange={(v) => setRegQuantity(v)}
+                        integer
                         className="h-11 text-lg font-black font-mono border-2 focus:ring-primary"
                       />
                     </div>

@@ -5,6 +5,7 @@ import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -428,12 +429,11 @@ export function ReglementsFournisseursModule({ storeId, isMasterView }: Reglemen
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase text-muted-foreground">{t('menu.program.amount')}</label>
-                  <Input
-                    type="number"
+                  <NumericInput
                     min={0}
                     max={selectedSupplier.balance}
                     value={paymentAmount}
-                    onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
+                    onValueChange={(v) => setPaymentAmount(v)}
                     className="h-12 text-2xl font-black font-mono border-2"
                   />
                 </div>

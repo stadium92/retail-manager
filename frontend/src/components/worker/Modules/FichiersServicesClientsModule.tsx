@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -266,12 +267,11 @@ export function FichiersServicesClientsModule({ storeId }: FichiersServicesClien
               <Label className="flex items-center gap-1">
                 <Percent className="h-4 w-4" /> {t('menu.program.defaultDiscount')}
               </Label>
-              <Input
-                type="number"
-                min="0"
-                max="100"
+              <NumericInput
+                min={0}
+                max={100}
                 value={formData.default_discount_percent}
-                onChange={(e) => setFormData((f) => ({ ...f, default_discount_percent: Number(e.target.value) }))}
+                onValueChange={(v) => setFormData((f) => ({ ...f, default_discount_percent: v }))}
                 placeholder="0"
               />
             </div>
