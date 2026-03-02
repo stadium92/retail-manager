@@ -55,7 +55,10 @@
     "amount": "Montant",
     "balanceDue": "Solde Dû",
     "general": "Général",
-    "about": "À propos"
+    "about": "À propos",
+    "searching": "Recherche en cours...",
+    "alreadyAdded": "Déjà ajouté à la liste",
+    "added": "Ajouté à la liste"
   },
   "helpCenter": {
     "title": "Centre d'Aide",
@@ -134,7 +137,8 @@
     "stockLow": "Stock Bas",
     "workerRequest": "Demande",
     "noNeedsIdentified": "Aucun besoin identifié.",
-    "status": "Statut"
+    "status": "Statut",
+    "productSearch": "Recherche d'Articles (Global)"
   },
   "team": {
     "title": "Équipe",
@@ -379,7 +383,11 @@
       "price": "Prix",
       "nameRequired": "Le nom est requis",
       "barcode": "Code-barres",
-      "reorderQuantity": "Qté à Commander"
+      "reorderQuantity": "Qté à Commander",
+      "allFamilies": "Toutes les Familles",
+      "packagingShort": "Cndt.",
+      "initialQuantity": "Quantité Initiale",
+      "packagingPlaceholder": "Ex: 12"
     },
     "failedToDeleteItem": "Échec de la suppression de l'article",
     "itemDeletedSuccessfully": "Article supprimé avec succès",
@@ -448,7 +456,8 @@
       "carton": "Carton",
       "paquet": "Paquet",
       "sac": "Sac"
-    }
+    },
+    "saveMultipleItems": "Enregistrer les {{count}} Articles"
   },
   "stores": {
     "title": "Magasins",
@@ -726,7 +735,12 @@
         "store": "Magasin",
         "customer": "Client"
       }
-    }
+    },
+    "paymentMethod": "Règlement",
+    "cashier": "Caissier",
+    "searchSales": "Client, article, facture...",
+    "store": "Magasin",
+    "items": "Articles"
   },
   "invitations": {
     "title": "Invitations de travailleurs",
@@ -1127,7 +1141,7 @@
       "debit": "Débit",
       "credit": "Crédit",
       "today": "Aujourd'hui",
-      "last7Days": "7 derniers jours",
+      "last7Days": "7 Derniers Jours",
       "receptionTitle": "Réception des Marchandises",
       "existingOrder": "Commande existante",
       "directPurchase": "Achat direct",
@@ -1240,7 +1254,6 @@
       "syncData": "Synchroniser les données",
       "calculatedMargin": "Marge calculée",
       "lastMovements": "Derniers Mouvements",
-      "deficit": "Déficit",
       "items": "Articles",
       "unit": "Unité",
       "inventory": "Inventaire",
@@ -1301,7 +1314,6 @@
       "resaleType": "Revente",
       "discountType": "Remise",
       "otherType": "Autre",
-      "mobileMoney": "Mobile Money",
       "defaultPurchaseType": "Type d'Achat par Défaut",
       "contactName": "Nom du contact",
       "createScheduledOrder": "Créer une Commande Planifiée",
@@ -1318,8 +1330,7 @@
       "sectionHistory": "Historique (Achats & Paiements)",
       "refresh": "Actualiser",
       "selectDate": "Choisir une date",
-      "today": "Aujourd'hui",
-      "last7Days": "7 Derniers Jours"
+      "minStock": "Stock Minimum"
     }
   },
   "customer": {
@@ -1547,5 +1558,91 @@
     "scannerHIDOnly": "Scanner: HID Seulement",
     "printerNotConfiguredLabel": "Imprimante : Non configurée",
     "printerOnlineLabel": "Imprimante : En ligne"
+  },
+  "api": {
+    "errors": {
+      "storeRequired": "Le magasin est requis.",
+      "notFound": "Ressource introuvable.",
+      "forbidden": "Vous n'avez pas la permission d'effectuer cette action.",
+      "unauthorized": "Jeton d'authentification manquant ou invalide.",
+      "invalidCredentials": "Email ou mot de passe invalide.",
+      "userExists": "Un utilisateur avec cet email existe déjà.",
+      "masterAlreadyExists": "Un utilisateur maître existe déjà sur cet appareil.",
+      "invalidRefreshToken": "Session expirée. Veuillez vous reconnecter.",
+      "userNotFound": "L'utilisateur associé n'existe plus.",
+      "invalidStore": "Le magasin sélectionné n'existe pas.",
+      "invalidFamily": "La famille sélectionnée n'existe pas.",
+      "familyBelongsToAnotherStore": "La famille appartient à un autre magasin.",
+      "supplierNotFound": "Fournisseur introuvable.",
+      "supplierBelongsToAnotherStore": "Le fournisseur appartient à un autre magasin.",
+      "configMissing": "Configuration du serveur manquante.",
+      "invalidSupabaseKey": "Clé de service Supabase invalide.",
+      "supabaseError": "Échec de la synchronisation avec le serveur cloud.",
+      "repairFailed": "Échec de la réparation de la base de données.",
+      "resetFailed": "Échec de la réinitialisation de la base de données.",
+      "validationFailed": "Échec de la validation. Veuillez vérifier vos données.",
+      "productNotFound": "Produit introuvable.",
+      "clientNotFound": "Client introuvable.",
+      "deliveryNotFound": "Livraison introuvable.",
+      "saleNotFound": "Vente introuvable.",
+      "orderNotFound": "Commande introuvable.",
+      "itemNotFound": "Article introuvable.",
+      "paymentNotFound": "Paiement introuvable.",
+      "serviceNotFound": "Service introuvable.",
+      "invitationNotFound": "Invitation introuvable.",
+      "invitationNotPending": "L'invitation n'est plus en attente.",
+      "invitationEmailMismatch": "L'email de l'invitation ne correspond pas à l'utilisateur actuel.",
+      "cannotModifyProduct": "Vous ne pouvez pas modifier ce produit.",
+      "cannotDeleteProduct": "Vous ne pouvez pas supprimer ce produit.",
+      "cannotViewProduct": "Vous ne pouvez pas voir ce produit.",
+      "cannotCreateForAnotherStore": "Vous ne pouvez pas créer d'articles pour un autre magasin.",
+      "accessDenied": "Accès refusé.",
+      "accessToOtherStoresDenied": "Accès aux autres magasins refusé.",
+      "cannotUpdateDelivery": "Impossible de modifier cette livraison.",
+      "cannotDeleteDelivery": "Impossible de supprimer cette livraison.",
+      "cannotUpdateSale": "Impossible de modifier cette vente.",
+      "cannotDeleteSale": "Impossible de supprimer cette vente.",
+      "cannotViewSaleItems": "Impossible de voir les articles de la vente.",
+      "cannotUpdateStore": "Impossible de modifier ce magasin.",
+      "cannotDeleteStore": "Impossible de supprimer ce magasin.",
+      "cannotUpdateSupplier": "Impossible de modifier ce fournisseur.",
+      "cannotDeleteSupplier": "Impossible de supprimer ce fournisseur.",
+      "cannotUpdateOrder": "Impossible de modifier cette commande.",
+      "cannotDeleteOrder": "Impossible de supprimer cette commande.",
+      "cannotReceiveOrder": "Impossible de réceptionner cette commande.",
+      "cannotViewItems": "Impossible de voir les articles.",
+      "cannotAddItems": "Impossible d'ajouter des articles.",
+      "cannotUpdateItems": "Impossible de modifier les articles.",
+      "cannotDeleteItems": "Impossible de supprimer les articles.",
+      "cannotUpdatePayment": "Impossible de modifier ce paiement.",
+      "cannotCreateClientInAnotherStore": "Impossible de créer un client dans un autre magasin.",
+      "cannotCreateServiceInAnotherStore": "Impossible de créer un service dans un autre magasin.",
+      "cannotViewBatchesForAnotherStore": "Impossible de voir les lots d'un autre magasin.",
+      "productDoesNotBelongToStore": "Le produit n'appartient pas à ce magasin.",
+      "insufficientRole": "Rôle insuffisant pour effectuer cette action.",
+      "invalidOrExpiredToken": "Jeton invalide ou expiré.",
+      "familyNotFound": "Famille introuvable.",
+      "storeNotFound": "Magasin introuvable.",
+      "databaseRepaired": "Base de données réparée et optimisée.",
+      "databaseReset": "Base de données effacée et réinitialisée aux paramètres d'usine."
+    },
+    "success": {
+      "deleted": "Supprimé avec succès.",
+      "deliveryDeleted": "Livraison supprimée.",
+      "saleDeleted": "Vente supprimée.",
+      "productDeleted": "Produit supprimé.",
+      "clientDeleted": "Client supprimé.",
+      "storeDeleted": "Magasin supprimé.",
+      "supplierDeleted": "Fournisseur supprimé.",
+      "orderDeleted": "Commande supprimée.",
+      "itemDeleted": "Article supprimé.",
+      "serviceDeleted": "Service supprimé.",
+      "scheduledOrderDeleted": "Commande programmée supprimée.",
+      "scheduledOrderCreated": "Commande programmée créée.",
+      "masterUserCreated": "Utilisateur maître créé.",
+      "loggedOut": "Déconnecté.",
+      "databaseRepaired": "Base de données réparée et optimisée.",
+      "databaseReset": "Base de données effacée et réinitialisée aux paramètres d'usine."
+    }
   }
 }

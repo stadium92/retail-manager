@@ -360,7 +360,7 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
         open={isProductLookupOpen} 
         onOpenChange={setIsProductLookupOpen} 
         storeId={storeId} 
-        title="Recherche d'Articles (Global)"
+        title={t('purchases.productSearch')}
         standalone
         mode="wholesale" 
         onSelect={addAdHocItem} 

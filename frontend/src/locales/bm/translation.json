@@ -55,7 +55,10 @@
     "amount": "Hakɛ",
     "balanceDue": "Sɔrɔ Tɔ",
     "general": "Hɛɛrɛ",
-    "about": "Kan na"
+    "about": "Kan na",
+    "searching": "Ɲinini bɛ kɛ...",
+    "alreadyAdded": "A bɛ yen lisɛ la kaban",
+    "added": "A fàrala lisɛ la"
   },
   "helpCenter": {
     "title": "Dɛmɛ Yɔrɔ",
@@ -144,7 +147,8 @@
     "stockLow": "Stock Bas",
     "workerRequest": "Demande",
     "noNeedsIdentified": "Bɛnɛ si tɛ sisan.",
-    "status": "Ka ɲɛ"
+    "status": "Ka ɲɛ",
+    "productSearch": "Bɛnɛ ɲinini (Bɛɛ)"
   },
   "team": {
     "title": "Jɛkulu",
@@ -398,7 +402,10 @@
       "wholesalePriceHT": "Feere songo (HT)",
       "wholesalePriceTTC": "Feere songo (TTC)",
       "barcode": "Code-barres",
-      "reorderQuantity": "Hakɛ ka Dɔ"
+      "reorderQuantity": "Hakɛ ka Dɔ",
+      "packagingShort": "Cndt.",
+      "initialQuantity": "Jɛlen fɔlɔ",
+      "packagingPlaceholder": "Misali: 12"
     },
     "selectStore": "Ka magasin sugandi",
     "editItemDescription": "Ka bɛnɛ kunnafoni yɛlɛma",
@@ -457,7 +464,8 @@
       "carton": "Carton",
       "paquet": "Paquet",
       "sac": "Sac"
-    }
+    },
+    "saveMultipleItems": "{{count}} bɛnɛ mara"
   },
   "stores": {
     "title": "Magasin",
@@ -735,7 +743,12 @@
         "customer": "Jatigɛ"
       }
     },
-    "invoice_number": "Fakitiri nimɔrɔ"
+    "invoice_number": "Fakitiri nimɔrɔ",
+    "paymentMethod": "Sara cogo",
+    "cashier": "Wari marayɔrɔ baarakɛla",
+    "searchSales": "Jatigɛ, bɛnɛ, fakitiri...",
+    "store": "Magasin",
+    "items": "Bɛnɛw"
   },
   "invitations": {
     "title": "Baarakɛlaw weleli",
@@ -1099,7 +1112,7 @@
       "passwords": "Gafɛw",
       "supplierContact": "Fournisseur Mɔgɔ",
       "leadTimeDays": "Di waati (don)",
-      "dueBalance": "Ka sara",
+      "dueBalance": "Ka sara hakɛ",
       "clientCode": "Jatigɛ nimɔrɔ",
       "client": "JATIGƐLA",
       "clientGroup": "Jatigɛ kulu",
@@ -1261,12 +1274,7 @@
       "totalDebt": "Juru bɛɛ",
       "suppliersToSettle": "Fournisseurw ka sara",
       "supplierSettlement": "Fournisseur sara",
-      "dueBalance": "Ka sara hakɛ",
-      "mode": "Cogo",
-      "checks": "Chèque",
       "mobileMoney": "Mobile Money",
-      "paymentHistory": "Sara tariku",
-      "confirmPayment": "Ka sara sɛgɛsɛgɛ",
       "sounds": "Kumaw",
       "source": "Source",
       "stockFiche": "Bɛnɛ ficha",
@@ -1281,14 +1289,12 @@
       "supabaseKey": "Supabase Cle (Service Role)",
       "supplierBalances": "Fournisseurw hakɛ",
       "suppliersInCache": "Fournisseurw cache la",
-      "suppliersToSettle": "Fournisseurw ka sara",
       "syncData": "Ka kunnafoni sync",
       "syncLocalChanges": "Ka yɛlɛma sync",
       "syncStatus": "Local Kunnafoni Ka Ɲɛ",
       "threshold": "Danna",
       "ticket": "Ticket",
       "topProducts": "Bɛnɛ ɲumanw",
-      "totalDebt": "Juru bɛɛ",
       "totalDue": "Ka sara bɛɛ",
       "unpaid": "Sarana tɛ",
       "validate": "Ka sɛgɛsɛgɛ",
@@ -1323,7 +1329,6 @@
       "resaleType": "Revente",
       "discountType": "Remise",
       "otherType": "Wɛrɛ",
-      "mobileMoney": "Mobile Money",
       "defaultPurchaseType": "Sɔrɔ cogo kelen",
       "contactName": "Cɛ tɔgɔ",
       "createScheduledOrder": "Ka Commande Yɔrɔ Kɛ",
@@ -1566,5 +1571,21 @@
     "scannerHIDOnly": "Scanner: HID Dɔrɔn",
     "printerNotConfiguredLabel": "Imprimante : Labɛnnen tɛ",
     "printerOnlineLabel": "Imprimante : Ka baara kɛ"
+  },
+  "api": {
+    "errors": {
+      "storeRequired": "Magasin ka kan ka kɛ.",
+      "notFound": "A ma sɔrɔ.",
+      "forbidden": "I ka ɲɛnajɛ tɛ ka nin kɛ.",
+      "unauthorized": "I ka tɔgɔdɔn jɛtigɛlan tɛ yen.",
+      "invalidCredentials": "Email walima daɲɛgafe tɛ tiɲɛ ye.",
+      "userExists": "Baarakɛla bɛ yen ni o email ye.",
+      "validationFailed": "Sɛgɛsɛgɛli banna. I ka kunnafoni lajɛ.",
+      "productNotFound": "Bɛnɛ ma sɔrɔ.",
+      "accessDenied": "Don bali."
+    },
+    "success": {
+      "deleted": "A bɔra ni ɲɛ ye."
+    }
   }
 }

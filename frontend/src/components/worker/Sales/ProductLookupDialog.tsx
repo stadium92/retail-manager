@@ -136,17 +136,17 @@ export function ProductLookupDialog({
               <div>{t('pos.grid.headers.designation')}</div>
               <div className="text-center">{t('pos.grid.headers.sku')}</div>
               <div className="text-center">{t('inventory.fields.family')}</div>
-              <div className="text-right">P. ACHAT</div>
-              <div className="text-right">P. DÉTAIL</div>
-              <div className="text-center">CNDT.</div>
+              <div className="text-right">{t('inventory.fields.purchasePriceShort')}</div>
+              <div className="text-right">{t('inventory.fields.retailPriceShort')}</div>
+              <div className="text-center">{t('inventory.fields.packagingShort')}</div>
               <div className="text-right">{t('pos.grid.headers.qty')}</div>
-              <div className="text-center">STATUS</div>
+              <div className="text-center">{t('common.status')}</div>
             </div>
 
             {isLoading ? (
               <div className="py-20 flex flex-col items-center justify-center space-y-4 opacity-50">
                 <RefreshCw className="h-8 w-8 animate-spin text-primary" />
-                <p className="font-black uppercase tracking-widest text-xs">Recherche en cours...</p>
+                <p className="font-black uppercase tracking-widest text-xs">{t('common.searching')}</p>
               </div>
             ) : results.length === 0 ? (
               <div className="py-20 text-center text-muted-foreground font-black uppercase tracking-[0.2em] opacity-20">
@@ -197,11 +197,11 @@ export function ProductLookupDialog({
                     </div>
                     <div className="text-center">
                         {stockStatus === 'rupture' ? (
-                            <div className="w-2 h-2 rounded-full bg-red-500 mx-auto animate-pulse" title="Rupture" />
+                            <div className="w-2 h-2 rounded-full bg-red-500 mx-auto animate-pulse" title={t('pos.stockOut')} />
                         ) : stockStatus === 'low' ? (
-                            <div className="w-2 h-2 rounded-full bg-orange-500 mx-auto" title="Faible" />
+                            <div className="w-2 h-2 rounded-full bg-orange-500 mx-auto" title={t('pos.stockLow')} />
                         ) : (
-                            <div className="w-2 h-2 rounded-full bg-green-500 mx-auto" title="OK" />
+                            <div className="w-2 h-2 rounded-full bg-green-500 mx-auto" title={t('pos.stockNormal')} />
                         )}
                     </div>
                   </div>

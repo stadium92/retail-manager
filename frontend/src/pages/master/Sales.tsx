@@ -228,10 +228,10 @@ export default function SalesPage() {
         <div className="space-y-1"><Label className="text-[9px] font-black uppercase tracking-widest ml-1">{t('sidebar.stores')}</Label>
           <Select value={selectedStoreFilter} onValueChange={setSelectedStoreFilter}><SelectTrigger className="w-full h-10 bg-background border-2 font-black uppercase text-[10px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all" className="font-black uppercase text-[10px]">{t('sales.allStores')}</SelectItem>{stores.map(s => <SelectItem key={s.id} value={s.id} className="font-black uppercase text-[10px]">{s.name}</SelectItem>)}</SelectContent></Select>
         </div>
-        <div className="space-y-1"><Label className="text-[9px] font-black uppercase tracking-widest ml-1">RÈGLEMENT</Label>
-          <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}><SelectTrigger className="w-full h-10 bg-background border-2 font-black uppercase text-[10px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all" className="font-black uppercase text-[10px]">TOUS</SelectItem><SelectItem value="cash" className="font-black uppercase text-[10px]">CASH</SelectItem><SelectItem value="credit" className="font-black uppercase text-[10px]">CRÉDIT</SelectItem></SelectContent></Select>
+        <div className="space-y-1"><Label className="text-[9px] font-black uppercase tracking-widest ml-1">{t('sales.paymentMethod')}</Label>
+          <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}><SelectTrigger className="w-full h-10 bg-background border-2 font-black uppercase text-[10px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all" className="font-black uppercase text-[10px]">{t('common.all')}</SelectItem><SelectItem value="cash" className="font-black uppercase text-[10px]">{t('common.cash')}</SelectItem><SelectItem value="credit" className="font-black uppercase text-[10px]">{t('common.credit')}</SelectItem></SelectContent></Select>
         </div>
-        <div className="space-y-1"><Label className="text-[9px] font-black uppercase tracking-widest ml-1">RECHERCHE</Label><div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Client, article, facture..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 h-10 border-2 font-black uppercase tracking-tighter" /></div></div>
+        <div className="space-y-1"><Label className="text-[9px] font-black uppercase tracking-widest ml-1">{t('common.search')}</Label><div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder={t('sales.searchSales')} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 h-10 border-2 font-black uppercase tracking-tighter" /></div></div>
       </div>
 
       <Card className="border-2 shadow-2xl overflow-hidden rounded-2xl">
@@ -240,11 +240,11 @@ export default function SalesPage() {
             <TableHeader className="sticky top-0 bg-card z-10 border-b-2 shadow-md">
               <TableRow className="h-14">
                 <TableHead className="font-black uppercase tracking-widest text-[9px] pl-6">{t('sales.date')}</TableHead>
-                <TableHead className="font-black uppercase tracking-widest text-[9px]">MAGASIN</TableHead>
-                <TableHead className="font-black uppercase tracking-widest text-[9px]">ARTICLES</TableHead>
-                <TableHead className="font-black uppercase tracking-widest text-[9px]">CLIENT</TableHead>
-                <TableHead className="font-black uppercase tracking-widest text-[9px]">TOTAL</TableHead>
-                <TableHead className="font-black uppercase tracking-widest text-[9px]">CAISSIER</TableHead>
+                <TableHead className="font-black uppercase tracking-widest text-[9px]">{t('sales.table.store')}</TableHead>
+                <TableHead className="font-black uppercase tracking-widest text-[9px]">{t('sales.table.item')}</TableHead>
+                <TableHead className="font-black uppercase tracking-widest text-[9px]">{t('sales.table.customer')}</TableHead>
+                <TableHead className="font-black uppercase tracking-widest text-[9px]">{t('sales.table.total')}</TableHead>
+                <TableHead className="font-black uppercase tracking-widest text-[9px]">{t('sales.cashier')}</TableHead>
                 <TableHead className="text-right font-black uppercase tracking-widest text-[9px] pr-6">{t('sales.actions')}</TableHead>
               </TableRow>
             </TableHeader>
@@ -284,8 +284,8 @@ export default function SalesPage() {
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onConfirm={handleDelete}
-        title="Supprimer la vente"
-        description="Cette action est irréversible."
+        title={t('sales.deleteConfirm')}
+        description={t('sales.deleteConfirmDescription')}
         variant="destructive"
       />
     </div>

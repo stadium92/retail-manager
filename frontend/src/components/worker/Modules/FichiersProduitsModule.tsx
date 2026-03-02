@@ -402,17 +402,17 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                                 <SelectContent>
                                     <SelectItem value="Pièce">{t('inventory.unitTypes.piece')}</SelectItem>
                                     <SelectItem value="Carton">{t('inventory.unitTypes.carton')}</SelectItem>
-                                    <SelectItem value="KG">Kilogramme (KG)</SelectItem>
-                                    <SelectItem value="Litre">Litre (L)</SelectItem>
-                                    <SelectItem value="Paquet">Paquet</SelectItem>
-                                    <SelectItem value="Sac">Sac</SelectItem>
+                                    <SelectItem value="KG">{t('inventory.unitTypes.kg')}</SelectItem>
+                                    <SelectItem value="Litre">{t('inventory.unitTypes.litre')}</SelectItem>
+                                    <SelectItem value="Paquet">{t('inventory.unitTypes.paquet')}</SelectItem>
+                                    <SelectItem value="Sac">{t('inventory.unitTypes.sac')}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-2"><Label className="text-xs font-bold uppercase text-primary">{t('inventory.fields.packaging')}</Label><Input value={data.packaging} onChange={e => update('packaging', e.target.value)} placeholder="Ex: 12" className="h-10 font-bold border-primary/20" /></div>
+                        <div className="space-y-2"><Label className="text-xs font-bold uppercase text-primary">{t('inventory.fields.packaging')}</Label><Input value={data.packaging} onChange={e => update('packaging', e.target.value)} placeholder={t('inventory.fields.packagingPlaceholder')} className="h-10 font-bold border-primary/20" /></div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2"><Label className="text-xs font-black uppercase text-primary">{registrationMode === 'single' ? 'QUANTITÉ INITIALE' : 'QUANTITÉ'}</Label><Input type="number" value={registrationMode === 'single' ? data.reorder_quantity : data.quantity} onChange={handleNumChange(registrationMode === 'single' ? 'reorder_quantity' : 'quantity', index)} className="h-10 font-black bg-primary/5 border-primary/20" /></div>
+                        <div className="space-y-2"><Label className="text-xs font-black uppercase text-primary">{registrationMode === 'single' ? t('inventory.fields.initialQuantity') : t('inventory.fields.quantity')}</Label><Input type="number" value={registrationMode === 'single' ? data.reorder_quantity : data.quantity} onChange={handleNumChange(registrationMode === 'single' ? 'reorder_quantity' : 'quantity', index)} className="h-10 font-black bg-primary/5 border-primary/20" /></div>
                         <div className="space-y-2"><Label className="text-xs font-bold uppercase">{t('inventory.fields.minStock')}</Label><Input type="number" value={data.min_stock_alert} onChange={handleNumChange('min_stock_alert', index)} onBlur={handleNumBlur('min_stock_alert', index)} className="h-10" /></div>
                     </div>
                     <div className="space-y-2">
@@ -449,7 +449,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                 <TableHead className="text-right font-black uppercase tracking-[0.2em] text-[9px]">{t('inventory.fields.retailPriceShort')}</TableHead>
                 <TableHead className="text-right font-black uppercase tracking-[0.2em] text-[9px]">{t('inventory.fields.packaging')}</TableHead>
                 <TableHead className="text-right font-black uppercase tracking-[0.2em] text-[9px]">{t('inventory.table.quantity')}</TableHead>
-                <TableHead className="text-center font-black uppercase tracking-[0.2em] text-[9px]">STATUS</TableHead>
+                <TableHead className="text-center font-black uppercase tracking-[0.2em] text-[9px]">{t('common.status')}</TableHead>
                 <TableHead className="text-center font-black uppercase tracking-[0.2em] text-[9px]">{t('inventory.table.actions')}</TableHead>
               </TableRow>
             </TableHeader>
@@ -541,14 +541,14 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
             <div className="px-6 py-6 border-t-4 bg-card flex justify-end items-center gap-6 shrink-0">
               <Button variant="outline" type="button" onClick={() => setIsDialogOpen(false)}>{t('common.cancel')}</Button>
               <Button type="submit" disabled={isSaving} className="px-12 font-black uppercase tracking-widest text-xs h-12 shadow-xl shadow-primary/30">
-                {isSaving ? t('common.loading') : editingProduct ? t('common.update') : registrationMode === 'multi' ? `ENREGISTRER LES ${multiItems.length} ARTICLES` : t('inventory.createItem')}
+                {isSaving ? t('common.loading') : editingProduct ? t('common.update') : registrationMode === 'multi' ? t('inventory.saveMultipleItems', { count: multiItems.length }) : t('inventory.createItem')}
               </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
 
-      <ProductLookupDialog open={isLookupOpen} onOpenChange={setIsLookupOpen} storeId={storeId} title="RECHERCHE D'ARTICLES (GLOBAL)" standalone mode="wholesale" onSelect={handleProductSelected} />
+      <ProductLookupDialog open={isLookupOpen} onOpenChange={setIsLookupOpen} storeId={storeId} title={t('purchases.productSearch')} standalone mode="wholesale" onSelect={handleProductSelected} />
     </div>
   );
 }
