@@ -4,6 +4,7 @@ import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -286,7 +287,7 @@ export function ReplenishmentNeeds({ storeId }: Props) {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Input type="number" value={item.order_qty} onChange={(e) => setNeeds(needs.map(n => n.product_id === item.product_id ? { ...n, order_qty: parseInt(e.target.value) || 0 } : n))} className="h-9 w-24 font-black border-2" />
+                    <NumericInput value={item.order_qty} onValueChange={(v) => setNeeds(needs.map(n => n.product_id === item.product_id ? { ...n, order_qty: v } : n))} integer className="h-9 w-24 font-black border-2" />
                   </TableCell>
                 </TableRow>
               ))}
@@ -347,10 +348,10 @@ export function ReplenishmentNeeds({ storeId }: Props) {
                           {item.isBox ? item.unit_type?.toUpperCase() || 'UNIT' : t('inventory.unitPiece')}
                         </Button>
                       </TableCell>                      <TableCell>
-                        <Input type="number" value={item.order_qty} onChange={(e) => setOrderItems(orderItems.map(oi => oi.product_id === item.product_id ? { ...oi, order_qty: parseInt(e.target.value) || 0 } : oi))} className="h-9 font-black border-2" />
+                        <NumericInput value={item.order_qty} onValueChange={(v) => setOrderItems(orderItems.map(oi => oi.product_id === item.product_id ? { ...oi, order_qty: v } : oi))} integer className="h-9 font-black border-2" />
                       </TableCell>
                       <TableCell>
-                        <Input type="number" value={item.unit_cost} onChange={(e) => setOrderItems(orderItems.map(oi => oi.product_id === item.product_id ? { ...oi, unit_cost: parseFloat(e.target.value) || 0 } : oi))} className="h-9 font-mono text-xs border-2 bg-muted/20" />
+                        <NumericInput value={item.unit_cost} onValueChange={(v) => setOrderItems(orderItems.map(oi => oi.product_id === item.product_id ? { ...oi, unit_cost: v } : oi))} className="h-9 font-mono text-xs border-2 bg-muted/20" />
                       </TableCell>
                       <TableCell className="text-right font-black text-primary text-sm">
                         {formatCurrency((item.order_qty || 0) * (item.unit_cost || 0) * (item.isBox ? (item.packSize || 1) : 1))}
