@@ -168,14 +168,17 @@ export function ReplenishmentNeeds({ storeId }: Props) {
 
       const newIsBox = !item.isBox;
       let newQty = item.order_qty || 0;
+      let newCost = item.unit_cost || 0;
 
       if (newIsBox) {
         newQty = newQty / item.packSize;
+        newCost = newCost * item.packSize;
       } else {
         newQty = newQty * item.packSize;
+        newCost = newCost / item.packSize;
       }
       
-      return { ...item, isBox: newIsBox, order_qty: newQty };
+      return { ...item, isBox: newIsBox, order_qty: newQty, unit_cost: newCost };
     }));
   };
 
@@ -188,7 +191,7 @@ export function ReplenishmentNeeds({ storeId }: Props) {
     setLoading(true);
     try {
       const totalAmount = orderItems.reduce((sum, item) => {
-        const lineTotal = (item.order_qty || 0) * (item.unit_cost || 0) * (item.isBox ? (item.packSize || 1) : 1);
+        const lineTotal = (item.order_qty || 0) * (item.unit_cost || 0);
         return sum + lineTotal;
       }, 0);
 
@@ -324,7 +327,7 @@ export function ReplenishmentNeeds({ storeId }: Props) {
                     <TableHead className="w-20 text-center font-black uppercase tracking-widest text-[9px]">{t('inventory.fields.packaging')}</TableHead>
                     <TableHead className="w-24 text-center font-black uppercase tracking-widest text-[9px]">{t('menu.program.unit')}</TableHead>
                     <TableHead className="w-24 font-black uppercase tracking-widest text-[9px]">{t('inventory.table.quantity')}</TableHead>
-                    <TableHead className="w-32 font-black uppercase tracking-widest text-[9px]">{t('inventory.price')} ({t('inventory.unitPiece')})</TableHead>
+                    <TableHead className="w-32 font-black uppercase tracking-widest text-[9px]">{t('inventory.price')}</TableHead>
                     <TableHead className="w-32 text-right font-black uppercase tracking-widest text-[9px]">TOTAL</TableHead>
                   </TableRow>
                 </TableHeader>

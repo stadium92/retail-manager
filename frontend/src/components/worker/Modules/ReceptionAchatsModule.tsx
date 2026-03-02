@@ -124,22 +124,24 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
           toast.warning(t('inventory.packaging') + ': 1');
           return item;
         }
-        
+
         const newIsBox = !item.isBox;
         let newQtyOrdered = item.quantity_ordered;
         let newQtyReceived = item.quantity_received;
-        
+        let newCost = item.unit_cost;
+
         if (newIsBox) {
-          newQtyOrdered = newQtyOrdered / item.packSize;
-          newQtyReceived = newQtyReceived / item.packSize;
+            newQtyOrdered = newQtyOrdered / item.packSize;
+            newQtyReceived = newQtyReceived / item.packSize;
+            newCost = newCost * item.packSize;
         } else {
-          newQtyOrdered = newQtyOrdered * item.packSize;
-          newQtyReceived = newQtyReceived * item.packSize;
+            newQtyOrdered = newQtyOrdered * item.packSize;
+            newQtyReceived = newQtyReceived * item.packSize;
+            newCost = newCost / item.packSize;
         }
 
-        return { ...item, isBox: newIsBox, quantity_ordered: newQtyOrdered, quantity_received: newQtyReceived };
-      })
-    );
+        return { ...item, isBox: newIsBox, quantity_ordered: newQtyOrdered, quantity_received: newQtyReceived, unit_cost: newCost };
+    }));
   };
 
   const addAdHocItem = (product: Product) => {
@@ -201,8 +203,7 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
 
   const { formatCurrency } = useFormatters();
   const totalAmount = receiptItems.reduce((sum, item) => {
-    const packSize = item.packSize || 1;
-    const lineTotal = item.quantity_received * (item.isBox ? (item.unit_cost * packSize) : item.unit_cost);
+    const lineTotal = item.quantity_received * item.unit_cost;
     return sum + lineTotal;
   }, 0);
 
@@ -295,7 +296,7 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
                   <TableHead className="text-[10px] font-black uppercase tracking-widest">{t('inventory.table.name')}</TableHead>
                   <TableHead className="text-[10px] font-black uppercase tracking-widest w-24 text-center">{t('menu.program.ordered')}</TableHead>
                   <TableHead className="text-[10px] font-black uppercase tracking-widest w-28 text-center">{t('menu.program.received')}</TableHead>
-                  <TableHead className="text-[10px] font-black uppercase tracking-widest w-32 text-right">{t('menu.program.unitCost')} ({t('inventory.unitPiece')})</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest w-32 text-right">{t('menu.program.unitCost')}</TableHead>
                   <TableHead className="text-[10px] font-black uppercase tracking-widest w-28 text-right">{t('common.total')}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -303,11 +304,10 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
                 {receiptItems.map(item => {
                   const isDiscrepancy = !isAdHoc && item.quantity_received !== item.quantity_ordered;
                   const packSize = item.packSize || 1;
-                  const displayCost = item.isBox ? (item.unit_cost * packSize) : item.unit_cost;
-                  
+                  const displayCost = item.unit_cost;
+
                   return (
-                    <TableRow key={item.id} className={cn("h-12 border-b", isDiscrepancy && "bg-warning/10")}>
-                      <TableCell className="font-bold">
+                    <TableRow key={item.id} className={cn("h-12 border-b", isDiscrepancy && "bg-warning/10")}>                      <TableCell className="font-bold">
                         <div className="flex items-center gap-2">
                           <Button 
                                                       variant="outline" 
@@ -332,10 +332,10 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
                         <Input type="number" value={item.quantity_received} onChange={(e) => handleQuantityChange(item.id, Number(e.target.value))} className="h-9 text-center font-bold" />
                       </TableCell>
                       <TableCell className="p-1">
-                        <Input type="number" value={displayCost} onChange={(e) => handleCostChange(item.id, item.isBox ? Number(e.target.value) / packSize : Number(e.target.value))} className="h-9 text-right font-mono text-xs" />
+                        <Input type="number" value={displayCost} onChange={(e) => handleCostChange(item.id, Number(e.target.value))} className="h-9 text-right font-mono text-xs" />
                       </TableCell>
                       <TableCell className="text-right font-black text-primary">
-                        {formatCurrency(item.quantity_received * (item.isBox ? (item.unit_cost * packSize) : item.unit_cost))}
+                        {formatCurrency(item.quantity_received * item.unit_cost)}
                       </TableCell>
                     </TableRow>
                   );
