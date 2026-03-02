@@ -4,6 +4,7 @@ import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -394,12 +395,11 @@ export function CommandeManuelleModule({ storeId }: CommandeManuelleModuleProps)
                       />
                     </TableCell>
                     <TableCell className="p-1">
-                      <Input
-                        type="number"
+                      <NumericInput
                         min={0}
                         step={0.01}
                         value={item.unit_cost}
-                        onChange={(e) => updateItem(item.product_id, 'unit_cost', parseFloat(e.target.value) || 0)}
+                        onValueChange={(v) => updateItem(item.product_id, 'unit_cost', v)}
                         className="h-8 text-right"
                       />
                     </TableCell>
