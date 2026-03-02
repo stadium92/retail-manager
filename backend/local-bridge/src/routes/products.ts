@@ -444,7 +444,7 @@ export async function registerProductRoutes(app: FastifyInstance) {
     if (!existing) {
       return reply.status(404).send({
         error: 'NotFound',
-        message: 'Famille introuvable.',
+        message: 'Family not found.',
       });
     }
 
@@ -453,7 +453,7 @@ export async function registerProductRoutes(app: FastifyInstance) {
     if (!canModify) {
       return reply.status(403).send({
         error: 'Forbidden',
-        message: 'Vous ne pouvez pas modifier cette famille.',
+        message: 'You cannot modify this family.',
       });
     }
 
@@ -473,19 +473,19 @@ export async function registerProductRoutes(app: FastifyInstance) {
     if (!existing) {
       return reply.status(404).send({
         error: 'NotFound',
-        message: 'Famille introuvable.',
+        message: 'Family not found.',
       });
     }
 
     if (claims.store_id && claims.store_id !== existing.store_id) {
       return reply.status(403).send({
         error: 'Forbidden',
-        message: 'Vous ne pouvez pas supprimer cette famille.',
+        message: 'You cannot delete this family.',
       });
     }
 
     db.deleteProductFamily(familyId);
-    return reply.send({ message: 'Famille supprimée.' });
+    return reply.send({ message: 'Family deleted.' });
   });
 
   app.post('/rpc/worker_create_product', async (request, reply) => {

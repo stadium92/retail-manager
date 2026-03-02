@@ -82,7 +82,7 @@ export default function ProformaList() {
         const invoiceData: InvoiceData = {
             id: proforma.id,
             storeName: "Magasin",
-            workerName: "Vendeur",
+            workerName: t('edition.seller'),
             customerName: proforma.customer_name,
             customerPhone: proforma.customer_phone,
             created_at: proforma.created_at,

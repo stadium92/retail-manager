@@ -397,7 +397,7 @@ export function ReplenishmentNeeds({ storeId }: Props) {
         open={isLookupOpen} 
         onOpenChange={setIsLookupOpen} 
         storeId={storeId} 
-        title="Recherche d'Articles (Global)"
+        title={t('purchases.productSearch')}
         standalone
         mode="wholesale" 
         onSelect={handleProductSelected} 

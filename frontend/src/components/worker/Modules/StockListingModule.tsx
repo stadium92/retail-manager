@@ -222,7 +222,7 @@ export function StockListingModule({ storeId }: StockListingModuleProps) {
           <div className="text-center">{t('inventory.quantity')}</div>
           <div className="text-center">{t('menu.program.threshold')}</div>
           <div className="text-right">{t('menu.program.value')}</div>
-          <div className="text-right">Marge</div>
+          <div className="text-right">{t('inventory.margin')}</div>
         </div>
 
         {/* Table Body */}

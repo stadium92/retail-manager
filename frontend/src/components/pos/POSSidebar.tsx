@@ -81,8 +81,8 @@ export function POSSidebar({ selectedItem, lastSalePrice, className }: POSSideba
         {/* Stock Level */}
         <div>
           <div className="flex items-center justify-between text-sm mb-2">
-            <span className="text-muted-foreground">Stock Disponible</span>
-            <span className="font-semibold">{product.quantity} unités</span>
+            <span className="text-muted-foreground">{t('inventory.availableStock')}</span>
+            <span className="font-semibold">{t('inventory.units', { count: product.quantity })}</span>
           </div>
           <div className="stock-bar">
             <div 
@@ -95,7 +95,7 @@ export function POSSidebar({ selectedItem, lastSalePrice, className }: POSSideba
           </div>
           {threshold && (
             <p className="text-xs text-muted-foreground mt-1">
-              Seuil d'alerte: {threshold} unités
+              {t('inventory.alertThreshold', { threshold })}
             </p>
           )}
         </div>
@@ -105,7 +105,7 @@ export function POSSidebar({ selectedItem, lastSalePrice, className }: POSSideba
         {/* Pricing Details */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Prix de vente</span>
+            <span className="text-sm text-muted-foreground">{t('inventory.sellingPrice')}</span>
             <span className="font-semibold text-primary text-glow-primary">
               {formatCurrency(unitPrice)}
             </span>
@@ -113,14 +113,14 @@ export function POSSidebar({ selectedItem, lastSalePrice, className }: POSSideba
           
           {costPrice > 0 && (
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Prix d'achat</span>
+              <span className="text-sm text-muted-foreground">{t('inventory.purchasePrice')}</span>
               <span className="font-medium">{formatCurrency(costPrice)}</span>
             </div>
           )}
           
           {costPrice > 0 && (
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Marge</span>
+              <span className="text-sm text-muted-foreground">{t('inventory.margin')}</span>
               <span className={cn(
                 'font-semibold',
                 unitPrice > costPrice ? 'text-success' : 'text-danger'
@@ -148,7 +148,7 @@ export function POSSidebar({ selectedItem, lastSalePrice, className }: POSSideba
 
         {/* Current Line Summary */}
         <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-          <p className="text-xs text-muted-foreground mb-2">Ligne actuelle</p>
+          <p className="text-xs text-muted-foreground mb-2">{t('pos.currentLine')}</p>
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div>
               <span className="text-muted-foreground">Qté:</span>
@@ -161,7 +161,7 @@ export function POSSidebar({ selectedItem, lastSalePrice, className }: POSSideba
           </div>
           <div className="mt-2 pt-2 border-t border-primary/20">
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Total ligne</span>
+              <span className="text-muted-foreground">{t('pos.lineTotal')}</span>
               <span className="font-bold text-lg text-primary text-glow-primary">
                 {formatCurrency(selectedItem.lineTotal)}
               </span>

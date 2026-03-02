@@ -58,7 +58,10 @@
     "about": "About",
     "searching": "Searching...",
     "alreadyAdded": "Already added to list",
-    "added": "Added to list"
+    "added": "Added to list",
+    "enterConfirm": "ENTER: Confirm",
+    "escClose": "ESC: Close",
+    "itemsFound": "{{count}} items found"
   },
   "helpCenter": {
     "title": "Help Center",
@@ -320,7 +323,16 @@
       "wholesalePriceTTC": "Wholesale Price (inc-tax)",
       "nameRequired": "Name is required",
       "barcode": "Barcode",
-      "reorderQuantity": "Qty to Order"
+      "reorderQuantity": "Qty to Order",
+      "minStock": "Min Stock",
+      "packagingShort": "Pkg.",
+      "initialQuantity": "Initial Quantity",
+      "packagingPlaceholder": "e.g. 12",
+      "barcodeOrSku": "Barcode / SKU",
+      "familyOrCategory": "Family / Category",
+      "price2": "Price 2",
+      "price3": "Price 3",
+      "price4": "Price 4"
     },
     "selectStore": "Select store",
     "editItemDescription": "Update inventory item information",
@@ -377,7 +389,27 @@
       "carton": "Carton",
       "paquet": "Packet",
       "sac": "Bag"
-    }
+    },
+    "allFamilies": "All Families",
+    "saveMultipleItems": "Save {{count}} Items",
+    "margin": "Margin",
+    "calculatedMargin": "Calculated margin:",
+    "generalInfo": "General Information",
+    "pricesAndMargins": "Prices & Margins",
+    "stockAndPackaging": "Stock & Packaging",
+    "importFromExisting": "Import from existing item",
+    "addNewItem": "Add a New Item",
+    "selectStoreToAdd": "Please select a store below to add an item.",
+    "globalInventory": "Global Inventory",
+    "valuation": "Valuation",
+    "stockAlerts": "Stock Alerts",
+    "availableStock": "Available Stock",
+    "alertThreshold": "Alert threshold: {{threshold}} units",
+    "units": "{{count}} units",
+    "sellingPrice": "Selling Price",
+    "purchasePrice": "Purchase Price",
+    "currentLine": "Current Line",
+    "lineTotal": "Line Total"
   },
   "stores": {
     "title": "Stores",
@@ -655,7 +687,12 @@
         "store": "Store",
         "customer": "Customer"
       }
-    }
+    },
+    "paymentMethod": "Payment Method",
+    "cashier": "Cashier",
+    "searchSales": "Client, item, invoice...",
+    "store": "Store",
+    "items": "Items"
   },
   "invitations": {
     "title": "Worker Invitations",
@@ -905,7 +942,9 @@
     "realTimeDetails": "to see details in real time",
     "stockOut": "Out of Stock",
     "stockLow": "Low Stock",
-    "stockNormal": "In Stock"
+    "stockNormal": "In Stock",
+    "currentLine": "Current Line",
+    "lineTotal": "Line Total"
   },
   "menu": {
     "sales": {
@@ -979,7 +1018,13 @@
         "broken": "Damaged / Broken",
         "theft": "Theft",
         "other": "Other"
-      }
+      },
+      "recordLoss": "Record Loss",
+      "validateLoss": "Confirm Loss",
+      "confirmLoss": "Confirm loss of {{qty}} units of {{name}}?",
+      "lossHistory": "Loss History (Today)",
+      "noLossToday": "No losses recorded today",
+      "currentStock": "Current Stock"
     },
     "stock": {
       "trigger": "Stock",
@@ -1105,10 +1150,6 @@
       "supplierSettlement": "SUPPLIER Settlements",
       "paymentsThisMonth": "Payments this Month",
       "supplierBalances": "Supplier Balances",
-      "dueBalance": "Due Balance",
-      "settle": "Settle",
-      "mode": "Mode",
-      "checks": "Checks",
       "mobileMoney": "Mobile Money",
       "paymentHistory": "Payment History",
       "confirmPayment": "Confirm Payment",
@@ -1219,7 +1260,6 @@
       "resaleType": "Resale",
       "discountType": "Discount",
       "otherType": "Other",
-      "mobileMoney": "Mobile Money",
       "defaultPurchaseType": "Default Purchase Type",
       "contactName": "Contact Name",
       "createScheduledOrder": "Create Scheduled Order",
@@ -1234,7 +1274,17 @@
       "scheduleDayPlaceholder": "Day (1-7) or Date",
       "sectionPricesConditions": "Prices & Conditions",
       "sectionHistory": "History (Purchases & Payments)",
-      "refresh": "Refresh"
+      "refresh": "Refresh",
+      "grossMargin": "Gross Margin",
+      "bills": "Invoices",
+      "debit": "Debit",
+      "credit": "Credit",
+      "today": "Today",
+      "last7Days": "Last 7 Days",
+      "runningBalance": "Running Balance",
+      "transaction": "Transaction",
+      "items": "Items",
+      "selectDate": "Select a date"
     }
   },
   "customer": {
@@ -1536,5 +1586,101 @@
     "scannerHIDOnly": "Scanner: HID Only",
     "printerNotConfiguredLabel": "Printer: Not Configured",
     "printerOnlineLabel": "Printer: Online"
+  },
+  "api": {
+    "errors": {
+      "storeRequired": "Store is required.",
+      "notFound": "Resource not found.",
+      "forbidden": "You do not have permission to perform this action.",
+      "unauthorized": "Missing or invalid authentication token.",
+      "invalidCredentials": "Invalid email or password.",
+      "userExists": "A user with that email already exists.",
+      "masterAlreadyExists": "A master user already exists on this device.",
+      "invalidRefreshToken": "Session expired. Please log in again.",
+      "userNotFound": "Associated user no longer exists.",
+      "invalidStore": "Selected store does not exist.",
+      "invalidFamily": "Selected family does not exist.",
+      "familyBelongsToAnotherStore": "Family belongs to another store.",
+      "supplierNotFound": "Supplier not found.",
+      "supplierBelongsToAnotherStore": "Supplier belongs to another store.",
+      "configMissing": "Server configuration is missing.",
+      "invalidSupabaseKey": "Invalid Supabase service key.",
+      "supabaseError": "Failed to sync with cloud server.",
+      "repairFailed": "Database repair failed.",
+      "resetFailed": "Database reset failed.",
+      "validationFailed": "Validation failed. Please check your input.",
+      "productNotFound": "Product not found.",
+      "clientNotFound": "Client not found.",
+      "deliveryNotFound": "Delivery not found.",
+      "saleNotFound": "Sale not found.",
+      "orderNotFound": "Order not found.",
+      "itemNotFound": "Item not found.",
+      "paymentNotFound": "Payment not found.",
+      "serviceNotFound": "Service not found.",
+      "invitationNotFound": "Invitation not found.",
+      "invitationNotPending": "Invitation is no longer pending.",
+      "invitationEmailMismatch": "Invitation email does not match current user.",
+      "cannotModifyProduct": "You cannot modify this product.",
+      "cannotDeleteProduct": "You cannot delete this product.",
+      "cannotViewProduct": "You cannot view this product.",
+      "cannotCreateForAnotherStore": "You cannot create items for another store.",
+      "accessDenied": "Access denied.",
+      "accessToOtherStoresDenied": "Access to other stores denied.",
+      "cannotUpdateDelivery": "Cannot update this delivery.",
+      "cannotDeleteDelivery": "Cannot delete this delivery.",
+      "cannotUpdateSale": "Cannot update this sale.",
+      "cannotDeleteSale": "Cannot delete this sale.",
+      "cannotViewSaleItems": "Cannot view sale items.",
+      "cannotUpdateStore": "Cannot update this store.",
+      "cannotDeleteStore": "Cannot delete this store.",
+      "cannotUpdateSupplier": "Cannot update this supplier.",
+      "cannotDeleteSupplier": "Cannot delete this supplier.",
+      "cannotUpdateOrder": "Cannot update this order.",
+      "cannotDeleteOrder": "Cannot delete this order.",
+      "cannotReceiveOrder": "Cannot receive this order.",
+      "cannotViewItems": "Cannot view items.",
+      "cannotAddItems": "Cannot add items.",
+      "cannotUpdateItems": "Cannot update items.",
+      "cannotDeleteItems": "Cannot delete items.",
+      "cannotUpdatePayment": "Cannot update this payment.",
+      "cannotCreateClientInAnotherStore": "Cannot create client in another store.",
+      "cannotCreateServiceInAnotherStore": "Cannot create service in another store.",
+      "cannotViewBatchesForAnotherStore": "Cannot view batches for another store.",
+      "productDoesNotBelongToStore": "Product does not belong to this store.",
+      "insufficientRole": "Insufficient role to perform this action.",
+      "invalidOrExpiredToken": "Invalid or expired token.",
+      "familyNotFound": "Family not found.",
+      "storeNotFound": "Store not found.",
+      "databaseRepaired": "Database repaired and optimized.",
+      "databaseReset": "Database wiped and reset to factory defaults."
+    },
+    "success": {
+      "deleted": "Deleted successfully.",
+      "deliveryDeleted": "Delivery deleted.",
+      "saleDeleted": "Sale deleted.",
+      "productDeleted": "Product deleted.",
+      "clientDeleted": "Client deleted.",
+      "storeDeleted": "Store deleted.",
+      "supplierDeleted": "Supplier deleted.",
+      "orderDeleted": "Order deleted.",
+      "itemDeleted": "Item deleted.",
+      "serviceDeleted": "Service deleted.",
+      "scheduledOrderDeleted": "Scheduled order deleted.",
+      "scheduledOrderCreated": "Scheduled order created.",
+      "masterUserCreated": "Master user created.",
+      "loggedOut": "Logged out.",
+      "databaseRepaired": "Database repaired and optimized.",
+      "databaseReset": "Database wiped and reset to factory defaults."
+    }
+  },
+  "edition": {
+    "orderRef": "Order Ref.",
+    "seller": "Seller",
+    "saved": "Saved",
+    "wholesale": "Wholesale",
+    "retail": "Retail",
+    "paid": "Paid",
+    "pending": "Pending",
+    "totalRevenue": "Total Revenue"
   }
 }
