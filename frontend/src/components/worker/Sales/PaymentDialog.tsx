@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { SaleMode } from './SanifereHeader';
@@ -106,10 +107,9 @@ export function PaymentDialog({
             <div className="space-y-3">
               <div>
                 <Label className="font-mono text-sm">{t('menu.program.receivedAmount')}</Label>
-                <Input
-                  type="number"
+                <NumericInput
                   value={amountReceived}
-                  onChange={(e) => setAmountReceived(Number(e.target.value))}
+                  onValueChange={(v) => setAmountReceived(v)}
                   className="text-xl font-bold font-mono text-right bg-white"
                 />
               </div>
@@ -151,10 +151,9 @@ export function PaymentDialog({
             <div className="space-y-3">
               <div>
                 <Label className="font-mono text-sm">{t('menu.program.downPayment')}</Label>
-                <Input
-                  type="number"
+                <NumericInput
                   value={partialPayment}
-                  onChange={(e) => setPartialPayment(Number(e.target.value))}
+                  onValueChange={(v) => setPartialPayment(v)}
                   max={totalAmount}
                   className="text-lg font-bold font-mono text-right bg-white"
                 />

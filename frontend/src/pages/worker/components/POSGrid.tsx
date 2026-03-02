@@ -2,6 +2,7 @@ import { useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { CartItem } from "@/stores/usePOSStore";
 import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { useTranslation } from "react-i18next";
 
 interface POSGridProps {
@@ -72,14 +73,15 @@ export function POSGrid({ items, activeRow, onRowClick, onUpdateQuantity }: POSG
                                     {formatCurrency(item.unitPrice)}
                                 </td>
                                 <td className="px-4 py-1 text-center" onClick={(e) => e.stopPropagation()}>
-                                    <Input
-                                        type="number"
+                                    <NumericInput
                                         className={cn(
                                             "h-8 w-20 text-center mx-auto",
                                             isActive ? "bg-background text-foreground" : "bg-transparent border-transparent hover:border-input"
                                         )}
                                         value={item.quantity}
-                                        onChange={(e) => onUpdateQuantity(idx, parseInt(e.target.value) || 0)}
+                                        onValueChange={(v) => onUpdateQuantity(idx, v)}
+                                        integer
+                                        emptyValue={1}
                                         onFocus={() => onRowClick(idx)}
                                     />
                                 </td>
