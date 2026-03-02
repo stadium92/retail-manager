@@ -130,8 +130,8 @@ export function ProductLookupDialog({
         </div>
 
         <ScrollArea className="flex-1">
-          <div className="p-4 pt-0">
-            <div className="grid grid-cols-[40px_1fr_100px_120px_90px_90px_80px_100px_80px] font-black uppercase tracking-widest text-[9px] bg-primary text-white py-3 px-4 rounded-t-xl sticky top-0 z-10 shadow-md">
+          <div className="p-4 pt-0 min-w-[800px]">
+            <div className="grid grid-cols-[40px_minmax(150px,1fr)_100px_minmax(100px,120px)_90px_90px_80px_100px_80px] font-black uppercase tracking-widest text-[9px] bg-primary text-white py-3 px-4 rounded-t-xl sticky top-0 z-10 shadow-md">
               <div className="text-center">#</div>
               <div>{t('pos.grid.headers.designation')}</div>
               <div className="text-center">{t('pos.grid.headers.sku')}</div>
@@ -168,12 +168,11 @@ export function ProductLookupDialog({
                     }}
                     onMouseEnter={() => setSelectedIndex(index)}
                     className={cn(
-                      'grid grid-cols-[40px_1fr_100px_120px_90px_90px_80px_100px_80px] font-mono text-xs py-3 px-4 cursor-pointer border-b transition-all items-center',
-                      isSelected 
-                        ? 'bg-primary text-white scale-[1.01] rounded-lg shadow-lg z-20 relative' 
+                      'grid grid-cols-[40px_minmax(150px,1fr)_100px_minmax(100px,120px)_90px_90px_80px_100px_80px] font-mono text-xs py-3 px-4 cursor-pointer border-b transition-all items-center',
+                      isSelected
+                        ? 'bg-primary text-white scale-[1.01] rounded-lg shadow-lg z-20 relative'
                         : 'bg-white hover:bg-muted/50 text-black border-muted'
-                    )}
-                  >
+                    )}                  >
                     <div className="text-center text-[10px] opacity-40 font-black">{index + 1}</div>
                     <div className="font-bold uppercase truncate">{product.name}</div>
                     <div className="text-center text-[10px] opacity-60">{product.sku || '—'}</div>
