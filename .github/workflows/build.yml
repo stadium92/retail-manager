@@ -62,6 +62,6 @@ jobs:
           tagName: v__VERSION__
           releaseName: "App v__VERSION__"
           releaseBody: "Automated release by CI/CD Pipeline."
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: --target x86_64-pc-windows-msvc
