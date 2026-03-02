@@ -205,10 +205,12 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
   };
 
   const { formatCurrency } = useFormatters();
-  const totalAmount = receiptItems.reduce((sum, item) => {
-    const lineTotal = item.quantity_received * item.unit_cost;
-    return sum + lineTotal;
-  }, 0);
+  const totalAmount = useMemo(() => {
+    return receiptItems.reduce((sum, item) => {
+      const lineTotal = (Number(item.quantity_received) || 0) * (Number(item.unit_cost) || 0);
+      return sum + lineTotal;
+    }, 0);
+  }, [receiptItems]);
 
   return (
     <div className="h-full flex flex-col p-4 gap-4">

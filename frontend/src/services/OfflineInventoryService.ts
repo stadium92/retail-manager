@@ -217,8 +217,9 @@ export const OfflineInventoryService = {
       const local = await LocalDatabase.getInventoryItem(id);
       
       // Ensure we merge with local data to not lose fields
+      const baseItem = local ? mapLocalInventoryToItem(local) : { id } as any;
       const updated = { 
-        ...mapLocalInventoryToItem(local || {} as any), 
+        ...baseItem, 
         ...updates, 
         id, 
         updated_at: new Date().toISOString() 
