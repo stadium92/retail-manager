@@ -68,7 +68,6 @@ export interface Product {
   is_active?: boolean;
   unit_type?: string;
   packaging?: string;
-  sub_packaging?: string;
   expiry_date?: string;
   created_at: string;
   updated_at: string;
@@ -101,7 +100,6 @@ export interface InventoryItem {
   brand?: string;
   unit_type?: string;
   packaging?: string;
-  sub_packaging?: string;
   expiry_date?: string;
   reorder_quantity?: number;
   

@@ -49,7 +49,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     selling_price_ttc: 0 as number | string, 
     min_stock_alert: 10 as number | string,
     unit_type: 'Pièce', family_id: '', brand: '', aisle: '', preferred_supplier_id: '',
-    packaging: '1', sub_packaging: '' as string, reorder_quantity: 0 as number | string, expiry_date: '', image_url: '',
+    packaging: '1', reorder_quantity: 0 as number | string, expiry_date: '', image_url: '',
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -200,7 +200,6 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                 min_quantity: Number(item.min_stock_alert),
                 unit_type: item.unit_type,
                 packaging: item.packaging,
-                sub_packaging: item.sub_packaging,
                 category_id: item.family_id || undefined,
                 brand: item.brand || undefined,
                 aisle: item.aisle || undefined,
@@ -246,7 +245,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
       min_stock_alert: isBox ? ((p.min_stock_alert || 0) / packSize) : (p.min_stock_alert || 0),
       unit_type: p.unit_type || 'Pièce',
       family_id: p.family_id || '', brand: p.brand || '', aisle: p.aisle || '',
-      packaging: p.packaging || '1', sub_packaging: (p as any).sub_packaging || '',
+      packaging: p.packaging || '1',
       expiry_date: p.expiry_date || '', image_url: p.image_url || '',
     });
     setIsDialogOpen(true);
@@ -378,10 +377,6 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                             </Select>
                         </div>
                         <div className="space-y-2"><Label className="text-xs font-bold uppercase text-primary">{t('inventory.fields.packaging')}</Label><Input value={data.packaging} onChange={e => update('packaging', e.target.value)} placeholder="Ex: 12" className="h-10 font-bold border-primary/20" /></div>
-                    </div>
-                    <div className="space-y-2 bg-primary/5 p-3 rounded-lg border border-primary/10">
-                        <Label className="text-[10px] font-black uppercase text-primary flex items-center gap-2"><Package className="h-3 w-3" />Sous-Conditionnement</Label>
-                        <Input value={data.sub_packaging} onChange={e => update('sub_packaging', e.target.value)} placeholder="Ex: 10" className="h-9 font-bold bg-white" />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2"><Label className="text-xs font-black uppercase text-primary">{registrationMode === 'single' ? 'QUANTITÉ INITIALE' : 'QUANTITÉ'}</Label><Input type="number" value={registrationMode === 'single' ? data.reorder_quantity : data.quantity} onChange={handleNumChange(registrationMode === 'single' ? 'reorder_quantity' : 'quantity', index)} className="h-10 font-black bg-primary/5 border-primary/20" /></div>

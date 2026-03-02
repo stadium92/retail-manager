@@ -84,7 +84,6 @@ export interface LocalInventory {
   brand?: string;
   unit_type?: string;
   packaging?: string;
-  sub_packaging?: string;
   expiry_date?: string;
   reorder_quantity?: number;
   updated_at: string;
