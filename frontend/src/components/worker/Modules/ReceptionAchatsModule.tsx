@@ -173,8 +173,8 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
     try {
       const normalizedItems = receiptItems.map(item => ({
         ...item,
-        quantity_received: item.isBox ? (item.quantity_received * (item.packSize || 1)) : item.quantity_received,
-        unit_cost: item.unit_cost
+        quantity_received: item.isBox ? (Number(item.quantity_received) * (item.packSize || 1)) : Number(item.quantity_received),
+        unit_cost: item.isBox ? (Number(item.unit_cost) / (item.packSize || 1)) : Number(item.unit_cost)
       }));
 
       if (!isAdHoc) {
@@ -184,7 +184,7 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
           unit_cost: item.unit_cost,
         })));
       } else {
-        const totalAmount = normalizedItems.reduce((sum, item) => sum + (item.quantity_received * item.unit_cost), 0);
+        const totalAmountOnReceipt = normalizedItems.reduce((sum, item) => sum + (item.quantity_received * item.unit_cost), 0);
         if (!selectedSupplierId) return toast.error(t('invitations.form.selectStore')); 
         
         // Handle ad-hoc direct purchase implementation...

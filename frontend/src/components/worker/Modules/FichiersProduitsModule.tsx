@@ -156,19 +156,23 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
   };
 
   const fetchData = async () => {
+    console.log('[FichiersProduits] Fetching data for store:', storeId);
     setLoading(true);
     try {
       const [inventoryRes, familiesRes] = await Promise.all([
         OfflineInventoryService.getInventory(storeId, { notify: false }),
         OfflineInventoryService.getProductFamilies(storeId)
       ]);
+      
+      console.log('[FichiersProduits] Inventory response:', inventoryRes.data?.length || 0, 'items');
+
       if (inventoryRes.data) {
         const mapped = inventoryRes.data.map(item => ({
           ...item,
-          purchase_price: item.cost || (item as any).cost_price || 0,
-          selling_price_detail: item.price || (item as any).unit_price || 0,
-          current_stock: item.quantity ?? (item as any).stock ?? (item as any).current_stock ?? 0,
-          min_stock_alert: item.low_stock_threshold ?? (item as any).min_quantity ?? 0,
+          purchase_price: Number(item.cost || (item as any).cost_price || 0),
+          selling_price_detail: Number(item.price || (item as any).unit_price || 0),
+          current_stock: Number(item.quantity ?? (item as any).stock ?? (item as any).current_stock ?? 0),
+          min_stock_alert: Number(item.low_stock_threshold ?? (item as any).min_quantity ?? 0),
           unit_type: item.unit_type || 'Pièce',
           family_id: item.category_id || (item as any).category || (item as any).family_id,
           brand: item.brand || '',
@@ -182,8 +186,12 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
         } as unknown as ProductMaster));
         setLocalProducts(mapped);
       }
-      if (familiesRes.data) setFamilies(familiesRes.data as any);
+      if (familiesRes.data) {
+        console.log('[FichiersProduits] Families fetched:', familiesRes.data.length);
+        setFamilies(familiesRes.data as any);
+      }
     } catch (err) {
+      console.error('[FichiersProduits] Fetch error:', err);
       toast({ title: t('common.error'), variant: 'destructive' });
     } finally {
       setLoading(false);
@@ -202,17 +210,20 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
   };
 
   const handleSave = async () => {
+    console.log('[FichiersProduits] handleSave triggered. Mode:', registrationMode);
     setIsSaving(true);
     try {
         const itemsToSave = registrationMode === 'single' ? [formData] : multiItems;
+        console.log('[FichiersProduits] Items to save:', itemsToSave.length);
         
         for (const item of itemsToSave) {
+            console.log('[FichiersProduits] Processing item:', item.name);
             const packSize = getPackSize(item.packaging);
             const isBox = isBoxUnit(item.unit_type);
             
-            let finalPrice = Number(item.selling_price_detail);
-            let finalCost = Number(item.purchase_price);
-            let finalQty = Number(registrationMode === 'single' ? item.reorder_quantity : item.quantity);
+            let finalPrice = Number(item.selling_price_detail) || 0;
+            let finalCost = Number(item.purchase_price) || 0;
+            let finalQty = Number(registrationMode === 'single' ? item.reorder_quantity : item.quantity) || 0;
             
             if (isBox && packSize > 1) {
                 finalPrice = finalPrice / packSize;
@@ -233,7 +244,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                 wholesale_price_ht: item.selling_price_ht ? Number(item.selling_price_ht) / (isBox ? packSize : 1) : undefined,
                 wholesale_price_ttc: item.selling_price_ttc ? Number(item.selling_price_ttc) / (isBox ? packSize : 1) : undefined,
                 quantity: finalQty,
-                min_quantity: Number(item.min_stock_alert),
+                min_quantity: Number(item.min_stock_alert) || 0,
                 unit_type: item.unit_type,
                 packaging: item.packaging,
                 category_id: item.family_id || undefined,
@@ -243,23 +254,29 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                 store_id: storeId,
             };
 
+            console.log('[FichiersProduits] Payload for service:', data);
+
             let result;
             if (editingProduct) {
+                console.log('[FichiersProduits] Updating existing product:', editingProduct.id);
                 result = await OfflineInventoryService.updateItem(editingProduct.id, data);
             } else {
+                console.log('[FichiersProduits] Creating new product...');
                 result = await OfflineInventoryService.createItem(data);
             }
 
             if (result.error) {
+                console.error('[FichiersProduits] Service error:', result.error);
                 throw result.error;
             }
+            console.log('[FichiersProduits] Save successful for item:', item.name);
         }
 
         toast({ title: t('common.success') });
         setIsDialogOpen(false);
         await fetchData();
     } catch (err: any) {
-        console.error('[FichiersProduits] Save error:', err);
+        console.error('[FichiersProduits] Global save catch:', err);
         toast({ title: t('common.error'), description: err.message || t('common.error'), variant: 'destructive' });
     } finally {
         setIsSaving(false);
