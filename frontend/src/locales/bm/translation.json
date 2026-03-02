@@ -55,7 +55,10 @@
     "amount": "Hakɛ",
     "balanceDue": "Sɔrɔ Tɔ",
     "general": "Hɛɛrɛ",
-    "about": "Kan na"
+    "about": "Kan na",
+    "searching": "Ɲinini bɛ kɛ...",
+    "alreadyAdded": "Fen farala a kan ka ban",
+    "added": "Fen farala a kan"
   },
   "helpCenter": {
     "title": "Dɛmɛ Yɔrɔ",
@@ -144,7 +147,8 @@
     "stockLow": "Stock Bas",
     "workerRequest": "Demande",
     "noNeedsIdentified": "Bɛnɛ si tɛ sisan.",
-    "status": "Ka ɲɛ"
+    "status": "Ka ɲɛ",
+    "productSearch": "Fen ɲinini (Global)"
   },
   "team": {
     "title": "Jɛkulu",

@@ -55,7 +55,10 @@
     "amount": "Montant",
     "balanceDue": "Solde Dû",
     "general": "Général",
-    "about": "À propos"
+    "about": "À propos",
+    "searching": "Recherche en cours...",
+    "alreadyAdded": "Déjà ajouté à la liste",
+    "added": "Ajouté à la liste"
   },
   "helpCenter": {
     "title": "Centre d'Aide",
@@ -134,7 +137,8 @@
     "stockLow": "Stock Bas",
     "workerRequest": "Demande",
     "noNeedsIdentified": "Aucun besoin identifié.",
-    "status": "Statut"
+    "status": "Statut",
+    "productSearch": "Recherche d'Articles (Global)"
   },
   "team": {
     "title": "Équipe",
