@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter, Runtime};
+use tauri::{AppHandle, Emitter, Runtime, Wry};
 use std::time::Duration;
 use tokio::time::sleep;
 use crate::license::check_license_gate;
@@ -11,7 +11,7 @@ pub struct ScanEvent {
 }
 
 #[tauri::command]
-pub async fn start_hardware_scan_listener<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+pub async fn start_hardware_scan_listener(app: AppHandle<Wry>) -> Result<(), String> {
     check_license_gate(&app)?;
     println!("Initializing hardware serial scanner listener...");
     
@@ -42,10 +42,12 @@ pub async fn list_connected_scanners(app: AppHandle) -> Result<Vec<String>, Stri
 
 // Helper command to simulate a scan for testing purposes
 #[tauri::command]
-pub async fn simulate_hardware_scan<R: Runtime>(app: AppHandle<R>, code: String) -> Result<(), String> {
+pub async fn simulate_hardware_scan(app: AppHandle<Wry>, code: String) -> Result<(), String> {
     check_license_gate(&app)?;
     app.emit("hardware-scan", ScanEvent { 
         code, 
         source: "Simulated-Serial".into() 
     }).map_err(|e| e.to_string())
 }
+
+

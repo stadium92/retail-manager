@@ -120,3 +120,4 @@ foreach ($item in $architectures) {
 }
 
 Write-Host "--- Sidecar Preparation Complete (Bible Compliant) ---" -ForegroundColor Cyan
+

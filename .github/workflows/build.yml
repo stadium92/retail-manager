@@ -5,10 +5,12 @@ on:
     branches:
       - main
       - frontend-test-1
+      - main-cloud-build
   pull_request:
     branches:
       - main
       - frontend-test-1
+      - main-cloud-build
   workflow_dispatch:
 
 jobs:
@@ -17,9 +19,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
           token: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Setup Node.js v18
         uses: actions/setup-node@v4
         with:
@@ -46,7 +47,10 @@ jobs:
           npm run build
 
       - name: Prepare Sidecar Payload
-        run: powershell -ExecutionPolicy Bypass -File scripts/prepare-sidecar-payload.ps1
+        run: |
+          powershell -ExecutionPolicy Bypass -File scripts/prepare-sidecar-payload.ps1
+          # Align payload path for Tauri
+          Copy-Item "backend/sidecar-wrapper/payload-x86_64-pc-windows-msvc.zip" -Destination "backend/local-bridge/payload.zip" -Force
 
       - name: Build Tauri Application
         uses: tauri-apps/tauri-action@v0
@@ -59,6 +63,3 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: --target x86_64-pc-windows-msvc
-
-
-
