@@ -225,10 +225,18 @@ export class SyncService {
         .upsert({
           id: data.id,
           store_id: data.store_id,
-          name: data.product_name,
+          name: data.name || data.product_name,
           sku: data.sku,
-          quantity: data.quantity,
-          unit_price: data.unit_price,
+          quantity: data.quantity ?? data.stock,
+          unit_price: data.unit_price || data.price,
+          cost_price: data.cost_price || data.cost,
+          packaging: data.packaging,
+          unit_type: data.unit_type,
+          category_id: data.category_id || data.category,
+          brand: data.brand,
+          aisle: data.aisle,
+          image_url: data.image_url,
+          updated_at: new Date().toISOString(),
         });
 
       if (error) {

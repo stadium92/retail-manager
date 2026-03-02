@@ -220,11 +220,12 @@ export function ReplenishmentNeeds({ storeId }: Props) {
         total_amount: totalAmount
       }, orderItems.map(i => {
         const qtyInPieces = (i.order_qty || 0) * (i.isBox ? (i.packSize || 1) : 1);
+        const costInPieces = (i.unit_cost || 0) / (i.isBox ? (i.packSize || 1) : 1);
         return {
           product_id: i.product_id,
           quantity_ordered: qtyInPieces,
           quantity_received: 0,
-          unit_cost: i.unit_cost || 0
+          unit_cost: costInPieces
         };
       }));
 
