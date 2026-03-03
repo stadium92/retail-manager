@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LogOut, Wifi, WifiOff, HardDrive } from 'lucide-react';
+import { LogOut, Wifi, WifiOff, HardDrive, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { WorkerModule } from './WorkerMenuBar';
@@ -8,19 +8,24 @@ import { LanguageSwitcher } from '@/components/shared/LanguageSwitcher';
 import { CurrencySwitcher } from '@/components/shared/CurrencySwitcher';
 import { HardwareStatus } from '@/components/shared/HardwareStatus';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { getDataClient, smartFetch } from '@/lib/dataClient';
+import { OfflineAuthService } from '@/services/OfflineAuthService';
+import { toast } from 'sonner';
 
 interface WorkerStatusBarProps {
   storeName: string;
   userEmail: string;
   activeModule: WorkerModule;
   onLogout: () => void;
+  storeId?: string;
 }
 
-export function WorkerStatusBar({ storeName, userEmail, activeModule, onLogout }: WorkerStatusBarProps) {
+export function WorkerStatusBar({ storeName, userEmail, activeModule, onLogout, storeId }: WorkerStatusBarProps) {
   const { t, i18n } = useTranslation();
   const { getKeyForAction } = useSettingsStore();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const keyValidate = getKeyForAction('ACTION_VALIDATE') || 'F2';
   const keyPay = getKeyForAction('ACTION_PAY') || 'F4';
@@ -42,6 +47,39 @@ export function WorkerStatusBar({ storeName, userEmail, activeModule, onLogout }
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
+
+  const handleManualSync = async () => {
+    if (!isOnline) {
+        toast.error(t('common.offline'));
+        return;
+    }
+    
+    const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
+    if (!isLocalFirst) return;
+
+    setIsSyncing(true);
+    try {
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (!headers) throw new Error('Not authenticated');
+
+        const res = await smartFetch(`${localBridgeBaseUrl}/sync/pull${storeId ? `?store_id=${storeId}` : ''}`, { headers });
+        if (res.ok) {
+            const data = await res.json();
+            toast.success(t('common.success'), { 
+                description: `${data.products} products synchronized.` 
+            });
+            // Trigger a global update event
+            window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
+        } else {
+            const err = await res.json();
+            throw new Error(err.message || 'Sync failed');
+        }
+    } catch (e: any) {
+        toast.error(t('common.error'), { description: e.message });
+    } finally {
+        setIsSyncing(false);
+    }
+  };
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString(i18n.language === 'bm' ? 'fr-ML' : i18n.language, {
@@ -91,6 +129,20 @@ export function WorkerStatusBar({ storeName, userEmail, activeModule, onLogout }
       {/* Right Section */}
       <div className="flex items-center gap-3">
         <HardwareStatus />
+        
+        {/* Manual Sync Button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={isSyncing || !isOnline}
+          onClick={handleManualSync}
+          className="h-6 px-2 text-primary-foreground hover:bg-primary-foreground/10 dark:text-foreground flex items-center gap-1"
+          title={t('common.syncNow', 'Synchroniser')}
+        >
+          <RefreshCw className={cn("h-3 w-3", isSyncing && "animate-spin")} />
+          {!isSyncing && <span className="text-[10px] font-bold uppercase tracking-tighter hidden md:inline">Sync</span>}
+        </Button>
+
         {/* Connection Status */}
         <div className={cn(
           'flex items-center gap-1 px-2 py-0.5 rounded',

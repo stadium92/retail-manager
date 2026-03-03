@@ -331,16 +331,17 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         lineNumber: lineItems.length + 1,
         productId: product.id,
         designation: product.name,
-        code: product.sku || product.barcode || '',
+        code: product.sku || '',
         conditionnement: packSize,
         isBox: false,
-        stock: product.quantity,
+        unit_type: product.unit_type || 'Carton',
+        stock: product.quantity || 0,
         basePrice: price,
         unitPrice: price,
         quantity: 1,
         discountPercent: clientDiscount,
         lineTotal: calculateLineTotal(price, 1, clientDiscount, false, packSize),
-        priceTiers,
+        priceTiers: priceTiers
       };
       updateSession(mode, { lineItems: [...lineItems, newItem] });
       setSelectedIndex(lineItems.length);

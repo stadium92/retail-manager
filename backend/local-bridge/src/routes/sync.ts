@@ -131,50 +131,110 @@ export async function registerSyncRoutes(app: FastifyInstance) {
   });
 
   app.get('/sync/pull', async (request, reply) => {
-    const claims = authenticateRequest(request, reply, ['supabase-sync']);
+    const claims = authenticateRequest(request, reply, ['worker', 'master', 'supabase-sync']);
     if (!claims) return;
 
     if (!env.supabaseUrl || !env.supabaseServiceKey) {
       return reply.status(400).send({ error: 'ConfigMissing', message: 'Supabase credentials not configured.' });
     }
 
-    const url = new URL(`${env.supabaseUrl}/rest/v1/products`);
-    const storeId = (request.query as { store_id?: string }).store_id;
-    if (storeId) {
-      url.searchParams.set('store_id', `eq.${storeId}`);
+    const storeId = (request.query as { store_id?: string }).store_id || claims.store_id;
+    if (!storeId) {
+        return reply.status(400).send({ error: 'StoreRequired', message: 'Store ID is required for pulling data.' });
     }
 
-    const res = await fetch(url.toString(), {
-      headers: buildSupabaseHeaders(),
-    });
+    let pulledCount = 0;
 
-    if (!res.ok) {
-      return reply.status(502).send({ error: 'SupabaseError', message: 'Failed to pull data.' });
+    try {
+        // 1. Pull Families
+        const familyUrl = new URL(`${env.supabaseUrl}/rest/v1/product_families`);
+        familyUrl.searchParams.set('store_id', `eq.${storeId}`);
+        const famRes = await fetch(familyUrl.toString(), { headers: buildSupabaseHeaders() });
+        if (famRes.ok) {
+            const families = await famRes.json();
+            for (const fam of families) {
+                db.insertProductFamily({
+                    id: fam.id,
+                    store_id: fam.store_id,
+                    name: fam.name,
+                    description: fam.description,
+                    parent_id: fam.parent_id,
+                    created_at: fam.created_at,
+                    updated_at: fam.updated_at
+                });
+            }
+            pulledCount += families.length;
+        }
+
+        // 2. Pull Suppliers
+        const supplierUrl = new URL(`${env.supabaseUrl}/rest/v1/suppliers`);
+        supplierUrl.searchParams.set('store_id', `eq.${storeId}`);
+        const supRes = await fetch(supplierUrl.toString(), { headers: buildSupabaseHeaders() });
+        if (supRes.ok) {
+            const suppliers = await supRes.json();
+            for (const sup of suppliers) {
+                db.insertSupplier({
+                    id: sup.id,
+                    store_id: sup.store_id,
+                    name: sup.name,
+                    contact_name: sup.contact_name,
+                    email: sup.email,
+                    phone: sup.phone,
+                    address: sup.address,
+                    balance: sup.balance || 0,
+                    created_at: sup.created_at,
+                    updated_at: sup.updated_at
+                });
+            }
+            pulledCount += suppliers.length;
+        }
+
+        // 3. Pull Products
+        const url = new URL(`${env.supabaseUrl}/rest/v1/products`);
+        url.searchParams.set('store_id', `eq.${storeId}`);
+
+        const res = await fetch(url.toString(), {
+          headers: buildSupabaseHeaders(),
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to pull products from Supabase');
+        }
+
+        const products = await res.json();
+        for (const product of products) {
+          db.insertProduct({
+            id: product.id,
+            store_id: product.store_id,
+            name: product.name,
+            description: product.description ?? null,
+            sku: product.sku ?? null,
+            barcode: product.barcode ?? null,
+            category: product.category ?? null,
+            cost_price: product.cost_price ?? null,
+            unit_price: product.unit_price ?? 0,
+            wholesale_price: product.wholesale_price ?? null,
+            wholesale_price_ht: product.wholesale_price_ht ?? null,
+            selling_price_2: product.selling_price_2 ?? null,
+            selling_price_3: product.selling_price_3 ?? null,
+            selling_price_4: product.selling_price_4 ?? null,
+            min_quantity: product.min_quantity ?? 0,
+            quantity: product.quantity ?? 0,
+            image_url: product.image_url ?? null,
+            unit_type: product.unit_type ?? 'Piece',
+            packaging: product.packaging ?? '1',
+            created_at: product.created_at ?? new Date().toISOString(),
+            updated_at: product.updated_at ?? new Date().toISOString(),
+            created_by: null,
+            updated_by: null,
+          });
+        }
+        pulledCount += products.length;
+
+        return reply.send({ pulled: pulledCount, products: products.length });
+    } catch (e: any) {
+        console.error('[Sync] Pull failed:', e);
+        return reply.status(502).send({ error: 'SyncFailed', message: e.message });
     }
-
-    const products = await res.json();
-    for (const product of products) {
-      db.insertProduct({
-        id: product.id,
-        store_id: product.store_id,
-        name: product.name,
-        description: product.description ?? null,
-        sku: product.sku ?? null,
-        barcode: product.barcode ?? null,
-        category: product.category ?? null,
-        cost_price: product.cost_price ?? null,
-        unit_price: product.unit_price ?? 0,
-        wholesale_price: product.wholesale_price ?? null,
-        min_quantity: product.min_quantity ?? 0,
-        quantity: product.quantity ?? 0,
-        image_url: product.image_url ?? null,
-        created_at: product.created_at ?? new Date().toISOString(),
-        updated_at: product.updated_at ?? new Date().toISOString(),
-        created_by: null,
-        updated_by: null,
-      });
-    }
-
-    return reply.send({ pulled: products.length });
   });
 }

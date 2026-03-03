@@ -532,14 +532,28 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Input placeholder={t('common.search')} value={search} onChange={(e) => setSearch(e.target.value)} className="w-64 h-8" />
+                <Input 
+                  placeholder={t('common.search')} 
+                  value={search} 
+                  onChange={(e) => setSearch(e.target.value)} 
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                    }
+                  }}
+                  className="w-64 h-8" 
+                />
                 <OfflineIndicator />
               </div>
               <div className="flex items-center gap-4">
                 {changesCount > 0 && (
                   <span className="text-sm text-warning">{changesCount} {t('common.itemsSelected')}</span>
                 )}
-                <Button onClick={handleValidateInventory} disabled={isSaving || changesCount === 0}>
+                <Button 
+                  type="button"
+                  onClick={handleValidateInventory} 
+                  disabled={isSaving || changesCount === 0}
+                >
                   {isSaving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                   {t('menu.program.stockInventory')} ({changesCount})
                 </Button>

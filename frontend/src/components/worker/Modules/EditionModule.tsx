@@ -521,12 +521,21 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                       )}
                       {filteredSales.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8 uppercase font-mono opacity-50">
+                          <TableCell colSpan={9} className="text-center text-muted-foreground py-8 uppercase font-mono opacity-50">
                             {t('common.noData')}
                           </TableCell>
                         </TableRow>
                       )}
                     </TableBody>
+                    {filteredSales.length > 0 && (
+                      <tfoot className="sticky bottom-0 bg-muted/50 font-bold border-t-2">
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-right uppercase text-[10px]">{t('common.totalPage') || 'TOTAL PAGE'}</TableCell>
+                          <TableCell className="text-right text-sm font-black text-primary font-mono">{formatCurrency(totalSales)}</TableCell>
+                          <TableCell></TableCell>
+                        </TableRow>
+                      </tfoot>
+                    )}
                   </Table>
                 </ScrollArea>
               </CardContent>
@@ -565,6 +574,10 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-10 pl-9 border-2"
                 />
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg border border-primary/20">
+                <span className="text-[10px] font-black uppercase text-primary opacity-70 tracking-widest">{t('common.total')}:</span>
+                <span className="text-xl font-black font-mono text-primary">{formatCurrency(totalSales)}</span>
               </div>
               <OfflineIndicator />
             </div>
@@ -632,6 +645,15 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                         </TableRow>
                       )}
                     </TableBody>
+                    {filteredSales.length > 0 && (
+                      <tfoot className="sticky bottom-0 bg-muted/50 font-bold border-t-2">
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-right uppercase text-[10px]">{t('common.totalPage') || 'TOTAL PAGE'}</TableCell>
+                          <TableCell className="text-right text-sm font-black text-primary font-mono">{formatCurrency(totalSales)}</TableCell>
+                          <TableCell></TableCell>
+                        </TableRow>
+                      </tfoot>
+                    )}
                   </Table>
                 </ScrollArea>
               </CardContent>

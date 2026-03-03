@@ -328,6 +328,7 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
         userEmail={user?.email || ''}
         activeModule={activeModule}
         onLogout={handleLogout}
+        storeId={storeId}
       />
     </div>
   );

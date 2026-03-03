@@ -130,12 +130,13 @@ export function ProductLookupDialog({
         </div>
 
         <ScrollArea className="flex-1">
-          <div className="p-4 pt-0 min-w-[800px]">
-            <div className="grid grid-cols-[40px_minmax(150px,1fr)_100px_minmax(100px,120px)_90px_90px_80px_100px_80px] font-black uppercase tracking-widest text-[9px] bg-primary text-white py-3 px-4 rounded-t-xl sticky top-0 z-10 shadow-md">
+          <div className="p-4 pt-0 min-w-[900px]">
+            <div className="grid grid-cols-[40px_minmax(150px,1fr)_100px_minmax(100px,120px)_100px_90px_90px_80px_100px_80px] font-black uppercase tracking-widest text-[9px] bg-primary text-white py-3 px-4 rounded-t-xl sticky top-0 z-10 shadow-md">
               <div className="text-center">#</div>
               <div>{t('pos.grid.headers.designation')}</div>
               <div className="text-center">{t('pos.grid.headers.sku')}</div>
               <div className="text-center">{t('inventory.fields.family')}</div>
+              <div className="text-center">{t('inventory.fields.store')}</div>
               <div className="text-right">{t('inventory.fields.purchasePriceShort')}</div>
               <div className="text-right">{t('inventory.fields.retailPriceShort')}</div>
               <div className="text-center">{t('inventory.fields.packagingShort')}</div>
@@ -168,7 +169,7 @@ export function ProductLookupDialog({
                     }}
                     onMouseEnter={() => setSelectedIndex(index)}
                     className={cn(
-                      'grid grid-cols-[40px_minmax(150px,1fr)_100px_minmax(100px,120px)_90px_90px_80px_100px_80px] font-mono text-xs py-3 px-4 cursor-pointer border-b transition-all items-center',
+                      'grid grid-cols-[40px_minmax(150px,1fr)_100px_minmax(100px,120px)_100px_90px_90px_80px_100px_80px] font-mono text-xs py-3 px-4 cursor-pointer border-b transition-all items-center',
                       isSelected
                         ? 'bg-primary text-white scale-[1.01] rounded-lg shadow-lg z-20 relative'
                         : 'bg-white hover:bg-muted/50 text-black border-muted'
@@ -178,6 +179,9 @@ export function ProductLookupDialog({
                     <div className="text-center text-[10px] opacity-60">{product.sku || '—'}</div>
                     <div className="text-center text-[10px] font-black uppercase tracking-tighter opacity-60 truncate">
                         {product.category || (product as any).category_name || '—'}
+                    </div>
+                    <div className="text-center text-[10px] font-bold uppercase truncate opacity-60">
+                        {getStoreName(product.store_id)}
                     </div>
                     <div className="text-right tabular-nums opacity-70">
                       {formatCurrency(costPrice)}

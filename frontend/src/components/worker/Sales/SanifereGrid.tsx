@@ -20,6 +20,7 @@ export interface SanifereLineItem {
   code: string;
   conditionnement: number;
   isBox?: boolean; // New: Track if selling as Box
+  unit_type?: string; // New: Unit type label (Carton, Paquet, etc)
   stock: number;
   basePrice: number; // New: Store original unit price
   unitPrice: number | string;
@@ -353,7 +354,9 @@ export function SanifereGrid({
                     onToggleUnit?.(index);
                   }}
                 >
-                  {item.isBox ? `BOX(${item.conditionnement})` : 'PC'}
+                  <span className="text-[10px] font-bold">
+                    {item.isBox ? (item.unit_type?.toUpperCase() || 'BOX') : 'PC'}
+                  </span>
                 </div>
 
                 <div className={cn(
@@ -401,7 +404,9 @@ export function SanifereGrid({
                       )}
                     />
                   ) : (
-                    <div className="py-1 text-right tabular-nums">{formatCurrency(item.unitPrice)}</div>
+                    <div className="py-1 text-right tabular-nums w-full">
+                        {formatCurrency(Number(item.unitPrice) * (item.isBox ? (item.conditionnement || 1) : 1))}
+                    </div>
                   )}
                 </div>
 

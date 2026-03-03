@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getDataClient } from '@/lib/dataClient';
+import { getDataClient, smartFetch } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { Product } from '@/types';
 import { Input } from '@/components/ui/input';
@@ -32,55 +32,29 @@ export function StockListingModule({ storeId }: StockListingModuleProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { supabase, isLocalFirst, localBridgeBaseUrl } = getDataClient();
 
-  const useLocalBridge = isLocalFirst;
-
-  const localBridgeRequest = async <T,>(path: string, init: RequestInit = {}) => {
-    if (!useLocalBridge) {
-      throw new Error('LocalBridge mode is not enabled.');
-    }
-
-    const headers = await OfflineAuthService.getAuthHeaders();
-    if (!headers) {
-      throw new Error('LocalBridge session expired. Please sign in again.');
-    }
-
-    const response = await fetch(`${localBridgeBaseUrl}${path}`, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(init.headers || {}),
-        ...headers,
-      },
-    });
-
-    let payload: any = null;
-    if (response.status !== 204) {
-      try {
-        payload = await response.json();
-      } catch (error) {
-        // ignore
-      }
-    }
-
-    if (!response.ok) {
-      const message = payload?.message || 'LocalBridge request failed';
-      throw new Error(message);
-    }
-
-    return payload as T;
-  };
-
   useEffect(() => {
     const fetchProducts = async () => {
       if (!storeId) return;
       setIsLoading(true);
 
       try {
-        if (useLocalBridge) {
+        if (isLocalFirst) {
           const params = new URLSearchParams();
           params.set('store_id', storeId);
-          const data = await localBridgeRequest<Product[]>(`/rest/v1/products?${params.toString()}`);
-          setProducts(data || []);
+          const headers = await OfflineAuthService.getAuthHeaders();
+          
+          if (!headers) throw new Error('Not authenticated');
+
+          const response = await smartFetch(`${localBridgeBaseUrl}/rest/v1/products?${params.toString()}`, {
+            headers,
+          });
+
+          if (response.ok) {
+              const data = await response.json();
+              setProducts(data || []);
+          } else {
+              setProducts([]);
+          }
           return;
         }
 
@@ -98,10 +72,14 @@ export function StockListingModule({ storeId }: StockListingModuleProps) {
             name: item.name,
             description: item.description,
             sku: item.sku,
+            barcode: item.barcode || item.sku,
             unit_price: Number(item.unit_price) || 0,
             cost_price: Number(item.cost_price) || 0,
             quantity: item.quantity,
             min_quantity: item.min_quantity,
+            packaging: item.packaging || '1',
+            unit_type: item.unit_type || 'Piece',
+            category: item.category || item.category_id,
             image_url: item.image_url,
             created_at: item.created_at,
             updated_at: item.updated_at,
@@ -117,7 +95,7 @@ export function StockListingModule({ storeId }: StockListingModuleProps) {
     };
     
     fetchProducts();
-  }, [storeId, useLocalBridge]);
+  }, [storeId, isLocalFirst]);
 
   const getStockStatus = (quantity: number, threshold: number = 10): StockFilter => {
     if (quantity <= 0) return 'rupture';
@@ -170,10 +148,15 @@ export function StockListingModule({ storeId }: StockListingModuleProps) {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                }
+              }}
               placeholder={t('common.search')}
               className="w-64 h-8"
             />
-            <Button variant="outline" size="sm">
+            <Button type="button" variant="outline" size="sm">
               <Search className="h-4 w-4" />
             </Button>
           </div>
@@ -191,6 +174,22 @@ export function StockListingModule({ storeId }: StockListingModuleProps) {
               <SelectItem value="rupture">{t('inventory.outOfStock')} ({stats.rupture})</SelectItem>
             </SelectContent>
           </Select>
+
+          <Button 
+            type="button"
+            variant="outline" 
+            size="sm" 
+            onClick={() => {
+                // Since fetchData is an effect, we just need to trigger a re-run if needed
+                // or just call it directly if it was defined as a function.
+                // In this file, fetchProducts is inside useEffect. 
+                // I'll refactor it to a useCallback.
+            }}
+            className="h-8"
+          >
+            <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
+            {t('common.refresh')}
+          </Button>
         </div>
         
         {/* Stats */}

@@ -101,7 +101,7 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
           product_name: item.product?.name || '',
           quantity_ordered: isBox ? (item.quantity_ordered / packSize) : item.quantity_ordered,
           quantity_received: isBox ? (item.quantity_ordered / packSize) : item.quantity_ordered,
-          unit_cost: item.unit_cost, 
+          unit_cost: isBox ? (item.unit_cost * packSize) : item.unit_cost, 
           unit_type: item.product?.unit_type,
           isBox,
           packSize

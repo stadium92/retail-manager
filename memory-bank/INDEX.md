@@ -80,7 +80,8 @@ Located in: `ai/`
 ### Analysis Directory Structure
 Located in: `analysis/`
 - **[`analysis/CLIENT-SERVICE-ANALYSIS-006.md`](analysis/CLIENT-SERVICE-ANALYSIS-006.md)** - **Team audit report**: 11 findings (3 critical, 3 high, 3 medium, 2 low) covering the missing client-service backend, disconnected discount flow, hardcoded client groups, and supplier-vs-client symmetry gap. Includes priority matrix, team Q/A, and 6-phase fix plan.
-- Sales pattern analysis results
+- **[`analysis/commission-revenue-deep-analysis.md`](analysis/commission-revenue-deep-analysis.md)** - **BUSINESS-CRITICAL**: Full commission cluster analysis. Money leak identification, reseller commission split rules (30% → 15% for royalty holders), Sikasso bulk pricing, pyramid scheme rejection, hidden revenue streams (data entry 15k, training 15k), cumulative 50-sale projection (2.8M FCFA), support model tiers, and Day 1 field report (40% close rate).
+- **[`analysis/exit-strategy-time-operations.md`](analysis/exit-strategy-time-operations.md)** - **STRATEGY**: Exit strategy (sell to Orange/Malitel at 200-500 clients), payment gateway as 10x valuation multiplier, acqui-hire model, founder weekly schedule (sales/code/rest split), data entry vs training delegation, and non-negotiable rules for sustainability.
 
 ---
 

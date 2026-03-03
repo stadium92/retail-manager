@@ -178,9 +178,28 @@ class OfflineDataServiceClass {
 
   async getDashboardAnalytics(storeId: string, from: Date, to: Date): Promise<DashboardAnalytics | null> {
     try {
-        const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
+        const dc = getDataClient();
         
-        // 1. OFFLINE-FIRST: Local Calculation
+        // 1. ONLINE MODE: Fetch from Supabase if not local-first
+        if (!dc.isLocalFirst) {
+            const { data: sales, error } = await dc.supabase
+                .from('sales')
+                .select('*, sale_items(*)')
+                .eq('store_id', storeId)
+                .gte('created_at', from.toISOString())
+                .lte('created_at', to.toISOString());
+
+            if (error) throw error;
+
+            const { data: inventory } = await dc.supabase
+                .from('products')
+                .select('*')
+                .eq('store_id', storeId);
+
+            return this.calculateAnalyticsFromData(sales || [], inventory || []);
+        }
+
+        // 2. OFFLINE-FIRST: Local Calculation
         await LocalDatabase.init();
         const localSales = await LocalDatabase.getSales(storeId);
         const filteredSales = localSales.filter(s => {
@@ -189,21 +208,10 @@ class OfflineDataServiceClass {
         });
 
         const localInventory = await LocalDatabase.getInventory(storeId);
+        const localAnalytics = this.calculateAnalyticsFromData(filteredSales, localInventory);
 
-        const localAnalytics: DashboardAnalytics = {
-            daily_revenue: filteredSales.reduce((sum, s) => sum + Number(s.total_price), 0),
-            weekly_revenue: [], 
-            top_products: [],
-            top_workers: [],
-            stock_health: {
-                ok: localInventory.filter(i => i.quantity > (i.reorder_quantity || 10)).length,
-                low: localInventory.filter(i => i.quantity <= (i.reorder_quantity || 10) && i.quantity > 0).length,
-                out: localInventory.filter(i => i.quantity <= 0).length
-            }
-        };
-
-        // 2. BACKGROUND RECONCILIATION (Throttled)
-        if (isLocalFirst && this.shouldSync(`analytics-${storeId}`)) {
+        // 3. BACKGROUND RECONCILIATION (Throttled)
+        if (dc.isLocalFirst && this.shouldSync(`analytics-${storeId}`)) {
             try {
                 const { OfflineAuthService } = await import('./OfflineAuthService');
                 const headers = await OfflineAuthService.getAuthHeaders();
@@ -213,10 +221,9 @@ class OfflineDataServiceClass {
                         from: from.toISOString(),
                         to: to.toISOString()
                     });
-                    const res = await smartFetch(`${localBridgeBaseUrl}/analytics/dashboard?${params.toString()}`, { headers });
+                    const res = await smartFetch(`${dc.localBridgeBaseUrl}/analytics/dashboard?${params.toString()}`, { headers });
                     if (res.ok) {
-                        const remoteAnalytics = await res.json();
-                        return remoteAnalytics;
+                        return await res.json();
                     }
                 }
             } catch (e) {
@@ -229,6 +236,44 @@ class OfflineDataServiceClass {
         console.error('getDashboardAnalytics error:', err);
         return null;
     }
+  }
+
+  private calculateAnalyticsFromData(sales: any[], inventory: any[]): DashboardAnalytics {
+    const dailyRevenue = sales.reduce((sum, s) => sum + Number(s.total_price || 0), 0);
+    
+    // Group sales by day for weekly revenue
+    const revenueByDay: Record<string, number> = {};
+    const productMap: Record<string, { name: string, quantity: number, revenue: number }> = {};
+    const workerMap: Record<string, { name: string, sales_count: number, revenue: number }> = {};
+
+    sales.forEach(sale => {
+        const day = new Date(sale.created_at).toISOString().split('T')[0];
+        revenueByDay[day] = (revenueByDay[day] || 0) + Number(sale.total_price || 0);
+
+        const workerId = sale.worker_id || 'Unknown';
+        if (!workerMap[workerId]) workerMap[workerId] = { name: workerId, sales_count: 0, revenue: 0 };
+        workerMap[workerId].sales_count++;
+        workerMap[workerId].revenue += Number(sale.total_price || 0);
+
+        (sale.sale_items || []).forEach((item: any) => {
+            const pid = item.product_id || item.item_id;
+            if (!productMap[pid]) productMap[pid] = { name: item.product_name || 'Unknown', quantity: 0, revenue: 0 };
+            productMap[pid].quantity += Number(item.quantity || 0);
+            productMap[pid].revenue += Number(item.total || 0);
+        });
+    });
+
+    return {
+        daily_revenue: dailyRevenue,
+        weekly_revenue: Object.entries(revenueByDay).map(([date, revenue]) => ({ date, revenue })),
+        top_products: Object.values(productMap).sort((a, b) => b.revenue - a.revenue).slice(0, 5),
+        top_workers: Object.values(workerMap).sort((a, b) => b.revenue - a.revenue).slice(0, 5),
+        stock_health: {
+            ok: inventory.filter(i => (i.quantity ?? i.stock) > (i.low_stock_threshold ?? i.min_quantity ?? 10)).length,
+            low: inventory.filter(i => (i.quantity ?? i.stock) <= (i.low_stock_threshold ?? i.min_quantity ?? 10) && (i.quantity ?? i.stock) > 0).length,
+            out: inventory.filter(i => (i.quantity ?? i.stock) <= 0).length
+        }
+    };
   }
 
   async getStockValuation(storeId: string): Promise<any> {
