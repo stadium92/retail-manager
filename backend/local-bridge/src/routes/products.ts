@@ -115,19 +115,7 @@ export async function registerProductRoutes(app: FastifyInstance) {
       return reply.send([product]);
     }
 
-    if (claims.role === 'master' && !store_id) {
-       // Master listing all products across all stores (careful with size!)
-       // For now, let's keep it as is, or maybe restrict it.
-       return reply.send(db.listAllProducts());
-    }
-
-    const targetStoreId = store_id || claims.store_id;
-    if (!targetStoreId) {
-      return reply.status(400).send({
-        error: 'StoreRequired',
-        message: 'No store specified for this request.',
-      });
-    }
+    const targetStoreId = store_id === 'all' ? undefined : (store_id || claims.store_id);
 
     // If search or explicit pagination is requested, use the optimized search method
     if (search !== undefined || parsed.data.page !== undefined || parsed.data.limit !== undefined || parsed.data.filter !== undefined) {
@@ -136,9 +124,21 @@ export async function registerProductRoutes(app: FastifyInstance) {
        return reply.send(result); // Returns { data: [...], total: N }
     }
 
+    if (claims.role === 'master' && !targetStoreId) {
+       // Master listing all products across all stores
+       return reply.send(db.listAllProducts());
+    }
+
+    if (!targetStoreId && store_id !== 'all') {
+      return reply.status(400).send({
+        error: 'StoreRequired',
+        message: 'No store specified for this request.',
+      });
+    }
+
     // Fallback to legacy behavior (fetch all) for backward compatibility
     // until frontend is fully migrated.
-    const products = db.listProducts(targetStoreId);
+    const products = targetStoreId ? db.listProducts(targetStoreId) : db.listAllProducts();
     return reply.send(products);
   });
 
@@ -444,7 +444,7 @@ export async function registerProductRoutes(app: FastifyInstance) {
     if (!existing) {
       return reply.status(404).send({
         error: 'NotFound',
-        message: 'Famille introuvable.',
+        message: 'Family not found.',
       });
     }
 
@@ -453,7 +453,7 @@ export async function registerProductRoutes(app: FastifyInstance) {
     if (!canModify) {
       return reply.status(403).send({
         error: 'Forbidden',
-        message: 'Vous ne pouvez pas modifier cette famille.',
+        message: 'You cannot modify this family.',
       });
     }
 
@@ -473,19 +473,19 @@ export async function registerProductRoutes(app: FastifyInstance) {
     if (!existing) {
       return reply.status(404).send({
         error: 'NotFound',
-        message: 'Famille introuvable.',
+        message: 'Family not found.',
       });
     }
 
     if (claims.store_id && claims.store_id !== existing.store_id) {
       return reply.status(403).send({
         error: 'Forbidden',
-        message: 'Vous ne pouvez pas supprimer cette famille.',
+        message: 'You cannot delete this family.',
       });
     }
 
     db.deleteProductFamily(familyId);
-    return reply.send({ message: 'Famille supprimée.' });
+    return reply.send({ message: 'Family deleted.' });
   });
 
   app.post('/rpc/worker_create_product', async (request, reply) => {

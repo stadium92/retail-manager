@@ -173,7 +173,7 @@ pub fn verify_signature(key: &str, device_id: &str) -> Result<bool, String> {
         return Err("Invalid signature length.".to_string());
     }
 
-    let signature = Signature::from_bytes(signature_bytes.try_into().unwrap());
+    let signature = Signature::from_slice(&signature_bytes).map_err(|_| "Invalid signature bytes.".to_string())?;
     
     // Verify
     // Handle all-zero placeholder key
@@ -355,3 +355,5 @@ pub fn activate_license_command(app_handle: AppHandle, key: String, store_name: 
     
     Ok(())
 }
+
+
