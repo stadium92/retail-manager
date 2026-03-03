@@ -4,13 +4,11 @@ on:
   push:
     branches:
       - main
-      - frontend-test-1
       - main-cloud-build
       - security/DeLorean
   pull_request:
     branches:
       - main
-      - frontend-test-1
       - main-cloud-build
       - security/DeLorean
   workflow_dispatch:
