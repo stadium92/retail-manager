@@ -199,9 +199,23 @@ export const OfflineInventoryService = {
       await LocalDatabase.init();
       await LocalDatabase.saveInventoryItem(mapToLocalInventory(newItem, false));
 
-      // In local-first mode the bridge handles Supabase sync; skip double-queueing
       const dc = getDataClient();
-      if (!dc.isLocalFirst) {
+      if (dc.isLocalFirst) {
+        // Forward creation to local bridge
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (headers) {
+          const res = await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/products`, {
+            method: 'POST',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify(newItem)
+          });
+          if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.message || 'Failed to create product in local bridge');
+          }
+        }
+      } else {
+        // Online mode: sync directly to Supabase
         await SyncService.addToQueue({
           type: 'inventory_update',
           data: newItem
@@ -231,9 +245,23 @@ export const OfflineInventoryService = {
       
       await LocalDatabase.saveInventoryItem(mapToLocalInventory(updated, false));
 
-      // In local-first mode the bridge handles Supabase sync; skip double-queueing
       const dc = getDataClient();
-      if (!dc.isLocalFirst) {
+      if (dc.isLocalFirst) {
+        // Forward update to local bridge
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (headers) {
+          const res = await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/products/${id}`, {
+            method: 'PATCH',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates)
+          });
+          if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.message || 'Failed to update product in local bridge');
+          }
+        }
+      } else {
+        // Online mode: sync directly to Supabase
         await SyncService.addToQueue({
           type: 'inventory_update',
           data: updated
@@ -252,9 +280,22 @@ export const OfflineInventoryService = {
       await LocalDatabase.init();
       await LocalDatabase.deleteInventoryItem(id);
 
-      // In local-first mode the bridge handles Supabase sync; skip double-queueing
       const dc = getDataClient();
-      if (!dc.isLocalFirst) {
+      if (dc.isLocalFirst) {
+        // Forward deletion to local bridge
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (headers) {
+          const res = await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/products/${id}`, {
+            method: 'DELETE',
+            headers
+          });
+          if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.message || 'Failed to delete product in local bridge');
+          }
+        }
+      } else {
+        // Online mode: sync directly to Supabase
         await SyncService.addToQueue({
           type: 'inventory_delete',
           data: { id }
