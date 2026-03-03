@@ -377,32 +377,41 @@ export function SanifereGrid({
                         <DropdownMenuLabel>Item Price Tier</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => onRowTierChange(index, 1)}>
-                          <span>Detail:</span> <span className="ml-auto font-bold">{formatCurrency(item.priceTiers[1] || 0)}</span>
+                          <span>Detail:</span> <span className="ml-auto font-bold">{formatCurrency((item.priceTiers[1] || 0) * (item.isBox ? (item.conditionnement || 1) : 1))}</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onRowTierChange(index, 2)}>
-                          <span>Discount:</span> <span className="ml-auto font-bold">{formatCurrency(item.priceTiers[2] || 0)}</span>
+                          <span>Discount:</span> <span className="ml-auto font-bold">{formatCurrency((item.priceTiers[2] || 0) * (item.isBox ? (item.conditionnement || 1) : 1))}</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onRowTierChange(index, 3)}>
-                          <span>Bulk:</span> <span className="ml-auto font-bold">{formatCurrency(item.priceTiers[3] || 0)}</span>
+                          <span>Bulk:</span> <span className="ml-auto font-bold">{formatCurrency((item.priceTiers[3] || 0) * (item.isBox ? (item.conditionnement || 1) : 1))}</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onRowTierChange(index, 4)}>
-                          <span>Resale:</span> <span className="ml-auto font-bold">{formatCurrency(item.priceTiers[4] || 0)}</span>
+                          <span>Resale:</span> <span className="ml-auto font-bold">{formatCurrency((item.priceTiers[4] || 0) * (item.isBox ? (item.conditionnement || 1) : 1))}</span>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}
                   {onPriceChange ? (
-                     <Input
-                      type="number"
-                      value={item.unitPrice === 0 ? '' : item.unitPrice}
-                      onChange={(e) => onPriceChange?.(index, e.target.value === '' ? '' : Number(e.target.value))}
-                      onBlur={() => { if (item.unitPrice === '') onPriceChange?.(index, 0); }}
-                      onClick={(e) => e.stopPropagation()}
-                      className={cn(
-                        'h-full w-full p-1 text-right border-none font-mono text-sm bg-transparent tabular-nums',
-                        isSelected ? 'text-black focus:bg-white/50' : 'text-white focus:bg-white/20'
-                      )}
-                    />
+                     <div className="relative flex-1 group h-full">
+                        <Input
+                          type="number"
+                          value={item.unitPrice === 0 ? '' : (item.isBox ? Number(item.unitPrice) * (item.conditionnement || 1) : item.unitPrice)}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? '' : Number(e.target.value);
+                            const baseVal = (item.isBox && val !== '') ? (Number(val) / (item.conditionnement || 1)) : val;
+                            onPriceChange?.(index, baseVal);
+                          }}
+                          onBlur={() => { if (item.unitPrice === '') onPriceChange?.(index, 0); }}
+                          onClick={(e) => e.stopPropagation()}
+                          className={cn(
+                            'h-full w-full p-1 text-right border-none font-mono text-sm bg-transparent tabular-nums focus:ring-0',
+                            isSelected ? 'text-black focus:bg-white/50' : 'text-white focus:bg-white/20'
+                          )}
+                        />
+                        {item.isBox && (
+                            <span className="absolute left-1 top-0.5 text-[7px] font-black uppercase opacity-30 pointer-events-none group-focus-within:hidden">Scaled</span>
+                        )}
+                     </div>
                   ) : (
                     <div className="py-1 text-right tabular-nums w-full">
                         {formatCurrency(Number(item.unitPrice) * (item.isBox ? (item.conditionnement || 1) : 1))}

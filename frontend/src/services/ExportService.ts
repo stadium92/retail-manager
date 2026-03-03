@@ -52,33 +52,44 @@ export class ExportService {
         totalKeywords.some(k => c.header.toLowerCase().includes(k)) ||
         totalKeywords.some(k => c.dataKey.toLowerCase().includes(k))
     );
+
     let runningTotal = 0;
     
+    // Calculate running total
+    if (totalColIndex !== -1) {
+        data.forEach(row => {
+            const rawVal = row[columns[totalColIndex].dataKey];
+            const val = parseFloat(String(rawVal).replace(/[^0-9.-]+/g, ''));
+            if (!isNaN(val)) runningTotal += val;
+        });
+    }
+
+    const tableData = data.map(row => columns.map(col => row[col.dataKey] ?? ''));
+
+    // Append total row
+    if (totalColIndex !== -1 && runningTotal > 0) {
+        const totalRow = new Array(columns.length).fill('');
+        totalRow[0] = 'TOTAL PAGE';
+        totalRow[totalColIndex] = `${runningTotal.toLocaleString()} F`;
+        tableData.push(totalRow);
+    }
+
     // Add table
     autoTable(doc, {
       head: [columns.map(col => col.header)],
-      body: data.map(row => columns.map(col => row[col.dataKey] ?? '')),
-      foot: [columns.map((col, idx) => idx === 0 ? 'TOTAL (Cumul)' : '')],
-      showFoot: 'everyPage',
+      body: tableData,
       startY: 30,
-      styles: { fontSize: 6 }, // Slightly smaller for more columns
+      styles: { fontSize: 6 },
       headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
-      footStyles: { 
-        fillColor: [22, 163, 74], 
-        textColor: [255, 255, 255], 
-        fontStyle: 'bold',
-        halign: 'left' 
-      },
-      didParseCell: function(data: any) {
-        if (data.section === 'body' && data.column.index === totalColIndex) {
-          const val = parseFloat(String(data.cell.raw).replace(/[^0-9.-]+/g, ''));
-          if (!isNaN(val)) {
-            runningTotal += val;
-          }
-        }
-        if (data.section === 'foot' && data.column.index === totalColIndex) {
-          data.cell.text = [runningTotal.toLocaleString() + ' F'];
-          data.cell.styles.halign = 'right'; 
+      willDrawCell: function(data: any) {
+        // Style the total row
+        if (data.section === 'body' && data.row.index === tableData.length - 1 && runningTotal > 0) {
+            doc.setFillColor(22, 163, 74); // Green bg
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            if (data.column.index === totalColIndex) {
+                data.cell.styles.halign = 'right';
+            }
         }
       }
     });

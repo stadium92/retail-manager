@@ -5,7 +5,7 @@ import { Product } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search, Download, Filter } from 'lucide-react';
+import { Search, Download, Filter, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Select,
