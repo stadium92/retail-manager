@@ -33,6 +33,7 @@ Located in: `tech/`
 - **[`tech/cross_architecture_build_bible.md`](tech/cross_architecture_build_bible.md)** - **CRITICAL**: The "Bible" for solving the architecture mismatch and library compatibility hell. Essential for builds.
 - **[`tech/sidecar_wrapper_strategy.md`](tech/sidecar_wrapper_strategy.md)** - Deep dive into the Rust Wrapper pattern.
 - **[`tech/dynamic_port_discovery.md`](tech/dynamic_port_discovery.md)** - Strategy for automated backend port discovery to ensure frontend connectivity across different network environments.
+- **[`tech/winreg_security_pattern.md`](tech/winreg_security_pattern.md)** - **SECURITY**: Implementation of Windows Registry mirroring for license and trial timestamps to prevent anti-tampering.
 
 ---
 

@@ -14,9 +14,16 @@ use aes_gcm::{
 };
 use rand::{Rng, thread_rng};
 
+#[cfg(windows)]
+use winreg::enums::*;
+#[cfg(windows)]
+use winreg::RegKey;
+
 // -----------------------------------------------------------------------------
 // CONFIGURATION
 // -----------------------------------------------------------------------------
+
+const REG_PATH: &str = "Software\\RetailManager\\License";
 
 // TODO: REPLACE THIS WITH YOUR REAL PUBLIC KEY FROM tools/keygen/src/main.rs
 // Run `cargo run --bin keygen -- --device-id TEST` to get this array.
@@ -53,7 +60,7 @@ pub struct LicenseData {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LicenseStatus {
-    pub status: String, // "active", "trial", "expired"
+    pub status: String, // "active", "trial", "expired", "clock_error", "tamper_detected"
     pub days_remaining: i32,
     pub stores: Vec<LicenseStore>,
     pub device_hash: String,
@@ -64,6 +71,29 @@ const TRIAL_DAYS: i32 = 30;
 // -----------------------------------------------------------------------------
 // HELPERS
 // -----------------------------------------------------------------------------
+
+fn set_reg_value(name: &str, value: &str) {
+    #[cfg(windows)]
+    {
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        if let Ok((key, _)) = hkcu.create_subkey(REG_PATH) {
+            let _ = key.set_value(name, &value);
+        }
+    }
+}
+
+fn get_reg_value(name: &str) -> Option<String> {
+    #[cfg(windows)]
+    {
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        if let Ok(key) = hkcu.open_subkey(REG_PATH) {
+            if let Ok(val) = key.get_value::<String, _>(name) {
+                return Some(val);
+            }
+        }
+    }
+    None
+}
 
 pub fn get_device_hash() -> String {
     let uid = machine_uid::get().unwrap_or_else(|_| "UNKNOWN_DEVICE".to_string());
@@ -215,30 +245,46 @@ pub fn get_license_status_command(app_handle: AppHandle) -> Result<LicenseStatus
     let now = chrono::Utc::now();
     let now_ts = now.timestamp();
     
+    // 1. Get LKT from File
+    let mut file_lkt: Option<i64> = None;
     if last_run_path.exists() {
         if let Ok(encrypted_last_run) = fs::read(&last_run_path) {
             if let Ok(decrypted_last_run) = decrypt_data(&encrypted_last_run) {
                 if let Ok(last_run_str) = String::from_utf8(decrypted_last_run) {
                     if let Ok(last_run_ts) = last_run_str.parse::<i64>() {
-                        if now_ts < last_run_ts {
-                            // User traveled back in time!
-                            return Ok(LicenseStatus {
-                                status: "clock_error".to_string(),
-                                days_remaining: 0,
-                                stores: vec![],
-                                device_hash,
-                            });
-                        }
+                        file_lkt = Some(last_run_ts);
                     }
                 }
             }
         }
     }
+
+    // 2. Get LKT from Registry (Windows Only)
+    let reg_lkt: Option<i64> = get_reg_value("LKT").and_then(|s| s.parse().ok());
+
+    // 3. Reconcile LKT
+    let last_known_ts = match (file_lkt, reg_lkt) {
+        (Some(f), Some(r)) => std::cmp::max(f, r),
+        (Some(f), None) => f,
+        (None, Some(r)) => r,
+        (None, None) => 0,
+    };
+
+    if last_known_ts > 0 && now_ts < last_known_ts {
+        // User traveled back in time!
+        return Ok(LicenseStatus {
+            status: "clock_error".to_string(),
+            days_remaining: 0,
+            stores: vec![],
+            device_hash,
+        });
+    }
     
-    // Update last run (encrypted)
+    // Update last run (encrypted file + registry)
     if let Ok(encrypted_now) = encrypt_data(now_ts.to_string().as_bytes()) {
         let _ = fs::write(&last_run_path, encrypted_now);
     }
+    set_reg_value("LKT", &now_ts.to_string());
 
     // 1. Check for Valid License File
     if license_path.exists() {
@@ -266,38 +312,60 @@ pub fn get_license_status_command(app_handle: AppHandle) -> Result<LicenseStatus
 
     // 2. Check Trial Status
     let install_path = get_install_date_path(&app_handle);
-    if !install_path.exists() {
-        // First run
-        let now = chrono::Utc::now().to_rfc3339();
-        if let Some(parent) = install_path.parent() {
-            let _ = fs::create_dir_all(parent);
-        }
-        let _ = fs::write(&install_path, format!("{{\"date\": \"{}\"}}", now));
-        return Ok(LicenseStatus {
-            status: "trial".to_string(),
-            days_remaining: TRIAL_DAYS,
-            stores: vec![],
-            device_hash,
-        });
-    }
-
-    if let Ok(content) = fs::read_to_string(&install_path) {
-        if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
-            if let Some(date_str) = val["date"].as_str() {
-                if let Ok(install_date) = chrono::DateTime::parse_from_rfc3339(date_str) {
-                    let now = chrono::Utc::now();
-                    let elapsed = now.signed_duration_since(install_date).num_days() as i32;
-                    let remaining = TRIAL_DAYS - elapsed;
-                    
-                    return Ok(LicenseStatus {
-                        status: if remaining > 0 { "trial".to_string() } else { "expired".to_string() },
-                        days_remaining: remaining.max(0),
-                        stores: vec![],
-                        device_hash,
-                    });
+    let mut file_install_date: Option<String> = None;
+    
+    if install_path.exists() {
+        if let Ok(content) = fs::read_to_string(&install_path) {
+            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(date_str) = val["date"].as_str() {
+                    file_install_date = Some(date_str.to_string());
                 }
             }
         }
+    }
+
+    let reg_install_date = get_reg_value("IDT");
+
+    let final_install_date = match (file_install_date, reg_install_date) {
+        (Some(f), Some(r)) => {
+            // Reconcile: Pick the oldest date to prevent trial resets
+            let f_date = chrono::DateTime::parse_from_rfc3339(&f).unwrap_or_default();
+            let r_date = chrono::DateTime::parse_from_rfc3339(&r).unwrap_or_default();
+            if f_date < r_date { f } else { r }
+        },
+        (Some(f), None) => {
+            set_reg_value("IDT", &f);
+            f
+        },
+        (None, Some(r)) => {
+            // Registry has it but file doesn't? Possible tamper attempt.
+            let now = chrono::Utc::now().to_rfc3339();
+            let _ = fs::write(&install_path, format!("{{\"date\": \"{}\"}}", r));
+            r
+        },
+        (None, None) => {
+            // First run
+            let now = chrono::Utc::now().to_rfc3339();
+            if let Some(parent) = install_path.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+            let _ = fs::write(&install_path, format!("{{\"date\": \"{}\"}}", now));
+            set_reg_value("IDT", &now);
+            now
+        }
+    };
+
+    if let Ok(install_date) = chrono::DateTime::parse_from_rfc3339(&final_install_date) {
+        let now = chrono::Utc::now();
+        let elapsed = now.signed_duration_since(install_date).num_days() as i32;
+        let remaining = TRIAL_DAYS - elapsed;
+        
+        return Ok(LicenseStatus {
+            status: if remaining > 0 { "trial".to_string() } else { "expired".to_string() },
+            days_remaining: remaining.max(0),
+            stores: vec![],
+            device_hash,
+        });
     }
 
     // Fallback: Expired
@@ -308,6 +376,56 @@ pub fn get_license_status_command(app_handle: AppHandle) -> Result<LicenseStatus
         device_hash,
     })
 }
+
+/// Gatekeeper: Check if the license is valid (Active or Trial)
+/// Returns Error if license is expired or tampered.
+pub fn check_license_gate(app_handle: &AppHandle) -> Result<(), String> {
+    let status = get_license_status_command(app_handle.clone())?;
+    if status.status == "active" || status.status == "trial" {
+        Ok(())
+    } else if status.status == "clock_error" {
+        Err("SECURITY ALERT: System clock tampered. Please restore correct date.".to_string())
+    } else {
+        Err("LICENSE REQUIRED: Trial expired or no active license found.".to_string())
+    }
+}
+
+#[tauri::command]
+pub fn activate_license_command(app_handle: AppHandle, key: String, store_name: String) -> Result<(), String> {
+    let device_hash = get_device_hash();
+    
+    // 1. Verify Cryptography
+    verify_signature(&key, &device_hash)?;
+    
+    // 2. Prepare Data
+    let parts: Vec<&str> = key.split('-').collect();
+    let year = parts[1].to_string();
+    let now = chrono::Utc::now().to_rfc3339();
+    
+    let data = LicenseData {
+        activation_key: key,
+        purchase_year: year,
+        hardware_hash: device_hash,
+        stores: vec![LicenseStore {
+            store_id: "store-001".to_string(), // In V1, we assume single main store
+            store_name,
+            activated_at: now,
+        }],
+        version: "2".to_string(), // Secure Schema V2
+    };
+
+    // 3. Encrypt & Save
+    let path = get_license_path(&app_handle);
+    let json_content = serde_json::to_string(&data).map_err(|e| e.to_string())?;
+    
+    let encrypted_bytes = encrypt_data(json_content.as_bytes())?;
+    fs::write(path, encrypted_bytes).map_err(|e| e.to_string())?;
+    
+    Ok(())
+}
+
+
+
 
 /// Gatekeeper: Check if the license is valid (Active or Trial)
 /// Returns Error if license is expired or tampered.
