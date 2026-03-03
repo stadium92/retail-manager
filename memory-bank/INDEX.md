@@ -149,6 +149,19 @@ Located in: `van-docs/`
 
 ---
 
+## 🌿 Branching Strategy (Phase 6+)
+To ensure stability and prevent regressions, use the following branch pattern:
+- **`main-cloud-build`**: Source of truth for stable releases.
+- **`fix/stock-modules-data`**: Data fetching and sync issues in Stock submodules.
+- **`fix/search-and-suppliers`**: Search UI, barcode scanning, and supplier access.
+- **`fix/extended-unit-scaling`**: Logic for Paquet/Sac/Box and price conversion.
+- **`fix/analytics-and-logs`**: Dashboard charts, Audit Logs, and UI enhancements.
+- **`security/DeLorean`**: Dedicated for clock-tamper and license protections.
+
+## 📜 Key PRDs (Phase 6+)
+- **[`docs/PRD-008-Comprehensive-Fixes.md`](docs/PRD-008-Comprehensive-Fixes.md)** - **CONSOLIDATED**: Master list of bugs and feature requests categorized for Phase 6+ development.
+
+
 ## 🔍 Quick Access Guide
 
 | Need | Go To | Primary File |
