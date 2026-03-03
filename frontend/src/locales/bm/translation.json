@@ -20,6 +20,7 @@
     "deleteSelected": "Ka sugandira bɔ",
     "all": "Bɛɛ",
     "noData": "Kunnafoni tɛ yen",
+    "name": "Tɔgɔ",
     "failedToLoad": "Kɛli tɛ ɲɛ",
     "total": "Bɛɛ",
     "refresh": "Refresh",
@@ -1089,6 +1090,7 @@
       "cashJournal": "Caisse gafɛ",
       "dashboard": "Kunnafoni yɔrɔ",
       "statistics": "Statistikw",
+      "stockStatus": "Fenw Cogoya",
       "lossExit": "Fen min banna",
       "lossExitDescription": "Nin yɔrɔ in kɛ ka fen minnu tɛ feere se ka kɛ tun (expiration, tiɲɛni wala sonsanniya). O b'a to i ka bɛnɛ jate ka jija.",
       "reasons": {
