@@ -4,22 +4,25 @@ on:
   push:
     branches:
       - main
-      - frontend-test-1
+      - main-cloud-build
+      - security/DeLorean
   pull_request:
     branches:
       - main
-      - frontend-test-1
+      - main-cloud-build
+      - security/DeLorean
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
           token: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Setup Node.js v18
         uses: actions/setup-node@v4
         with:
@@ -32,6 +35,29 @@ jobs:
 
       - name: Install Root Dependencies
         run: npm install
+
+      - name: Auto Increment Version
+        shell: bash
+        run: |
+          # Use GitHub Run Number as the patch version to ensure uniqueness
+          # This transforms 0.3.0 into 0.3.<run_number>
+          node -e "
+            const fs = require('fs');
+            const runNumber = process.env.GITHUB_RUN_NUMBER;
+            
+            // Update root package.json
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            const baseVersion = pkg.version.split('.').slice(0, 2).join('.');
+            pkg.version = \`\${baseVersion}.\${runNumber}\`;
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 4));
+            console.log('Updated package.json version to: ' + pkg.version);
+            
+            // Update tauri.conf.json
+            const tauri = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
+            tauri.version = pkg.version;
+            fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(tauri, null, 4));
+            console.log('Updated tauri.conf.json version to: ' + tauri.version);
+          "
 
       - name: Build Backend (local-bridge)
         working-directory: backend/local-bridge
@@ -46,7 +72,10 @@ jobs:
           npm run build
 
       - name: Prepare Sidecar Payload
-        run: powershell -ExecutionPolicy Bypass -File scripts/prepare-sidecar-payload.ps1
+        run: |
+          powershell -ExecutionPolicy Bypass -File scripts/prepare-sidecar-payload.ps1
+          # Align payload path for Tauri
+          Copy-Item "backend/sidecar-wrapper/payload-x86_64-pc-windows-msvc.zip" -Destination "backend/local-bridge/payload.zip" -Force
 
       - name: Build Tauri Application
         uses: tauri-apps/tauri-action@v0
@@ -56,9 +85,6 @@ jobs:
           tagName: v__VERSION__
           releaseName: "App v__VERSION__"
           releaseBody: "Automated release by CI/CD Pipeline."
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: --target x86_64-pc-windows-msvc
-
-
-

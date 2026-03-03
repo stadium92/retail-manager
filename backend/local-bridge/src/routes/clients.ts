@@ -371,7 +371,7 @@ export async function registerClientsRoutes(app: FastifyInstance) {
       type: 'in',
       amount: parsed.data.amount,
       category: 'client_payment',
-      description: `Règlement Client: ${client.name}`,
+      description: `Client Payment: ${client.name}`,
       reference: client.id, // Store client_id in reference for statement mapping
       created_at: now,
       updated_at: now,

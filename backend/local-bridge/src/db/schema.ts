@@ -62,6 +62,11 @@ export const initializeSchema = (db: Database.Database) => {
       cost_price REAL,
       unit_price REAL,
       wholesale_price REAL,
+      wholesale_price_ht REAL,
+      wholesale_price_ttc REAL,
+      selling_price_2 REAL,
+      selling_price_3 REAL,
+      selling_price_4 REAL,
       min_quantity INTEGER DEFAULT 0,
       low_stock_threshold INTEGER DEFAULT 0,
       quantity INTEGER DEFAULT 0,
@@ -406,6 +411,9 @@ export const initializeSchema = (db: Database.Database) => {
     CREATE INDEX IF NOT EXISTS idx_scheduled_orders_next_run ON scheduled_orders(next_run_date);
     CREATE INDEX IF NOT EXISTS idx_product_batches_product ON product_batches(product_id);
     CREATE INDEX IF NOT EXISTS idx_product_batches_store ON product_batches(store_id);
+
+    -- Rebuild FTS index to ensure existing data is searchable
+    INSERT INTO products_fts(products_fts) VALUES('rebuild');
   `);
 
   const ensureColumn = (table: string, column: string, ddl: string) => {

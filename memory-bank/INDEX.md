@@ -33,6 +33,7 @@ Located in: `tech/`
 - **[`tech/cross_architecture_build_bible.md`](tech/cross_architecture_build_bible.md)** - **CRITICAL**: The "Bible" for solving the architecture mismatch and library compatibility hell. Essential for builds.
 - **[`tech/sidecar_wrapper_strategy.md`](tech/sidecar_wrapper_strategy.md)** - Deep dive into the Rust Wrapper pattern.
 - **[`tech/dynamic_port_discovery.md`](tech/dynamic_port_discovery.md)** - Strategy for automated backend port discovery to ensure frontend connectivity across different network environments.
+- **[`tech/winreg_security_pattern.md`](tech/winreg_security_pattern.md)** - **SECURITY**: Implementation of Windows Registry mirroring for license and trial timestamps to prevent anti-tampering.
 
 ---
 
@@ -87,6 +88,7 @@ Located in: `analysis/`
 
 ### Docs Directory Structure
 Located in: `docs/`
+- **[`PRODUCT_FAMILY_FIX_PRD.md`](PRODUCT_FAMILY_FIX_PRD.md)** - **NEW**: Detailed PRD for fixing product family selection and ensuring proper categorization across Master and Worker interfaces.
 - **`prd.txt`** - Product Requirements Document (complete specification)
 - **[`docs/PROMPT-005-Multi-Price-Batch-Implementation.md`](docs/PROMPT-005-Multi-Price-Batch-Implementation.md)** - **Agent-ready prompt** for Gemini 3 Pro (1M context). Contains file index, 10x dev persona, raw client Q/A session, and 8 atomic implementation phases (A–H) for PRD-005.
 - **[`docs/PROMPT-006-Client-Service-Backend-And-Discount-Fix.md`](docs/PROMPT-006-Client-Service-Backend-And-Discount-Fix.md)** - **Agent-ready prompt** for Gemini 3 Pro (1M context). Fixes 11 client-service bugs: creates `clients` + `client_services` DB tables, backend repos + routes, wires frontend to API, auto-applies client group discounts in POS, adds stock deduction on sale, credit balance tracking, and i18n. 7 phases (0–6).

@@ -127,24 +127,24 @@ export const createPurchasingRepo = (db: Database.Database) => ({
 
   deletePurchaseOrder(orderId: string) {
     const existing = db.prepare('SELECT store_id FROM purchase_orders WHERE id = ?').get(orderId) as any;
-    db.prepare('DELETE FROM purchase_orders WHERE id = ?').run(orderId);
     db.prepare('DELETE FROM purchase_items WHERE order_id = ?').run(orderId);
+    db.prepare('DELETE FROM purchase_orders WHERE id = ?').run(orderId);
     if (existing) {
       emitOutbox(db, existing.store_id, 'purchase_order', orderId, 'delete', { id: orderId });
     }
   },
 
-  listPurchaseItems(orderId: string): (LocalPurchaseItem & { product?: { id: string; name: string; packaging: string } })[] {
+  listPurchaseItems(orderId: string): (LocalPurchaseItem & { product?: { id: string; name: string; packaging: string; unit_type: string } })[] {
     const rows = db
       .prepare(`
-        SELECT pi.*, p.id as p_id, p.name as p_name, p.packaging as p_packaging
+        SELECT pi.*, p.id as p_id, p.name as p_name, p.packaging as p_packaging, p.unit_type as p_unit_type
         FROM purchase_items pi
         LEFT JOIN products p ON pi.product_id = p.id
         WHERE pi.order_id = ?
         ORDER BY pi.created_at ASC
       `)
       .all(orderId) as any[];
-      
+
     return rows.map(row => ({
       id: row.id,
       order_id: row.order_id,
@@ -156,8 +156,9 @@ export const createPurchasingRepo = (db: Database.Database) => ({
       product: row.p_id ? {
         id: row.p_id,
         name: row.p_name,
-        packaging: row.p_packaging
-      } : undefined
+        packaging: row.p_packaging,
+        unit_type: row.p_unit_type,
+      } : undefined,
     }));
   },
 

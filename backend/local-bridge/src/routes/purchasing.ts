@@ -540,7 +540,7 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
   });
 
   app.delete('/rest/v1/purchase_orders/:id', async (request, reply) => {
-    const claims = authenticateRequest(request, reply, ['master']);
+    const claims = authenticateRequest(request, reply, ['master', 'worker']);
     if (!claims) return;
 
     const orderId = (request.params as { id: string }).id;
@@ -548,7 +548,7 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
     if (!existing) {
       return reply.status(404).send({ error: 'NotFound', message: 'Order not found.' });
     }
-    if (claims.store_id && claims.store_id !== existing.store_id) {
+    if (claims.store_id && claims.store_id !== existing.store_id && claims.role !== 'master') {
       return reply.status(403).send({ error: 'Forbidden', message: 'Cannot delete order.' });
     }
     db.deletePurchaseOrder(orderId);
