@@ -189,7 +189,27 @@ export async function registerSyncRoutes(app: FastifyInstance) {
             pulledCount += suppliers.length;
         }
 
-        // 3. Pull Products
+        // 3. Pull Profiles (Users)
+        const profileUrl = new URL(`${env.supabaseUrl}/rest/v1/profiles`);
+        const profRes = await fetch(profileUrl.toString(), { headers: buildSupabaseHeaders() });
+        if (profRes.ok) {
+            const profiles = await profRes.json();
+            for (const profile of profiles) {
+                db.insertUser({
+                    id: profile.id,
+                    email: profile.email,
+                    full_name: profile.full_name,
+                    phone: profile.phone,
+                    password_hash: '', // We don't have the hash, but it allows mapping
+                    created_at: profile.created_at,
+                    updated_at: profile.updated_at || profile.created_at,
+                    role: 'worker' // Default to worker, roles are in user_roles
+                });
+            }
+            pulledCount += profiles.length;
+        }
+
+        // 4. Pull Products
         const url = new URL(`${env.supabaseUrl}/rest/v1/products`);
         url.searchParams.set('store_id', `eq.${storeId}`);
 

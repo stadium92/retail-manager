@@ -47,9 +47,10 @@ export class ExportService {
     doc.setFontSize(10);
     doc.text(`Exported on: ${new Date().toLocaleString()}`, 14, 22);
 
+    const totalKeywords = ['total', 'valeur', 'montant', 'somme', 'da', 'cogoya'];
     const totalColIndex = columns.findIndex(c => 
-        c.dataKey.toLowerCase().includes('total') || 
-        c.dataKey.toLowerCase().includes('valeur')
+        totalKeywords.some(k => c.header.toLowerCase().includes(k)) ||
+        totalKeywords.some(k => c.dataKey.toLowerCase().includes(k))
     );
     let runningTotal = 0;
     

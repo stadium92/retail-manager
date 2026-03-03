@@ -1086,7 +1086,7 @@
       "cashJournal": "Journal de CAISSE",
       "dashboard": "Tableau de bord",
       "statistics": "Statistiques",
-      "stockstatus": "Statut du Stock",
+      "stockStatus": "Statut du Stock",
       "lossExit": "SORTIE PERTE",
       "lossExitDescription": "Utilisez cet écran pour enregistrer les produits qui ne sont plus vendables en raison de leur expiration, de dommages ou de vol. Cela garantit que vos niveaux de stock restent précis pour la comptabilité.",
       "recordLoss": "Enregistrer une Perte",
