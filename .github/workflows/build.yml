@@ -5,12 +5,10 @@ on:
     branches:
       - main
       - main-cloud-build
-      - security/DeLorean
   pull_request:
     branches:
       - main
       - main-cloud-build
-      - security/DeLorean
   workflow_dispatch:
 
 jobs:
