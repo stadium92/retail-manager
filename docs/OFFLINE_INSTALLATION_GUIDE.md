@@ -7,13 +7,12 @@ Ce guide explique comment installer **Retail Manager** sur des ordinateurs qui n
 ## 1. WebView2 (Microsoft Edge Runtime)
 Le problème le plus courant est l'absence de **WebView2**. C'est le moteur qui permet d'afficher l'interface de l'application.
 
-### Solution intégrée :
-J'ai mis à jour la configuration de l'application pour inclure l'**installeur hors-ligne** de WebView2 directement dans le fichier `.msi` ou `.exe` de Retail Manager. 
-- **Conséquence :** Le fichier d'installation sera plus lourd (environ +150 Mo), mais il installera WebView2 automatiquement sans demander Internet.
+### ⚠️ Note Importante :
+L'installeur de Retail Manager n'inclut **pas** WebView2 pour rester léger. Vous devez l'installer manuellement depuis votre clé USB.
 
-### Solution de secours (Clé USB) :
-Si l'installation automatique échoue, vous devez avoir ces fichiers sur votre clé USB :
-- **Installeur Standalone WebView2 (x64 ou x86)**
+### Solution (Clé USB) :
+Vous devez avoir ce fichier sur votre clé USB :
+- **Installeur Standalone WebView2 (Evergreen Standalone)**
 - Lien de téléchargement (à faire depuis un PC connecté) : [Microsoft WebView2 Fixed Version](https://developer.microsoft.com/en-us/microsoft-edge/webview2/#download-section) (Choisissez "Evergreen Standalone Installer").
 
 ---
@@ -40,13 +39,13 @@ Tauri n'en a pas besoin directement, mais certaines fonctions système de Window
 ---
 
 ## 🏗️ Checklist pour votre clé USB d'installation :
-1.  **`retail-manager_0.x.x_x64_en-US.msi`** (L'application)
-2.  **`MicrosoftEdgeWebview2Setup.exe`** (Evergreen Standalone)
-3.  **`VC_redist.x64.exe`** (Visual C++ 2015-2022)
+1.  **`retail-manager_setup.msi`** (L'application)
+2.  **`MicrosoftEdgeWebview2Setup.exe`** (Evergreen Standalone - **À installer en premier**)
+3.  **`VC_redist.x64.exe`** (Visual C++ 2015-2022 - **À installer en premier**)
 4.  **`VC_redist.x86.exe`** (Pour les vieux systèmes 32 bits)
 5.  **`NDP48-x86-x64-AllOS-ENU.exe`** (.NET 4.8 Offline)
 
 ---
 
 ## 💡 Conseil Pro :
-Avant d'installer Retail Manager sur un PC client "propre" (offline), installez toujours **Visual C++ Redistributable** en premier, puis lancez l'installeur de Retail Manager. Cela évite 90% des erreurs au premier lancement.
+Avant d'installer Retail Manager sur un PC client "propre" (offline), installez toujours **Visual C++ Redistributable** et **WebView2 Standalone** en premier, puis lancez l'installeur de Retail Manager. Cela évite 100% des erreurs au premier lancement.
