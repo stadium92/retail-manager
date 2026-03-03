@@ -3,7 +3,7 @@
  */
 
 const DB_NAME = 'retail_manager_offline';
-const DB_VERSION = 7; // Upgraded for Purchase Items support
+const DB_VERSION = 8; // Upgraded for system_settings (DeLorean protection)
 
 export interface LocalProductFamily {
   id: string;
@@ -161,7 +161,8 @@ class LocalDatabaseService {
             { name: 'product_families', indexes: ['store_id', 'synced'] },
             { name: 'purchase_orders', indexes: ['store_id', 'status', 'synced'] },
             { name: 'purchase_items', indexes: ['order_id'] },
-            { name: 'sync_queue', indexes: ['type', 'timestamp'] }
+            { name: 'sync_queue', indexes: ['type', 'timestamp'] },
+            { name: 'system_settings', indexes: [] }
         ];
 
         stores.forEach(s => {
@@ -418,6 +419,22 @@ class LocalDatabaseService {
   async clearSession(): Promise<void> {
     const db = await this.ensureDb();
     db.transaction('session', 'readwrite').objectStore('session').delete('current_session');
+  }
+
+  // ==================== SYSTEM SETTINGS ====================
+
+  async saveSystemSetting(key: string, value: any): Promise<void> {
+    const db = await this.ensureDb();
+    const tx = db.transaction('system_settings', 'readwrite');
+    tx.objectStore('system_settings').put({ id: key, value });
+  }
+
+  async getSystemSetting(key: string): Promise<any | null> {
+    const db = await this.ensureDb();
+    return new Promise(r => {
+      const req = db.transaction('system_settings', 'readonly').objectStore('system_settings').get(key);
+      req.onsuccess = () => r(req.result ? req.result.value : null);
+    });
   }
 
   // ==================== STORES ====================

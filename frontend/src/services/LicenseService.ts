@@ -1,4 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
+import { LocalDatabase } from './LocalDatabase';
+import { getDataClient, smartFetch } from '@/lib/dataClient';
 
 export interface LicenseStore {
     store_id: string;
@@ -7,7 +9,7 @@ export interface LicenseStore {
 }
 
 export interface LicenseStatus {
-    status: 'active' | 'trial' | 'expired';
+    status: 'active' | 'trial' | 'expired' | 'blocked';
     days_remaining: number;
     stores: LicenseStore[];
     device_hash: string;
@@ -16,6 +18,17 @@ export interface LicenseStatus {
 export class LicenseService {
     static async getStatus(): Promise<LicenseStatus> {
         try {
+            // DeLorean Time Check
+            const isTimeValid = await this.checkTimeManipulation();
+            if (!isTimeValid) {
+                return {
+                    status: 'blocked',
+                    days_remaining: 0,
+                    stores: [],
+                    device_hash: await this.getDeviceHash(),
+                };
+            }
+
             // Fallback for web development
             if (!(window as any).__TAURI_INTERNALS__) {
                 return {
@@ -59,6 +72,51 @@ export class LicenseService {
             return await invoke<string>('get_device_hash_command');
         } catch (error) {
             return 'UNKNOWN';
+        }
+    }
+
+    static async checkTimeManipulation(): Promise<boolean> {
+        try {
+            await LocalDatabase.init();
+            const lastKnownTime = await LocalDatabase.getSystemSetting('last_known_time');
+            const now = new Date().getTime();
+            
+            // 1. Check if current system time is before last known time
+            // We allow a small 5-minute grace period for minor clock adjustments
+            if (lastKnownTime && now < (lastKnownTime - 300000)) {
+                console.error('[DeLorean] System clock rollback detected! LKT:', new Date(lastKnownTime).toISOString(), 'Now:', new Date(now).toISOString());
+                return false;
+            }
+
+            // 2. Check against Local Bridge time (if available)
+            const dc = getDataClient();
+            try {
+                const res = await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/ping`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const serverTime = new Date(data.time).getTime();
+                    
+                    if (lastKnownTime && serverTime < (lastKnownTime - 300000)) {
+                        console.error('[DeLorean] Bridge reports earlier time than LKT!');
+                        return false;
+                    }
+                    
+                    // Update LKT to the latest of either
+                    const latest = Math.max(now, serverTime, lastKnownTime || 0);
+                    await LocalDatabase.saveSystemSetting('last_known_time', latest);
+                } else {
+                    const latest = Math.max(now, lastKnownTime || 0);
+                    await LocalDatabase.saveSystemSetting('last_known_time', latest);
+                }
+            } catch (e) {
+                const latest = Math.max(now, lastKnownTime || 0);
+                await LocalDatabase.saveSystemSetting('last_known_time', latest);
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Time check failed:', error);
+            return true; 
         }
     }
 }

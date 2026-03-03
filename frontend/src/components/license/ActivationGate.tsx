@@ -54,6 +54,8 @@ export function ActivationGate({ status, onActivated, onSkip }: ActivationGatePr
         loadState();
     }, []);
 
+    const isTimeBlocked = status.status === 'blocked';
+
     const handleActivate = async () => {
         if (isLocked) {
             toast.error(t('license.tooManyAttempts'), { description: t('license.waitUntilTomorrow') });
@@ -112,24 +114,27 @@ export function ActivationGate({ status, onActivated, onSkip }: ActivationGatePr
         <div className="fixed inset-0 z-[100] bg-background flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950">
             <Card className={cn(
                 "w-full max-w-[450px] shadow-2xl border-2 transition-all duration-300",
-                status_type === 'error' ? "border-destructive animate-shake" : 
+                (status_type === 'error' || isTimeBlocked) ? "border-destructive animate-shake" : 
                 status_type === 'success' ? "border-green-500 bg-green-50/10" : "border-primary/20"
             )}>
                 <CardHeader className="space-y-1">
                     <div className={cn(
                         "mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors",
-                        isLocked ? "bg-destructive/10" : 
+                        (isLocked || isTimeBlocked) ? "bg-destructive/10" : 
                         status_type === 'success' ? "bg-green-100" : "bg-primary/10"
                     )}>
-                        {isLocked ? <Lock className="h-8 w-8 text-destructive" /> : 
+                        {isTimeBlocked ? <ShieldAlert className="h-8 w-8 text-destructive" /> :
+                         isLocked ? <Lock className="h-8 w-8 text-destructive" /> : 
                          status_type === 'success' ? <CheckCircle2 className="h-8 w-8 text-green-600" /> :
                          <KeyRound className="h-8 w-8 text-primary" />}
                     </div>
                     <CardTitle className="text-2xl text-center font-bold">
-                        {isLocked ? t('license.systemLocked') : status_type === 'success' ? t('license.verified') : t('license.productActivation')}
+                        {isTimeBlocked ? "Accès Bloqué" : isLocked ? t('license.systemLocked') : status_type === 'success' ? t('license.verified') : t('license.productActivation')}
                     </CardTitle>
                     <CardDescription className="text-center text-base px-2">
-                        {isLocked 
+                        {isTimeBlocked
+                            ? "Une manipulation de l'horloge système a été détectée. Veuillez rétablir l'heure correcte pour continuer."
+                            : isLocked 
                             ? t('license.lockedDescription')
                             : status_type === 'success' 
                             ? t('license.successDescription')
@@ -138,18 +143,20 @@ export function ActivationGate({ status, onActivated, onSkip }: ActivationGatePr
                 </CardHeader>
 
                 <CardContent className="space-y-4 py-4">
-                    <div className="p-4 bg-muted/50 rounded-xl border flex items-center justify-between">
-                        <div className="space-y-0.5">
-                            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t('license.hardwareId')}</div>
-                            <code className="text-sm font-mono font-bold tracking-tight">{status.device_hash}</code>
+                    {!isTimeBlocked && (
+                        <div className="p-4 bg-muted/50 rounded-xl border flex items-center justify-between">
+                            <div className="space-y-0.5">
+                                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{t('license.hardwareId')}</div>
+                                <code className="text-sm font-mono font-bold tracking-tight">{status.device_hash}</code>
+                            </div>
+                            <Button variant="ghost" size="sm" onClick={() => {
+                                navigator.clipboard.writeText(status.device_hash);
+                                toast.info(t('license.copiedToClipboard'));
+                            }}>{t('license.copy')}</Button>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => {
-                            navigator.clipboard.writeText(status.device_hash);
-                            toast.info(t('license.copiedToClipboard'));
-                        }}>{t('license.copy')}</Button>
-                    </div>
+                    )}
 
-                    {!isLocked && status_type !== 'success' && (
+                    {!isLocked && !isTimeBlocked && status_type !== 'success' && (
                         <>
                             <div className="space-y-2">
                                 <Label htmlFor="store_name" className="text-xs font-bold uppercase tracking-wider">{t('license.storeName')}</Label>
