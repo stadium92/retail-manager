@@ -18,7 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   Search, CalendarIcon, FileText, Users, 
-  ShoppingBag, Eye, WifiOff, RefreshCw, Printer, RotateCw
+  ShoppingBag, Eye, WifiOff, RefreshCw, Printer, Download
 } from 'lucide-react';
 import { format, startOfDay, endOfDay, subDays } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
@@ -36,6 +36,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useFormatters } from '@/utils/formatting';
 import { InvoiceDetailsDialog } from './InvoiceDetailsDialog';
+import { ExportService } from '@/services/ExportService';
 
 interface EditionModuleProps {
   storeId: string;
@@ -64,6 +65,8 @@ interface Transaction {
   method?: string;
   reference?: string;
   created_at: string;
+  order_ref?: string;
+  notes?: string;
 }
 
 export function EditionModule({ storeId, mode }: EditionModuleProps) {
@@ -294,31 +297,58 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
   const totalPurchases = useMemo(() =>
     purchases.reduce((sum, p) => sum + p.total_amount, 0), [purchases]);
 
-  const handleRepair = async () => {
-    if (!storeId) return;
-    setIsLoading(true);
-    try {
-        const { localBridgeBaseUrl } = (await import('@/lib/dataClient')).getDataClient();
-        const headers = await (await import('@/services/OfflineAuthService')).OfflineAuthService.getAuthHeaders();
-        if (headers) {
-            const response = await fetch(`${localBridgeBaseUrl}/rest/v1/system-repair`, { method: 'POST', headers });
-            if (!response.ok) {
-                const body = await response.json().catch(() => ({}));
-                throw new Error(body.message || `Server error: ${response.status}`);
-            }
-            
-            // Force wipe local cache so we re-fetch repaired data
-            await LocalDatabase.clearTable('sales');
-            await OfflineInventoryService.getInventory(storeId, { notify: true });
-            const salesData = await OfflineDataService.getSales(storeId, dateRange.from, dateRange.to);
-            setSales(salesData);
-            toast.success(t('common.success'));
-        }
-    } catch (e: any) {
-        console.error(e);
-        toast.error(e.message || t('common.error'));
+  const handleExport = (type: 'pdf' | 'excel' | 'csv') => {
+    const exportLabels = {
+      date: t('storeDetails.sales.table.date'),
+      item: t('inventory.table.name'),
+      quantity: t('pos.grid.headers.qty'),
+      unitPrice: t('pos.grid.headers.price'),
+      total: t('common.total'),
+      worker: t('edition.seller'),
+      store: t('inventory.fields.store'),
+      customer: t('pos.totals.customer'),
+      invoice: t('sales.invoice_number'),
+      orderRef: t('edition.orderRef')
+    };
+
+    let exportData: any[] = [];
+    let title = '';
+    let columns: { header: string; dataKey: string }[] = [];
+
+    if (mode.startsWith('suivi-ventes')) {
+        exportData = ExportService.formatSalesForExport(filteredSales, workerMap, {}, exportLabels);
+        title = t('menu.edition.salesTracking');
+        columns = [
+            { header: exportLabels.date, dataKey: exportLabels.date },
+            { header: exportLabels.invoice, dataKey: exportLabels.invoice },
+            { header: exportLabels.item, dataKey: exportLabels.item },
+            { header: exportLabels.quantity, dataKey: exportLabels.quantity },
+            { header: exportLabels.total, dataKey: exportLabels.total },
+            { header: exportLabels.worker, dataKey: exportLabels.worker }
+        ];
+    } else if (mode.startsWith('suivi-achats')) {
+        exportData = purchases.map(p => ({
+            [exportLabels.date]: format(new Date(p.created_at), 'dd/MM/yyyy HH:mm'),
+            [exportLabels.item]: p.supplier?.name || '?',
+            [exportLabels.total]: p.total_amount,
+            ['Status']: p.status
+        }));
+        title = t('menu.edition.purchaseTracking');
+        columns = [
+            { header: exportLabels.date, dataKey: exportLabels.date },
+            { header: exportLabels.item, dataKey: exportLabels.item },
+            { header: exportLabels.total, dataKey: exportLabels.total },
+            { header: 'Status', dataKey: 'Status' }
+        ];
     }
-    setIsLoading(false);
+
+    if (type === 'pdf') {
+        ExportService.exportToPDF(exportData, `report-${mode}`, title, columns);
+    } else if (type === 'excel') {
+        ExportService.exportToExcel(exportData, `report-${mode}`);
+    } else {
+        ExportService.exportToCSV(exportData, `report-${mode}`);
+    }
   };
 
   const OfflineIndicator = () => isOffline ? (
@@ -668,7 +698,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="h-10 border-2 font-mono">
-                    <CalendarIcon className="h-4 w-4 mr-2" />
+                    <CalendarIcon className="mr-2 h-4 w-4" />
                     {format(dateRange.from, 'dd/MM/yy')} - {format(dateRange.to, 'dd/MM/yy')}
                   </Button>
                 </PopoverTrigger>
@@ -734,7 +764,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="h-10 border-2 font-mono">
-                    <CalendarIcon className="h-4 w-4 mr-2" />
+                    <CalendarIcon className="mr-2 h-4 w-4" />
                     {format(dateRange.from, 'dd/MM/yy')} - {format(dateRange.to, 'dd/MM/yy')}
                   </Button>
                 </PopoverTrigger>
@@ -811,7 +841,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="h-10 border-2 font-mono">
-                    <CalendarIcon className="h-4 w-4 mr-2" />
+                    <CalendarIcon className="mr-2 h-4 w-4" />
                     {format(dateRange.from, 'dd/MM/yy')} - {format(dateRange.to, 'dd/MM/yy')}
                   </Button>
                 </PopoverTrigger>
@@ -999,7 +1029,30 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
   }
 
   return (
-    <div className="h-full overflow-auto p-4">
+    <div className="h-full overflow-auto p-4 flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <h2 className="text-xl font-black uppercase tracking-tight">{t(`menu.edition.${mode.replace(/-/g, '_')}`)}</h2>
+          <OfflineIndicator />
+        </div>
+        <div className="flex items-center gap-2">
+          <Select onValueChange={(v) => handleExport(v as any)}>
+            <SelectTrigger className="h-8 w-32 bg-primary text-white border-none font-bold text-[10px] uppercase">
+              <Download className="h-3 w-3 mr-2" />
+              <SelectValue placeholder={t('export.title')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="pdf">PDF</SelectItem>
+              <SelectItem value="excel">Excel</SelectItem>
+              <SelectItem value="csv">CSV</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="h-8 text-[10px] font-bold uppercase">
+            <RefreshCw className="h-3 w-3 mr-2" />
+            {t('common.refresh')}
+          </Button>
+        </div>
+      </div>
       {renderContent()}
       <InvoiceDetailsDialog 
         sale={selectedSale} 

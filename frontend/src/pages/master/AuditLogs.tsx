@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getDataClient, smartFetch } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { LocalDatabase } from '@/services/LocalDatabase';
 import { useMasterDataStore } from '@/stores/useMasterDataStore';
+import { useMasterDashboardStore } from '@/stores/useMasterDashboardStore';
 import { 
   Table, 
   TableBody, 
@@ -16,6 +17,7 @@ import {
   Card, 
   CardContent, 
   CardHeader, 
+  CardTitle
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { 
@@ -52,6 +54,8 @@ export default function AuditLogsPage() {
   const { t, i18n } = useTranslation();
   const [actionFilter, setActionFilter] = useState<string>('all');
   const [storeFilter, setStoreFilter] = useState<string>('all');
+  const { selectedStoreIds, isAllStoresSelected } = useMasterDashboardStore();
+  
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
     from: startOfDay(subDays(new Date(), 7)),
     to: endOfDay(new Date()),
@@ -59,6 +63,15 @@ export default function AuditLogsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
   const { stores } = useMasterDataStore();
+
+  // Sync with global store selection
+  useEffect(() => {
+    if (isAllStoresSelected) {
+        setStoreFilter('all');
+    } else if (selectedStoreIds.length === 1) {
+        setStoreFilter(selectedStoreIds[0]);
+    }
+  }, [selectedStoreIds, isAllStoresSelected]);
 
   const handleRepairDb = async () => {
     if (!confirm(t('audit.repairConfirm', 'Voulez-vous vraiment lancer la réparation de la base de données ?'))) return;
