@@ -286,12 +286,28 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   }, [lineItems, mode, updateSession]);
 
   const addProduct = useCallback((product: Product) => {
+    // Prevent adding products with zero or negative stock (except for proforma)
+    if (mode !== 'proforma' && (!product.quantity || product.quantity <= 0)) {
+        toast.error(t('inventory.fields.outOfStock') || 'Product is out of stock');
+        return;
+    }
+
     const existingIndex = lineItems.findIndex(li => li.productId === product.id);
     const clientDiscount = currentSession.clientDiscount || 0;
     
     if (existingIndex >= 0) {
       const newItems = [...lineItems];
       const item = newItems[existingIndex];
+      
+      // Stock check for existing items
+      const potentialQty = item.quantity + 1;
+      const totalUnitsRequested = item.isBox ? potentialQty * (item.conditionnement || 1) : potentialQty;
+      
+      if (mode !== 'proforma' && totalUnitsRequested > product.quantity!) {
+          toast.error(t('inventory.fields.insufficientStock') || 'Insufficient stock');
+          return;
+      }
+
       const newQty = item.quantity + 1;
       newItems[existingIndex] = {
         ...item,
@@ -337,13 +353,25 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     const newItems = [...lineItems];
     const item = newItems[index];
     const numQty = quantity === '' ? 0 : Number(quantity);
+
+    // Stock check
+    if (mode !== 'proforma') {
+      const totalUnitsRequested = item.isBox ? numQty * (item.conditionnement || 1) : numQty;
+      if (totalUnitsRequested > (item.stock || 0)) {
+        toast.error(t('inventory.fields.insufficientStock') || 'Insufficient stock');
+        // Do not update the quantity, or maybe revert to max available? 
+        // For strict enforcement, we just return.
+        return;
+      }
+    }
+
     newItems[index] = {
       ...item,
       quantity,
       lineTotal: calculateLineTotal(Number(item.unitPrice) || 0, numQty, Number(item.discountPercent) || 0, item.isBox, item.conditionnement),
     };
     updateSession(mode, { lineItems: newItems });
-  }, [lineItems, mode, updateSession, handleDeleteLine]);
+  }, [lineItems, mode, updateSession, handleDeleteLine, t]);
 
   const handleDiscountChange = useCallback((index: number, discount: any) => {
     const newItems = [...lineItems];
@@ -385,6 +413,16 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     }
 
     const newIsBox = !item.isBox;
+
+    // Stock check
+    if (mode !== 'proforma') {
+      const totalUnitsRequested = newIsBox ? item.quantity * (item.conditionnement || 1) : item.quantity;
+      if (totalUnitsRequested > (item.stock || 0)) {
+        toast.error(t('inventory.fields.insufficientStock') || 'Insufficient stock');
+        return;
+      }
+    }
+
     // Fix: Do NOT change unitPrice. Keep base price.
     // Calculate line total using the new isBox flag and existing unitPrice.
 
@@ -395,7 +433,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       lineTotal: calculateLineTotal(item.unitPrice, item.quantity, item.discountPercent, newIsBox, item.conditionnement)
     };
     updateSession(mode, { lineItems: newItems });
-  }, [lineItems, mode, updateSession]);
+  }, [lineItems, mode, updateSession, t]);
 
   const handleGlobalTierChange = useCallback((tier: number) => {
     setActiveTier(tier);
