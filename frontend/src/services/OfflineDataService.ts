@@ -196,7 +196,7 @@ class OfflineDataServiceClass {
                 .select('*')
                 .eq('store_id', storeId);
 
-            return this.calculateAnalyticsFromData(sales || [], inventory || []);
+            return await this.calculateAnalyticsFromData(sales || [], inventory || []);
         }
 
         // 2. OFFLINE-FIRST: Local Calculation
@@ -208,7 +208,7 @@ class OfflineDataServiceClass {
         });
 
         const localInventory = await LocalDatabase.getInventory(storeId);
-        const localAnalytics = this.calculateAnalyticsFromData(filteredSales, localInventory);
+        const localAnalytics = await this.calculateAnalyticsFromData(filteredSales, localInventory);
 
         // 3. BACKGROUND RECONCILIATION (Throttled)
         if (dc.isLocalFirst && this.shouldSync(`analytics-${storeId}`)) {
@@ -238,7 +238,7 @@ class OfflineDataServiceClass {
     }
   }
 
-  private calculateAnalyticsFromData(sales: any[], inventory: any[]): DashboardAnalytics {
+  private async calculateAnalyticsFromData(sales: any[], inventory: any[]): Promise<DashboardAnalytics> {
     const dailyRevenue = sales.reduce((sum, s) => sum + Number(s.total_price || 0), 0);
     
     // Group sales by day for weekly revenue
@@ -246,12 +246,29 @@ class OfflineDataServiceClass {
     const productMap: Record<string, { name: string, quantity: number, revenue: number }> = {};
     const workerMap: Record<string, { name: string, sales_count: number, revenue: number }> = {};
 
+    // Get worker names for mapping
+    const { OfflineTeamService } = await import('./OfflineTeamService');
+    const workersRes = await OfflineTeamService.getAllUsers();
+    const nameMap: Record<string, string> = {};
+    if (workersRes.data) {
+        workersRes.data.forEach(w => {
+            nameMap[w.id] = w.full_name || w.email;
+            if (w.user_id) nameMap[w.user_id] = w.full_name || w.email;
+        });
+    }
+
     sales.forEach(sale => {
         const day = new Date(sale.created_at).toISOString().split('T')[0];
         revenueByDay[day] = (revenueByDay[day] || 0) + Number(sale.total_price || 0);
 
         const workerId = sale.worker_id || 'Unknown';
-        if (!workerMap[workerId]) workerMap[workerId] = { name: workerId, sales_count: 0, revenue: 0 };
+        if (!workerMap[workerId]) {
+            workerMap[workerId] = { 
+                name: nameMap[workerId] || workerId, 
+                sales_count: 0, 
+                revenue: 0 
+            };
+        }
         workerMap[workerId].sales_count++;
         workerMap[workerId].revenue += Number(sale.total_price || 0);
 

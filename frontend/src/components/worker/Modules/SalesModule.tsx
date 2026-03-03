@@ -285,6 +285,11 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     setSelectedIndex(Math.min(index, newItems.length - 1));
   }, [lineItems, mode, updateSession]);
 
+  const isGroupingUnit = (unit?: string) => {
+    const u = (unit || '').toLowerCase();
+    return ['carton', 'box', 'pack', 'paquet', 'sac', 'bag'].includes(u);
+  };
+
   const addProduct = useCallback((product: Product) => {
     // Prevent adding products with zero or negative stock (except for proforma)
     if (mode !== 'proforma' && (!product.quantity || product.quantity <= 0)) {
@@ -303,7 +308,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       const potentialQty = item.quantity + 1;
       const totalUnitsRequested = item.isBox ? potentialQty * (item.conditionnement || 1) : potentialQty;
       
-      if (mode !== 'proforma' && totalUnitsRequested > product.quantity!) {
+      if (mode !== 'proforma' && totalUnitsRequested > (product.quantity || 0)) {
           toast.error(t('inventory.fields.insufficientStock') || 'Insufficient stock');
           return;
       }
@@ -334,7 +339,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         code: product.sku || '',
         conditionnement: packSize,
         isBox: false,
-        unit_type: product.unit_type || 'Carton',
+        unit_type: isGroupingUnit(product.unit_type) ? product.unit_type : (packSize > 1 ? 'Carton' : 'Piece'),
         stock: product.quantity || 0,
         basePrice: price,
         unitPrice: price,

@@ -18,6 +18,7 @@
     "transactions": "transactions",
     "perTransaction": "per transaction",
     "itemsSelected": "item(s) selected",
+    "name": "Name",
     "deleteSelected": "Delete Selected",
     "failedToLoad": "Failed to load data",
     "total": "Total",
@@ -1011,6 +1012,7 @@
       "cashJournal": "CASH Journal",
       "dashboard": "Dashboard",
       "statistics": "Statistics",
+      "stockStatus": "Stock Status",
       "lossExit": "LOSS EXIT",
       "lossExitDescription": "Use this screen to record products that are no longer sellable due to expiration, damage, or theft. This ensures your stock levels remain accurate for accounting.",
       "reasons": {
