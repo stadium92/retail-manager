@@ -135,112 +135,112 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
     return map;
   }, [workers, masterUsers]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!storeId) return;
-      setIsLoading(true);
+  const loadData = useCallback(async () => {
+    if (!storeId) return;
+    setIsLoading(true);
 
-      try {
-        // Always fetch workers for mapping - but only update if changed to avoid loop
-        const workersRes = await OfflineTeamService.getAllUsers();
-        if (workersRes.data) {
-          setWorkers(workersRes.data);
-          
-          // Selective update for global cache
-          if (!masterUsers || masterUsers.length === 0) {
-            setUsers(workersRes.data.map(u => ({ id: u.id, email: u.email, full_name: u.full_name || u.email })));
-          }
+    try {
+      // Always fetch workers for mapping - but only update if changed to avoid loop
+      const workersRes = await OfflineTeamService.getAllUsers();
+      if (workersRes.data) {
+        setWorkers(workersRes.data);
+        
+        // Selective update for global cache
+        if (!masterUsers || masterUsers.length === 0) {
+          setUsers(workersRes.data.map(u => ({ id: u.id, email: u.email, full_name: u.full_name || u.email })));
         }
-
-        // Always ensure products are loaded for name fallback
-        if ((!products || products.length === 0) && !productsLoadedRef.current) {
-           productsLoadedRef.current = true;
-           const inventoryRes = await OfflineInventoryService.getInventory(storeId);
-           // Only update if we actually got items to avoid infinite loop on empty inventory
-           if (inventoryRes.data && inventoryRes.data.length > 0) {
-             setProducts(inventoryRes.data);
-           }
-        }
-
-        switch (mode) {
-          case 'situation-client':
-            // Fetch Clients for selector
-            const { localBridgeBaseUrl } = (await import('@/lib/dataClient')).getDataClient();
-            const headers = await (await import('@/services/OfflineAuthService')).OfflineAuthService.getAuthHeaders();
-            const clientsRes = await fetch(`${localBridgeBaseUrl}/rest/v1/clients?store_id=${storeId}`, { headers });
-            if (clientsRes.ok) {
-              setClients(await clientsRes.json());
-            }
-            
-            if (selectedClientId) {
-              const txs = await OfflineDataService.getClientTransactions(storeId, selectedClientId);
-              setStatementData(txs);
-            }
-            break;
-
-          case 'situation-fournisseur':
-            const offlineSuppliers = storeSuppliers
-              .filter(s => s.store_id === storeId)
-              .map(s => ({
-                id: s.id,
-                name: s.name,
-                balance: s.balance,
-                phone: s.phone || null,
-              }));
-            setSuppliers(offlineSuppliers);
-
-            if (selectedSupplierId) {
-              const txs = await OfflineDataService.getSupplierTransactions(storeId, selectedSupplierId);
-              setStatementData(txs);
-            }
-            break;
-
-          case 'suivi-ventes-jour':
-          case 'suivi-ventes-produit':
-          case 'suivi-ventes-factures':
-            const salesData = await OfflineDataService.getSales(storeId, dateRange.from, dateRange.to);
-            setSales(salesData);
-            break;
-
-          case 'suivi-achats-jour':
-          case 'suivi-achats-periode':
-            const purchaseData = await OfflineDataService.getPurchaseOrders(storeId, dateRange.from, dateRange.to);
-            setPurchases(purchaseData);
-            break;
-
-          case 'suivi-achats-famille':
-            const poItems = await OfflineDataService.getAllPurchaseItems(storeId, dateRange.from, dateRange.to);
-            
-            const familyMap: Record<string, { total_quantity: number; total_amount: number }> = {};
-            (poItems || []).forEach((item: any) => {
-              const family = item.category_name || t('common.notClassified');
-              if (!familyMap[family]) {
-                familyMap[family] = { total_quantity: 0, total_amount: 0 };
-              }
-              familyMap[family].total_quantity += item.quantity_ordered || 0;
-              familyMap[family].total_amount += (item.quantity_ordered * item.unit_cost) || 0;
-            });
-
-            const familyData: ProductFamily[] = Object.entries(familyMap)
-              .map(([family_name, data]) => ({
-                family_name,
-                total_quantity: data.total_quantity,
-                total_amount: data.total_amount,
-              }))
-              .sort((a, b) => b.total_amount - a.total_amount);
-
-            setPurchasesByFamily(familyData);
-            break;
-        }
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        toast.error(t('common.failedToLoad'));
       }
 
-      setIsLoading(false);
-    };
+      // Always ensure products are loaded for name fallback
+      if ((!products || products.length === 0) && !productsLoadedRef.current) {
+         productsLoadedRef.current = true;
+         const inventoryRes = await OfflineInventoryService.getInventory(storeId);
+         // Only update if we actually got items to avoid infinite loop on empty inventory
+         if (inventoryRes.data && inventoryRes.data.length > 0) {
+           setProducts(inventoryRes.data);
+         }
+      }
 
-    fetchData();
+      switch (mode) {
+        case 'situation-client':
+          // Fetch Clients for selector
+          const { localBridgeBaseUrl } = (await import('@/lib/dataClient')).getDataClient();
+          const headers = await (await import('@/services/OfflineAuthService')).OfflineAuthService.getAuthHeaders();
+          const clientsRes = await fetch(`${localBridgeBaseUrl}/rest/v1/clients?store_id=${storeId}`, { headers });
+          if (clientsRes.ok) {
+            setClients(await clientsRes.json());
+          }
+          
+          if (selectedClientId) {
+            const txs = await OfflineDataService.getClientTransactions(storeId, selectedClientId);
+            setStatementData(txs);
+          }
+          break;
+
+        case 'situation-fournisseur':
+          const offlineSuppliers = storeSuppliers
+            .filter(s => s.store_id === storeId)
+            .map(s => ({
+              id: s.id,
+              name: s.name,
+              balance: s.balance,
+              phone: s.phone || null,
+            }));
+          setSuppliers(offlineSuppliers);
+
+          if (selectedSupplierId) {
+            const txs = await OfflineDataService.getSupplierTransactions(storeId, selectedSupplierId);
+            setStatementData(txs);
+          }
+          break;
+
+        case 'suivi-ventes-jour':
+        case 'suivi-ventes-produit':
+        case 'suivi-ventes-factures':
+          const salesData = await OfflineDataService.getSales(storeId, dateRange.from, dateRange.to);
+          setSales(salesData);
+          break;
+
+        case 'suivi-achats-jour':
+        case 'suivi-achats-periode':
+          const purchaseData = await OfflineDataService.getPurchaseOrders(storeId, dateRange.from, dateRange.to);
+          setPurchases(purchaseData);
+          break;
+
+        case 'suivi-achats-famille':
+          const poItems = await OfflineDataService.getAllPurchaseItems(storeId, dateRange.from, dateRange.to);
+          
+          const familyMap: Record<string, { total_quantity: number; total_amount: number }> = {};
+          (poItems || []).forEach((item: any) => {
+            const family = item.category_name || t('common.notClassified');
+            if (!familyMap[family]) {
+              familyMap[family] = { total_quantity: 0, total_amount: 0 };
+            }
+            familyMap[family].total_quantity += item.quantity_ordered || 0;
+            familyMap[family].total_amount += (item.quantity_ordered * item.unit_cost) || 0;
+          });
+
+          const familyData: ProductFamily[] = Object.entries(familyMap)
+            .map(([family_name, data]) => ({
+              family_name,
+              total_quantity: data.total_quantity,
+              total_amount: data.total_amount,
+            }))
+            .sort((a, b) => b.total_amount - a.total_amount);
+
+          setPurchasesByFamily(familyData);
+          break;
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error(t('common.failedToLoad'));
+    }
+
+    setIsLoading(false);
+  }, [storeId, mode, dateRange, storeSuppliers, selectedClientId, selectedSupplierId, t, setProducts, masterUsers, products, setUsers]);
+
+  useEffect(() => {
+    loadData();
 
     // Listen for background inventory updates (e.g. after timeout)
     const handleDbUpdate = async (e: Event) => {
@@ -255,7 +255,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
 
     window.addEventListener('localDbDataUpdated', handleDbUpdate);
     return () => window.removeEventListener('localDbDataUpdated', handleDbUpdate);
-  }, [storeId, mode, dateRange, storeSuppliers, selectedClientId, selectedSupplierId, t, setProducts]);
+  }, [loadData, storeId]);
 
   const filteredStatement = useMemo(() => {
     return statementData.filter(t => {
@@ -1047,7 +1047,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
               <SelectItem value="csv">CSV</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="h-8 text-[10px] font-bold uppercase">
+          <Button variant="outline" size="sm" onClick={loadData} className="h-8 text-[10px] font-bold uppercase">
             <RefreshCw className="h-3 w-3 mr-2" />
             {t('common.refresh')}
           </Button>

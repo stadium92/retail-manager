@@ -47,11 +47,16 @@ export class ExportService {
     doc.setFontSize(10);
     doc.text(`Exported on: ${new Date().toLocaleString()}`, 14, 22);
 
-    const totalKeywords = ['total', 'valeur', 'montant', 'somme', 'da', 'cogoya'];
-    const totalColIndex = columns.findIndex(c => 
-        totalKeywords.some(k => c.header.toLowerCase().includes(k)) ||
-        totalKeywords.some(k => c.dataKey.toLowerCase().includes(k))
-    );
+    const totalKeywords = ['total', 'valeur', 'montant', 'somme', 'da', 'cogoya', 'bɛɛ'];
+    const totalColIndex = columns.findIndex(c => {
+        const h = c.header.toLowerCase().trim();
+        const d = c.dataKey.toLowerCase().trim();
+        return totalKeywords.some(k => {
+            // Strict match or space-bounded match to prevent 'da' matching 'date'
+            const regex = new RegExp(`\\b${k}\\b`, 'i');
+            return regex.test(h) || regex.test(d);
+        });
+    });
 
     let runningTotal = 0;
     let pageTotal = 0;
