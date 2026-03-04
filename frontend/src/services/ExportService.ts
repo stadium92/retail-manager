@@ -53,38 +53,28 @@ export class ExportService {
         totalKeywords.some(k => c.dataKey.toLowerCase().includes(k))
     );
 
-    let runningTotal = 0;
-    
-    // Calculate running total
-    if (totalColIndex !== -1) {
-        data.forEach(row => {
-            const rawVal = row[columns[totalColIndex].dataKey];
-            const val = parseFloat(String(rawVal).replace(/[^0-9.-]+/g, ''));
-            if (!isNaN(val)) runningTotal += val;
-        });
-    }
-
     const tableData = data.map(row => columns.map(col => row[col.dataKey] ?? ''));
 
-    // Append total row at the end of the sheet
-    if (totalColIndex !== -1 && runningTotal > 0) {
-        const totalRow = new Array(columns.length).fill('');
-        totalRow[0] = 'TOTAL PAGE (Fin)';
-        totalRow[totalColIndex] = `${runningTotal.toLocaleString()} F`;
-        tableData.push(totalRow);
-    }
-
-    let pageRunningTotal = 0;
+    let runningTotal = 0;
+    let pageTotal = 0;
+    let currentPage = 1;
 
     // Add table
     autoTable(doc, {
       head: [columns.map(col => col.header)],
       body: tableData,
-      foot: [columns.map((col, idx) => {
-          if (idx === 0) return 'TOTAL (Cumul)';
-          if (idx === totalColIndex) return '0 F'; // Placeholder
-          return '';
-      })],
+      foot: [
+        columns.map((col, idx) => {
+            if (idx === 0) return 'TOTAL';
+            if (idx === totalColIndex) return '0 F'; // Placeholder
+            return '';
+        }),
+        columns.map((col, idx) => {
+            if (idx === 0) return 'TOTAL (Cumul)';
+            if (idx === totalColIndex) return '0 F'; // Placeholder
+            return '';
+        })
+      ],
       showFoot: 'everyPage',
       startY: 30,
       styles: { fontSize: 6 },
@@ -95,30 +85,37 @@ export class ExportService {
         fontStyle: 'bold',
         halign: 'left' 
       },
-      didParseCell: function(data: any) {
-        // Calculate the running total as pages are drawn
-        if (data.section === 'body' && data.column.index === totalColIndex && data.row.index < tableData.length - 1) {
-          const val = parseFloat(String(data.cell.raw).replace(/[^0-9.-]+/g, ''));
-          if (!isNaN(val)) {
-            pageRunningTotal += val;
-          }
-        }
-        
-        // Update the footer on every page
-        if (data.section === 'foot' && data.column.index === totalColIndex) {
-          data.cell.text = [pageRunningTotal.toLocaleString() + ' F'];
-          data.cell.styles.halign = 'right'; 
-        }
-      },
       willDrawCell: function(data: any) {
-        // Style the final grand total row to stand out, but hide it if it's the exact same as the footer
-        // Actually, user wants it explicitly, so we style it cleanly
-        if (data.section === 'body' && data.row.index === tableData.length - 1 && runningTotal > 0) {
-            doc.setFillColor(0, 100, 0); // Darker Green for Grand Total
+        // Reset page total when page changes
+        if (data.pageNumber !== currentPage) {
+            currentPage = data.pageNumber;
+            pageTotal = 0;
+        }
+
+        // Accumulate totals from the body cells
+        if (data.section === 'body' && data.column.index === totalColIndex) {
+            const val = parseFloat(String(data.cell.raw).replace(/[^0-9.-]+/g, ''));
+            if (!isNaN(val)) {
+                pageTotal += val;
+                runningTotal += val;
+            }
+        }
+
+        // Inject the text into the footer cells right before they are drawn
+        if (data.section === 'foot') {
+            doc.setFillColor(22, 163, 74); // Green bg for footer
             doc.setTextColor(255, 255, 255);
             doc.setFont('helvetica', 'bold');
+            
             if (data.column.index === totalColIndex) {
                 data.cell.styles.halign = 'right';
+                if (data.row.index === 0) {
+                    data.cell.text = [`${pageTotal.toLocaleString()} F`];
+                } else if (data.row.index === 1) {
+                    data.cell.text = [`${runningTotal.toLocaleString()} F`];
+                }
+            } else if (data.column.index === 0) {
+                data.cell.styles.halign = 'left';
             }
         }
       }
