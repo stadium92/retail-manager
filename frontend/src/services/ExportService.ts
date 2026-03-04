@@ -60,6 +60,7 @@ export class ExportService {
 
     let runningTotal = 0;
     let pageTotal = 0;
+    let lastRowParsed = -1;
     
     // Pre-calculate raw numerical values for exactly what goes into the table
     // to avoid trying to parse complex React objects inside the PDF generator hook
@@ -114,10 +115,13 @@ export class ExportService {
         
         // Use the clean pre-calculated array instead of the formatted cell strings
         if (data.section === 'body' && data.column.index === totalColIndex) {
-          const rawVal = cleanTableData[data.row.index][totalColIndex];
-          if (typeof rawVal === 'number') {
-            pageTotal += rawVal;
-            runningTotal += rawVal;
+          if (data.row.index !== lastRowParsed) {
+              lastRowParsed = data.row.index;
+              const rawVal = cleanTableData[data.row.index][totalColIndex];
+              if (typeof rawVal === 'number') {
+                pageTotal += rawVal;
+                runningTotal += rawVal;
+              }
           }
         }
         
