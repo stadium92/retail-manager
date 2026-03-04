@@ -53,26 +53,21 @@ export class ExportService {
         totalKeywords.some(k => c.dataKey.toLowerCase().includes(k))
     );
 
-    const tableData = data.map(row => columns.map(col => row[col.dataKey] ?? ''));
-
     let runningTotal = 0;
     let pageTotal = 0;
-    let currentPage = 1;
-
+    
     // Add table
     autoTable(doc, {
       head: [columns.map(col => col.header)],
-      body: tableData,
+      body: data.map(row => columns.map(col => row[col.dataKey] ?? '')),
       foot: [
         columns.map((col, idx) => {
-            if (idx === 0) return 'TOTAL';
-            if (idx === totalColIndex) return '0 F'; // Placeholder
-            return '';
+          if (idx === 0) return 'TOTAL';
+          return '';
         }),
         columns.map((col, idx) => {
-            if (idx === 0) return 'TOTAL (Cumul)';
-            if (idx === totalColIndex) return '0 F'; // Placeholder
-            return '';
+          if (idx === 0) return 'TOTAL (Cumul)';
+          return '';
         })
       ],
       showFoot: 'everyPage',
@@ -80,43 +75,47 @@ export class ExportService {
       styles: { fontSize: 6 },
       headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
       footStyles: { 
-        fillColor: [22, 163, 74], 
-        textColor: [255, 255, 255], 
+        fillColor: [255, 255, 255], 
+        textColor: [0, 0, 0], 
         fontStyle: 'bold',
-        halign: 'left' 
+        halign: 'right' 
       },
-      willDrawCell: function(data: any) {
-        // Reset page total when page changes
-        if (data.pageNumber !== currentPage) {
-            currentPage = data.pageNumber;
-            pageTotal = 0;
+      didParseCell: function(data: any) {
+        if (data.section === 'head') {
+            pageTotal = 0; // Reset page total at start of every page
         }
-
-        // Accumulate totals from the body cells
+        
         if (data.section === 'body' && data.column.index === totalColIndex) {
-            const val = parseFloat(String(data.cell.raw).replace(/[^0-9.-]+/g, ''));
-            if (!isNaN(val)) {
-                pageTotal += val;
-                runningTotal += val;
-            }
+          // Parse correctly, removing 'F', spaces, and commas
+          const rawString = String(data.cell.raw).replace(/[^0-9.-]+/g, '');
+          const val = parseFloat(rawString);
+          if (!isNaN(val)) {
+            pageTotal += val;
+            runningTotal += val;
+          }
         }
-
-        // Inject the text into the footer cells right before they are drawn
+        
         if (data.section === 'foot') {
-            doc.setFillColor(22, 163, 74); // Green bg for footer
-            doc.setTextColor(255, 255, 255);
-            doc.setFont('helvetica', 'bold');
+          // Style the first column (labels)
+          if (data.column.index === 0) {
+            data.cell.styles.halign = 'left';
+            data.cell.styles.textColor = [100, 100, 100]; // Grey text
+          }
+          
+          // Style the total column (values)
+          if (data.column.index === totalColIndex) {
+            data.cell.styles.halign = 'right';
+            data.cell.styles.textColor = [0, 0, 0]; // Black text
             
-            if (data.column.index === totalColIndex) {
-                data.cell.styles.halign = 'right';
-                if (data.row.index === 0) {
-                    data.cell.text = [`${pageTotal.toLocaleString()} F`];
-                } else if (data.row.index === 1) {
-                    data.cell.text = [`${runningTotal.toLocaleString()} F`];
-                }
-            } else if (data.column.index === 0) {
-                data.cell.styles.halign = 'left';
+            if (data.row.index === 0) {
+              data.cell.text = [`${pageTotal.toLocaleString()} F`];
+            } else if (data.row.index === 1) {
+              data.cell.text = [`${runningTotal.toLocaleString()} F`];
             }
+          } else if (data.column.index !== 0) {
+             // Clear out any borders for empty footer cells to make it look clean
+             data.cell.styles.lineWidth = 0;
+          }
         }
       }
     });
