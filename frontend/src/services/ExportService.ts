@@ -56,17 +56,39 @@ export class ExportService {
     let runningTotal = 0;
     let pageTotal = 0;
     
+    // Pre-calculate raw numerical values for exactly what goes into the table
+    // to avoid trying to parse complex React objects inside the PDF generator hook
+    const cleanTableData = data.map(row => {
+        const cleanRow: any[] = [];
+        columns.forEach((col, idx) => {
+            let val = row[col.dataKey];
+            if (val === null || val === undefined) {
+                cleanRow.push('');
+            } else if (idx === totalColIndex && typeof val === 'number') {
+                cleanRow.push(val); // Keep as number for easy math later
+            } else {
+                // If it's an object or react element, try to just cast to string safely
+                cleanRow.push(typeof val === 'object' ? '' : String(val));
+            }
+        });
+        return cleanRow;
+    });
+
     // Add table
     autoTable(doc, {
       head: [columns.map(col => col.header)],
-      body: data.map(row => columns.map(col => row[col.dataKey] ?? '')),
+      body: cleanTableData.map(row => 
+        row.map((cell, idx) => idx === totalColIndex && typeof cell === 'number' ? `${cell.toLocaleString()} F` : cell)
+      ),
       foot: [
         columns.map((col, idx) => {
           if (idx === 0) return 'TOTAL';
+          if (idx === totalColIndex) return '0 F';
           return '';
         }),
         columns.map((col, idx) => {
           if (idx === 0) return 'TOTAL (Cumul)';
+          if (idx === totalColIndex) return '0 F';
           return '';
         })
       ],
@@ -75,46 +97,40 @@ export class ExportService {
       styles: { fontSize: 6 },
       headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
       footStyles: { 
-        fillColor: [255, 255, 255], 
-        textColor: [0, 0, 0], 
+        fillColor: [22, 163, 74], 
+        textColor: [255, 255, 255], 
         fontStyle: 'bold',
         halign: 'right' 
       },
       didParseCell: function(data: any) {
         if (data.section === 'head') {
-            pageTotal = 0; // Reset page total at start of every page
+            pageTotal = 0;
         }
         
+        // Use the clean pre-calculated array instead of the formatted cell strings
         if (data.section === 'body' && data.column.index === totalColIndex) {
-          // Parse correctly, removing 'F', spaces, and commas
-          const rawString = String(data.cell.raw).replace(/[^0-9.-]+/g, '');
-          const val = parseFloat(rawString);
-          if (!isNaN(val)) {
-            pageTotal += val;
-            runningTotal += val;
+          const rawVal = cleanTableData[data.row.index][totalColIndex];
+          if (typeof rawVal === 'number') {
+            pageTotal += rawVal;
+            runningTotal += rawVal;
           }
         }
         
         if (data.section === 'foot') {
-          // Style the first column (labels)
           if (data.column.index === 0) {
             data.cell.styles.halign = 'left';
-            data.cell.styles.textColor = [100, 100, 100]; // Grey text
           }
           
-          // Style the total column (values)
           if (data.column.index === totalColIndex) {
             data.cell.styles.halign = 'right';
-            data.cell.styles.textColor = [0, 0, 0]; // Black text
-            
             if (data.row.index === 0) {
               data.cell.text = [`${pageTotal.toLocaleString()} F`];
             } else if (data.row.index === 1) {
               data.cell.text = [`${runningTotal.toLocaleString()} F`];
             }
           } else if (data.column.index !== 0) {
-             // Clear out any borders for empty footer cells to make it look clean
              data.cell.styles.lineWidth = 0;
+             data.cell.text = [''];
           }
         }
       }
