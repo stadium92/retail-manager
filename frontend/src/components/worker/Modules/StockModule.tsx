@@ -464,7 +464,32 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
           <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4 h-full">
             <Card className="h-full flex flex-col">
               <CardHeader className="py-3"><div className="flex items-center gap-2"><Input placeholder={t('common.search')} value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 flex-1" /><OfflineIndicator /></div></CardHeader>
-              <CardContent className="p-0 flex-1 overflow-hidden"><ScrollArea className="h-full">{products.map(p => (<div key={p.id} onClick={() => setSelectedProductId(p.id)} className={cn('px-4 py-2 cursor-pointer border-b border-border/30 transition-colors', 'hover:bg-primary/5', selectedProductId === p.id && 'bg-primary/10 border-l-2 border-l-primary')}><div className="text-sm font-medium truncate">{p.name}</div><div className="text-xs text-muted-foreground">{t('pos.grid.stock')}: {p.quantity} | {formatCurrency(p.unit_price)}</div></div>))}{products.length === 0 && (<div className="text-center py-8 text-muted-foreground">{isSearchLoading ? t('common.loading') : t('inventory.noItemsFound')}</div>)}</ScrollArea></CardContent>
+              <CardContent className="p-0 flex-1 overflow-hidden">
+                <ScrollArea className="h-full">
+                  {products.map(p => (
+                    <div 
+                      key={p.id} 
+                      onClick={() => setSelectedProductId(p.id)} 
+                      className={cn(
+                        'px-4 py-3 cursor-pointer border-b border-border/30 transition-colors', 
+                        'hover:bg-primary/5', 
+                        selectedProductId === p.id && 'bg-primary/10 border-l-4 border-l-primary'
+                      )}
+                    >
+                      <div className="text-sm font-bold uppercase truncate tracking-tight">{p.name || t('common.unknown')}</div>
+                      <div className="flex items-center justify-between mt-1 text-xs">
+                        <span className="text-muted-foreground font-medium">{t('pos.grid.stock')}: {p.quantity}</span>
+                        <span className="font-mono font-bold text-primary">{formatCurrency(p.unit_price)}</span>
+                      </div>
+                    </div>
+                  ))}
+                  {products.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      {isSearchLoading ? t('common.loading') : t('inventory.noItemsFound')}
+                    </div>
+                  )}
+                </ScrollArea>
+              </CardContent>
               <div className="p-2 border-t flex justify-between items-center text-xs text-muted-foreground"><Button variant="ghost" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}><ChevronLeft className="h-3 w-3" /></Button><span>Page {page}</span><Button variant="ghost" size="sm" onClick={() => setPage(p => p + 1)} disabled={products.length < limit}><ChevronRight className="h-3 w-3" /></Button></div>
             </Card>
             <Card className="h-full flex flex-col">{selectedProduct ? (

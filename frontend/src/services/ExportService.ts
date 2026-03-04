@@ -69,7 +69,7 @@ export class ExportService {
     // Append total row
     if (totalColIndex !== -1 && runningTotal > 0) {
         const totalRow = new Array(columns.length).fill('');
-        totalRow[0] = 'TOTAL PAGE';
+        totalRow[totalColIndex - 1] = 'TOTAL PAGE';
         totalRow[totalColIndex] = `${runningTotal.toLocaleString()} F`;
         tableData.push(totalRow);
     }
@@ -87,7 +87,7 @@ export class ExportService {
             doc.setFillColor(22, 163, 74); // Green bg
             doc.setTextColor(255, 255, 255);
             doc.setFont('helvetica', 'bold');
-            if (data.column.index === totalColIndex) {
+            if (data.column.index === totalColIndex || data.column.index === totalColIndex - 1) {
                 data.cell.styles.halign = 'right';
             }
         }
