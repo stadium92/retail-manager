@@ -66,28 +66,58 @@ export class ExportService {
 
     const tableData = data.map(row => columns.map(col => row[col.dataKey] ?? ''));
 
-    // Append total row
+    // Append total row at the end of the sheet
     if (totalColIndex !== -1 && runningTotal > 0) {
         const totalRow = new Array(columns.length).fill('');
-        totalRow[totalColIndex - 1] = 'TOTAL PAGE';
+        totalRow[0] = 'TOTAL PAGE (Fin)';
         totalRow[totalColIndex] = `${runningTotal.toLocaleString()} F`;
         tableData.push(totalRow);
     }
+
+    let pageRunningTotal = 0;
 
     // Add table
     autoTable(doc, {
       head: [columns.map(col => col.header)],
       body: tableData,
+      foot: [columns.map((col, idx) => {
+          if (idx === 0) return 'TOTAL (Cumul)';
+          if (idx === totalColIndex) return '0 F'; // Placeholder
+          return '';
+      })],
+      showFoot: 'everyPage',
       startY: 30,
       styles: { fontSize: 6 },
       headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
+      footStyles: { 
+        fillColor: [22, 163, 74], 
+        textColor: [255, 255, 255], 
+        fontStyle: 'bold',
+        halign: 'left' 
+      },
+      didParseCell: function(data: any) {
+        // Calculate the running total as pages are drawn
+        if (data.section === 'body' && data.column.index === totalColIndex && data.row.index < tableData.length - 1) {
+          const val = parseFloat(String(data.cell.raw).replace(/[^0-9.-]+/g, ''));
+          if (!isNaN(val)) {
+            pageRunningTotal += val;
+          }
+        }
+        
+        // Update the footer on every page
+        if (data.section === 'foot' && data.column.index === totalColIndex) {
+          data.cell.text = [pageRunningTotal.toLocaleString() + ' F'];
+          data.cell.styles.halign = 'right'; 
+        }
+      },
       willDrawCell: function(data: any) {
-        // Style the total row
+        // Style the final grand total row to stand out, but hide it if it's the exact same as the footer
+        // Actually, user wants it explicitly, so we style it cleanly
         if (data.section === 'body' && data.row.index === tableData.length - 1 && runningTotal > 0) {
-            doc.setFillColor(22, 163, 74); // Green bg
+            doc.setFillColor(0, 100, 0); // Darker Green for Grand Total
             doc.setTextColor(255, 255, 255);
             doc.setFont('helvetica', 'bold');
-            if (data.column.index === totalColIndex || data.column.index === totalColIndex - 1) {
+            if (data.column.index === totalColIndex) {
                 data.cell.styles.halign = 'right';
             }
         }

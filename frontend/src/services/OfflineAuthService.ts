@@ -156,8 +156,9 @@ export class OfflineAuthService {
 
   private static async refreshLocalBridgeSession(refreshToken: string): Promise<LocalBridgeSessionCache | null> {
     try {
-      const response = await this.localBridgeRequest<LocalBridgeLoginResponse>(
-        '/auth/refresh',
+      const baseUrl = this.getLocalBridgeBaseUrl();
+      const response = await smartFetch(
+        `${baseUrl}/auth/refresh`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -165,7 +166,12 @@ export class OfflineAuthService {
         }
       );
 
-      return this.saveLocalBridgeSession(response);
+      if (!response.ok) {
+        throw new Error('Refresh failed');
+      }
+
+      const data = await response.json() as LocalBridgeLoginResponse;
+      return this.saveLocalBridgeSession(data);
     } catch (error) {
       console.error('Failed to refresh LocalBridge session', error);
       return null;

@@ -476,7 +476,7 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
                         selectedProductId === p.id && 'bg-primary/10 border-l-4 border-l-primary'
                       )}
                     >
-                      <div className="text-sm font-bold uppercase truncate tracking-tight">{p.name || t('common.unknown')}</div>
+                      <div className="text-sm font-bold uppercase truncate tracking-tight">{p.name || (p as any).product_name || t('common.unknown')}</div>
                       <div className="flex items-center justify-between mt-1 text-xs">
                         <span className="text-muted-foreground font-medium">{t('pos.grid.stock')}: {p.quantity}</span>
                         <span className="font-mono font-bold text-primary">{formatCurrency(p.unit_price)}</span>
@@ -607,7 +607,7 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
                         return (
                           <TableRow key={p.id} className="h-12">
                             <TableCell className="text-xs font-medium">
-                              <div>{p.name}</div>
+                              <div>{p.name || (p as any).product_name || t('common.unknown')}</div>
                               <div className="text-[10px] text-muted-foreground">{p.sku}</div>
                             </TableCell>
                             <TableCell className="text-xs text-center">{p.unit_type || 'Pc'}</TableCell>

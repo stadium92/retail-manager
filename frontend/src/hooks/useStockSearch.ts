@@ -108,6 +108,7 @@ export function useStockSearch(storeId: string, enabled: boolean = true) {
           const lowerQ = debouncedSearch.toLowerCase();
           allItems = allItems.filter(p => 
               (p.name && p.name.toLowerCase().includes(lowerQ)) ||
+              (p.product_name && p.product_name.toLowerCase().includes(lowerQ)) ||
               (p.sku && p.sku.toLowerCase().includes(lowerQ)) ||
               (p.barcode && p.barcode.toLowerCase().includes(lowerQ))
           );
@@ -130,7 +131,7 @@ export function useStockSearch(storeId: string, enabled: boolean = true) {
 
       const mappedData = paginatedItems.map((p: any) => ({
         id: p.id,
-        name: p.name,
+        name: p.product_name || p.name,
         sku: p.sku,
         barcode: p.barcode || p.sku,
         unit_price: p.price || p.unit_price || 0,
