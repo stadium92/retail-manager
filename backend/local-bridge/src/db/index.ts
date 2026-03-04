@@ -20,6 +20,7 @@ import { createClientsRepo } from './repositories/clients.repo.js';
 import { createClientServicesRepo } from './repositories/client_services.repo.js';
 import { createSyncOutboxRepo } from './repositories/sync_outbox.repo.js';
 import { createCashRepo } from './repositories/cash.repo.js';
+import { createCashClosingRepo } from './repositories/cash_closings.repo.js';
 
 // 1. Initialize Schema & Migrations first! 
 // This ensures tables exist before repositories try to prepare statements.
@@ -54,6 +55,7 @@ const db = {
   ...createClientServicesRepo(rawDb),
   ...createSyncOutboxRepo(rawDb),
   ...createCashRepo(rawDb),
+  ...createCashClosingRepo(rawDb),
 };
 
 export { db, rawDb };

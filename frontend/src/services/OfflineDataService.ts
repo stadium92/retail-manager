@@ -351,6 +351,70 @@ class OfflineDataServiceClass {
     return true; 
   }
 
+  async getCashClosings(storeId: string): Promise<any[]> {
+    try {
+        await LocalDatabase.init();
+        const local = await LocalDatabase.getCashClosings(storeId);
+        
+        // Background sync
+        if (this.shouldSync(`closings-${storeId}`)) {
+            const dc = getDataClient();
+            const { OfflineAuthService } = await import('./OfflineAuthService');
+            const headers = await OfflineAuthService.getAuthHeaders();
+            if (headers) {
+                const res = await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/cash_closings?store_id=${storeId}`, { headers });
+                if (res.ok) {
+                    const remote = await res.json();
+                    for (const rc of remote) {
+                        await LocalDatabase.saveCashClosing({ ...rc, synced: true });
+                    }
+                    window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'cash_closings', storeId } }));
+                }
+            }
+        }
+        return local;
+    } catch (e) {
+        console.error('getCashClosings error:', e);
+        return [];
+    }
+  }
+
+  async submitCashClosing(data: any): Promise<boolean> {
+    try {
+        const id = crypto.randomUUID();
+        const now = new Date().toISOString();
+        const closing = {
+            id,
+            ...data,
+            created_at: now,
+            updated_at: now,
+            synced: false
+        };
+        
+        await LocalDatabase.init();
+        await LocalDatabase.saveCashClosing(closing);
+
+        const dc = getDataClient();
+        const { OfflineAuthService } = await import('./OfflineAuthService');
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (headers) {
+            const res = await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/cash_closings`, {
+                method: 'POST',
+                headers: { ...headers, 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (res.ok) {
+                await LocalDatabase.saveCashClosing({ ...closing, synced: true });
+                return true;
+            }
+        }
+        return true; // Return true even if offline as it is saved locally
+    } catch (e) {
+        console.error('submitCashClosing error:', e);
+        return false;
+    }
+  }
+
   async getStockMovements(storeId: string): Promise<{ movements: any[], offlineMessage?: string }> {
     try {
         const { isLocalFirst, localBridgeBaseUrl, supabase } = getDataClient();

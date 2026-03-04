@@ -3,7 +3,23 @@
  */
 
 const DB_NAME = 'retail_manager_offline';
-const DB_VERSION = 8; // Upgraded for system_settings (DeLorean protection)
+const DB_VERSION = 9; // Upgraded for cash_closings
+
+export interface LocalCashClosing {
+  id: string;
+  store_id: string;
+  worker_id: string;
+  opening_balance?: number;
+  expected_balance?: number;
+  actual_balance: number;
+  difference?: number;
+  bill_details_json: string;
+  observations?: string | null;
+  status?: string;
+  created_at: string;
+  updated_at: string;
+  synced: boolean;
+}
 
 export interface LocalProductFamily {
   id: string;
@@ -161,6 +177,7 @@ class LocalDatabaseService {
             { name: 'product_families', indexes: ['store_id', 'synced'] },
             { name: 'purchase_orders', indexes: ['store_id', 'status', 'synced'] },
             { name: 'purchase_items', indexes: ['order_id'] },
+            { name: 'cash_closings', indexes: ['store_id', 'synced'] },
             { name: 'sync_queue', indexes: ['type', 'timestamp'] },
             { name: 'system_settings', indexes: [] }
         ];
@@ -187,6 +204,23 @@ class LocalDatabaseService {
     await this.init();
     if (!this.db) throw new Error('Database not initialized');
     return this.db;
+  }
+
+  // ==================== CASH CLOSINGS ====================
+
+  async saveCashClosing(closing: LocalCashClosing): Promise<void> {
+    const db = await this.ensureDb();
+    const tx = db.transaction('cash_closings', 'readwrite');
+    tx.objectStore('cash_closings').put(closing);
+  }
+
+  async getCashClosings(storeId?: string): Promise<LocalCashClosing[]> {
+    const db = await this.ensureDb();
+    return new Promise(r => {
+      const store = db.transaction('cash_closings', 'readonly').objectStore('cash_closings');
+      const req = storeId ? store.index('store_id').getAll(storeId) : store.getAll();
+      req.onsuccess = () => r(req.result || []);
+    });
   }
 
   // ==================== PURCHASE ORDERS ====================

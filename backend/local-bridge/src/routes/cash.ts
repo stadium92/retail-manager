@@ -13,7 +13,58 @@ const txCreateSchema = z.object({
   reference: z.string().nullable().optional(),
 });
 
+const closingCreateSchema = z.object({
+  store_id: z.string().optional(),
+  opening_balance: z.number().optional(),
+  expected_balance: z.number().optional(),
+  actual_balance: z.number().min(0),
+  difference: z.number().optional(),
+  bill_details_json: z.string(),
+  observations: z.string().nullable().optional(),
+});
+
 export async function registerCashRoutes(app: FastifyInstance) {
+  // Cash Closings
+  app.get('/rest/v1/cash_closings', async (request, reply) => {
+    const claims = authenticateRequest(request, reply, ['master', 'worker']);
+    if (!claims) return;
+
+    const storeId = (request.query as any).store_id ?? claims.store_id;
+    if (!storeId) {
+      return reply.status(400).send({ error: 'StoreRequired' });
+    }
+
+    return reply.send(db.listCashClosings(storeId));
+  });
+
+  app.post('/rest/v1/cash_closings', async (request, reply) => {
+    const claims = authenticateRequest(request, reply, ['master', 'worker']);
+    if (!claims) return;
+
+    const parsed = closingCreateSchema.safeParse(request.body ?? {});
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'ValidationFailed', details: parsed.error.flatten() });
+    }
+
+    const storeId = parsed.data.store_id ?? claims.store_id;
+    if (!storeId) return reply.status(400).send({ error: 'StoreRequired' });
+
+    const now = new Date().toISOString();
+    const id = crypto.randomUUID();
+
+    db.insertCashClosing({
+      ...parsed.data,
+      id,
+      store_id: storeId,
+      worker_id: claims.sub,
+      status: 'submitted',
+      created_at: now,
+      updated_at: now,
+    });
+
+    return reply.status(201).send({ id });
+  });
+
   app.get('/rest/v1/cash_transactions', async (request, reply) => {
     const claims = authenticateRequest(request, reply);
     if (!claims) return;

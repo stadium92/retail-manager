@@ -177,7 +177,6 @@ export async function registerSyncRoutes(app: FastifyInstance) {
                     id: sup.id,
                     store_id: sup.store_id,
                     name: sup.name,
-                    contact_name: sup.contact_name,
                     email: sup.email,
                     phone: sup.phone,
                     address: sup.address,

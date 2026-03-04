@@ -1,19 +1,22 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Save } from 'lucide-react';
+import { Save, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
+import { OfflineDataService } from '@/services/OfflineDataService';
+import { ExportService } from '@/services/ExportService';
 import { useTranslation } from 'react-i18next';
 import { useFormatters } from '@/utils/formatting';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { getCurrencyConfig } from '@/utils/currencyConfig';
+import { toast } from 'sonner';
 
 interface FicheCaisseModuleProps {
   storeId: string;
@@ -32,6 +35,7 @@ export function FicheCaisseModule({ storeId }: FicheCaisseModuleProps) {
   const [fondsCaisse, setFondsCaisse] = useState(0);
   const [observations, setObservations] = useState('');
   const [cashierName, setCashierName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
   
   // Billetage (Cash counting)
@@ -140,16 +144,91 @@ export function FicheCaisseModule({ storeId }: FicheCaisseModuleProps) {
     return dayData.especesJour + dayData.cheques + dayData.reglementCredit - dayData.venteCredit;
   }, [dayData]);
 
+  const handleSave = useCallback(async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      const closingData = {
+        store_id: storeId,
+        opening_balance: fondsCaisse,
+        expected_balance: computerValues.especes,
+        actual_balance: billTotal,
+        difference: billTotal - computerValues.especes,
+        bill_details_json: JSON.stringify({ bills, jetons, dayData }),
+        observations: observations || `Caissier: ${cashierName}`
+      };
+
+      const success = await OfflineDataService.submitCashClosing(closingData);
+      
+      if (success) {
+        // Export PDF
+        const exportData = [
+          ...bills.filter(b => b.count > 0).map(b => ({
+            Libelle: `${b.denomination} x ${b.count}`,
+            Montant: formatCurrency(b.denomination * b.count)
+          })),
+          { Libelle: 'Jetons', Montant: formatCurrency(jetons) },
+          { Libelle: 'TOTAL BILLETAGE', Montant: formatCurrency(billTotal) },
+          { Libelle: '----------------', Montant: '----------------' },
+          { Libelle: 'Especes Jour', Montant: formatCurrency(dayData.especesJour) },
+          { Libelle: 'Depenses', Montant: formatCurrency(dayData.depensesJour) },
+          { Libelle: 'Ecart', Montant: formatCurrency(billTotal - computerValues.especes) }
+        ];
+
+        ExportService.exportToPDF(
+          exportData, 
+          `cloture-${storeId}-${new Date().getTime()}`,
+          `FICHE DE CAISSE - ${cashierName || 'SYSTEM'}`,
+          [
+            { header: 'Libelle', dataKey: 'Libelle' },
+            { header: 'Montant', dataKey: 'Montant' }
+          ]
+        );
+
+        toast.success(t('common.saveSuccess'));
+        
+        // Reset form
+        setFondsCaisse(0);
+        setObservations('');
+        setCashierName('');
+        setJetons(0);
+        const config = getCurrencyConfig(currency);
+        setBills(config.denominations.map(denom => ({ denomination: denom, count: 0 })));
+      } else {
+        toast.error(t('common.error'));
+      }
+    } catch (error) {
+      console.error('Save cash closing error:', error);
+      toast.error(t('common.error'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [storeId, billTotal, bills, jetons, computerValues, fondsCaisse, observations, cashierName, i18n.language, currency, t, formatCurrency]);
+
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F2') {
+        e.preventDefault();
+        handleSave();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleSave]);
+
   const updateBillCount = (denomination: number, count: number) => {
     setBills(prev => prev.map(bill => 
       bill.denomination === denomination 
         ? { ...bill, count: Math.max(0, count) }
         : bill
     ));
-      };
+  };
   
-      return (
-        <div className="h-full flex flex-col p-4 bg-[hsl(60,80%,85%)] dark:bg-transparent">      <ScrollArea className="flex-1">
+  return (
+    <div className="h-full flex flex-col p-4 bg-[hsl(60,80%,85%)] dark:bg-transparent">
+      <ScrollArea className="flex-1">
         <div className="glass-card p-4">
           {/* Header */}
           <div className="flex flex-wrap items-center gap-4 md:gap-8 mb-6 p-3 bg-muted/30 rounded-lg">
@@ -380,8 +459,8 @@ export function FicheCaisseModule({ storeId }: FicheCaisseModuleProps) {
         <Button variant="outline" size="sm">
           {t('common.cancel')} (Esc)
         </Button>
-        <Button size="sm" className="btn-neon">
-          <Save className="h-4 w-4 mr-2" />
+        <Button size="sm" className="btn-neon" onClick={handleSave} disabled={isSubmitting}>
+          {isSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
           {t('common.save')} (F2)
         </Button>
       </div>

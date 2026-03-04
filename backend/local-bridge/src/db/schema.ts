@@ -280,6 +280,21 @@ export const initializeSchema = (db: Database.Database) => {
       updated_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS cash_closings (
+      id TEXT PRIMARY KEY,
+      store_id TEXT NOT NULL,
+      worker_id TEXT NOT NULL,
+      opening_balance REAL DEFAULT 0,
+      expected_balance REAL DEFAULT 0,
+      actual_balance REAL NOT NULL,
+      difference REAL DEFAULT 0,
+      bill_details_json TEXT NOT NULL, -- Detailed count of bills/coins
+      observations TEXT,
+      status TEXT DEFAULT 'submitted', -- 'submitted', 'validated'
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
     -- Trigger to deduct inventory when a sale item is recorded
     DROP TRIGGER IF EXISTS sale_items_ai;
     CREATE TRIGGER sale_items_ai AFTER INSERT ON sale_items
