@@ -109,11 +109,19 @@ export class ExportService {
         halign: 'right' 
       },
       didParseCell: function(data: any) {
-        if (data.section === 'head') {
-            pageTotal = 0;
+        if (data.section === 'foot') {
+          if (data.column.index === 0) {
+            data.cell.styles.halign = 'left';
+          }
+          if (data.column.index === totalColIndex) {
+            data.cell.styles.halign = 'right';
+          } else if (data.column.index !== 0) {
+             data.cell.styles.lineWidth = 0;
+             data.cell.text = [''];
+          }
         }
-        
-        // Use the clean pre-calculated array instead of the formatted cell strings
+      },
+      willDrawCell: function(data: any) {
         if (data.section === 'body' && data.column.index === totalColIndex) {
           if (data.row.index !== lastRowParsed) {
               lastRowParsed = data.row.index;
@@ -126,22 +134,17 @@ export class ExportService {
         }
         
         if (data.section === 'foot') {
-          if (data.column.index === 0) {
-            data.cell.styles.halign = 'left';
-          }
-          
           if (data.column.index === totalColIndex) {
-            data.cell.styles.halign = 'right';
             if (data.row.index === 0) {
               data.cell.text = [`${pageTotal.toLocaleString()} F`];
             } else if (data.row.index === 1) {
               data.cell.text = [`${runningTotal.toLocaleString()} F`];
             }
-          } else if (data.column.index !== 0) {
-             data.cell.styles.lineWidth = 0;
-             data.cell.text = [''];
           }
         }
+      },
+      didDrawPage: function(data: any) {
+        pageTotal = 0;
       }
     });
     
