@@ -29,7 +29,7 @@ The feature should apply to these four sales sub-modules:
 | Retail Sales | `vente-detail` | `SalesModule.tsx` |
 | Retail Billing | `facturation-detail` | `FacturationModule.tsx` |
 | Wholesale Billing | `facturation-gros` | (Wholesale variant) |
-| Performance Invoice | `proforma` | `ProformaList.tsx` / Proforma module |
+| Performance Invoice (Proforma Invoice) | `proforma` | `ProformaList.tsx` / Proforma module |
 
 ### Conflicts Identified by the Requester
 1. **Mouse click vs. keyboard hover** — Clicking anywhere in the table resets the keyboard navigation state. This creates a UX conflict.
@@ -82,7 +82,7 @@ frontend/src/navigation/
 ### 2.5 Scanner Auto-Advance
 - Use `useBarcodeScanner` hook (already exists) inside the navigation context.
 - On scan detection: look up the product, populate the current row, and **auto-advance to the next empty row**.
-- Scanner detection heuristic: input speed > ~50 characters in < 100ms (typical barcode scanner behavior). The existing `hardwareBarcodeScanned` custom event from the Tauri backend already handles this.
+- Scanner detection heuristic: input speed > 6 characters arriving within 100ms (typical barcode scanner behavior). The existing `hardwareBarcodeScanned` custom event from the Tauri backend already handles this.
 
 ### 2.6 Row Skip Button
 - Assign **Escape** or **Tab** as the "skip row" key (see suggestions below for recommendation).
@@ -167,7 +167,7 @@ frontend/src/navigation/
 | Library | Purpose | Why |
 |---|---|---|
 | **None required** | Keyboard handling | Native `KeyboardEvent` + React hooks are sufficient. Adding a library for this creates unnecessary dependency. |
-| **@tanstack/react-table** (already evaluatable) | Table state management | If the sales grid becomes more complex, this library provides built-in cell focus and navigation APIs. However, the current `SanifereGrid` is custom and works well — only consider this for a future rewrite. |
+| **@tanstack/react-table** (worth evaluating) | Table state management | If the sales grid becomes more complex, this library provides built-in cell focus and navigation APIs. However, the current `SanifereGrid` is custom and works well — only consider this for a future rewrite. |
 | **cmdk** or **@radix-ui/react-combobox** | Inline search dropdown | The project already uses Radix UI extensively. A combobox primitive would give accessible, keyboard-navigable dropdowns for free. Already partially available via Shadcn's `Command` component. |
 | **react-hotkeys-hook** | Shortcut management | Optional. Would simplify scoped shortcut registration per component. But the existing `ShortcutsContext` pattern is sufficient. |
 
