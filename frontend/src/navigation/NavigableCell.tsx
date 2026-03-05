@@ -5,6 +5,10 @@ import {
   type GridColumn,
 } from './useNavigationStore';
 
+// Teal accent matching the WorkerLayout header (hsl 160,70%,35%)
+const FOCUS_BORDER_COLOR = 'hsl(160, 70%, 35%)';
+const FOCUS_EDIT_BG = 'hsla(160, 70%, 35%, 0.15)';
+
 // ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
@@ -149,13 +153,11 @@ export function NavigableCell({
       style={
         showFocusBorder
           ? {
-              outline: '2px solid hsl(160, 70%, 35%)',
+              outline: `2px solid ${FOCUS_BORDER_COLOR}`,
               outlineOffset: '-2px',
               position: 'relative' as const,
               zIndex: 1,
-              background: isEditing
-                ? 'hsla(160, 70%, 35%, 0.15)'
-                : undefined,
+              background: isEditing ? FOCUS_EDIT_BG : undefined,
             }
           : undefined
       }
