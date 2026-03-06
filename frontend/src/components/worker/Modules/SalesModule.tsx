@@ -69,6 +69,27 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   const { clients, setClients, services } = useMasterDataStore();
   const { scanProduct } = useProductScanner(storeId);
 
+  // Handle Hardware Scanner Input
+  const handleHardwareScan = useCallback(async (e: any) => {
+    const code = e.detail?.code;
+    if (!code) return;
+    
+    // Find the product
+    const product = await scanProduct(code);
+    if (product) {
+        // Add it directly
+        addProduct(product);
+        
+        // After adding, focus the next empty row
+        setTimeout(() => {
+            const store = useNavigationStore.getState();
+            store.jumpToLastEmptyRow();
+        }, 150);
+    } else {
+        toast.error(t('worker.sales.itemNotFound') + ': ' + code);
+    }
+  }, [scanProduct, addProduct, t]);
+
   const keyValidate = getKeyForAction('ACTION_VALIDATE') || 'F2';
   const keySearch = getKeyForAction('ACTION_SEARCH') || 'F3';
   const keyPay = getKeyForAction('ACTION_PAY') || 'F4';
@@ -279,6 +300,85 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
 
     updateSession(mode, updates);
   }, [clients, services, lineItems, mode, updateSession, t]);
+
+  const handleOrderRefLoad = useCallback(async (ref: string) => {
+    if (!ref || !storeId) return;
+    setIsLoading(true);
+    try {
+      // First, get sales from local data service
+      const sales = await OfflineDataService.getSales(storeId);
+      // Find a sale that matches either the invoice_number or order_ref
+      const foundSale = sales.find(s => s.invoice_number === ref || s.order_ref === ref);
+      
+      if (foundSale) {
+        // Map the sale items back to SanifereLineItem format
+        const newItems: SanifereLineItem[] = (foundSale.sale_items || foundSale.items || []).map((item: any, index: number) => {
+          const packStr = String(item.product?.packaging || '1');
+          const match = packStr.match(/(\d+)/);
+          const conditionnement = match ? parseInt(match[1], 10) : 1;
+          const isBox = conditionnement > 1 && item.quantity % conditionnement === 0 && (item.unit_price > (item.product?.unit_price || 0));
+
+          return {
+            id: crypto.randomUUID(),
+            lineNumber: index + 1,
+            productId: item.product_id || item.product?.id,
+            designation: item.product_name || item.product?.name || '',
+            code: item.product?.sku || '',
+            conditionnement,
+            stock: item.product?.quantity || 0,
+            unitPrice: item.unit_price,
+            basePrice: item.product?.unit_price || item.unit_price,
+            quantity: item.quantity,
+            discountPercent: item.discount || 0,
+            lineTotal: item.total || 0,
+            isBox: isBox,
+            unit_type: item.product?.unit_type || (isBox ? 'Carton' : 'Piece'),
+            priceTiers: { 
+               1: item.product?.unit_price || 0, 
+               2: item.product?.selling_price_2 || 0, 
+               3: item.product?.selling_price_3 || 0, 
+               4: item.product?.selling_price_4 || 0 
+            }
+          };
+        });
+
+        // Add empty row at end for navigation consistency
+        newItems.push({
+          id: crypto.randomUUID(),
+          lineNumber: newItems.length + 1,
+          designation: '',
+          code: '',
+          conditionnement: 1,
+          stock: 0,
+          unitPrice: '',
+          basePrice: 0,
+          quantity: '',
+          discountPercent: '',
+          lineTotal: 0,
+          isBox: false,
+          priceTiers: { 1: 0, 2: 0, 3: 0, 4: 0 }
+        });
+
+        // Update the current session with the loaded data
+        updateSession(mode, {
+          lineItems: newItems,
+          customerName: foundSale.customer_name || '',
+          customerCode: foundSale.client_id || '', // Rough match if client_id exists
+          customerAddress: foundSale.customer_address || '',
+          orderRef: foundSale.order_ref || '',
+          invoiceNumber: foundSale.invoice_number || '',
+        });
+        toast.success(t('common.success'));
+      } else {
+        toast.error(t('common.noData') || 'Order not found');
+      }
+    } catch (e) {
+      console.error('Failed to load order', e);
+      toast.error(t('common.error'));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [storeId, mode, updateSession, t]);
 
   const handleDeleteLine = useCallback((index: number) => {
     const newItems = lineItems.filter((_, i) => i !== index);
@@ -785,6 +885,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     window.addEventListener('nav-toggle-packing', handleToggleEvent);
     window.addEventListener('nav-open-search', handleSearchEvent);
     window.addEventListener('nav-adjust-quantity', handleAdjustQtyEvent);
+    window.addEventListener('scanner-input', handleHardwareScan);
     window.addEventListener('nav-capture-keystroke', handleCaptureKeystroke);
     
     return () => {
@@ -792,6 +893,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       window.removeEventListener('nav-toggle-packing', handleToggleEvent);
       window.removeEventListener('nav-open-search', handleSearchEvent);
       window.removeEventListener('nav-adjust-quantity', handleAdjustQtyEvent);
+      window.removeEventListener('scanner-input', handleHardwareScan);
       window.removeEventListener('nav-capture-keystroke', handleCaptureKeystroke);
     };
   }, [lineItems, handleDeleteLine, handleToggleUnit, handleQuantityChange, handleDesignationChange]);
@@ -843,6 +945,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
           else updateSession(mode, { customerAddress: address });
         }}
         onOrderRefChange={(ref) => updateSession(mode, { orderRef: ref })}
+        onOrderRefLoad={handleOrderRefLoad}
         onInvoiceNumberChange={(num) => updateSession(mode, { invoiceNumber: num })}
       />
 

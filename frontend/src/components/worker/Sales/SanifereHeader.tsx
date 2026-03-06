@@ -14,7 +14,8 @@ interface SanifereHeaderProps {
   orderRef?: string;
   onCustomerChange?: (code: string, name: string, address: string) => void;
   onOrderRefChange?: (ref: string) => void;
-  onInvoiceNumberChange?: (num: string) => void;
+  onOrderRefLoad?: (ref: string) => void;
+  onInvoiceNumberChange?: (invoice: string) => void;
 }
 
 const modeBgColors: Record<SaleMode, string> = {
@@ -33,6 +34,7 @@ export function SanifereHeader({
   orderRef = '',
   onCustomerChange,
   onOrderRefChange,
+  onOrderRefLoad,
   onInvoiceNumberChange,
 }: SanifereHeaderProps) {
   const { t, i18n } = useTranslation();
@@ -138,6 +140,12 @@ export function SanifereHeader({
             type="text"
             value={orderRef}
             onChange={(e) => onOrderRefChange?.(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                onOrderRefLoad?.(orderRef);
+              }
+            }}
             className="bg-[hsl(120,100%,35%)] border-b border-black/50 px-2 py-0.5 w-32 text-black placeholder:text-black/50 focus:outline-none focus:border-[hsl(60,100%,50%)]"
             placeholder=""
           />

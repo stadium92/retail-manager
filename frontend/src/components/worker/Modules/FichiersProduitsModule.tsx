@@ -69,7 +69,33 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
 
     window.addEventListener('localDbDataUpdated', handleRefresh);
     return () => window.removeEventListener('localDbDataUpdated', handleRefresh);
-  }, [storeId]);
+  }, [storeId, fetchData]);
+
+  useEffect(() => {
+    const handleScannerInput = (e: any) => {
+      const code = e.detail?.code;
+      if (code && isDialogOpen) {
+        if (registrationMode === 'single') {
+          setFormData(prev => ({ ...prev, barcode: code }));
+        } else {
+          // If in multi-mode, update the currently open item or the last item
+          setMultiItems(prev => {
+            const newItems = [...prev];
+            const openIndex = newItems.findIndex(i => i.isOpen);
+            if (openIndex >= 0) {
+              newItems[openIndex] = { ...newItems[openIndex], barcode: code };
+            } else if (newItems.length > 0) {
+              newItems[newItems.length - 1] = { ...newItems[newItems.length - 1], barcode: code };
+            }
+            return newItems;
+          });
+        }
+        toast.success(t('scanner.codeScanned') || 'Code scanned');
+      }
+    };
+    window.addEventListener('scanner-input', handleScannerInput);
+    return () => window.removeEventListener('scanner-input', handleScannerInput);
+  }, [isDialogOpen, t, registrationMode]);
 
   const handleNumChange = (field: keyof typeof initialFormState, index?: number) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -377,10 +403,28 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                 <div className="space-y-4">
                     <div className="space-y-2"><Label className="font-bold">{t('inventory.fields.name')} *</Label><Input value={data.name} onChange={e => update('name', e.target.value)} required className="h-12 text-lg font-semibold bg-muted/20" /></div>
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2"><Label className="text-xs font-bold uppercase">{t('inventory.fields.sku')}</Label><Input value={data.sku} onChange={e => update('sku', e.target.value)} className="h-10 font-mono" /></div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold uppercase">{t('inventory.fields.sku')}</Label>
+                          <Input 
+                            value={data.sku} 
+                            onChange={e => update('sku', e.target.value)} 
+                            onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+                            className="h-10 font-mono" 
+                          />
+                        </div>
                         <div className="space-y-2">
                             <Label className="text-xs font-bold uppercase">{t('inventory.fields.barcode')}</Label>
-                            <div className="flex gap-2"><Input value={data.barcode} onChange={e => update('barcode', e.target.value)} className="h-10 font-mono" /><Button type="button" variant="outline" size="icon" onClick={() => update('barcode', `PRD${Date.now().toString(36).toUpperCase()}`)} className="h-10 w-10 shrink-0"><Barcode className="h-4 w-4" /></Button></div>
+                            <div className="flex gap-2">
+                              <Input 
+                                value={data.barcode} 
+                                onChange={e => update('barcode', e.target.value)} 
+                                onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+                                className="h-10 font-mono" 
+                              />
+                              <Button type="button" variant="outline" size="icon" onClick={() => update('barcode', `PRD${Date.now().toString(36).toUpperCase()}`)} className="h-10 w-10 shrink-0">
+                                <Barcode className="h-4 w-4" />
+                              </Button>
+                            </div>
                         </div>
                     </div>
                     <div className="space-y-2">

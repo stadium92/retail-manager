@@ -5,9 +5,9 @@ import {
   type GridColumn,
 } from './useNavigationStore';
 
-// Teal accent matching the WorkerLayout header (hsl 160,70%,35%)
-const FOCUS_OUTLINE_COLOR = 'hsl(160, 70%, 35%)';
-const FOCUS_EDIT_BG = 'rgba(255, 255, 255, 0.1)';
+// Darker and bolder teal accent for better visibility
+const FOCUS_OUTLINE_COLOR = '#000000'; // Pure black for maximum contrast
+const FOCUS_EDIT_BG = 'rgba(255, 255, 255, 0.2)';
 
 export interface NavigableCellProps {
   row: number;
@@ -104,8 +104,8 @@ export function NavigableCell({
       style={
         isFocused && inputMethod === 'keyboard'
           ? {
-              outline: `2px solid ${FOCUS_OUTLINE_COLOR}`,
-              outlineOffset: '-1px',
+              outline: `3px solid ${FOCUS_OUTLINE_COLOR}`,
+              outlineOffset: '-2px',
               position: 'relative' as const,
               zIndex: 10,
               background: isEditing ? FOCUS_EDIT_BG : undefined,
