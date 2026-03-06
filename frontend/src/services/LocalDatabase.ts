@@ -102,6 +102,7 @@ export interface LocalInventory {
   packaging?: string;
   expiry_date?: string;
   reorder_quantity?: number;
+  low_stock_threshold?: number;
   updated_at: string;
   synced: boolean;
 }

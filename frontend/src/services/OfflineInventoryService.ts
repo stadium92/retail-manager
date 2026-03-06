@@ -62,6 +62,7 @@ function mapLocalInventoryToItem(local: LocalInventory): InventoryItem {
     packaging: local.packaging,
     expiry_date: local.expiry_date,
     reorder_quantity: local.reorder_quantity || 0,
+    low_stock_threshold: local.low_stock_threshold || 10,
     updated_at: local.updated_at,
     created_at: (local as any).created_at || local.updated_at,
   };
@@ -89,6 +90,7 @@ function mapToLocalInventory(item: InventoryItem | any, synced: boolean = true):
     packaging: item.packaging,
     expiry_date: item.expiry_date,
     reorder_quantity: Number(item.reorder_quantity) || 0,
+    low_stock_threshold: Number(item.low_stock_threshold || item.min_quantity) || 10,
     updated_at: item.updated_at || new Date().toISOString(),
     synced,
   };
@@ -99,65 +101,57 @@ export const OfflineInventoryService = {
     try {
       const dc = getDataClient();
       await LocalDatabase.init();
-      const localInventory = await LocalDatabase.getInventory(storeId);
       
-      let remoteProducts: any[] = [];
-      let success = false;
-
-      // 1. If Local-First (Worker/Hybrid), try to fetch from Bridge IMMEDIATELY
+      // 1. If Local-First, try Bridge as the absolute source of truth
       if (dc.isLocalFirst) {
         try {
           const { OfflineAuthService } = await import('./OfflineAuthService');
           const headers = await OfflineAuthService.getAuthHeaders();
           if (headers) {
-            const params = new URLSearchParams();
-            if (storeId) params.set('store_id', storeId);
+            const params = new URLSearchParams({ store_id: storeId });
             const res = await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/products?${params.toString()}`, { headers });
             if (res.ok) {
               const payload = await res.json();
-              remoteProducts = Array.isArray(payload) ? payload : payload.data || [];
-              console.log('[OfflineInventory] Bridge products fetched:', remoteProducts.length);
-              success = true;
+              const remoteProducts = Array.isArray(payload) ? payload : (payload.data || []);
+              
+              // Map and Cache in background
+              const mappedItems = remoteProducts.map(mapDbToInventoryItem);
+              
+              // Update cache without blocking
+              const syncCache = async () => {
+                  // SAVE/UPDATE remote items to cache
+                  for (const remote of remoteProducts) {
+                      await LocalDatabase.saveInventoryItem(mapToLocalInventory(remote, true));
+                  }
+                  
+                  // NOTE: We no longer automatically delete local items here to prevent "Ghost Files"
+                  // disappearing due to partial bridge responses or network lags.
+                  // Deletions should be handled by explicit DELETE events or a full re-sync.
+              };
+              syncCache().catch(err => console.error('[OfflineInventory] Cache sync failed:', err));
+
+              if (options?.notify !== false) {
+                window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
+              }
+
+              return { data: mappedItems };
             }
           }
         } catch (e) {
-          console.warn('[OfflineInventory] Bridge fetch failed, using local DB:', e);
+          console.warn('[OfflineInventory] Bridge fetch failed, falling back to local cache:', e);
         }
       }
 
-      // 2. If we got fresh data from Bridge, update LocalDatabase and return it
-      if (success && remoteProducts.length > 0) {
-        // Reconcile Deletions
-        const remoteIds = new Set(remoteProducts.map((p: any) => p.id));
-        for (const local of localInventory) {
-          if (local.synced && !remoteIds.has(local.id)) {
-            await LocalDatabase.deleteInventoryItem(local.id);
-          }
-        }
-        
-        // Reconcile Updates/Adds
-        const mappedItems: InventoryItem[] = [];
-        for (const remote of remoteProducts) {
-          const mapped = mapDbToInventoryItem(remote);
-          await LocalDatabase.saveInventoryItem(mapToLocalInventory(remote, true));
-          mappedItems.push(mapped);
-        }
-
-        if (options?.notify !== false) {
-          window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
-        }
-
-        return { data: mappedItems };
-      }
-
-      // 3. Fallback: Return what we have in LocalDatabase
+      // 2. Fallback: Return from LocalDatabase cache
+      const localInventory = await LocalDatabase.getInventory(storeId);
       if (localInventory.length > 0) {
+        console.log('[OfflineInventory] Returning cached data:', localInventory.length);
         return { data: localInventory.map(mapLocalInventoryToItem) };
       }
 
       return { data: [] };
     } catch (error) {
-      console.error('getInventory error:', error);
+      console.error('[OfflineInventory] getInventory fatal error:', error);
       return { error };
     }
   },
@@ -176,38 +170,45 @@ export const OfflineInventoryService = {
 
   async createItem(item: any): Promise<{ data?: InventoryItem; error?: any }> {
     try {
-      const id = crypto.randomUUID();
+      const dc = getDataClient();
+      const id = item.id || crypto.randomUUID();
       const newItem = { ...item, id, updated_at: new Date().toISOString() };
       
       await LocalDatabase.init();
-      await LocalDatabase.saveInventoryItem(mapToLocalInventory(newItem, false));
 
-      const dc = getDataClient();
       if (dc.isLocalFirst) {
-        // Forward creation to local bridge
+        const { OfflineAuthService } = await import('./OfflineAuthService');
         const headers = await OfflineAuthService.getAuthHeaders();
         if (headers) {
+          // 1. Write to Bridge FIRST
           const res = await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/products`, {
             method: 'POST',
             headers: { ...headers, 'Content-Type': 'application/json' },
             body: JSON.stringify(newItem)
           });
+          
           if (!res.ok) {
-            const err = await res.json();
+            const err = await res.json().catch(() => ({ message: 'Bridge write failed' }));
             throw new Error(err.message || 'Failed to create product in local bridge');
           }
+          
+          // 2. Successful bridge write -> update local cache as "synced"
+          await LocalDatabase.saveInventoryItem(mapToLocalInventory(newItem, true));
+          
+          window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
+          return { data: mapDbToInventoryItem(newItem) };
         }
-      } else {
-        // Online mode: sync directly to Supabase
-        await SyncService.addToQueue({
-          type: 'inventory_update',
-          data: newItem
-        });
       }
 
-      return { data: mapLocalInventoryToItem(mapToLocalInventory(newItem, false)) };
+      // Fallback for true offline or non-local-first
+      await LocalDatabase.saveInventoryItem(mapToLocalInventory(newItem, false));
+      if (!dc.isLocalFirst) {
+          await SyncService.addToQueue({ type: 'inventory_update', data: newItem });
+      }
+      
+      return { data: mapDbToInventoryItem(newItem) };
     } catch (error) {
-      console.error('Create item error:', error);
+      console.error('[OfflineInventory] Create item error:', error);
       return { error };
     }
   },
