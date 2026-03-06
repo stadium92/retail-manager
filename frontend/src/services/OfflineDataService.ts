@@ -5,7 +5,6 @@
 
 import { LocalDatabase, LocalSale } from './LocalDatabase';
 import { useMasterDataStore } from '@/stores/useMasterDataStore';
-import { supabase } from '@/integrations/supabase/client';
 import { getDataClient, smartFetch } from '@/lib/dataClient';
 
 export interface SaleWithItems extends Omit<LocalSale, 'items'> {
@@ -131,14 +130,6 @@ class OfflineDataServiceClass {
                                 success = true;
                             }
                         }
-                    } else if (navigator.onLine) {
-                        let query = supabase.from('sales').select('*, sale_items(*)').eq('store_id', storeId).order('created_at', { ascending: false });
-                        if (dateFrom) query = query.gte('created_at', dateFrom.toISOString());
-                        const { data, error } = await query;
-                        if (!error && data) {
-                            remoteSales = data;
-                            success = true;
-                        }
                     }
 
                     if (success && remoteSales.length > 0) {
@@ -180,26 +171,7 @@ class OfflineDataServiceClass {
     try {
         const dc = getDataClient();
         
-        // 1. ONLINE MODE: Fetch from Supabase if not local-first
-        if (!dc.isLocalFirst) {
-            const { data: sales, error } = await dc.supabase
-                .from('sales')
-                .select('*, sale_items(*)')
-                .eq('store_id', storeId)
-                .gte('created_at', from.toISOString())
-                .lte('created_at', to.toISOString());
-
-            if (error) throw error;
-
-            const { data: inventory } = await dc.supabase
-                .from('products')
-                .select('*')
-                .eq('store_id', storeId);
-
-            return await this.calculateAnalyticsFromData(sales || [], inventory || []);
-        }
-
-        // 2. OFFLINE-FIRST: Local Calculation
+        // OFFLINE-FIRST: Local Calculation
         await LocalDatabase.init();
         const localSales = await LocalDatabase.getSales(storeId);
         const filteredSales = localSales.filter(s => {
@@ -417,7 +389,7 @@ class OfflineDataServiceClass {
 
   async getStockMovements(storeId: string): Promise<{ movements: any[], offlineMessage?: string }> {
     try {
-        const { isLocalFirst, localBridgeBaseUrl, supabase } = getDataClient();
+        const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
         let movements: any[] = [];
         let offlineMessage: string | undefined;
 
@@ -431,16 +403,6 @@ class OfflineDataServiceClass {
                 } else {
                     offlineMessage = "Impossible de charger les mouvements depuis le serveur local.";
                 }
-            }
-        } else if (navigator.onLine) {
-            const { data, error } = await supabase
-                .from('inventory_movements')
-                .select('*, product:products(name)')
-                .eq('store_id', storeId)
-                .order('created_at', { ascending: false });
-            
-            if (!error && data) {
-                movements = data;
             }
         }
 
@@ -478,7 +440,7 @@ class OfflineDataServiceClass {
         const { OfflineAuthService } = await import('./OfflineAuthService');
         const headers = await OfflineAuthService.getAuthHeaders();
         if (headers) {
-          await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/inventory_movements`, {
+          await smartFetch(`${localBridgeBaseUrl}/rest/v1/inventory_movements`, {
             method: 'POST',
             headers: { ...headers, 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -489,8 +451,6 @@ class OfflineDataServiceClass {
             })
           });
         }
-      } else {
-        await supabase.from('products').update({ quantity: newQuantity }).eq('id', productId);
       }
     } catch (error) {
       console.error('Stock update failed:', error);
