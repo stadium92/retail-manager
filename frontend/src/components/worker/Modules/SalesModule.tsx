@@ -295,59 +295,77 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     
     setIsLoading(true);
     try {
-      console.log('[OrderLoad] Fetching sales for store:', storeId);
+      console.log('[OrderLoad] Searching for:', cleanRef);
       const sales = await OfflineDataService.getSales(storeId);
-      const products = useMasterDataStore.getState().products;
+      const allProducts = useMasterDataStore.getState().products || [];
 
-      // Robust find
-      const foundSale = sales.find(s => {
-        const inv = String(s.invoice_number || '').toLowerCase();
-        const ord = String(s.order_ref || '').toLowerCase();
-        const target = cleanRef.toLowerCase();
-        return inv.includes(target) || ord.includes(target) || s.id.includes(target);
-      });
+      const foundSale = sales.find(s => 
+        (s.invoice_number && String(s.invoice_number).toLowerCase() === cleanRef.toLowerCase()) || 
+        (s.order_ref && String(s.order_ref).toLowerCase() === cleanRef.toLowerCase()) ||
+        (s.id && String(s.id).toLowerCase().includes(cleanRef.toLowerCase()))
+      );
       
       if (foundSale) {
-        console.log('[OrderLoad] Found sale:', foundSale.id, foundSale);
+        console.log('[OrderLoad] Found sale:', foundSale.id);
         const rawItems = foundSale.sale_items || foundSale.items || [];
         
-        const newItems = Array.isArray(rawItems) ? rawItems.map((item: any, index: number) => {
-          // Safeguard: try to find product details from local store first
-          const pid = item.product_id || (item.product && item.product.id);
-          const cachedProduct = products.find(p => p.id === pid) || item.product || {};
-          
-          const packStr = String(cachedProduct.packaging || '1');
-          const match = packStr.match(/(\d+)/);
-          const packSize = match ? parseInt(match[1], 10) : 1;
-          
-          const unitPrice = Number(item.unit_price || item.price || 0);
-          const baseUnitPrice = Number(cachedProduct.unit_price || unitPrice);
+        const newItems: SanifereLineItem[] = (Array.isArray(rawItems) ? rawItems : []).map((item: any, index: number) => {
+          try {
+            if (!item) throw new Error('Item is null');
+            
+            const pid = item.product_id || (item.product && item.product.id);
+            const cachedProduct = allProducts.find(p => p.id === pid) || item.product || {};
+            
+            const packStr = String(cachedProduct.packaging || '1');
+            const match = packStr.match(/(\d+)/);
+            const packSize = match ? parseInt(match[1], 10) : 1;
+            
+            const unitPrice = Number(item.unit_price || item.price || 0);
+            const baseUnitPrice = Number(cachedProduct.unit_price || unitPrice || 0);
 
-          return {
-            id: crypto.randomUUID(),
-            lineNumber: index + 1,
-            productId: pid,
-            designation: item.product_name || cachedProduct.name || 'Unknown Item',
-            code: cachedProduct.sku || item.sku || '',
-            conditionnement: packSize,
-            stock: Number(cachedProduct.quantity || 0),
-            unitPrice: unitPrice,
-            basePrice: baseUnitPrice,
-            quantity: Number(item.quantity || 1),
-            discountPercent: Number(item.discount || 0),
-            lineTotal: Number(item.total || (unitPrice * Number(item.quantity || 1))),
-            isBox: item.is_box || (packSize > 1 && unitPrice > baseUnitPrice),
-            unit_type: cachedProduct.unit_type || 'Piece',
-            priceTiers: { 
-               1: Number(cachedProduct.unit_price || 0), 
-               2: Number(cachedProduct.selling_price_2 || 0), 
-               3: Number(cachedProduct.selling_price_3 || 0), 
-               4: Number(cachedProduct.selling_price_4 || 0) 
-            }
-          };
-        }) : [];
+            return {
+              id: crypto.randomUUID(),
+              lineNumber: index + 1,
+              productId: pid || undefined,
+              designation: item.product_name || cachedProduct.name || 'Unknown',
+              code: cachedProduct.sku || item.sku || '',
+              conditionnement: packSize,
+              stock: Number(cachedProduct.quantity || 0),
+              unitPrice: unitPrice,
+              basePrice: baseUnitPrice,
+              quantity: Number(item.quantity || 1),
+              discountPercent: Number(item.discount || 0),
+              lineTotal: Number(item.total || (unitPrice * Number(item.quantity || 1))),
+              isBox: !!(item.is_box || (packSize > 1 && unitPrice > (baseUnitPrice + 1))),
+              unit_type: cachedProduct.unit_type || 'Piece',
+              priceTiers: { 
+                 1: Number(cachedProduct.unit_price || 0), 
+                 2: Number(cachedProduct.selling_price_2 || 0), 
+                 3: Number(cachedProduct.selling_price_3 || 0), 
+                 4: Number(cachedProduct.selling_price_4 || 0) 
+              }
+            };
+          } catch (e) {
+            console.warn('[OrderLoad] Mapping item error:', e);
+            return {
+              id: crypto.randomUUID(),
+              lineNumber: index + 1,
+              designation: 'Error item',
+              code: '',
+              conditionnement: 1,
+              stock: 0,
+              unitPrice: 0,
+              basePrice: 0,
+              quantity: 1,
+              discountPercent: 0,
+              lineTotal: 0,
+              isBox: false,
+              priceTiers: { 1: 0, 2: 0, 3: 0, 4: 0 }
+            };
+          }
+        });
 
-        // Add the necessary empty row
+        // Add mandatory empty row
         newItems.push({
           id: crypto.randomUUID(),
           lineNumber: newItems.length + 1,
@@ -364,7 +382,6 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
           priceTiers: { 1: 0, 2: 0, 3: 0, 4: 0 }
         });
 
-        console.log('[OrderLoad] Mapping success, updating session');
         updateSession(mode, {
           lineItems: newItems,
           customerName: foundSale.customer_name || '',
@@ -376,9 +393,9 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       } else {
         toast.error(t('common.noData') + ': ' + cleanRef);
       }
-    } catch (e) {
-      console.error('[OrderLoad] Fatal Error during mapping:', e);
-      toast.error(t('common.error') + ' (Mapping Error)');
+    } catch (e: any) {
+      console.error('[OrderLoad] Mapping error:', e);
+      toast.error(`Erreur: ${e.message || 'Mapping'}`);
     } finally {
       setIsLoading(false);
     }
@@ -917,6 +934,9 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     window.addEventListener('nav-open-search', handleSearchEvent);
     window.addEventListener('nav-adjust-quantity', handleAdjustQtyEvent);
     window.addEventListener('scanner-input', handleHardwareScan);
+    window.addEventListener('nav-pay-shortcut', openPayment);
+    window.addEventListener('nav-search-shortcut', () => setIsProductLookupOpen(true));
+    window.addEventListener('nav-save-shortcut', handleSaveProforma);
     window.addEventListener('nav-capture-keystroke', handleCaptureKeystroke);
     
     return () => {
@@ -925,6 +945,9 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       window.removeEventListener('nav-open-search', handleSearchEvent);
       window.removeEventListener('nav-adjust-quantity', handleAdjustQtyEvent);
       window.removeEventListener('scanner-input', handleHardwareScan);
+      window.removeEventListener('nav-pay-shortcut', openPayment);
+      window.removeEventListener('nav-search-shortcut', () => setIsProductLookupOpen(true));
+      window.removeEventListener('nav-save-shortcut', handleSaveProforma);
       window.removeEventListener('nav-capture-keystroke', handleCaptureKeystroke);
     };
   }, [lineItems, handleDeleteLine, handleToggleUnit, handleQuantityChange, handleDesignationChange]);

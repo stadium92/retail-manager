@@ -17,8 +17,34 @@ export function useGlobalKeyboard() {
     const getState = store.getState;
 
     function handleKeyDown(e: KeyboardEvent) {
-      // Check if a modal/dialog is open to avoid intercepting keys meant for the modal
       const isDialogOpen = !!document.querySelector('[role="dialog"]');
+      
+      // 0. HANDLE GLOBAL SHORTCUTS FIRST (Allow them even if focused in an input)
+      if (e.key === 'F4' || e.key === 'F2') {
+          if (!isDialogOpen) {
+              e.preventDefault();
+              e.stopPropagation();
+              window.dispatchEvent(new CustomEvent('nav-pay-shortcut'));
+              return;
+          }
+      }
+      if (e.key === 'F3') {
+          if (!isDialogOpen) {
+              e.preventDefault();
+              e.stopPropagation();
+              window.dispatchEvent(new CustomEvent('nav-search-shortcut'));
+              return;
+          }
+      }
+      if (e.key === 'F10') {
+          if (!isDialogOpen) {
+              e.preventDefault();
+              e.stopPropagation();
+              window.dispatchEvent(new CustomEvent('nav-save-shortcut'));
+              return;
+          }
+      }
+
       if (isDialogOpen) return; // Completely ignore grid keys when a dialog is open
 
       const isInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
