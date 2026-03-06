@@ -174,7 +174,7 @@ export function CashClosingsTab() {
                 <TableRow key={c.id} className="border-b-2 hover:bg-muted/30 h-16 group transition-colors">
                   <TableCell className="font-mono text-[10px] pl-6 font-black opacity-60">{formatDate(c.created_at)}</TableCell>
                   <TableCell><Badge variant="outline" className="font-black uppercase text-[9px] border-2 bg-background">{stores.find(s => s.id === c.store_id)?.name || '?'}</Badge></TableCell>
-                  <TableCell className="text-[10px] font-black uppercase">{workerMap[c.worker_id] || c.worker_id.slice(0,8)}</TableCell>
+                  <TableCell className="text-[10px] font-black uppercase">{workerMap[c.worker_id] || (c.worker_id ? c.worker_id.slice(0,8) : '?')}</TableCell>
                   <TableCell className="text-right font-black font-mono text-xs">{formatCurrency(c.expected_balance)}</TableCell>
                   <TableCell className="text-right font-black font-mono text-xs">{formatCurrency(c.actual_balance)}</TableCell>
                   <TableCell className={cn("text-right font-black font-mono text-xs", (c.difference || 0) < 0 ? "text-danger" : (c.difference || 0) > 0 ? "text-success" : "")}>
