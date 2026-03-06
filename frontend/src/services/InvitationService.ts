@@ -1,4 +1,3 @@
-import { supabase } from '@/integrations/supabase/client';
 import { getDataClient, smartFetch } from '@/lib/dataClient';
 import { OfflineAuthService } from './OfflineAuthService';
 
@@ -43,23 +42,7 @@ export class InvitationService {
         return { data: payload };
       }
 
-      // Generate secure token client-side (temporary solution until RPC function is created)
-      const token = btoa(crypto.getRandomValues(new Uint8Array(32)).toString()).replace(/[+/=]/g, '').slice(0, 40);
-
-      const { data: invitation, error } = await supabase
-        .from('worker_invitations' as any)
-        .insert({
-          email: data.email,
-          role: data.role,
-          store_id: data.store_id,
-          token: token,
-        })
-        .select()
-        .single();
-
-      if (error || !invitation) return { error: error || new Error('Failed to create invitation') };
-
-      return { data: invitation };
+      return { error: { message: 'Cloud invitations are disabled. Use local bridge mode.' } };
     } catch (error) {
       return { error };
     }
@@ -84,17 +67,7 @@ export class InvitationService {
         return { data: payload };
       }
 
-      let query = supabase
-        .from('worker_invitations' as any)
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (storeId) {
-        query = query.eq('store_id', storeId);
-      }
-
-      const { data, error } = await query;
-      return { data: data || [], error };
+      return { data: [], error: undefined };
     } catch (error) {
       return { error };
     }
@@ -142,12 +115,7 @@ export class InvitationService {
         return {};
       }
 
-      const { error } = await supabase
-        .from('worker_invitations' as any)
-        .update({ status: 'cancelled' })
-        .eq('id', id);
-
-      return { error };
+      return { error: { message: 'Cloud invitations are disabled.' } };
     } catch (error) {
       return { error };
     }
@@ -175,27 +143,7 @@ export class InvitationService {
         return {};
       }
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        return { error: { message: 'User not authenticated' } };
-      }
-
-      const { error } = await supabase.rpc('accept_invitation' as any, {
-        _token: token,
-        _user_id: user.id,
-      });
-
-      if (!error) {
-        return { error };
-      }
-
-      const fallback = await supabase
-        .from('worker_invitations' as any)
-        .update({ status: 'accepted', accepted_at: new Date().toISOString() })
-        .eq('token', token)
-        .eq('email', user.email || '');
-
-      return { error: fallback.error || error };
+      return { error: { message: 'Cloud invitations are disabled. Use local bridge mode.' } };
     } catch (error) {
       return { error };
     }

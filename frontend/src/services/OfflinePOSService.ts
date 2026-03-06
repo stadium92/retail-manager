@@ -4,7 +4,6 @@
  */
 
 import { LocalDatabase, LocalSale, LocalInventory } from './LocalDatabase';
-import { supabase } from '@/integrations/supabase/client';
 import i18n from '@/i18n/config';
 import { toast } from '@/hooks/use-toast';
 import { SaleType } from '@/types';
@@ -87,58 +86,19 @@ export class OfflinePOSService {
         return { success: true, saleId };
       }
 
-      // Try to sync immediately if online
-      // Cast as any - sales schema may require item_id which we don't have in multi-item flow
-      const { error: saleError } = await (supabase as any).from('sales').insert([{
-        id: saleId,
-        store_id: data.store_id,
-        worker_id: data.worker_id,
-        total_price: data.total_price,
-        customer_name: data.customer_name,
-        notes: data.notes,
-        sale_type: data.sale_type || 'detail',
-        payment_method: data.payment_method,
-        payment_status: 'paid',
-        item_id: data.items[0]?.product_id || null, // Legacy field for backwards compatibility
-        quantity: data.items.reduce((sum, i) => sum + i.quantity, 0),
-        unit_price: data.items[0]?.unit_price || 0,
-      }]);
+      // Cloud sync disabled - queue for later sync
+      await LocalDatabase.addToSyncQueue({
+        id: crypto.randomUUID(),
+        type: 'sale',
+        data: localSale,
+        timestamp: Date.now(),
+        retries: 0,
+      });
 
-      if (saleError) {
-        // Queue for later sync
-        await LocalDatabase.addToSyncQueue({
-          id: crypto.randomUUID(),
-          type: 'sale',
-          data: localSale,
-          timestamp: Date.now(),
-          retries: 0,
-        });
-
-        toast({
-          title: i18n.t('sync.saleRecordedLocally'),
-          description: 'Server sync failed, will retry later',
-          variant: 'destructive',
-        });
-      } else {
-        // Insert sale items
-        const saleItems = data.items.map(item => ({
-          sale_id: saleId,
-          product_id: item.product_id,
-          product_name: item.product_name,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          total: item.total,
-        }));
-
-        await supabase.from('sale_items').insert(saleItems);
-
-        // Mark as synced
-        await LocalDatabase.markSaleSynced(saleId);
-        toast({
-          title: i18n.t('sync.saleRecorded'),
-          description: `${data.items.length} items - Synced`,
-        });
-      }
+      toast({
+        title: i18n.t('sync.saleRecordedLocally'),
+        description: `${data.items.length} items - Will sync when online`,
+      });
 
       return { success: true, saleId };
     } catch (error) {
@@ -161,62 +121,6 @@ export class OfflinePOSService {
           const saleDate = new Date(sale.created_at);
           return saleDate >= dateRange.start && saleDate <= dateRange.end;
         });
-      }
-
-      // If online, also fetch from server and merge
-      if (navigator.onLine) {
-        try {
-          let query = supabase.from('sales').select('*, sale_items(*)');
-          
-          if (storeId) {
-            query = query.eq('store_id', storeId);
-          }
-          
-          if (dateRange) {
-            query = query
-              .gte('created_at', dateRange.start.toISOString())
-              .lte('created_at', dateRange.end.toISOString());
-          }
-
-          const { data: remoteSales } = await query;
-
-          if (remoteSales) {
-            // Merge: prioritize local unsynced, add remote synced
-            const localIds = new Set(localSales.filter(s => !s.synced).map(s => s.id));
-            const mergedSales = [...localSales.filter(s => !s.synced)];
-            
-            for (const remoteSale of remoteSales) {
-              if (!localIds.has(remoteSale.id)) {
-                // Get items from sale_items relation
-                const items = (remoteSale.sale_items as any[]) || [];
-                mergedSales.push({
-                  id: remoteSale.id,
-                  store_id: remoteSale.store_id || undefined,
-                  worker_id: remoteSale.worker_id || undefined,
-                  items: items.map((item: any) => ({
-                    product_id: item.product_id,
-                    product_name: item.product_name,
-                    quantity: item.quantity,
-                    unit_price: item.unit_price,
-                    total: item.total,
-                  })),
-                  total_price: remoteSale.total_price || 0,
-                  payment_method: remoteSale.payment_method || 'cash',
-                  sale_type: (remoteSale.sale_type as SaleType) || 'detail',
-                  customer_name: remoteSale.customer_name || undefined,
-                  created_at: remoteSale.created_at,
-                  synced: true,
-                });
-              }
-            }
-
-            return mergedSales.sort((a, b) => 
-              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-            );
-          }
-        } catch (error) {
-          console.log('Failed to fetch remote sales, using local only');
-        }
       }
 
       return localSales.sort((a, b) => 
@@ -268,42 +172,6 @@ export class OfflinePOSService {
       await LocalDatabase.init();
       const localInventory = await LocalDatabase.getInventory(storeId);
 
-      if (navigator.onLine) {
-        try {
-          let query = supabase.from('products').select('*');
-          if (storeId) {
-            query = query.eq('store_id', storeId);
-          }
-
-          const { data: remoteProducts } = await query;
-
-          if (remoteProducts) {
-            // Merge and cache remotely
-            for (const product of remoteProducts) {
-              const existingLocal = localInventory.find(l => l.id === product.id);
-              if (!existingLocal || existingLocal.synced) {
-                const localItem: LocalInventory = {
-                  id: product.id,
-                  store_id: product.store_id,
-                  product_name: product.name,
-                  sku: product.sku || undefined,
-                  quantity: product.quantity || 0,
-                  unit_price: Number(product.unit_price) || 0,
-                  category: product.category || undefined,
-                  updated_at: product.updated_at || new Date().toISOString(),
-                  synced: true,
-                };
-                await LocalDatabase.saveInventoryItem(localItem);
-              }
-            }
-
-            return LocalDatabase.getInventory(storeId);
-          }
-        } catch (error) {
-          console.log('Failed to fetch remote inventory, using local only');
-        }
-      }
-
       return localInventory;
     } catch (error) {
       console.error('Get inventory error:', error);
@@ -332,28 +200,14 @@ export class OfflinePOSService {
         return { success: true };
       }
 
-      // Try immediate sync to products table
-      const { error } = await supabase.from('products').upsert({
-        id: item.id,
-        store_id: item.store_id,
-        name: item.product_name,
-        sku: item.sku,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
+      // Cloud sync disabled - queue for later sync
+      await LocalDatabase.addToSyncQueue({
+        id: crypto.randomUUID(),
+        type: 'inventory_update',
+        data: item,
+        timestamp: Date.now(),
+        retries: 0,
       });
-
-      if (!error) {
-        item.synced = true;
-        await LocalDatabase.saveInventoryItem(item);
-      } else {
-        await LocalDatabase.addToSyncQueue({
-          id: crypto.randomUUID(),
-          type: 'inventory_update',
-          data: item,
-          timestamp: Date.now(),
-          retries: 0,
-        });
-      }
 
       return { success: true };
     } catch (error) {
