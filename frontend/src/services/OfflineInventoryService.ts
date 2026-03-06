@@ -5,7 +5,6 @@
 
 import { LocalDatabase, LocalInventory, LocalProductFamily } from './LocalDatabase';
 import { InventoryItem, Product } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
 import { getDataClient, smartFetch } from '@/lib/dataClient';
 import { OfflineAuthService } from './OfflineAuthService';
 import { SyncService } from './SyncService';
@@ -156,20 +155,6 @@ export const OfflineInventoryService = {
         return { data: localInventory.map(mapLocalInventoryToItem) };
       }
 
-      // 4. If Local-First failed and DB empty, OR if Online Mode: Background sync from Supabase
-      if (!dc.isLocalFirst && navigator.onLine) {
-        const { data, error } = await supabase.from('products').select('*').eq('store_id', storeId).order('name');
-        if (data) {
-            const mapped = data.map(mapDbToInventoryItem);
-            // Sync to local DB in background
-            for (const item of data) {
-                await LocalDatabase.saveInventoryItem(mapToLocalInventory(item, true));
-            }
-            return { data: mapped };
-        }
-        if (error) throw error;
-      }
-
       return { data: [] };
     } catch (error) {
       console.error('getInventory error:', error);
@@ -183,9 +168,7 @@ export const OfflineInventoryService = {
       const local = await LocalDatabase.getInventoryItem(id);
       if (local) return { data: mapLocalInventoryToItem(local) };
 
-      const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
-      if (error) return { error };
-      return { data: mapDbToInventoryItem(data) };
+      return { data: undefined };
     } catch (error) {
       return { error };
     }
@@ -324,9 +307,6 @@ export const OfflineInventoryService = {
               const res = await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/product_families`, { headers });
               if (res.ok) remote = await res.json();
             }
-          } else if (navigator.onLine) {
-            const { data } = await supabase.from('product_families').select('*');
-            if (data) remote = data;
           }
           
           if (remote.length > 0) {
