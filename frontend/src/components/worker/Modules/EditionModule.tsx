@@ -549,7 +549,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                             <TableCell className="text-xs text-center font-mono">{item.quantity}</TableCell>
                             <TableCell className="text-xs text-right font-mono">{formatCurrency(item.unit_price)}</TableCell>
                             <TableCell className="text-xs text-right font-bold font-mono">{formatCurrency(item.total)}</TableCell>
-                            <TableCell className="text-xs font-medium">{workerMap[sale.worker_id || ''] || (sale.worker_id ? `ID: ${sale.worker_id.slice(0,8)}` : '—')}</TableCell>
+                            <TableCell className="text-xs font-medium">{workerMap[sale.worker_id || ''] || ((isLoading && !workerMap[sale.worker_id || '']) ? '...' : (sale.worker_id ? (sale.worker_id.length < 15 ? sale.worker_id : `ID: ${sale.worker_id.slice(0,8)}`) : '—'))}</TableCell>
                           </TableRow>
                         ))
                       )}
@@ -662,7 +662,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                           <TableCell className="text-xs font-mono max-w-[200px] truncate" title={sale.sale_items?.map(i => getProductName(i)).join(', ')}>
                             {sale.sale_items?.map(i => getProductName(i)).join(', ') || '—'}
                           </TableCell>
-                          <TableCell className="text-xs font-medium">{workerMap[sale.worker_id || ''] || (sale.worker_id ? `ID: ${sale.worker_id.slice(0,8)}` : '—')}</TableCell>
+                          <TableCell className="text-xs font-medium">{workerMap[sale.worker_id || ''] || ((isLoading && !workerMap[sale.worker_id || '']) ? '...' : (sale.worker_id ? (sale.worker_id.length < 15 ? sale.worker_id : `ID: ${sale.worker_id.slice(0,8)}`) : '—'))}</TableCell>
                           <TableCell className="text-xs text-right font-black font-mono text-primary">{formatCurrency(sale.total_price)}</TableCell>
                           <TableCell className="text-center">
                             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10" onClick={() => setSelectedSale(sale)}>

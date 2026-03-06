@@ -205,7 +205,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   const handlePrint = useCallback(() => {
     if (lineItems.length === 0) return;
     
-    const cartItems = lineItems.map(item => {
+    const cartItems = lineItems.filter(item => !!item.productId).map(item => {
         const packSize = item.conditionnement || 1;
         let totalUnitsForDb = item.isBox ? item.quantity * packSize : item.quantity;
         return {
@@ -656,7 +656,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       if (mode === 'facturation-gros') saleType = 'gros';
       if (mode === 'proforma') saleType = 'proforma';
 
-      const cartItems = lineItems.map(item => {
+      const cartItems = lineItems.filter(item => !!item.productId).map(item => {
         const packSize = item.conditionnement || 1;
         
         let totalUnitsForDb: number;
@@ -735,7 +735,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     if (lineItems.length === 0) return;
 
     try {
-      const cartItems = lineItems.map(item => {
+      const cartItems = lineItems.filter(item => !!item.productId).map(item => {
         const packSize = item.conditionnement || 1;
         let totalUnitsForDb = item.isBox ? item.quantity * packSize : item.quantity;
         return {
