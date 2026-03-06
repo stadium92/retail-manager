@@ -35,7 +35,7 @@ export function FicheCaisseModule({ storeId }: FicheCaisseModuleProps) {
   const [observations, setObservations] = useState('');
   const [cashierName, setCashierName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
+  const { localBridgeBaseUrl } = getDataClient();
   
   // Billetage (Cash counting)
   const [bills, setBills] = useState<BillCount[]>([]);

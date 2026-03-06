@@ -197,7 +197,7 @@ export async function registerProductRoutes(app: FastifyInstance) {
     const now = new Date().toISOString();
     const productId = crypto.randomUUID();
 
-    db.insertProduct({
+    const product = db.insertProduct({
       id: productId,
       store_id: targetStoreId,
       name: body.name,
@@ -229,7 +229,6 @@ export async function registerProductRoutes(app: FastifyInstance) {
       updated_by: claims.sub,
     });
 
-    const product = db.getProductById(productId);
     return reply.status(201).send(product);
   });
 
@@ -520,7 +519,7 @@ export async function registerProductRoutes(app: FastifyInstance) {
     const now = new Date().toISOString();
     const productId = crypto.randomUUID();
 
-    db.insertProduct({
+    const product = db.insertProduct({
       id: productId,
       store_id: storeId,
       name: body.p_name,
@@ -540,7 +539,6 @@ export async function registerProductRoutes(app: FastifyInstance) {
       updated_by: claims.sub,
     });
 
-    const product = db.getProductById(productId);
     return reply.status(201).send(product);
   });
 

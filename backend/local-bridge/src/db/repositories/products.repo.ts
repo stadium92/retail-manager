@@ -142,8 +142,8 @@ export const createProductsRepo = (db: Database.Database) => {
     return row as LocalProduct | undefined;
   },
 
-  insertProduct(product: LocalProduct) {
-    db.prepare(`
+  insertProduct(product: LocalProduct): LocalProduct | undefined {
+    const result = db.prepare(`
         INSERT INTO products (
           id,
           store_id,
@@ -203,6 +203,7 @@ export const createProductsRepo = (db: Database.Database) => {
           @created_by,
           @updated_by
         )
+        ON CONFLICT(id) DO UPDATE SET updated_at = excluded.updated_at
       `)
       .run({
         ...product,
@@ -232,7 +233,10 @@ export const createProductsRepo = (db: Database.Database) => {
         updated_by: product.updated_by ?? null,
       });
     const inserted = db.prepare('SELECT * FROM products WHERE id = ? LIMIT 1').get(product.id) as LocalProduct | undefined;
-    emitOutbox(db, product.store_id, 'product', product.id, 'create', (inserted ?? product) as unknown as Record<string, unknown>);
+    if (result.changes > 0) {
+      emitOutbox(db, product.store_id, 'product', product.id, 'create', (inserted ?? product) as unknown as Record<string, unknown>);
+    }
+    return inserted;
   },
 
   updateProduct(
@@ -324,6 +328,7 @@ export const createProductsRepo = (db: Database.Database) => {
           @created_at,
           @updated_at
         )
+        ON CONFLICT(id) DO NOTHING
       `
       )
       .run({
@@ -388,6 +393,7 @@ export const createProductsRepo = (db: Database.Database) => {
           @purchase_price, @purchase_type, @quantity_received, @quantity_remaining,
           @received_at, @expiry_date, @notes, @created_at
         )
+        ON CONFLICT(id) DO NOTHING
       `)
       .run({
         ...batch,
