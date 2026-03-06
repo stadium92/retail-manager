@@ -28,6 +28,7 @@ import { EditionModule } from '../Modules/EditionModule';
 import { GestionModule } from '../../shared/GestionModule';
 import { StockModule } from '../Modules/StockModule';
 import { SettingsModule } from '../Modules/SettingsModule';
+import { useGlobalKeyboard, useNavigationStore } from '@/navigation';
 import { ReglementsBonsModule } from '../Modules/ReglementsBonsModule';
 
 interface WorkerLayoutProps {
@@ -35,8 +36,19 @@ interface WorkerLayoutProps {
 }
 
 export function WorkerLayout({ className }: WorkerLayoutProps) {
+  useGlobalKeyboard();
   const { t } = useTranslation();
   const { user, signOut } = useAuth();
+  // HIERARCHY FIX: When activeCell becomes null (Escape), focus the top menu.
+  const activeCell = useNavigationStore(s => s.activeCell);
+  useEffect(() => {
+    if (activeCell === null) {
+      setTimeout(() => {
+        const firstTrigger = document.getElementById('worker-menubar-trigger-0');
+        if (firstTrigger) firstTrigger.focus();
+      }, 50);
+    }
+  }, [activeCell]);
   const [activeModule, setActiveModule] = useState<WorkerModule>(() => {
     return (localStorage.getItem('worker_active_module') as WorkerModule) || 'facturation-detail';
   });

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,7 @@ import { useMasterDataStore } from '@/stores/useMasterDataStore';
 import { RefreshCw } from 'lucide-react';
 
 interface ProductLookupDialogProps {
+  initialSearch?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   storeId: string;
@@ -32,11 +33,13 @@ export function ProductLookupDialog({
   mode,
   onSelect,
   title,
-  standalone
+  standalone,
+  initialSearch
 }: ProductLookupDialogProps) {
   const { t, i18n } = useTranslation();
   const { stores } = useMasterDataStore();
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const selectedRowRef = useRef<HTMLDivElement>(null);
   const { search, setSearch, results = [], isLoading } = useProductSearch(storeId, open);
 
   console.log('[ProductLookupDialog] storeId:', storeId, 'open:', open, 'results:', results?.length);
@@ -56,11 +59,16 @@ export function ProductLookupDialog({
 
   useEffect(() => {
     if (open) {
-      console.log('[ProductLookupDialog] Dialog opened, results:', results?.length);
-      setSearch('');
+      setSearch(initialSearch || '');
       setSelectedIndex(0);
     }
-  }, [open]);
+  }, [open, initialSearch]);
+
+  useEffect(() => {
+    if (selectedRowRef.current) {
+      selectedRowRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [selectedIndex]);
 
   const getPrice = useCallback((product: Product) => {
     if (mode === 'wholesale') {
@@ -149,6 +157,10 @@ export function ProductLookupDialog({
                 <RefreshCw className="h-8 w-8 animate-spin text-primary" />
                 <p className="font-black uppercase tracking-widest text-xs">{t('common.searching')}</p>
               </div>
+            ) : search.length < 2 ? (
+              <div className="py-20 text-center text-muted-foreground font-black uppercase tracking-[0.2em] opacity-40">
+                {t('pos.searchPrompt') || 'Type at least 2 letters to search...'}
+              </div>
             ) : results.length === 0 ? (
               <div className="py-20 text-center text-muted-foreground font-black uppercase tracking-[0.2em] opacity-20">
                 {t('common.noData')}
@@ -163,6 +175,7 @@ export function ProductLookupDialog({
                 return (
                   <div
                     key={product.id}
+                    ref={isSelected ? selectedRowRef : null}
                     onClick={() => {
                       onSelect(product);
                       onOpenChange(false);

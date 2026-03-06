@@ -6,138 +6,92 @@ import {
 } from './useNavigationStore';
 
 // Teal accent matching the WorkerLayout header (hsl 160,70%,35%)
-const FOCUS_BORDER_COLOR = 'hsl(160, 70%, 35%)';
-const FOCUS_EDIT_BG = 'hsla(160, 70%, 35%, 0.15)';
+const FOCUS_OUTLINE_COLOR = 'hsl(160, 70%, 35%)';
+const FOCUS_EDIT_BG = 'rgba(255, 255, 255, 0.1)';
 
-// ---------------------------------------------------------------------------
-// Props
-// ---------------------------------------------------------------------------
 export interface NavigableCellProps {
-  /** Row index (0-based) in the grid. */
   row: number;
-  /** Column identifier – must match one of the GRID_COLUMNS entries. */
   column: GridColumn;
-  /** Content to render inside the cell. */
   children: React.ReactNode;
-  /** Extra className applied to the outer wrapper. */
   className?: string;
-  /**
-   * Callback fired when the cell should enter "search" mode.
-   * Only relevant for the Designation column (Enter → open search).
-   */
-  onOpenSearch?: () => void;
-  /**
-   * Callback fired when the Packaging / conditionnement column receives
-   * an Enter press (toggle unit PC ↔ BOX).
-   */
-  onToggleUnit?: () => void;
+  isEditable?: boolean; // If false, the cell can be focused but won't trigger "edit" mode
+  onOpenSearch?: () => void; // specific to Designation
+  onToggleUnit?: () => void; // specific to Packaging
+  onSave?: (val: string) => void;
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-/**
- * Wrapper for individual table cells in the SanifereGrid (or any navigable
- * sales grid).  It subscribes to the Zustand navigation store via
- * **selectors** so that only the cells whose focus state actually changes
- * will re-render – critical for grids with hundreds of cells.
- *
- * Visual behaviour
- * ────────────────
- * • When the cell is the `activeCell` AND `inputMethod === 'keyboard'`, a
- *   thick teal border is rendered to clearly indicate keyboard focus.
- * • In mouse mode (`inputMethod === 'mouse'`), the teal border is hidden
- *   so the standard hover / click UX is unimpaired.
- *
- * Context-Aware Enter Key
- * ───────────────────────
- * The Enter key behaviour is column-dependent:
- *   • **designation** → fires `onOpenSearch` (shows product search dropdown).
- *   • **conditionnement** → fires `onToggleUnit` (cycles PC / BOX).
- *   • **total** → advances to the next row (read-only column).
- *   • **all other columns** → enters edit mode (standard behaviour, handled
- *     by the global keyboard hook).
- *
- * The component itself only needs to handle the column-specific callbacks
- * (search, toggle). Generic hover↔edit transitions are already managed by
- * `useGlobalKeyboard`.
- */
 export function NavigableCell({
   row,
   column,
   children,
   className,
+  isEditable = true,
   onOpenSearch,
   onToggleUnit,
 }: NavigableCellProps) {
   const cellRef = useRef<HTMLDivElement>(null);
-
-  // -----------------------------------------------------------------------
-  // Granular Zustand selectors – each cell only re-renders when its own
-  // focus state changes, NOT when any other cell moves.
-  // -----------------------------------------------------------------------
-  const colIndex = GRID_COLUMNS.indexOf(column);
-
+  
+  // Use granular selectors so ONLY the active cell re-renders
   const isFocused = useNavigationStore(
-    (s) =>
-      s.activeCell !== null &&
-      s.activeCell.row === row &&
-      s.activeCell.col === colIndex,
+    (s) => s.activeCell?.row === row && s.activeCell?.col === GRID_COLUMNS.indexOf(column)
   );
-
-  const inputMethod = useNavigationStore((s) => s.inputMethod);
+  
   const mode = useNavigationStore((s) => s.mode);
-
-  const showFocusBorder = isFocused && inputMethod === 'keyboard';
+  const inputMethod = useNavigationStore((s) => s.inputMethod);
+  const setMode = useNavigationStore((s) => s.setMode);
+  const setActiveCell = useNavigationStore((s) => s.setActiveCell);
+  
   const isEditing = isFocused && mode === 'edit';
 
   // -----------------------------------------------------------------------
-  // Auto-scroll into view when focused via keyboard
+  // Auto-scroll logic when focused via keyboard
   // -----------------------------------------------------------------------
   useEffect(() => {
-    if (showFocusBorder && cellRef.current) {
-      cellRef.current.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    if (isFocused && inputMethod === 'keyboard' && cellRef.current) {
+      cellRef.current.scrollIntoView({
+        block: 'nearest',
+        inline: 'nearest',
+        behavior: 'smooth',
+      });
     }
-  }, [showFocusBorder]);
+  }, [isFocused, inputMethod]);
 
   // -----------------------------------------------------------------------
-  // Click handler – "Last Input Wins" → mouse focuses the cell
+  // Auto-focus input when entering edit mode
+  // -----------------------------------------------------------------------
+  // -----------------------------------------------------------------------
+  // Auto-focus input when entering edit mode
+  // -----------------------------------------------------------------------
+  useEffect(() => {
+    if (isEditing && cellRef.current) {
+      // Find the first input or button inside this cell
+      const focusableElement = cellRef.current.querySelector('input, button') as HTMLElement;
+      if (focusableElement) {
+        // Use a small timeout to let React render the input if it was conditionally hidden
+        setTimeout(() => focusableElement.focus(), 50);
+      }
+    } else if (!isEditing && cellRef.current) {
+       // Exiting edit mode: blur the input so cursor doesn't stay stuck
+       const focusableElement = cellRef.current.querySelector('input, button') as HTMLElement;
+       if (focusableElement) {
+          focusableElement.blur();
+       }
+    }
+  }, [isEditing]);
+
+  // -----------------------------------------------------------------------
+  // Mouse interaction
   // -----------------------------------------------------------------------
   const handleClick = useCallback(() => {
-    const store = useNavigationStore.getState();
-    store.setActiveCell({ row, col: colIndex });
-    store.setInputMethod('mouse');
-  }, [row, colIndex]);
-
-  // -----------------------------------------------------------------------
-  // Local Enter handler for column-specific actions.
-  // This fires *before* the global handler because we use an onKeyDown
-  // on the cell div. We stop propagation only when we consume the event.
-  // -----------------------------------------------------------------------
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key !== 'Enter' || !isFocused) return;
-      if (mode !== 'hover') return; // only intercept in hover mode
-
-      if (column === 'designation' && onOpenSearch) {
-        e.preventDefault();
-        e.stopPropagation();
-        onOpenSearch();
-        return;
-      }
-
-      if (column === 'conditionnement' && onToggleUnit) {
-        e.preventDefault();
-        e.stopPropagation();
-        onToggleUnit();
-        return;
-      }
-
-      // For 'total' and standard columns the global keyboard hook handles
-      // the Enter key – we let the event propagate.
-    },
-    [isFocused, mode, column, onOpenSearch, onToggleUnit],
-  );
+    const colIndex = GRID_COLUMNS.indexOf(column);
+    setActiveCell({ row, col: colIndex });
+    
+    // If it's a standard editable column, a click should ideally enter edit mode
+    // (Optional UX decision, but standard for grids)
+    if (isEditable && column !== 'designation' && column !== 'conditionnement' && column !== 'total') {
+       setMode('edit');
+    }
+  }, [row, column, setActiveCell, setMode, isEditable]);
 
   // -----------------------------------------------------------------------
   // Render
@@ -146,17 +100,14 @@ export function NavigableCell({
     <div
       ref={cellRef}
       onClick={handleClick}
-      onKeyDown={handleKeyDown}
       className={className}
-      data-nav-row={row}
-      data-nav-col={column}
       style={
-        showFocusBorder
+        isFocused && inputMethod === 'keyboard'
           ? {
-              outline: `2px solid ${FOCUS_BORDER_COLOR}`,
-              outlineOffset: '-2px',
+              outline: `2px solid ${FOCUS_OUTLINE_COLOR}`,
+              outlineOffset: '-1px',
               position: 'relative' as const,
-              zIndex: 1,
+              zIndex: 10,
               background: isEditing ? FOCUS_EDIT_BG : undefined,
             }
           : undefined

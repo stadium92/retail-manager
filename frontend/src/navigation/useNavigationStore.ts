@@ -73,7 +73,7 @@ export type NavigationStore = NavigationState & NavigationActions;
 // ---------------------------------------------------------------------------
 export const useNavigationStore = create<NavigationStore>()((set, get) => ({
   // --- State defaults ---
-  activeCell: { row: 0, col: 0 }, // auto-focus first row, Designation
+  activeCell: null, // Default to null so focus is not captured immediately
   mode: 'hover',
   inputMethod: 'keyboard',
   rowCount: 0,
@@ -112,9 +112,9 @@ export const useNavigationStore = create<NavigationStore>()((set, get) => ({
 
   jumpToLastEmptyRow: () => {
     const { rowCount } = get();
-    // Target the row *after* the last filled row → Designation column (index 0).
+    // Since we ensure an empty row always exists, target the very last row index.
     set({
-      activeCell: { row: Math.max(rowCount, 0), col: 0 },
+      activeCell: { row: Math.max(rowCount - 1, 0), col: 0 },
       mode: 'hover',
     });
   },

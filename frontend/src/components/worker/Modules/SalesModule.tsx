@@ -14,6 +14,7 @@ import { useMasterDataStore } from '@/stores/useMasterDataStore';
 
 import { SanifereHeader, SaleMode } from '../Sales/SanifereHeader';
 import { SanifereGrid, SanifereLineItem } from '../Sales/SanifereGrid';
+import { useNavigationStore } from '@/navigation';
 import { SanifereFooter } from '../Sales/SanifereFooter';
 import { ProductLookupDialog } from '../Sales/ProductLookupDialog';
 import { PaymentDialog } from '../Sales/PaymentDialog';
@@ -115,6 +116,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [activeTier, setActiveTier] = useState<number>(1);
+  const [initialSearchQuery, setInitialSearchQuery] = useState('');
 
   // Fetch Store Default Tier
   useEffect(() => {
@@ -348,8 +350,22 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         lineTotal: calculateLineTotal(price, 1, clientDiscount, false, packSize),
         priceTiers: priceTiers
       };
-      updateSession(mode, { lineItems: [...lineItems, newItem] });
-      setSelectedIndex(lineItems.length);
+
+      // CONSUMPTION LOGIC: Fill the first empty row instead of appending a new one
+      const firstEmptyIndex = lineItems.findIndex(li => !li.productId);
+      
+      if (firstEmptyIndex >= 0) {
+        const newItems = [...lineItems];
+        newItems[firstEmptyIndex] = {
+          ...newItem,
+          lineNumber: firstEmptyIndex + 1 // Keep original order
+        };
+        updateSession(mode, { lineItems: newItems });
+        setSelectedIndex(firstEmptyIndex);
+      } else {
+        updateSession(mode, { lineItems: [...lineItems, newItem] });
+        setSelectedIndex(lineItems.length);
+      }
     }
     
     toast.success(t('worker.sales.itemFound', { name: product.name }));
@@ -392,6 +408,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   }, [lineItems, mode, updateSession]);
 
   const handleDesignationChange = useCallback((index: number, value: string) => {
+    setInitialSearchQuery(value);
     const newItems = [...lineItems];
     newItems[index] = { ...newItems[index], designation: value };
     updateSession(mode, { lineItems: newItems });
@@ -679,6 +696,129 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     setSelectedIndex(-1);
   }, [mode]);
 
+
+
+  // Ensure there is always an empty row at the bottom for keyboard navigation
+  useEffect(() => {
+    if (isLoading) return;
+    const hasEmptyRow = lineItems.some(i => !i.productId);
+    if (!hasEmptyRow) {
+      const newItem = {
+        id: crypto.randomUUID(),
+        lineNumber: lineItems.length + 1,
+        designation: '',
+        code: '',
+        conditionnement: 1,
+        stock: 0,
+        unitPrice: '',
+        basePrice: 0,
+        quantity: '',
+        discountPercent: '',
+        lineTotal: 0,
+        isBox: false,
+        priceTiers: { 1: 0, 2: 0, 3: 0, 4: 0 }
+      };
+      updateSession(mode, { lineItems: [...lineItems, newItem] });
+    }
+  }, [lineItems, mode, updateSession, isLoading]);
+
+  // Listen for navigation events (delete, toggle, search, adjust qty)
+  useEffect(() => {
+    const handleDeleteEvent = (e: any) => {
+      const rowIndex = e.detail?.row;
+      const key = e.detail?.key;
+      
+      if (typeof rowIndex === 'number' && lineItems[rowIndex]) {
+        // RULE: The last empty row should NEVER be removed.
+        if (!lineItems[rowIndex].productId) return;
+
+        handleDeleteLine(rowIndex);
+        
+        // BI-DIRECTIONAL DELETE: Backspace goes up (priority), Delete stays at index (goes down)
+        setTimeout(() => {
+            const store = useNavigationStore.getState();
+            let newRow = rowIndex;
+            if (key === 'Backspace') {
+                newRow = Math.max(0, rowIndex - 1);
+            }
+            store.setActiveCell({ row: newRow, col: 0 });
+            setSelectedIndex(newRow);
+        }, 50);
+      }
+    };
+    const handleToggleEvent = (e: any) => {
+      const rowIndex = e.detail?.row;
+      if (typeof rowIndex === 'number' && lineItems[rowIndex]) {
+        handleToggleUnit(rowIndex);
+      }
+    };
+    const handleSearchEvent = (e: any) => {
+      const rowIndex = e.detail?.row;
+      if (typeof rowIndex === 'number' && lineItems[rowIndex]) {
+        setInitialSearchQuery(lineItems[rowIndex].designation || '');
+      } else {
+        setInitialSearchQuery('');
+      }
+      setIsProductLookupOpen(true);
+    };
+    const handleAdjustQtyEvent = (e: any) => {
+      const rowIndex = e.detail?.row;
+      const delta = e.detail?.delta;
+      if (typeof rowIndex === 'number' && lineItems[rowIndex]) {
+        const currentQty = Number(lineItems[rowIndex].quantity) || 0;
+        handleQuantityChange(rowIndex, Math.max(1, currentQty + delta));
+      }
+    };
+    const handleCaptureKeystroke = (e: any) => {
+      const rowIndex = e.detail?.row;
+      const colIndex = e.detail?.col;
+      const key = e.detail?.key;
+      if (typeof rowIndex === 'number' && lineItems[rowIndex] && colIndex === 0) {
+        // Col 0 is designation. Append the character.
+        const currentVal = lineItems[rowIndex].designation || '';
+        handleDesignationChange(rowIndex, currentVal + key);
+      }
+    };
+
+    window.addEventListener('nav-delete-row', handleDeleteEvent);
+    window.addEventListener('nav-toggle-packing', handleToggleEvent);
+    window.addEventListener('nav-open-search', handleSearchEvent);
+    window.addEventListener('nav-adjust-quantity', handleAdjustQtyEvent);
+    window.addEventListener('nav-capture-keystroke', handleCaptureKeystroke);
+    
+    return () => {
+      window.removeEventListener('nav-delete-row', handleDeleteEvent);
+      window.removeEventListener('nav-toggle-packing', handleToggleEvent);
+      window.removeEventListener('nav-open-search', handleSearchEvent);
+      window.removeEventListener('nav-adjust-quantity', handleAdjustQtyEvent);
+      window.removeEventListener('nav-capture-keystroke', handleCaptureKeystroke);
+    };
+  }, [lineItems, handleDeleteLine, handleToggleUnit, handleQuantityChange, handleDesignationChange]);
+
+  // Global Keyboard listener for the entire Sales Module grid focus
+  useEffect(() => {
+    const handleGlobalKey = (e: KeyboardEvent) => {
+      const { activeCell, inputMethod } = useNavigationStore.getState();
+      const target = e.target as HTMLElement;
+      const isInputOrButton = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.tagName === 'BUTTON' || target?.getAttribute('role') === 'menuitem';
+      
+      // Focus first empty row on Enter if nothing is focused AND we aren't focused on a button/menu
+      if (e.key === 'Enter' && inputMethod === 'keyboard' && !isInputOrButton && !activeCell) {
+        e.preventDefault();
+        const emptyRowIndex = lineItems.findIndex(i => !i.productId);
+        let targetRow = emptyRowIndex !== -1 ? emptyRowIndex : lineItems.length;
+        
+        const store = useNavigationStore.getState();
+        store.setActiveCell({ row: targetRow, col: 0 });
+        store.setMode('edit');
+      }
+    };
+    
+    window.addEventListener('keydown', handleGlobalKey);
+    return () => window.removeEventListener('keydown', handleGlobalKey);
+  }, [lineItems, mode]);
+
+
   if (isLoading) {
     return (
       <div className="h-full flex items-center justify-center font-mono text-muted-foreground">
@@ -710,11 +850,18 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
               selectedIndex={selectedIndex}
               priceLabel={mode === 'proforma' ? t('inventory.price') : (mode === 'facturation-gros' ? t('inventory.fields.wholesalePriceShort') : t('inventory.fields.retailPriceShort'))}
               
-              onSelectLine={setSelectedIndex}
+              onSelectLine={(index) => {
+                setSelectedIndex(index);
+                const store = useNavigationStore.getState();
+                if (store.activeCell?.row !== index) {
+                  store.setActiveCell({ row: index, col: store.activeCell?.col || 0 });
+                }
+              }}
               onQuantityChange={handleQuantityChange}
               onDiscountChange={handleDiscountChange}
               onDeleteLine={handleDeleteLine}
               onDesignationChange={handleDesignationChange}
+              onOpenSearch={() => setIsProductLookupOpen(true)}
               onPriceChange={handlePriceChange}
               onToggleUnit={handleToggleUnit}
                       onGlobalTierChange={handleGlobalTierChange}
@@ -734,11 +881,32 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       />
 
       <ProductLookupDialog
+        initialSearch={initialSearchQuery}
         open={isProductLookupOpen}
-        onOpenChange={setIsProductLookupOpen}
+        onOpenChange={(open) => {
+            setIsProductLookupOpen(open);
+            if (!open) {
+                setTimeout(() => {
+                    const store = useNavigationStore.getState();
+                    if (store.activeCell) {
+                        store.setMode('hover');
+                    }
+                }, 50);
+            }
+        }}
         storeId={storeId}
         mode={mode === 'facturation-gros' ? 'wholesale' : 'retail'}
-        onSelect={addProduct}
+        onSelect={(product) => {
+            addProduct(product);
+            setInitialSearchQuery(''); // Reset search
+            setTimeout(() => {
+                const store = useNavigationStore.getState();
+                if (store.activeCell) {
+                    store.setActiveCell({ row: store.activeCell.row, col: 4 }); // Jump to Price col
+                    store.setMode('hover');
+                }
+            }, 100);
+        }}
       />
 
       <PaymentDialog
