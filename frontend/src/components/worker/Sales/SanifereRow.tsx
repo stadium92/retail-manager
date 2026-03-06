@@ -74,12 +74,6 @@ export function SanifereRow({
               store.setActiveCell({ row: index, col: 0 });
               store.setMode('edit');
             }}
-            onBlur={() => {
-              const store = useNavigationStore.getState();
-              if (store.activeCell?.row === index && store.activeCell?.col === 0 && store.mode === 'edit') {
-                 store.setMode('hover');
-              }
-            }}
             className={cn(
               'h-full w-full p-1 border-none font-mono text-sm bg-transparent',
               isSelected ? 'text-black focus:bg-white/50' : 'text-white focus:bg-white/20'
@@ -151,10 +145,6 @@ export function SanifereRow({
                 }}
                 onBlur={() => { 
                   if (item.unitPrice === '') onPriceChange?.(index, 0); 
-                  const store = useNavigationStore.getState();
-                  if (store.activeCell?.row === index && store.activeCell?.col === 4 && store.mode === 'edit') {
-                     store.setMode('hover');
-                  }
                 }}
                 onClick={(e) => {
                   e.stopPropagation();

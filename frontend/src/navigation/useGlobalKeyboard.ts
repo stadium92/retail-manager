@@ -154,9 +154,14 @@ export function useGlobalKeyboard() {
         }
       }
 
-      // If we are navigating via grid but try to type, auto-enter edit
+      // If we are navigating via grid but try to type, auto-enter edit AND capture the character
       if (state.mode === 'hover' && state.activeCell && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         store.getState().setMode('edit');
+        
+        // Dispatch an event to capture the first keystroke so it isn't lost
+        window.dispatchEvent(new CustomEvent('nav-capture-keystroke', { 
+            detail: { row: state.activeCell.row, col: state.activeCell.col, key: e.key } 
+        }));
       }
     }
 

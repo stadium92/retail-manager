@@ -769,28 +769,41 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         handleQuantityChange(rowIndex, Math.max(1, currentQty + delta));
       }
     };
+    const handleCaptureKeystroke = (e: any) => {
+      const rowIndex = e.detail?.row;
+      const colIndex = e.detail?.col;
+      const key = e.detail?.key;
+      if (typeof rowIndex === 'number' && lineItems[rowIndex] && colIndex === 0) {
+        // Col 0 is designation. Append the character.
+        const currentVal = lineItems[rowIndex].designation || '';
+        handleDesignationChange(rowIndex, currentVal + key);
+      }
+    };
 
     window.addEventListener('nav-delete-row', handleDeleteEvent);
     window.addEventListener('nav-toggle-packing', handleToggleEvent);
     window.addEventListener('nav-open-search', handleSearchEvent);
     window.addEventListener('nav-adjust-quantity', handleAdjustQtyEvent);
+    window.addEventListener('nav-capture-keystroke', handleCaptureKeystroke);
     
     return () => {
       window.removeEventListener('nav-delete-row', handleDeleteEvent);
       window.removeEventListener('nav-toggle-packing', handleToggleEvent);
       window.removeEventListener('nav-open-search', handleSearchEvent);
       window.removeEventListener('nav-adjust-quantity', handleAdjustQtyEvent);
+      window.removeEventListener('nav-capture-keystroke', handleCaptureKeystroke);
     };
-  }, [lineItems, handleDeleteLine, handleToggleUnit, handleQuantityChange]);
+  }, [lineItems, handleDeleteLine, handleToggleUnit, handleQuantityChange, handleDesignationChange]);
 
   // Global Keyboard listener for the entire Sales Module grid focus
   useEffect(() => {
     const handleGlobalKey = (e: KeyboardEvent) => {
       const { activeCell, inputMethod } = useNavigationStore.getState();
-      const isInput = (e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'TEXTAREA';
+      const target = e.target as HTMLElement;
+      const isInputOrButton = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.tagName === 'BUTTON' || target?.getAttribute('role') === 'menuitem';
       
-      // Focus first empty row on Enter if nothing is focused
-      if (e.key === 'Enter' && inputMethod === 'keyboard' && !isInput && !activeCell) {
+      // Focus first empty row on Enter if nothing is focused AND we aren't focused on a button/menu
+      if (e.key === 'Enter' && inputMethod === 'keyboard' && !isInputOrButton && !activeCell) {
         e.preventDefault();
         const emptyRowIndex = lineItems.findIndex(i => !i.productId);
         let targetRow = emptyRowIndex !== -1 ? emptyRowIndex : lineItems.length;
