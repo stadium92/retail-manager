@@ -3,7 +3,6 @@
  */
 
 import { LocalDatabase, LocalStore } from './LocalDatabase';
-import { supabase } from '@/integrations/supabase/client';
 import { Store } from '@/types';
 import i18n from '@/i18n/config';
 import { toast } from '@/hooks/use-toast';
@@ -176,58 +175,31 @@ export class OfflineStoreService {
         };
       }
 
-      // Try to sync immediately if online
-      const { data, error } = await supabase
-        .from('stores')
-        .insert({
-          id: storeId,
-          name: storeData.name,
-          address: storeData.address,
-          phone: storeData.phone,
-          owner_id: storeData.owner_id,
-        })
-        .select()
-        .single();
-
-      if (error) {
-        // Queue for later sync
-        await LocalDatabase.addToSyncQueue({
-          id: crypto.randomUUID(),
-          type: 'store_create',
-          data: localStore,
-          timestamp: Date.now(),
-          retries: 0,
-        });
-
-        toast({
-          title: i18n.t('sync.storeCreatedLocally'),
-          description: i18n.t('sync.serverSyncFailed'),
-          variant: 'destructive',
-        });
-
-        return {
-          data: {
-            id: localStore.id,
-            name: localStore.name,
-            address: localStore.address,
-            phone: localStore.phone,
-            owner_id: storeData.owner_id,
-            created_at: now,
-            updated_at: now,
-          } as Store,
-        };
-      }
-
-      // Mark as synced
-      localStore.synced = true;
-      await LocalDatabase.saveStore(localStore);
-
-      toast({
-        title: i18n.t('sync.storeCreated'),
-        description: 'Store created and synced successfully.',
+      // Cloud sync disabled - queue for later sync
+      await LocalDatabase.addToSyncQueue({
+        id: crypto.randomUUID(),
+        type: 'store_create',
+        data: localStore,
+        timestamp: Date.now(),
+        retries: 0,
       });
 
-      return { data };
+      toast({
+        title: i18n.t('sync.storeCreatedLocally'),
+        description: i18n.t('sync.willSyncWhenOnline'),
+      });
+
+      return {
+        data: {
+          id: localStore.id,
+          name: localStore.name,
+          address: localStore.address,
+          phone: localStore.phone,
+          owner_id: storeData.owner_id,
+          created_at: now,
+          updated_at: now,
+        } as Store,
+      };
     } catch (error) {
       console.error('Create store error:', error);
       return { error: { message: 'Failed to create store' } };
@@ -256,21 +228,11 @@ export class OfflineStoreService {
         return { error: new Error('Store not found') };
       }
 
-      if (!navigator.onLine && localStore) {
+      if (localStore) {
         return { data: mapLocalStoreToStore(localStore) };
       }
 
-      const { data, error } = await supabase
-        .from('stores')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error && localStore) {
-        return { data: mapLocalStoreToStore(localStore) };
-      }
-
-      return { data: data as Store, error };
+      return { error: new Error('Store not found') };
     } catch (error) {
       console.error('getStore error:', error);
       return { error };
@@ -312,66 +274,8 @@ export class OfflineStoreService {
         return { data: merged };
       }
 
-      if (!navigator.onLine) {
-        // Return local stores only
-        return {
-          data: localAsStores,
-        };
-      }
-
-      // Fetch from server with timeout
-      const fetchRemote = async (): Promise<{ data: any[] | null; error: any }> => {
-        const { data, error } = await supabase
-          .from('stores')
-          .select('*')
-          .order('name');
-        return { data, error };
-      };
-
-      const remoteResult = await raceWithSoftTimeout(fetchRemote(), options?.timeoutMs ?? 4500);
-
-      if (remoteResult.timedOut) {
-        // Return local immediately; still cache remote results if/when they arrive
-        remoteResult.promise
-          .then(async (result) => {
-            if (result.error || !result.data) return;
-            await OfflineStoreService.cacheRemoteStores(result.data, localStores);
-            if (options?.notify !== false) {
-              window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'stores' } }));
-            }
-          })
-          .catch(() => {
-            /* ignore */
-          });
-
-        return { data: localAsStores };
-      }
-
-      // TypeScript narrowing: if not timedOut, value exists
-      const { data: remoteStores, error } = (remoteResult as { timedOut: false; value: { data: any[] | null; error: any } }).value;
-
-      if (error) {
-        console.error('Failed to fetch remote stores:', error);
-        // Return local stores as fallback
-        return { data: localAsStores };
-      }
-
-      await this.cacheRemoteStores(remoteStores || [], localStores);
-      if (options?.notify !== false) {
-        window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'stores' } }));
-      }
-
-      // Merge: start with ALL local cached (synced+unsynced), then overlay remote,
-      // except where a local item is unsynced (local changes should win).
-      const unsyncedLocalIds = new Set(localStores.filter((s) => !s.synced).map((s) => s.id));
-      const mergedById = new Map<string, Store>();
-      for (const s of localAsStores) mergedById.set(s.id, s);
-      for (const s of remoteStores || []) {
-        if (!unsyncedLocalIds.has(s.id)) mergedById.set(s.id, s as Store);
-      }
-
-      const merged = Array.from(mergedById.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-      return { data: merged };
+      // Local-first only: return local stores
+      return { data: localAsStores };
     } catch (error) {
       console.error('Get stores error:', error);
       return { error };
@@ -510,41 +414,27 @@ export class OfflineStoreService {
         };
       }
 
-      // Try to sync immediately
-      const { data, error } = await supabase
-        .from('stores')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
+      // Cloud sync disabled - queue for later sync
+      await LocalDatabase.addToSyncQueue({
+        id: crypto.randomUUID(),
+        type: 'store_update',
+        data: localStore,
+        timestamp: Date.now(),
+        retries: 0,
+      });
 
-      if (error) {
-        await LocalDatabase.addToSyncQueue({
-          id: crypto.randomUUID(),
-          type: 'store_update',
-          data: localStore,
-          timestamp: Date.now(),
-          retries: 0,
-        });
-
-        return { 
-          data: {
-            id: localStore.id,
-            name: localStore.name,
-            address: localStore.address,
-            phone: localStore.phone,
-            owner_id: undefined,
-            default_price_tier: localStore.default_price_tier,
-            created_at: localStore.created_at,
-            updated_at: localStore.updated_at,
-          } as Store 
-        };
-      }
-
-      localStore.synced = true;
-      await LocalDatabase.saveStore(localStore);
-
-      return { data };
+      return { 
+        data: {
+          id: localStore.id,
+          name: localStore.name,
+          address: localStore.address,
+          phone: localStore.phone,
+          owner_id: undefined,
+          default_price_tier: localStore.default_price_tier,
+          created_at: localStore.created_at,
+          updated_at: localStore.updated_at,
+        } as Store 
+      };
     } catch (error) {
       console.error('Update store error:', error);
       return { error };
@@ -573,16 +463,7 @@ export class OfflineStoreService {
         return {};
       }
 
-      if (!navigator.onLine) {
-        return {};
-      }
-
-      const { error } = await supabase
-        .from('stores')
-        .delete()
-        .eq('id', id);
-
-      return { error };
+      return {};
     } catch (error) {
       return { error };
     }
