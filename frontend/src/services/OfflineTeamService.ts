@@ -3,12 +3,10 @@
  */
 
 import { LocalDatabase, LocalUser, LocalRole } from './LocalDatabase';
-import { supabase } from '@/integrations/supabase/client';
 import { AppRole } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { getDataClient, smartFetch } from '@/lib/dataClient';
 import { OfflineAuthService } from './OfflineAuthService';
-import { SupabaseProvisioningService } from './SupabaseProvisioningService';
 import i18n from '@/i18n/config';
 
 export interface TeamMember {
@@ -126,69 +124,42 @@ export class OfflineTeamService {
         };
       }
 
-      // Try to sync immediately if online
-      const provisionResult = await SupabaseProvisioningService.provisionUser({
-        email: payload.email,
-        password: payload.password,
-        full_name: payload.full_name,
-        phone: payload.phone,
-        role: payload.role,
-        store_id: payload.store_id,
-        vehicle_type: payload.vehicle_type,
+      // Cloud provisioning disabled - queue for later sync
+      await LocalDatabase.addToSyncQueue({
+        id: crypto.randomUUID(),
+        type: 'user_create',
+        data: {
+          email: payload.email,
+          password: payload.password,
+          fullName: payload.full_name,
+          phone: payload.phone,
+          role: payload.role,
+          storeId: payload.store_id,
+          vehicleType: payload.vehicle_type,
+          localUserId: userId,
+          localRoleId: roleId,
+        },
+        timestamp: Date.now(),
+        retries: 0,
       });
-
-      if (!provisionResult.success) {
-        // Queue for later sync
-        await LocalDatabase.addToSyncQueue({
-          id: crypto.randomUUID(),
-          type: 'user_create',
-          data: {
-            email: payload.email,
-            password: payload.password,
-            fullName: payload.full_name,
-            phone: payload.phone,
-            role: payload.role,
-            storeId: payload.store_id,
-            vehicleType: payload.vehicle_type,
-            localUserId: userId,
-            localRoleId: roleId,
-          },
-          timestamp: Date.now(),
-          retries: 0,
-        });
-
-        toast({
-          title: payload.role === 'worker' ? i18n.t('sync.workerCreatedLocally') : i18n.t('sync.delivererCreatedLocally'),
-          description: i18n.t('sync.serverSyncFailed'),
-          variant: 'destructive',
-        });
-
-        return {
-          data: {
-            success: true,
-            user: {
-              id: userId,
-              email: payload.email,
-              full_name: payload.full_name,
-              role: payload.role,
-              store_id: payload.store_id,
-            },
-          },
-        };
-      }
-
-      // Mark as synced
-      localUser.synced = true;
-      localRole.synced = true;
-      await LocalDatabase.saveUser(localUser);
-      await LocalDatabase.saveRole(localRole);
 
       toast({
-        title: payload.role === 'worker' ? i18n.t('sync.workerCreated') : i18n.t('sync.delivererCreated'),
-        description: i18n.t('sync.createdAndSynced'),
+        title: payload.role === 'worker' ? i18n.t('sync.workerCreatedLocally') : i18n.t('sync.delivererCreatedLocally'),
+        description: i18n.t('sync.willSyncWhenOnline'),
       });
 
-      return { data: { success: true, user: { id: provisionResult.userId || userId } } };
+      return {
+        data: {
+          success: true,
+          user: {
+            id: userId,
+            email: payload.email,
+            full_name: payload.full_name,
+            role: payload.role,
+            store_id: payload.store_id,
+          },
+        },
+      };
     } catch (error) {
       console.error('Create user error:', error);
       return { error: { message: 'Failed to create user' } };
@@ -219,12 +190,6 @@ export class OfflineTeamService {
     if (users.length === 0) {
       await LocalDatabase.init();
       users = await LocalDatabase.getAllUsers();
-    }
-
-    // 3. Fallback to Supabase if online
-    if (users.length === 0 && navigator.onLine && !dataClient.isLocalFirst) {
-      const { data } = await supabase.from('profiles').select('*');
-      if (data) users = data;
     }
 
     return {
@@ -309,122 +274,30 @@ export class OfflineTeamService {
         return { data: [...localWorkers, ...syncedWorkers] };
       }
 
-      // Fetch from server
-      const { data: remoteWorkerRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('*')
-        .eq('role', 'worker');
+      // Cloud sync disabled - return local workers only
+      const syncedWorkers: TeamMember[] = workerRoles
+        .filter(role => role.synced)
+        .map(role => {
+          const user = localUsers.find(u => u.id === role.user_id);
+          const store = role.store_id ? localStores.find(s => s.id === role.store_id) : undefined;
 
-      if (rolesError) {
-        console.error('Failed to fetch remote workers:', rolesError);
-        return { data: localWorkers };
-      }
-
-      if (!remoteWorkerRoles || remoteWorkerRoles.length === 0) {
-        return { data: localWorkers };
-      }
-
-      const userIds = remoteWorkerRoles.map(r => r.user_id);
-
-      // Get profiles
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('id', userIds);
-
-      // Get stores
-      const storeIds = remoteWorkerRoles.filter(r => r.store_id).map(r => r.store_id!);
-      let storesMap: Record<string, string> = {};
-
-      if (storeIds.length > 0) {
-        const { data: stores } = await supabase
-          .from('stores')
-          .select('id, name')
-          .in('id', storeIds);
-
-        if (stores) {
-          storesMap = stores.reduce((acc, s) => ({ ...acc, [s.id]: s.name }), {});
-        }
-      }
-
-      // Get sales data
-      const { data: sales } = await supabase
-        .from('sales')
-        .select('worker_id, total_price')
-        .in('worker_id', userIds);
-
-      const salesByWorker = (sales || []).reduce((acc, sale) => {
-        const workerId = sale.worker_id;
-        if (!workerId) return acc;
-        if (!acc[workerId]) {
-          acc[workerId] = { count: 0, total: 0 };
-        }
-        acc[workerId].count++;
-        acc[workerId].total += sale.total_price || 0;
-        return acc;
-      }, {} as Record<string, { count: number; total: number }>);
-
-      // Cache remote data locally
-      for (const role of remoteWorkerRoles) {
-        const profile = profiles?.find(p => p.id === role.user_id);
-        if (profile) {
-          // Check if user exists locally to preserve password hash
-          const existingUser = await LocalDatabase.getUser(profile.id);
-
-          await LocalDatabase.saveUser({
-            id: profile.id,
-            email: profile.email || '',
-            password_hash: existingUser?.password_hash || '',
-            full_name: profile.full_name || '',
-            phone: profile.phone,
-            created_at: profile.created_at || new Date().toISOString(),
-            updated_at: profile.updated_at || new Date().toISOString(),
-            synced: true,
-            is_active: true // Remote users default to true unless we fetch status from profile
-          });
-        }
-        await LocalDatabase.saveRole({
-          id: role.id,
-          user_id: role.user_id,
-          role: 'worker',
-          store_id: role.store_id || undefined,
-          created_at: role.created_at,
-          synced: true,
+          return {
+            id: role.id,
+            user_id: role.user_id,
+            email: user?.email || '',
+            full_name: user?.full_name || 'Unknown',
+            phone: user?.phone,
+            role: 'worker' as AppRole,
+            store_id: role.store_id,
+            store_name: store?.name,
+            is_active: user ? (user.is_active ?? true) : true,
+            created_at: role.created_at,
+            sales_count: 0,
+            total_revenue: 0,
+          };
         });
-      }
 
-      // Build remote workers list
-      const remoteWorkers: TeamMember[] = remoteWorkerRoles.map(role => {
-        const profile = profiles?.find(p => p.id === role.user_id);
-        const salesData = salesByWorker[role.user_id] || { count: 0, total: 0 };
-        // Ideally we fetch is_active from profile if it exists on remote
-        // For now we assume active if they exist remotely
-        const user = localUsers.find(u => u.id === role.user_id);
-
-        return {
-          id: role.id,
-          user_id: role.user_id,
-          email: profile?.email || '',
-          full_name: profile?.full_name || 'Unknown',
-          phone: profile?.phone,
-          role: 'worker' as AppRole,
-          store_id: role.store_id || undefined,
-          store_name: role.store_id ? storesMap[role.store_id] : undefined,
-          is_active: user ? user.is_active : true,
-          created_at: role.created_at,
-          sales_count: salesData.count,
-          total_revenue: salesData.total,
-        };
-      });
-
-      // Merge: unsynced local + remote
-      const remoteIds = new Set(remoteWorkers.map(w => w.id));
-      const merged = [
-        ...localWorkers.filter(w => !remoteIds.has(w.id)),
-        ...remoteWorkers,
-      ];
-
-      return { data: merged };
+      return { data: [...localWorkers, ...syncedWorkers] };
     } catch (error) {
       console.error('Get workers error:', error);
       return { error };
@@ -554,99 +427,28 @@ export class OfflineTeamService {
         return { data: [...localDeliverers, ...syncedDeliverers] };
       }
 
-      // Fetch from server (similar pattern as getWorkers)
-      const { data: remoteDelivererRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('*')
-        .eq('role', 'deliverer');
+      // Cloud sync disabled - return local deliverers only
+      const syncedDeliverers: TeamMember[] = delivererRoles
+        .filter(role => role.synced)
+        .map(role => {
+          const user = localUsers.find(u => u.id === role.user_id);
 
-      if (rolesError) {
-        return { data: localDeliverers };
-      }
-
-      if (!remoteDelivererRoles || remoteDelivererRoles.length === 0) {
-        return { data: localDeliverers };
-      }
-
-      const userIds = remoteDelivererRoles.map(r => r.user_id);
-
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('id', userIds);
-
-      const { data: deliveries } = await supabase
-        .from('deliveries')
-        .select('deliverer_id, status');
-
-      const deliveriesByUser = (deliveries || []).reduce((acc, d) => {
-        const delivererId = d.deliverer_id;
-        if (!delivererId) return acc;
-        if (!acc[delivererId]) {
-          acc[delivererId] = { total: 0, completed: 0 };
-        }
-        acc[delivererId].total++;
-        if (d.status === 'delivered') {
-          acc[delivererId].completed++;
-        }
-        return acc;
-      }, {} as Record<string, { total: number; completed: number }>);
-
-      // Cache locally
-      for (const role of remoteDelivererRoles) {
-        const profile = profiles?.find(p => p.id === role.user_id);
-        if (profile) {
-          // Check if user exists locally to preserve password hash
-          const existingUser = await LocalDatabase.getUser(profile.id);
-
-          await LocalDatabase.saveUser({
-            id: profile.id,
-            email: profile.email || '',
-            password_hash: existingUser?.password_hash || '',
-            full_name: profile.full_name || '',
-            phone: profile.phone,
-            created_at: profile.created_at || new Date().toISOString(),
-            updated_at: profile.updated_at || new Date().toISOString(),
-            synced: true,
-            is_active: true,
-          });
-        }
-        await LocalDatabase.saveRole({
-          id: role.id,
-          user_id: role.user_id,
-          role: 'deliverer',
-          store_id: role.store_id || undefined,
-          created_at: role.created_at,
-          synced: true,
+          return {
+            id: role.id,
+            user_id: role.user_id,
+            email: user?.email || '',
+            full_name: user?.full_name || 'Unknown',
+            phone: user?.phone,
+            role: 'deliverer' as AppRole,
+            store_id: role.store_id,
+            is_active: user ? (user.is_active ?? true) : true,
+            created_at: role.created_at,
+            deliveries_total: 0,
+            deliveries_completed: 0,
+          };
         });
-      }
 
-      const remoteDeliverers: TeamMember[] = remoteDelivererRoles.map(role => {
-        const profile = profiles?.find(p => p.id === role.user_id);
-        const deliveryData = deliveriesByUser[role.user_id] || { total: 0, completed: 0 };
-
-        return {
-          id: role.id,
-          user_id: role.user_id,
-          email: profile?.email || '',
-          full_name: profile?.full_name || 'Unknown',
-          phone: profile?.phone,
-          role: 'deliverer' as AppRole,
-          store_id: role.store_id || undefined,
-          is_active: true,
-          created_at: role.created_at,
-          deliveries_total: deliveryData.total,
-          deliveries_completed: deliveryData.completed,
-        };
-      });
-
-      const remoteIds = new Set(remoteDeliverers.map(d => d.id));
-      const merged = [
-        ...localDeliverers.filter(d => !remoteIds.has(d.id)),
-        ...remoteDeliverers,
-      ];
-
-      return { data: merged };
+      return { data: [...localDeliverers, ...syncedDeliverers] };
     } catch (error) {
       console.error('Get deliverers error:', error);
       return { error };
