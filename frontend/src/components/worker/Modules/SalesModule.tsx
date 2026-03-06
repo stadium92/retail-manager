@@ -69,26 +69,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   const { clients, setClients, services } = useMasterDataStore();
   const { scanProduct } = useProductScanner(storeId);
 
-  // Handle Hardware Scanner Input
-  const handleHardwareScan = useCallback(async (e: any) => {
-    const code = e.detail?.code;
-    if (!code) return;
-    
-    // Find the product
-    const product = await scanProduct(code);
-    if (product) {
-        // Add it directly
-        addProduct(product);
-        
-        // After adding, focus the next empty row
-        setTimeout(() => {
-            const store = useNavigationStore.getState();
-            store.jumpToLastEmptyRow();
-        }, 150);
-    } else {
-        toast.error(t('worker.sales.itemNotFound') + ': ' + code);
-    }
-  }, [scanProduct, addProduct, t]);
+
 
   const keyValidate = getKeyForAction('ACTION_VALIDATE') || 'F2';
   const keySearch = getKeyForAction('ACTION_SEARCH') || 'F3';
@@ -470,6 +451,27 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     
     toast.success(t('worker.sales.itemFound', { name: product.name }));
   }, [lineItems, mode, updateSession, t, activeTier, currentSession.clientDiscount]);
+
+    // Handle Hardware Scanner Input
+  const handleHardwareScan = useCallback(async (e: any) => {
+    const code = e.detail?.code;
+    if (!code) return;
+    
+    // Find the product
+    const product = await scanProduct(code);
+    if (product) {
+        // Add it directly
+        addProduct(product);
+        
+        // After adding, focus the next empty row
+        setTimeout(() => {
+            const store = useNavigationStore.getState();
+            store.jumpToLastEmptyRow();
+        }, 150);
+    } else {
+        toast.error(t('worker.sales.itemNotFound') + ': ' + code);
+    }
+  }, [scanProduct, addProduct, t]);
 
   const handleQuantityChange = useCallback((index: number, quantity: any) => {
     const newItems = [...lineItems];

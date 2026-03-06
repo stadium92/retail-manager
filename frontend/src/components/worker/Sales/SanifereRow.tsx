@@ -143,9 +143,7 @@ export function SanifereRow({
                   const baseVal = (item.isBox && val !== '') ? (Number(val) / (item.conditionnement || 1)) : val;
                   onPriceChange?.(index, baseVal);
                 }}
-                onBlur={() => { 
-                  if (item.unitPrice === '') onPriceChange?.(index, 0); 
-                }}
+                onBlur={() => { if (item.unitPrice === '') onPriceChange?.(index, 0); }}
                 onClick={(e) => {
                   e.stopPropagation();
                   const store = useNavigationStore.getState();
@@ -170,11 +168,7 @@ export function SanifereRow({
           min={1}
           value={item.quantity === 0 ? '' : item.quantity}
           onChange={(e) => onQuantityChange(index, e.target.value === '' ? '' : parseInt(e.target.value))}
-          onBlur={() => { 
-            if (item.quantity === '') onQuantityChange(index, 1); 
-            const store = useNavigationStore.getState();
-            if (store.activeCell?.row === index && store.activeCell?.col === 5 && store.mode === 'edit') store.setMode('hover');
-          }}
+          onBlur={() => { if (item.quantity === '') onQuantityChange(index, 1); }}
           onClick={(e) => {
             e.stopPropagation();
             const store = useNavigationStore.getState();
@@ -193,11 +187,7 @@ export function SanifereRow({
           max={100}
           value={item.discountPercent === 0 ? '' : item.discountPercent}
           onChange={(e) => onDiscountChange(index, e.target.value === '' ? '' : parseFloat(e.target.value))}
-          onBlur={() => { 
-            if (item.discountPercent === '') onDiscountChange(index, 0); 
-            const store = useNavigationStore.getState();
-            if (store.activeCell?.row === index && store.activeCell?.col === 6 && store.mode === 'edit') store.setMode('hover');
-          }}
+          onBlur={() => { if (item.discountPercent === '') onDiscountChange(index, 0); }}
           onClick={(e) => {
             e.stopPropagation();
             const store = useNavigationStore.getState();
