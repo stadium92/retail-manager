@@ -24,8 +24,7 @@ export function useProductSearch(storeId: string, enabled: boolean = true) {
   const query = useQuery({
     queryKey: ['products-search', storeId, debouncedSearch],
     queryFn: async () => {
-      if (!storeId) {
-        console.warn('[useProductSearch] No storeId provided');
+      if (!storeId || !debouncedSearch || debouncedSearch.length < 2) {
         return { data: [], total: 0 };
       }
 

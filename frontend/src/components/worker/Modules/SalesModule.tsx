@@ -697,6 +697,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   }, [mode]);
 
 
+
   // Ensure there is always an empty row at the bottom for keyboard navigation
   useEffect(() => {
     if (isLoading) return;
@@ -721,7 +722,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     }
   }, [lineItems, mode, updateSession, isLoading]);
 
-  // Listen for navigation events (delete, toggle, search)
+  // Listen for navigation events (delete, toggle, search, adjust qty)
   useEffect(() => {
     const handleDeleteEvent = (e: any) => {
       const rowIndex = e.detail?.row;
@@ -760,17 +761,27 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       }
       setIsProductLookupOpen(true);
     };
+    const handleAdjustQtyEvent = (e: any) => {
+      const rowIndex = e.detail?.row;
+      const delta = e.detail?.delta;
+      if (typeof rowIndex === 'number' && lineItems[rowIndex]) {
+        const currentQty = Number(lineItems[rowIndex].quantity) || 0;
+        handleQuantityChange(rowIndex, Math.max(1, currentQty + delta));
+      }
+    };
 
     window.addEventListener('nav-delete-row', handleDeleteEvent);
     window.addEventListener('nav-toggle-packing', handleToggleEvent);
     window.addEventListener('nav-open-search', handleSearchEvent);
+    window.addEventListener('nav-adjust-quantity', handleAdjustQtyEvent);
     
     return () => {
       window.removeEventListener('nav-delete-row', handleDeleteEvent);
       window.removeEventListener('nav-toggle-packing', handleToggleEvent);
       window.removeEventListener('nav-open-search', handleSearchEvent);
+      window.removeEventListener('nav-adjust-quantity', handleAdjustQtyEvent);
     };
-  }, [lineItems, handleDeleteLine, handleToggleUnit]);
+  }, [lineItems, handleDeleteLine, handleToggleUnit, handleQuantityChange]);
 
   // Global Keyboard listener for the entire Sales Module grid focus
   useEffect(() => {
@@ -792,7 +803,9 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     
     window.addEventListener('keydown', handleGlobalKey);
     return () => window.removeEventListener('keydown', handleGlobalKey);
-  }, [lineItems, mode, updateSession]);
+  }, [lineItems, mode]);
+
+
   if (isLoading) {
     return (
       <div className="h-full flex items-center justify-center font-mono text-muted-foreground">

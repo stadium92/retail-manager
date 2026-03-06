@@ -4,80 +4,18 @@ import { useNavigationStore, GRID_COLUMNS } from './useNavigationStore';
 // ---------------------------------------------------------------------------
 // Scanner-input fallback
 // ---------------------------------------------------------------------------
-// Most barcode scanners inject characters very rapidly (entire barcode in
-// <100 ms). We detect this by buffering keystrokes and flushing when the
-// inter-key gap exceeds SCANNER_DEBOUNCE_MS.  If the buffer fills fast
-// enough (≥ MIN_SCANNER_LENGTH characters in ≤ SCANNER_WINDOW_MS) we treat
-// the whole burst as a scanner read and dispatch a custom event.
-// ---------------------------------------------------------------------------
-const SCANNER_DEBOUNCE_MS = 50;
-const SCANNER_WINDOW_MS = 100;
-const MIN_SCANNER_LENGTH = 6;
+const SCANNER_TIMING_THRESHOLD_MS = 50;
+const SCANNER_CHAR_THRESHOLD = 6;
 
-/**
- * Global keyboard interceptor.
- *
- * Mount this hook **once** at the top of the worker layout (e.g. inside
- * `WorkerLayout.tsx`).  It is responsible for:
- *
- * 1. Switching `inputMethod` to `'keyboard'` on any keypress (the
- *    "Last Input Wins" strategy). A separate `mousedown` listener switches
- *    back to `'mouse'`.
- *
- * 2. Arrow-key and Tab navigation in `hover` mode.
- *
- * 3. Scanner fallback detection (50 ms keystroke-timing buffer).
- *
- * 4. Tab bypass – jump to the Designation column of the last empty row.
- */
 export function useGlobalKeyboard() {
   const scanBufferRef = useRef<string>('');
-  const scanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const scanStartRef = useRef<number>(0);
+  const lastKeyTimeRef = useRef<number>(0);
+  const scanTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // ------------------------------------------------------------------
-    // Helpers – direct reads from Zustand (no React re-render needed)
-    // ------------------------------------------------------------------
     const store = useNavigationStore;
+    const getState = store.getState;
 
-    const getState = () => store.getState();
-
-    // ------------------------------------------------------------------
-    // Scanner buffer helpers
-    // ------------------------------------------------------------------
-    function flushScanBuffer() {
-      const buf = scanBufferRef.current;
-      const elapsed = Date.now() - scanStartRef.current;
-
-      if (buf.length >= MIN_SCANNER_LENGTH && elapsed <= SCANNER_WINDOW_MS) {
-        // Fast burst → scanner input
-        window.dispatchEvent(
-          new CustomEvent('scanner-input', { detail: { code: buf } }),
-        );
-      }
-      // Reset buffer regardless
-      scanBufferRef.current = '';
-      scanStartRef.current = 0;
-    }
-
-    function appendToScanBuffer(char: string) {
-      const now = Date.now();
-      if (scanBufferRef.current.length === 0) {
-        scanStartRef.current = now;
-      }
-      scanBufferRef.current += char;
-
-      // Reset debounce timer
-      if (scanTimerRef.current !== null) {
-        clearTimeout(scanTimerRef.current);
-      }
-      scanTimerRef.current = setTimeout(flushScanBuffer, SCANNER_DEBOUNCE_MS);
-    }
-
-    // ------------------------------------------------------------------
-    // Keydown handler
-    // ------------------------------------------------------------------
     function handleKeyDown(e: KeyboardEvent) {
       const state = getState();
 
@@ -86,22 +24,37 @@ export function useGlobalKeyboard() {
         store.setState({ inputMethod: 'keyboard' });
       }
 
-      // Ignore when no cell is active (module-level navigation can handle
-      // this separately).
-      if (!state.activeCell) return;
-
-      const tag = (e.target as HTMLElement)?.tagName;
-      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-
       // ---------------------------------------------------------------
-      // Scanner fallback – buffer printable single-char keys
+      // Scanner Detection Logic
       // ---------------------------------------------------------------
-      if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
-        appendToScanBuffer(e.key);
+      const now = Date.now();
+      const timeSinceLastKey = now - lastKeyTimeRef.current;
+
+      if (timeSinceLastKey > SCANNER_TIMING_THRESHOLD_MS) {
+        scanBufferRef.current = '';
       }
 
+      if (e.key === 'Enter') {
+        if (scanBufferRef.current.length >= SCANNER_CHAR_THRESHOLD) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const code = scanBufferRef.current;
+          scanBufferRef.current = '';
+          lastKeyTimeRef.current = now;
+
+          window.dispatchEvent(new CustomEvent('scanner-input', { detail: { code } }));
+          return;
+        }
+        scanBufferRef.current = '';
+      } else if (e.key.length === 1) {
+        scanBufferRef.current += e.key;
+      }
+      
+      lastKeyTimeRef.current = now;
+
       // ---------------------------------------------------------------
-      // Tab bypass – jump to last empty row (Designation column)
+      // Global Modifiers / Bypasses
       // ---------------------------------------------------------------
       if (e.key === 'Tab') {
         e.preventDefault();
@@ -110,9 +63,43 @@ export function useGlobalKeyboard() {
       }
 
       // ---------------------------------------------------------------
-      // Navigation keys (only in hover mode and not inside an input)
+      // While in EDIT mode (cursor is inside an input)
       // ---------------------------------------------------------------
-      if (state.mode === 'hover' && !isInput) {
+      if (state.mode === 'edit') {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          
+          if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+          }
+
+          if (state.activeCell) {
+            const col = GRID_COLUMNS[state.activeCell.col];
+            if (col === 'designation') {
+              window.dispatchEvent(new CustomEvent('nav-open-search', { detail: { row: state.activeCell.row } }));
+            }
+            
+            store.getState().setMode('hover');
+            if (col !== 'total') {
+              store.getState().moveRight();
+            }
+          }
+          return;
+        }
+        
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          store.getState().setMode('hover');
+          return;
+        }
+      }
+
+      const isInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+
+      // ---------------------------------------------------------------
+      // While in HOVER mode (navigation between cells)
+      // ---------------------------------------------------------------
+      if (state.mode === 'hover' && !isInput && state.activeCell) {
         switch (e.key) {
           case 'ArrowRight':
             e.preventDefault();
@@ -130,58 +117,55 @@ export function useGlobalKeyboard() {
             e.preventDefault();
             store.getState().moveUp();
             return;
+          case '+':
+          case '=': {
+            e.preventDefault();
+            window.dispatchEvent(new CustomEvent('nav-adjust-quantity', { detail: { row: state.activeCell.row, delta: 1 } }));
+            return;
+          }
+          case '-': {
+            e.preventDefault();
+            window.dispatchEvent(new CustomEvent('nav-adjust-quantity', { detail: { row: state.activeCell.row, delta: -1 } }));
+            return;
+          }
+          case 'Delete':
+          case 'Backspace': {
+            e.preventDefault();
+            window.dispatchEvent(new CustomEvent('nav-delete-row', { detail: { row: state.activeCell.row, key: e.key } }));
+            return;
+          }
           case 'Enter': {
             e.preventDefault();
             const col = GRID_COLUMNS[state.activeCell.col];
 
-            // Context-aware Enter -----------------------------------
             if (col === 'total') {
-              // Total is read-only → advance to next row
-              store.getState().advanceToNextRow();
-            } else {
-              // All other columns → enter edit mode
-              store.getState().setMode('edit');
+                store.getState().advanceToNextRow();
+            } else if (col === 'conditionnement') {
+                window.dispatchEvent(new CustomEvent('nav-toggle-packing', { detail: { row: state.activeCell.row } }));
+            } else if (col !== 'stock' && col !== 'total') {
+                store.getState().setMode('edit');
             }
             return;
           }
           case 'Escape':
             e.preventDefault();
-            store.getState().setMode('hover');
+            store.getState().setActiveCell(null);
             return;
         }
       }
 
-      // ---------------------------------------------------------------
-      // While in edit mode
-      // ---------------------------------------------------------------
-      if (state.mode === 'edit') {
-        if (e.key === 'Enter') {
-          // Save & return to hover
-          e.preventDefault();
-          store.getState().setMode('hover');
-          return;
-        }
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          store.getState().setMode('hover');
-          return;
-        }
+      // If we are navigating via grid but try to type, auto-enter edit
+      if (state.mode === 'hover' && state.activeCell && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        store.getState().setMode('edit');
       }
     }
 
-    // ------------------------------------------------------------------
-    // Mouse handler – "Last Input Wins": any click → mouse mode
-    // ------------------------------------------------------------------
     function handleMouseDown() {
-      const state = getState();
-      if (state.inputMethod !== 'mouse') {
+      if (getState().inputMethod !== 'mouse') {
         store.setState({ inputMethod: 'mouse' });
       }
     }
 
-    // ------------------------------------------------------------------
-    // Attach / detach
-    // ------------------------------------------------------------------
     window.addEventListener('keydown', handleKeyDown, true);
     window.addEventListener('mousedown', handleMouseDown, true);
 
