@@ -295,59 +295,59 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     
     setIsLoading(true);
     try {
-      console.log('[OrderLoad] Searching for ref:', cleanRef);
-      // Fetch sales from local data service
+      console.log('[OrderLoad] Fetching sales for store:', storeId);
       const sales = await OfflineDataService.getSales(storeId);
       const products = useMasterDataStore.getState().products;
 
-      // Find sale matching invoice_number or order_ref (Case insensitive)
-      const foundSale = sales.find(s => 
-        (s.invoice_number && String(s.invoice_number).toLowerCase().includes(cleanRef.toLowerCase())) || 
-        (s.order_ref && String(s.order_ref).toLowerCase().includes(cleanRef.toLowerCase()))
-      );
+      // Robust find
+      const foundSale = sales.find(s => {
+        const inv = String(s.invoice_number || '').toLowerCase();
+        const ord = String(s.order_ref || '').toLowerCase();
+        const target = cleanRef.toLowerCase();
+        return inv.includes(target) || ord.includes(target) || s.id.includes(target);
+      });
       
       if (foundSale) {
-        console.log('[OrderLoad] Found sale object:', foundSale);
+        console.log('[OrderLoad] Found sale:', foundSale.id, foundSale);
         const rawItems = foundSale.sale_items || foundSale.items || [];
         
-        if (rawItems.length === 0) {
-            toast.info(t('common.noData') + ': ' + cleanRef + ' (Empty items)');
-            setIsLoading(false);
-            return;
-        }
-
-        const newItems: SanifereLineItem[] = rawItems.map((item: any, index: number) => {
+        const newItems = Array.isArray(rawItems) ? rawItems.map((item: any, index: number) => {
+          // Safeguard: try to find product details from local store first
           const pid = item.product_id || (item.product && item.product.id);
           const cachedProduct = products.find(p => p.id === pid) || item.product || {};
           
-          const packSize = cachedProduct.packaging ? parseInt(String(cachedProduct.packaging).match(/(\d+)/)?.[1] || '1', 10) : 1;
-          const unitPrice = Number(item.unit_price || item.price || 0);
+          const packStr = String(cachedProduct.packaging || '1');
+          const match = packStr.match(/(\d+)/);
+          const packSize = match ? parseInt(match[1], 10) : 1;
           
+          const unitPrice = Number(item.unit_price || item.price || 0);
+          const baseUnitPrice = Number(cachedProduct.unit_price || unitPrice);
+
           return {
             id: crypto.randomUUID(),
             lineNumber: index + 1,
             productId: pid,
-            designation: item.product_name || item.product?.name || cachedProduct.name || 'Unknown',
-            code: item.product?.sku || cachedProduct.sku || '',
+            designation: item.product_name || cachedProduct.name || 'Unknown Item',
+            code: cachedProduct.sku || item.sku || '',
             conditionnement: packSize,
-            stock: cachedProduct.quantity || 0,
+            stock: Number(cachedProduct.quantity || 0),
             unitPrice: unitPrice,
-            basePrice: Number(cachedProduct.unit_price) || unitPrice,
-            quantity: Number(item.quantity) || 1,
-            discountPercent: Number(item.discount) || 0,
-            lineTotal: Number(item.total) || (unitPrice * Number(item.quantity || 1)),
-            isBox: item.is_box || (Number(item.quantity) % packSize === 0 && packSize > 1 && unitPrice > (Number(cachedProduct.unit_price) || 0)),
-            unit_type: cachedProduct.unit_type || (item.is_box ? 'Carton' : 'Piece'),
+            basePrice: baseUnitPrice,
+            quantity: Number(item.quantity || 1),
+            discountPercent: Number(item.discount || 0),
+            lineTotal: Number(item.total || (unitPrice * Number(item.quantity || 1))),
+            isBox: item.is_box || (packSize > 1 && unitPrice > baseUnitPrice),
+            unit_type: cachedProduct.unit_type || 'Piece',
             priceTiers: { 
-               1: Number(cachedProduct.unit_price) || 0, 
-               2: Number(cachedProduct.selling_price_2) || 0, 
-               3: Number(cachedProduct.selling_price_3) || 0, 
-               4: Number(cachedProduct.selling_price_4) || 0 
+               1: Number(cachedProduct.unit_price || 0), 
+               2: Number(cachedProduct.selling_price_2 || 0), 
+               3: Number(cachedProduct.selling_price_3 || 0), 
+               4: Number(cachedProduct.selling_price_4 || 0) 
             }
           };
-        });
+        }) : [];
 
-        // Add mandatory empty row for navigation
+        // Add the necessary empty row
         newItems.push({
           id: crypto.randomUUID(),
           lineNumber: newItems.length + 1,
@@ -364,21 +364,21 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
           priceTiers: { 1: 0, 2: 0, 3: 0, 4: 0 }
         });
 
+        console.log('[OrderLoad] Mapping success, updating session');
         updateSession(mode, {
           lineItems: newItems,
           customerName: foundSale.customer_name || '',
-          customerCode: foundSale.customer_code || foundSale.client_id || '',
+          customerCode: foundSale.customer_code || '',
           customerAddress: foundSale.customer_address || '',
           orderRef: foundSale.order_ref || foundSale.invoice_number || '',
         });
         toast.success(t('common.success'));
       } else {
-        console.warn('[OrderLoad] No sale found for ref:', cleanRef);
         toast.error(t('common.noData') + ': ' + cleanRef);
       }
     } catch (e) {
-      console.error('[OrderLoad] Fatal Mapping Error:', e);
-      toast.error(t('common.error'));
+      console.error('[OrderLoad] Fatal Error during mapping:', e);
+      toast.error(t('common.error') + ' (Mapping Error)');
     } finally {
       setIsLoading(false);
     }
@@ -777,8 +777,10 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isPaymentOpen || isProductLookupOpen || isScanning) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return;
+        // Allow F-keys even if focused in an input
+        if (!e.key.startsWith('F')) return;
       }
 
       if (e.key === keyPay) {
@@ -930,8 +932,14 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   // Global Keyboard listener for the entire Sales Module grid focus
   useEffect(() => {
     const handleGlobalKey = (e: KeyboardEvent) => {
-      // TRAP: Ignore all grid global keys if any modal is open
-      if (isPaymentOpen || isProductLookupOpen || isScanning) return;
+      // STRICT ISOLATION: Stop everything if a modal is open
+      if (isPaymentOpen || isProductLookupOpen || isScanning) {
+          if (e.key === 'Enter') {
+              e.stopPropagation();
+              // Do NOT prevent default here, as the modal needs its own Enter
+          }
+          return;
+      }
 
       const { activeCell, inputMethod } = useNavigationStore.getState();
       const target = e.target as HTMLElement;
