@@ -4,15 +4,31 @@
  */
 
 import { LocalDatabase, LocalUser, LocalRole } from './LocalDatabase';
-import { supabase } from '@/integrations/supabase/client';
-import { User, Session } from '@supabase/supabase-js';
 import { AppRole, UserRole } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { getDataClient } from '@/lib/dataClient';
-import { SupabaseProvisioningService } from './SupabaseProvisioningService';
 import { TokenManager } from '@/utils/tokenManager';
 import { smartFetch } from '@/lib/dataClient';
 import i18n from '@/i18n/config';
+
+/** Minimal User type replacing @supabase/supabase-js User */
+export interface User {
+  id: string;
+  email?: string;
+  app_metadata: Record<string, any>;
+  user_metadata: Record<string, any>;
+  aud: string;
+  created_at: string;
+}
+
+/** Minimal Session type replacing @supabase/supabase-js Session */
+export interface Session {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  token_type: string;
+  user: User;
+}
 
 export interface OfflineAuthResult {
   user: User | null;
@@ -359,55 +375,7 @@ export class OfflineAuthService {
       return this.localBridgeSignIn(email, password);
     }
 
-    return this.supabaseSignIn(email, password);
-  }
-
-  private static async supabaseSignIn(email: string, password: string): Promise<OfflineAuthResult> {
-    const isOnline = navigator.onLine;
-
-    if (isOnline) {
-      // Try online authentication first
-      try {
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Supabase sign-in timed out')), 5000)
-        );
-
-        const { data, error } = await Promise.race([
-          supabase.auth.signInWithPassword({ email, password }),
-          timeoutPromise
-        ]) as any;
-
-        if (!error && data.user && data.session) {
-          // Cache user and session for offline use
-          await this.cacheUserCredentials(email, password, data.user);
-
-          // Fetch and cache roles
-          const roles = await this.fetchAndCacheRoles(data.user.id);
-
-          return {
-            user: data.user,
-            session: data.session,
-            roles,
-            isOffline: false,
-          };
-        }
-
-        // If online auth fails, don't fall back to offline for security
-        return {
-          user: null,
-          session: null,
-          roles: [],
-          error: error?.message || 'Authentication failed',
-          isOffline: false,
-        };
-      } catch (err) {
-        // Network error - fall through to offline auth
-        console.log('Network error during auth, trying offline...');
-      }
-    }
-
-    // Offline authentication
-    return this.offlineSignIn(email, password);
+    return this.legacyOfflineSignIn(email, password);
   }
 
   /**
@@ -599,66 +567,20 @@ export class OfflineAuthService {
    */
   private static async fetchAndCacheRoles(userId: string): Promise<UserRole[]> {
     try {
-      console.log('Fetching roles for user:', userId);
-      
-      // 1. Create a timeout promise (5 seconds)
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Roles fetch timed out')), 5000)
-      );
-
-      // 2. Race Supabase query against timeout
-      const rolesPromise = supabase
-        .from('user_roles')
-        .select('*')
-        .eq('user_id', userId);
-
-      // Cast to any to handle the race result structure
-      const { data, error } = await Promise.race([
-        rolesPromise.then(res => ({ data: res.data, error: res.error })),
-        timeoutPromise
-      ]) as { data: any[], error: any };
-
-      if (error || !data) {
-        console.error('Error fetching roles (online):', error);
-        throw new Error(error?.message || 'No data returned');
-      }
-
-      // 3. Cache roles locally
       await LocalDatabase.init();
-      for (const role of data) {
-        const localRole: LocalRole = {
-          id: role.id,
-          user_id: role.user_id,
-          role: role.role as 'master' | 'worker' | 'deliverer',
-          store_id: role.store_id || undefined,
-          created_at: role.created_at,
-          synced: true,
-        };
-        await LocalDatabase.saveRole(localRole);
+      const localRoles = await LocalDatabase.getRolesByUserId(userId);
+      if (localRoles.length > 0) {
+        return localRoles.map(r => ({
+          id: r.id,
+          user_id: r.user_id,
+          role: r.role as AppRole,
+          store_id: r.store_id,
+          created_at: r.created_at,
+        }));
       }
-
-      return data as UserRole[];
+      return [];
     } catch (error) {
-      console.warn('Failed to fetch/cache online roles, falling back to local:', error);
-      
-      // 4. Fallback to local database
-      try {
-        await LocalDatabase.init();
-        const localRoles = await LocalDatabase.getRolesByUserId(userId);
-        if (localRoles.length > 0) {
-          console.log('Recovered roles from local cache:', localRoles.length);
-          return localRoles.map(r => ({
-            id: r.id,
-            user_id: r.user_id,
-            role: r.role as AppRole,
-            store_id: r.store_id,
-            created_at: r.created_at,
-          }));
-        }
-      } catch (localError) {
-        console.error('Local role fallback failed:', localError);
-      }
-      
+      console.warn('Failed to fetch local roles:', error);
       return [];
     }
   }
@@ -707,60 +629,21 @@ export class OfflineAuthService {
 
       await LocalDatabase.saveRole(localRole);
 
-      // Add to sync queue if offline
-      if (!isOnline) {
-        await LocalDatabase.addToSyncQueue({
-          id: crypto.randomUUID(),
-          type: 'user_create',
-          data: { email, password, fullName, role, storeId, localUserId: userId },
-          timestamp: Date.now(),
-          retries: 0,
-        });
-
-        toast({
-          title: i18n.t('sync.userCreatedOffline'),
-          description: i18n.t('sync.willSyncWhenOnline'),
-        });
-
-        return { success: true, userId };
-      }
-
-      // If online, also create on server
-      const provisionResult = await SupabaseProvisioningService.provisionUser({
-        email,
-        password,
-        full_name: fullName,
-        role: role === 'deliverer' ? 'deliverer' : 'worker',
-        store_id: storeId,
+      // Queue for sync
+      await LocalDatabase.addToSyncQueue({
+        id: crypto.randomUUID(),
+        type: 'user_create',
+        data: { email, password, fullName, role, storeId, localUserId: userId },
+        timestamp: Date.now(),
+        retries: 0,
       });
 
-      if (!provisionResult.success) {
-        // Keep local copy for later sync
-        await LocalDatabase.addToSyncQueue({
-          id: crypto.randomUUID(),
-          type: 'user_create',
-          data: { email, password, fullName, role, storeId, localUserId: userId },
-          timestamp: Date.now(),
-          retries: 0,
-        });
+      toast({
+        title: i18n.t('sync.userCreatedOffline'),
+        description: i18n.t('sync.willSyncWhenOnline'),
+      });
 
-        toast({
-          title: i18n.t('sync.userCreatedLocally'),
-          description: provisionResult.error || 'Server sync failed, will retry later.',
-          variant: 'destructive',
-        });
-
-        return { success: true, userId };
-      }
-
-      // Mark as synced
-      const user = await LocalDatabase.getUser(userId);
-      if (user) {
-        user.synced = true;
-        await LocalDatabase.saveUser(user);
-      }
-
-      return { success: true, userId: provisionResult.userId || userId };
+      return { success: true, userId };
     } catch (error) {
       console.error('Create user error:', error);
       return { success: false, error: 'Failed to create user' };
@@ -829,16 +712,6 @@ export class OfflineAuthService {
     try {
       // Only clear session, keep sync queue for later sync
       await LocalDatabase.clearSessionOnly();
-
-      // Try to sign out from Supabase if online
-      if (navigator.onLine) {
-        try {
-          await supabase.auth.signOut();
-        } catch (err) {
-          console.log('Supabase signOut failed (may be offline):', err);
-        }
-      }
-
       console.log('Signed out successfully. Sync queue preserved for later sync.');
     } catch (error) {
       console.error('Sign out error:', error);
