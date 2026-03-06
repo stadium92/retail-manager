@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -54,7 +54,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
   };
 
   const [formData, setFormData] = useState(initialFormState);
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     console.log('[FichiersProduits] Fetching data for store:', storeId);
     setLoading(true);
     try {
@@ -95,7 +95,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     } finally {
       setLoading(false);
     }
-  };
+  }, [storeId, t, setFamilies, setLoading]);
 
   const [multiItems, setMultiItems] = useState<Array<typeof initialFormState & { id: string; isOpen: boolean }>>([]);
 
