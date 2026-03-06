@@ -183,7 +183,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
 
     const openPayment = useCallback(() => {
     console.log('[SalesModule] openPayment actual trigger. Cart size:', lineItems.length);
-    const hasValidItems = lineItems.some(item => !!item.productId);
+    const hasValidItems = lineItems.some(item => !!item.productId || !!item.designation);
     if (!hasValidItems) {
         console.warn('[SalesModule] Cannot open payment for empty cart');
         return;
@@ -299,6 +299,8 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   }, [clients, services, lineItems, mode, updateSession, t]);
 
   const handleOrderRefLoad = useCallback(async (ref: string) => {
+    console.log('--- ORDER LOAD DEBUG START ---');
+    console.log('Ref received:', ref);
     const cleanRef = ref?.trim().toLowerCase();
     if (!cleanRef || !storeId) return;
     
@@ -334,7 +336,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
             return {
               id: crypto.randomUUID(),
               lineNumber: index + 1,
-              productId: pid || undefined,
+              productId: pid || `manual-${index}`,
               designation: item.product_name || p.name || 'Item #' + (index+1),
               code: p.sku || item.sku || '',
               conditionnement: packSize,
@@ -389,7 +391,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       }
     } catch (e: any) {
       console.error('[OrderLoad] Mapping error:', e);
-      toast.error('Mapping Error: ' + (e.message || 'Check logs'));
+      toast.error(`Order Ref Error: ${e.message || 'Unknown'}`); console.error('[DEBUG] Full error object:', e);
     } finally {
       setIsLoading(false);
     }
@@ -547,17 +549,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     updateSession(mode, { lineItems: newItems });
   }, [lineItems, mode, updateSession]);
 
-    const openPaymentRef = useRef(openPayment);
-  const handleSaveProformaRef = useRef(handleSaveProforma);
-  const handleHardwareScanRef = useRef(handleHardwareScan);
-  const handleOrderRefLoadRef = useRef(handleOrderRefLoad);
-
-  useEffect(() => {
-    openPaymentRef.current = openPayment;
-    handleSaveProformaRef.current = handleSaveProforma;
-    handleHardwareScanRef.current = handleHardwareScan;
-    handleOrderRefLoadRef.current = handleOrderRefLoad;
-  });
+  
 
   const handleDesignationChange = useCallback((index: number, value: string) => {
     setInitialSearchQuery(value);
@@ -877,6 +869,18 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     }
   }, [lineItems, mode, updateSession, isLoading]);
 
+    const openPaymentRef = useRef(openPayment);
+  const handleSaveProformaRef = useRef(handleSaveProforma);
+  const handleHardwareScanRef = useRef(handleHardwareScan);
+  const handleOrderRefLoadRef = useRef(handleOrderRefLoad);
+
+  useEffect(() => {
+    openPaymentRef.current = openPayment;
+    handleSaveProformaRef.current = handleSaveProforma;
+    handleHardwareScanRef.current = handleHardwareScan;
+    handleOrderRefLoadRef.current = handleOrderRefLoad;
+  });
+
   // Listen for navigation events (delete, toggle, search, adjust qty)
   useEffect(() => {
     const handleDeleteEvent = (e: any) => {
@@ -939,10 +943,12 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     window.addEventListener('nav-toggle-packing', handleToggleEvent);
     window.addEventListener('nav-open-search', handleSearchEvent);
     window.addEventListener('nav-adjust-quantity', handleAdjustQtyEvent);
-    window.addEventListener('scanner-input', (e) => handleHardwareScanRef.current(e));
-    window.addEventListener('nav-pay-shortcut', () => openPaymentRef.current());
-    window.addEventListener('nav-search-shortcut', () => setIsProductLookupOpen(true));
-    window.addEventListener('nav-save-shortcut', () => handleSaveProformaRef.current());
+    const onPayShortcut = () => openPaymentRef.current();
+    const onSearchShortcut = () => setIsProductLookupOpen(true);
+    const onSaveShortcut = () => handleSaveProformaRef.current();
+    const onScannerInput = (e: any) => handleHardwareScanRef.current(e);
+
+    window.addEventListener('scanner-input', onScannerInput);
     window.addEventListener('nav-capture-keystroke', handleCaptureKeystroke);
     
     return () => {
@@ -950,10 +956,8 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       window.removeEventListener('nav-toggle-packing', handleToggleEvent);
       window.removeEventListener('nav-open-search', handleSearchEvent);
       window.removeEventListener('nav-adjust-quantity', handleAdjustQtyEvent);
-      window.removeEventListener('scanner-input', (e) => handleHardwareScanRef.current(e));
-      window.removeEventListener('nav-pay-shortcut', () => openPaymentRef.current());
-      window.removeEventListener('nav-search-shortcut', () => setIsProductLookupOpen(true));
-      window.removeEventListener('nav-save-shortcut', () => handleSaveProformaRef.current());
+
+      window.removeEventListener('scanner-input', onScannerInput);
       window.removeEventListener('nav-capture-keystroke', handleCaptureKeystroke);
     };
   }, [lineItems, handleDeleteLine, handleToggleUnit, handleQuantityChange, handleDesignationChange]);
@@ -988,7 +992,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     
     window.addEventListener('keydown', handleGlobalKey);
     return () => window.removeEventListener('keydown', handleGlobalKey);
-  }, [lineItems, mode]);
+  }, [lineItems, mode, isPaymentOpen, isProductLookupOpen, isScanning]);
 
 
   if (isLoading) {

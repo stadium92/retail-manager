@@ -17,7 +17,7 @@ export function useGlobalKeyboard() {
     const getState = store.getState;
 
     function handleKeyDown(e: KeyboardEvent) {
-      const isDialogOpen = !!document.querySelector('[role="dialog"]');
+const isDialogOpen = !!document.querySelector('[role="dialog"]');
       
       // 0. HANDLE GLOBAL SHORTCUTS FIRST (Allow them even if focused in an input)
       if (e.key === 'F4' || e.key === 'F2') {
