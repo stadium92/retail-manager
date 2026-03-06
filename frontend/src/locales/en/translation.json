@@ -62,7 +62,8 @@
     "added": "Added to list",
     "enterConfirm": "ENTER: Confirm",
     "escClose": "ESC: Close",
-    "itemsFound": "{{count}} items found"
+    "itemsFound": "{{count}} items found",
+    "totalPage": "TOTAL PAGE"
   },
   "helpCenter": {
     "title": "Help Center",
@@ -1000,7 +1001,15 @@
       "purchaseTracking": "PURCHASE Tracking",
       "purchaseByFamily": "Purchases Families/products",
       "dailyPurchases": "Daily purchases",
-      "periodPurchases": "Period purchases"
+      "periodPurchases": "Period purchases",
+      "situation_client": "CLIENT Status",
+      "suivi_ventes_jour": "Daily sales",
+      "suivi_ventes_produit": "Sales by product",
+      "suivi_ventes_factures": "List of invoices",
+      "situation_fournisseur": "SUPPLIER Status",
+      "suivi_achats_famille": "Purchases Families/products",
+      "suivi_achats_jour": "Daily purchases",
+      "suivi_achats_periode": "Period purchases"
     },
     "management": {
       "trigger": "Management",

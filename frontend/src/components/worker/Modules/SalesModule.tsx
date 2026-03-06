@@ -4,6 +4,7 @@ import { useReactToPrint } from 'react-to-print';
 import { InvoiceTemplate, InvoiceData } from '@/components/printing/InvoiceTemplate';
 import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
+import { OfflineDataService } from '@/services/OfflineDataService';
 import { OfflineSalesService } from '@/services/OfflineSalesService';
 import { Product } from '@/types';
 import { toast } from 'sonner';
@@ -67,6 +68,8 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   const { sessions, updateSession } = useSalesStore();
   const { clients, setClients, services } = useMasterDataStore();
   const { scanProduct } = useProductScanner(storeId);
+
+
 
   const keyValidate = getKeyForAction('ACTION_VALIDATE') || 'F2';
   const keySearch = getKeyForAction('ACTION_SEARCH') || 'F3';
@@ -174,10 +177,30 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     return lineItems.reduce((sum, item) => sum + item.lineTotal, 0);
   }, [lineItems]);
 
+    const openPayment = useCallback(() => {
+    // BLUR ANY BACKGROUND INPUT
+    if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+    }
+    console.log('[SalesModule] openPayment actual trigger. Cart size:', lineItems.length);
+    const hasValidItems = lineItems.some(item => !!item.productId || !!item.designation);
+    if (!hasValidItems) {
+        console.warn('[SalesModule] Cannot open payment for empty cart');
+        return;
+    }
+    
+    // Safety: Reset background navigation mode
+    const store = useNavigationStore.getState();
+    store.setMode('hover');
+    store.setActiveCell(null);
+    
+    setIsPaymentOpen(true);
+  }, [lineItems, setIsPaymentOpen]);
+
   const handlePrint = useCallback(() => {
     if (lineItems.length === 0) return;
     
-    const cartItems = lineItems.map(item => {
+    const cartItems = lineItems.filter(item => !!item.productId).map(item => {
         const packSize = item.conditionnement || 1;
         let totalUnitsForDb = item.isBox ? item.quantity * packSize : item.quantity;
         return {
@@ -275,6 +298,105 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     updateSession(mode, updates);
   }, [clients, services, lineItems, mode, updateSession, t]);
 
+  const handleOrderRefLoad = useCallback(async (ref: string) => {
+    console.log('--- ORDER LOAD DEBUG START ---');
+    console.log('Ref received:', ref);
+    const cleanRef = ref?.trim().toLowerCase();
+    if (!cleanRef || !storeId) return;
+    
+    setIsLoading(true);
+    try {
+      console.log('[OrderLoad] Searching for:', cleanRef);
+      const sales = await OfflineDataService.getSales(storeId);
+      const allProducts = useMasterDataStore.getState().products || [];
+
+      // Fuzzy find: match if cleanRef is ANYWHERE in invoice_number, order_ref, or ID
+      const foundSale = sales.find(s => {
+        const inv = String(s.invoice_number || '').toLowerCase();
+        const ord = String(s.order_ref || '').toLowerCase();
+        const sid = String(s.id || '').toLowerCase();
+        return inv.includes(cleanRef) || ord.includes(cleanRef) || sid.includes(cleanRef);
+      });
+      
+      if (foundSale) {
+        console.log('[OrderLoad] SUCCESS! Found sale:', foundSale.id);
+        const rawItems = foundSale.sale_items || foundSale.items || [];
+        
+        const mappedItems = (Array.isArray(rawItems) ? rawItems : []).map((item: any, index: number) => {
+          try {
+            const pid = item.product_id || (item.product && item.product.id);
+            const p = allProducts.find(prod => prod.id === pid) || item.product || {};
+            
+            const packStr = String(p.packaging || '1');
+            const packSize = parseInt(packStr.match(/(\d+)/)?.[1] || '1', 10);
+            
+            const unitPrice = Number(item.unit_price || item.price || 0);
+            const basePrice = Number(p.unit_price || unitPrice || 0);
+
+            return {
+              id: crypto.randomUUID(),
+              lineNumber: index + 1,
+              productId: pid || `manual-${index}`,
+              designation: item.product_name || p.name || 'Item #' + (index+1),
+              code: p.sku || item.sku || '',
+              conditionnement: packSize,
+              stock: Number(p.quantity || 0),
+              unitPrice: unitPrice,
+              basePrice: basePrice,
+              quantity: Number(item.quantity || 1),
+              discountPercent: Number(item.discount || 0),
+              lineTotal: Number(item.total || (unitPrice * Number(item.quantity || 1))),
+              isBox: !!(item.is_box || (packSize > 1 && unitPrice > (basePrice + 1))),
+              unit_type: p.unit_type || 'Piece',
+              priceTiers: { 
+                 1: Number(p.unit_price || 0), 
+                 2: Number(p.selling_price_2 || 0), 
+                 3: Number(p.selling_price_3 || 0), 
+                 4: Number(p.selling_price_4 || 0) 
+              }
+            };
+          } catch (err) {
+            return null; // Filter out broken items
+          }
+        }).filter(Boolean) as SanifereLineItem[];
+
+        // Add mandatory empty row
+        mappedItems.push({
+          id: crypto.randomUUID(),
+          lineNumber: mappedItems.length + 1,
+          designation: '',
+          code: '',
+          conditionnement: 1,
+          stock: 0,
+          unitPrice: '',
+          basePrice: 0,
+          quantity: '',
+          discountPercent: '',
+          lineTotal: 0,
+          isBox: false,
+          priceTiers: { 1: 0, 2: 0, 3: 0, 4: 0 }
+        });
+
+        updateSession(mode, {
+          lineItems: mappedItems,
+          customerName: foundSale.customer_name || '',
+          customerCode: foundSale.customer_code || '',
+          customerAddress: foundSale.customer_address || '',
+          orderRef: foundSale.order_ref || foundSale.invoice_number || '',
+        });
+        toast.success(t('common.success'));
+      } else {
+        console.warn('[OrderLoad] Sale not found for:', cleanRef);
+        toast.error(t('common.noData') + ': ' + cleanRef);
+      }
+    } catch (e: any) {
+      console.error('[OrderLoad] Mapping error:', e);
+      toast.error(`Order Ref Error: ${e.message || 'Unknown'}`); console.error('[DEBUG] Full error object:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [storeId, mode, updateSession, t]);
+
   const handleDeleteLine = useCallback((index: number) => {
     const newItems = lineItems.filter((_, i) => i !== index);
     newItems.forEach((item, i) => { item.lineNumber = i + 1; });
@@ -366,6 +488,31 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     toast.success(t('worker.sales.itemFound', { name: product.name }));
   }, [lineItems, mode, updateSession, t, activeTier, currentSession.clientDiscount]);
 
+    // Handle Hardware Scanner Input (Fast Scan)
+  const handleHardwareScan = useCallback(async (e: any) => {
+    const code = e.detail?.code;
+    if (!code) return;
+    
+    console.log('[Scanner] High speed input detected:', code);
+    
+    // Find the product
+    const product = await scanProduct(code);
+    if (product) {
+        // Add it directly (consumption logic is inside addProduct)
+        addProduct(product);
+        
+        // SPEED FEATURE: Jump to the NEXT empty row immediately after scanning
+        setTimeout(() => {
+            const store = useNavigationStore.getState();
+            store.jumpToLastEmptyRow();
+        }, 100);
+    } else {
+        // If not found, maybe it's just a barcode they are typing manually?
+        // We'll leave it in the designation field (captured via handleCaptureKeystroke)
+        toast.error(t('worker.sales.itemNotFound') + ': ' + code);
+    }
+  }, [scanProduct, addProduct, t]);
+
   const handleQuantityChange = useCallback((index: number, quantity: any) => {
     const newItems = [...lineItems];
     const item = newItems[index];
@@ -401,6 +548,8 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     };
     updateSession(mode, { lineItems: newItems });
   }, [lineItems, mode, updateSession]);
+
+  
 
   const handleDesignationChange = useCallback((index: number, value: string) => {
     setInitialSearchQuery(value);
@@ -502,7 +651,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       if (mode === 'facturation-gros') saleType = 'gros';
       if (mode === 'proforma') saleType = 'proforma';
 
-      const cartItems = lineItems.map(item => {
+      const cartItems = lineItems.filter(item => !!item.productId).map(item => {
         const packSize = item.conditionnement || 1;
         
         let totalUnitsForDb: number;
@@ -581,7 +730,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     if (lineItems.length === 0) return;
 
     try {
-      const cartItems = lineItems.map(item => {
+      const cartItems = lineItems.filter(item => !!item.productId).map(item => {
         const packSize = item.conditionnement || 1;
         let totalUnitsForDb = item.isBox ? item.quantity * packSize : item.quantity;
         return {
@@ -612,7 +761,8 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         client_id: currentSession.clientId || undefined,
         items: cartItems,
         total_price: netTotal,
-        payment_method: 'cash',
+        payment_method: 'credit', // Using credit/pending so it goes to receivables/invoices rather than cash
+        payment_status: 'pending',
         sale_type: 'proforma',
         customer_name: customerName || undefined,
         customer_phone: matchedClient?.phone || undefined,
@@ -642,16 +792,18 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isPaymentOpen || isProductLookupOpen || isScanning) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return;
+        // Allow F-keys even if focused in an input
+        if (!e.key.startsWith('F')) return;
       }
 
       if (e.key === keyPay) {
         e.preventDefault();
-        if (lineItems.length > 0) setIsPaymentOpen(true);
+        if (lineItems.length > 0) openPayment();
       } else if (e.key === keyValidate) {
         e.preventDefault();
-        if (lineItems.length > 0) setIsPaymentOpen(true);
+        if (lineItems.length > 0) openPayment();
       } else if (e.key === keySave) {
         e.preventDefault();
         handleSaveProforma();
@@ -717,6 +869,18 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     }
   }, [lineItems, mode, updateSession, isLoading]);
 
+    const openPaymentRef = useRef(openPayment);
+  const handleSaveProformaRef = useRef(handleSaveProforma);
+  const handleHardwareScanRef = useRef(handleHardwareScan);
+  const handleOrderRefLoadRef = useRef(handleOrderRefLoad);
+
+  useEffect(() => {
+    openPaymentRef.current = openPayment;
+    handleSaveProformaRef.current = handleSaveProforma;
+    handleHardwareScanRef.current = handleHardwareScan;
+    handleOrderRefLoadRef.current = handleOrderRefLoad;
+  });
+
   // Listen for navigation events (delete, toggle, search, adjust qty)
   useEffect(() => {
     const handleDeleteEvent = (e: any) => {
@@ -779,6 +943,15 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     window.addEventListener('nav-toggle-packing', handleToggleEvent);
     window.addEventListener('nav-open-search', handleSearchEvent);
     window.addEventListener('nav-adjust-quantity', handleAdjustQtyEvent);
+    const onPayShortcut = () => openPaymentRef.current();
+    const onSearchShortcut = () => setIsProductLookupOpen(true);
+    const onSaveShortcut = () => handleSaveProformaRef.current();
+    const onScannerInput = (e: any) => handleHardwareScanRef.current(e);
+
+    window.addEventListener('scanner-input', onScannerInput);
+    window.addEventListener('nav-pay-shortcut', onPayShortcut);
+    window.addEventListener('nav-search-shortcut', onSearchShortcut);
+    window.addEventListener('nav-save-shortcut', onSaveShortcut);
     window.addEventListener('nav-capture-keystroke', handleCaptureKeystroke);
     
     return () => {
@@ -786,6 +959,11 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       window.removeEventListener('nav-toggle-packing', handleToggleEvent);
       window.removeEventListener('nav-open-search', handleSearchEvent);
       window.removeEventListener('nav-adjust-quantity', handleAdjustQtyEvent);
+
+      window.removeEventListener('scanner-input', onScannerInput);
+      window.removeEventListener('nav-pay-shortcut', onPayShortcut);
+      window.removeEventListener('nav-search-shortcut', onSearchShortcut);
+      window.removeEventListener('nav-save-shortcut', onSaveShortcut);
       window.removeEventListener('nav-capture-keystroke', handleCaptureKeystroke);
     };
   }, [lineItems, handleDeleteLine, handleToggleUnit, handleQuantityChange, handleDesignationChange]);
@@ -793,6 +971,15 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   // Global Keyboard listener for the entire Sales Module grid focus
   useEffect(() => {
     const handleGlobalKey = (e: KeyboardEvent) => {
+      // STRICT ISOLATION: Stop everything if a modal is open
+      if (isPaymentOpen || isProductLookupOpen || isScanning) {
+          if (e.key === 'Enter') {
+              e.stopPropagation();
+              // Do NOT prevent default here, as the modal needs its own Enter
+          }
+          return;
+      }
+
       const { activeCell, inputMethod } = useNavigationStore.getState();
       const target = e.target as HTMLElement;
       const isInputOrButton = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.tagName === 'BUTTON' || target?.getAttribute('role') === 'menuitem';
@@ -811,7 +998,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     
     window.addEventListener('keydown', handleGlobalKey);
     return () => window.removeEventListener('keydown', handleGlobalKey);
-  }, [lineItems, mode]);
+  }, [lineItems, mode, isPaymentOpen, isProductLookupOpen, isScanning]);
 
 
   if (isLoading) {
@@ -837,6 +1024,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
           else updateSession(mode, { customerAddress: address });
         }}
         onOrderRefChange={(ref) => updateSession(mode, { orderRef: ref })}
+        onOrderRefLoad={handleOrderRefLoad}
         onInvoiceNumberChange={(num) => updateSession(mode, { invoiceNumber: num })}
       />
 
@@ -867,8 +1055,8 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
                     />      <SanifereFooter
         mode={mode}
         netTotal={netTotal}
-        onValidate={() => lineItems.length > 0 && setIsPaymentOpen(true)}
-        onSettlement={() => lineItems.length > 0 && setIsPaymentOpen(true)}
+        onValidate={() => lineItems.length > 0 && openPayment()}
+        onSettlement={() => lineItems.length > 0 && openPayment()}
         onProductCard={() => setIsProductLookupOpen(true)}
         onDelete={() => selectedIndex >= 0 && handleDeleteLine(selectedIndex)}
         onSave={handleSaveProforma}

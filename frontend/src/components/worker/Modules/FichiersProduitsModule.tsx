@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -54,9 +54,80 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
   };
 
   const [formData, setFormData] = useState(initialFormState);
+
+
   const [multiItems, setMultiItems] = useState<Array<typeof initialFormState & { id: string; isOpen: boolean }>>([]);
 
+  const fetchData = useCallback(async () => {
+    console.log('[FichiersProduits] Fetching data for store:', storeId);
+    setLoading(true);
+    try {
+      const [inventoryRes, familiesRes] = await Promise.all([
+        OfflineInventoryService.getInventory(storeId, { notify: false }),
+        OfflineInventoryService.getProductFamilies(storeId)
+      ]);
+      
+      console.log('[FichiersProduits] Inventory response:', inventoryRes.data?.length || 0, 'items');
+
+      if (inventoryRes.data) {
+        const mapped = inventoryRes.data.map(item => ({
+          ...item,
+          purchase_price: Number(item.cost || (item as any).cost_price || 0),
+          selling_price_detail: Number(item.price || (item as any).unit_price || 0),
+          current_stock: Number(item.quantity ?? (item as any).stock ?? (item as any).current_stock ?? 0),
+          min_stock_alert: Number(item.low_stock_threshold ?? (item as any).min_quantity ?? 0),
+          unit_type: item.unit_type || 'Pièce',
+          family_id: item.category_id || (item as any).category || (item as any).family_id,
+          brand: item.brand || '',
+          packaging: item.packaging || '1',
+          aisle: item.aisle || '',
+          expiry_date: item.expiry_date,
+          store_id: item.store_id,
+          image_url: item.image_url,
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+        } as unknown as ProductMaster));
+        setLocalProducts(mapped);
+      }
+      if (familiesRes.data) {
+        console.log('[FichiersProduits] Families fetched:', familiesRes.data.length);
+        setFamilies(familiesRes.data as any);
+      }
+    } catch (err) {
+      console.error('[FichiersProduits] Fetch error:', err);
+      toast({ title: t('common.error'), variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  }, [storeId, t, setFamilies, setLoading]);
+
   useEffect(() => {
+    const handleScannerInput = (e: any) => {
+      const code = e.detail?.code;
+      if (code && isDialogOpen) {
+        if (registrationMode === 'single') {
+          setFormData(prev => ({ ...prev, barcode: code }));
+        } else {
+          // If in multi-mode, update the currently open item or the last item
+          setMultiItems(prev => {
+            const newItems = [...prev];
+            const openIndex = newItems.findIndex(i => i.isOpen);
+            if (openIndex >= 0) {
+              newItems[openIndex] = { ...newItems[openIndex], barcode: code };
+            } else if (newItems.length > 0) {
+              newItems[newItems.length - 1] = { ...newItems[newItems.length - 1], barcode: code };
+            }
+            return newItems;
+          });
+        }
+        toast.success(t('scanner.codeScanned') || 'Code scanned');
+      }
+    };
+    window.addEventListener('scanner-input', handleScannerInput);
+    return () => window.removeEventListener('scanner-input', handleScannerInput);
+  }, [isDialogOpen, t, registrationMode]);
+
+    useEffect(() => {
     if (storeId) {
       fetchData();
     }
@@ -69,7 +140,11 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
 
     window.addEventListener('localDbDataUpdated', handleRefresh);
     return () => window.removeEventListener('localDbDataUpdated', handleRefresh);
-  }, [storeId]);
+  }, [storeId, fetchData]);
+
+
+
+
 
   const handleNumChange = (field: keyof typeof initialFormState, index?: number) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -155,48 +230,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     setEditingProduct(null);
   };
 
-  const fetchData = async () => {
-    console.log('[FichiersProduits] Fetching data for store:', storeId);
-    setLoading(true);
-    try {
-      const [inventoryRes, familiesRes] = await Promise.all([
-        OfflineInventoryService.getInventory(storeId, { notify: false }),
-        OfflineInventoryService.getProductFamilies(storeId)
-      ]);
-      
-      console.log('[FichiersProduits] Inventory response:', inventoryRes.data?.length || 0, 'items');
 
-      if (inventoryRes.data) {
-        const mapped = inventoryRes.data.map(item => ({
-          ...item,
-          purchase_price: Number(item.cost || (item as any).cost_price || 0),
-          selling_price_detail: Number(item.price || (item as any).unit_price || 0),
-          current_stock: Number(item.quantity ?? (item as any).stock ?? (item as any).current_stock ?? 0),
-          min_stock_alert: Number(item.low_stock_threshold ?? (item as any).min_quantity ?? 0),
-          unit_type: item.unit_type || 'Pièce',
-          family_id: item.category_id || (item as any).category || (item as any).family_id,
-          brand: item.brand || '',
-          packaging: item.packaging || '1',
-          aisle: item.aisle || '',
-          expiry_date: item.expiry_date,
-          store_id: item.store_id,
-          image_url: item.image_url,
-          created_at: item.created_at,
-          updated_at: item.updated_at,
-        } as unknown as ProductMaster));
-        setLocalProducts(mapped);
-      }
-      if (familiesRes.data) {
-        console.log('[FichiersProduits] Families fetched:', familiesRes.data.length);
-        setFamilies(familiesRes.data as any);
-      }
-    } catch (err) {
-      console.error('[FichiersProduits] Fetch error:', err);
-      toast({ title: t('common.error'), variant: 'destructive' });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getPackSize = (pStr: string | number | undefined) => {
     if (!pStr) return 1;
@@ -377,10 +411,28 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                 <div className="space-y-4">
                     <div className="space-y-2"><Label className="font-bold">{t('inventory.fields.name')} *</Label><Input value={data.name} onChange={e => update('name', e.target.value)} required className="h-12 text-lg font-semibold bg-muted/20" /></div>
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2"><Label className="text-xs font-bold uppercase">{t('inventory.fields.sku')}</Label><Input value={data.sku} onChange={e => update('sku', e.target.value)} className="h-10 font-mono" /></div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold uppercase">{t('inventory.fields.sku')}</Label>
+                          <Input 
+                            value={data.sku} 
+                            onChange={e => update('sku', e.target.value)} 
+                            onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+                            className="h-10 font-mono" 
+                          />
+                        </div>
                         <div className="space-y-2">
                             <Label className="text-xs font-bold uppercase">{t('inventory.fields.barcode')}</Label>
-                            <div className="flex gap-2"><Input value={data.barcode} onChange={e => update('barcode', e.target.value)} className="h-10 font-mono" /><Button type="button" variant="outline" size="icon" onClick={() => update('barcode', `PRD${Date.now().toString(36).toUpperCase()}`)} className="h-10 w-10 shrink-0"><Barcode className="h-4 w-4" /></Button></div>
+                            <div className="flex gap-2">
+                              <Input 
+                                value={data.barcode} 
+                                onChange={e => update('barcode', e.target.value)} 
+                                onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+                                className="h-10 font-mono" 
+                              />
+                              <Button type="button" variant="outline" size="icon" onClick={() => update('barcode', `PRD${Date.now().toString(36).toUpperCase()}`)} className="h-10 w-10 shrink-0">
+                                <Barcode className="h-4 w-4" />
+                              </Button>
+                            </div>
                         </div>
                     </div>
                     <div className="space-y-2">
@@ -525,7 +577,14 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
             </div>
           </DialogHeader>
           
-          <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="flex-1 flex flex-col min-h-0 bg-background overflow-hidden">
+          <form onSubmit={(e) => { 
+        e.preventDefault(); 
+        // Only save if the target wasn't an input (prevent scanner Enter from submitting)
+        const target = e.nativeEvent?.target as HTMLElement;
+        if (target?.tagName !== 'INPUT') {
+            handleSave(); 
+        }
+    }} className="flex-1 flex flex-col min-h-0 bg-background overflow-hidden">
             <div className="flex-1 overflow-y-auto">
               {registrationMode === 'single' ? (
                 <div className="p-8">

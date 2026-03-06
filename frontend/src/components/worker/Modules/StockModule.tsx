@@ -202,6 +202,19 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
     setFormOpen(true);
   };
 
+  // Global scanner interceptor
+  useEffect(() => {
+    const handleScannerInput = (e: any) => {
+      const code = e.detail?.code;
+      if (code && formOpen) {
+        setFormData(prev => ({ ...prev, sku: code }));
+        toast.success(t('scanner.codeScanned') || 'Code scanned');
+      }
+    };
+    window.addEventListener('scanner-input', handleScannerInput);
+    return () => window.removeEventListener('scanner-input', handleScannerInput);
+  }, [formOpen, t]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -396,7 +409,15 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2"><Label>{t('inventory.fields.barcodeOrSku')}</Label>
                             <div className="flex gap-2">
-                              <Input value={formData.sku} onChange={e => setFormData({...formData, sku: e.target.value})} />
+                              <Input 
+                                value={formData.sku} 
+                                onChange={e => setFormData({...formData, sku: e.target.value})} 
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault(); // Prevent scanner from submitting the whole form
+                                  }
+                                }}
+                              />
                               <Button type="button" variant="outline" size="icon" onClick={() => setIsScanningForSku(true)}><Barcode className="h-4 w-4" /></Button>
                             </div>
                           </div>

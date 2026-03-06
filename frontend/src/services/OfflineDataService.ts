@@ -73,7 +73,11 @@ class OfflineDataServiceClass {
         const mapRawSale = (rs: any): SaleWithItems => {
             let rawItems = rs.items || rs.sale_items || [];
             if (typeof rawItems === 'string') {
+                if (typeof rawItems === 'string' && rawItems.trim().startsWith('[')) {
                 try { rawItems = JSON.parse(rawItems); } catch (e) { rawItems = []; }
+            } else if (typeof rawItems === 'string') {
+                rawItems = [];
+            }
             }
 
             return {

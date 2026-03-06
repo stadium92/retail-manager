@@ -266,7 +266,8 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
 
   const salesByProduct = useMemo(() => {
     const aggregated: Record<string, { name: string; quantity: number; total: number }> = {};
-    sales.forEach(sale => {
+    // Proformas do not count towards actual product sales volume
+    sales.filter(s => s.sale_type !== 'proforma').forEach(sale => {
       (sale.sale_items || []).forEach(item => {
         const name = getProductName(item);
         if (!aggregated[name]) {
@@ -280,11 +281,14 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
   }, [sales, t, products]);
 
   const filteredSales = useMemo(() => 
-    sales.filter(s => 
-      !searchQuery || 
-      s.customer_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.invoice_number?.toLowerCase().includes(searchQuery.toLowerCase())
-    ), [sales, searchQuery]);
+    sales.filter(s => {
+      // Proformas should ONLY appear in the Invoice List (suivi-ventes-factures), not in Daily Sales
+      if (mode === 'suivi-ventes-jour' && s.sale_type === 'proforma') return false;
+
+      return !searchQuery || 
+        s.customer_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.invoice_number?.toLowerCase().includes(searchQuery.toLowerCase());
+    }), [sales, searchQuery, mode]);
 
   const filteredSuppliers = useMemo(() =>
     suppliers.filter(s => 
@@ -537,15 +541,15 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              <Badge variant={sale.payment_status === 'paid' ? 'success' : 'warning'} className={cn("text-[9px] uppercase font-bold px-1", sale.payment_status === 'paid' && "bg-success text-white")}>
-                                {sale.payment_status === 'paid' ? t('edition.paid') : t('edition.pending')}
+                              <Badge variant={(sale.payment_status === 'paid' && sale.sale_type !== 'proforma') ? 'success' : 'warning'} className={cn("text-[9px] uppercase font-bold px-1", (sale.payment_status === 'paid' && sale.sale_type !== 'proforma') && "bg-success text-white")}>
+                                {(sale.payment_status === 'paid' && sale.sale_type !== 'proforma') ? t('edition.paid') : t('edition.pending')}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-xs font-medium uppercase">{getProductName(item)}</TableCell>
                             <TableCell className="text-xs text-center font-mono">{item.quantity}</TableCell>
                             <TableCell className="text-xs text-right font-mono">{formatCurrency(item.unit_price)}</TableCell>
                             <TableCell className="text-xs text-right font-bold font-mono">{formatCurrency(item.total)}</TableCell>
-                            <TableCell className="text-xs font-medium">{workerMap[sale.worker_id || ''] || (sale.worker_id ? `ID: ${sale.worker_id.slice(0,8)}` : '—')}</TableCell>
+                            <TableCell className="text-xs font-medium">{workerMap[sale.worker_id || ''] || ((isLoading && !workerMap[sale.worker_id || '']) ? '...' : (sale.worker_id ? (sale.worker_id.length < 15 ? sale.worker_id : `ID: ${sale.worker_id.slice(0,8)}`) : '—'))}</TableCell>
                           </TableRow>
                         ))
                       )}
@@ -650,15 +654,15 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge variant={sale.payment_status === 'paid' ? 'success' : 'warning'} className={cn("text-[9px] uppercase font-bold px-1", sale.payment_status === 'paid' && "bg-success text-white")}>
-                              {sale.payment_status === 'paid' ? t('edition.paid') : t('edition.pending')}
+                            <Badge variant={(sale.payment_status === 'paid' && sale.sale_type !== 'proforma') ? 'success' : 'warning'} className={cn("text-[9px] uppercase font-bold px-1", (sale.payment_status === 'paid' && sale.sale_type !== 'proforma') && "bg-success text-white")}>
+                              {(sale.payment_status === 'paid' && sale.sale_type !== 'proforma') ? t('edition.paid') : t('edition.pending')}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-xs font-bold uppercase">{sale.customer_name || t('customer.counterClient')}</TableCell>
                           <TableCell className="text-xs font-mono max-w-[200px] truncate" title={sale.sale_items?.map(i => getProductName(i)).join(', ')}>
                             {sale.sale_items?.map(i => getProductName(i)).join(', ') || '—'}
                           </TableCell>
-                          <TableCell className="text-xs font-medium">{workerMap[sale.worker_id || ''] || (sale.worker_id ? `ID: ${sale.worker_id.slice(0,8)}` : '—')}</TableCell>
+                          <TableCell className="text-xs font-medium">{workerMap[sale.worker_id || ''] || ((isLoading && !workerMap[sale.worker_id || '']) ? '...' : (sale.worker_id ? (sale.worker_id.length < 15 ? sale.worker_id : `ID: ${sale.worker_id.slice(0,8)}`) : '—'))}</TableCell>
                           <TableCell className="text-xs text-right font-black font-mono text-primary">{formatCurrency(sale.total_price)}</TableCell>
                           <TableCell className="text-center">
                             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10" onClick={() => setSelectedSale(sale)}>

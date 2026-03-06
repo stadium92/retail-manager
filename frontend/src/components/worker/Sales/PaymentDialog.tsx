@@ -70,7 +70,17 @@ export function PaymentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-[hsl(180,60%,85%)] border-4 border-[hsl(180,60%,40%)] p-0">
+      <DialogContent 
+        className="max-w-md bg-[hsl(180,60%,85%)] border-4 border-[hsl(180,60%,40%)] p-0"
+        onKeyDown={(e) => {
+          // Trap Enter key to confirm payment and prevent grid navigation
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            handleConfirm();
+          }
+        }}
+      >
         <DialogHeader className="bg-[hsl(180,60%,40%)] px-4 py-3">
           <DialogTitle className="text-white font-mono text-lg uppercase">
             {t('menu.program.voucherSettlement')} - {mode === 'vente-detail' ? t('sidebar.sales') : t('menu.program.invoice')}
@@ -108,8 +118,18 @@ export function PaymentDialog({
               <div>
                 <Label className="font-mono text-sm">{t('menu.program.receivedAmount')}</Label>
                 <NumericInput
+                  autoFocus
                   value={amountReceived}
                   onValueChange={(v) => setAmountReceived(v)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (!(change < 0) && !isProcessing) {
+                        handleConfirm();
+                      }
+                    }
+                  }}
                   className="text-xl font-bold font-mono text-right bg-white"
                 />
               </div>
@@ -155,6 +175,15 @@ export function PaymentDialog({
                   value={partialPayment}
                   onValueChange={(v) => setPartialPayment(v)}
                   max={totalAmount}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (!isProcessing) {
+                        handleConfirm();
+                      }
+                    }
+                  }}
                   className="text-lg font-bold font-mono text-right bg-white"
                 />
               </div>
