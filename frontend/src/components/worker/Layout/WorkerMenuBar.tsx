@@ -251,7 +251,7 @@ export function WorkerMenuBar({ activeModule, onModuleChange, className }: Worke
 
         return (
           <MenubarMenu key={index}>
-            <MenubarTrigger
+            <MenubarTrigger id="worker-menubar-trigger-0"
               className={cn(
                 'px-4 py-2 text-sm font-medium rounded-none transition-all cursor-pointer',
                 'data-[state=open]:bg-primary data-[state=open]:text-primary-foreground',
