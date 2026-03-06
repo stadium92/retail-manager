@@ -617,7 +617,8 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         client_id: currentSession.clientId || undefined,
         items: cartItems,
         total_price: netTotal,
-        payment_method: 'cash',
+        payment_method: 'credit', // Using credit/pending so it goes to receivables/invoices rather than cash
+        payment_status: 'pending',
         sale_type: 'proforma',
         customer_name: customerName || undefined,
         customer_phone: matchedClient?.phone || undefined,

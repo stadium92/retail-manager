@@ -11,6 +11,7 @@ export interface CreateSalePayload {
     total_price: number;
     payment_method: 'cash' | 'card' | 'credit';
     sale_type: 'detail' | 'gros' | 'proforma';
+    payment_status?: 'paid' | 'pending';
     customer_name?: string;
     customer_phone?: string;
     customer_address?: string;
@@ -37,10 +38,13 @@ export class OfflineSalesService {
             discount: item.discount || 0,
             total: item.total || item.lineTotal || 0,
         }));
+        
+        const defaultPaymentStatus = payload.sale_type === 'proforma' || payload.payment_method === 'credit' ? 'pending' : 'paid';
 
         const localSale = {
             id: saleId,
             ...payload,
+            payment_status: payload.payment_status || defaultPaymentStatus,
             items: flattenedItems,
             created_at: timestamp,
             synced: false
@@ -74,7 +78,7 @@ export class OfflineSalesService {
                             sale_type: payload.sale_type,
                             total_price: payload.total_price,
                             payment_method: payload.payment_method,
-                            payment_status: 'paid',
+                            payment_status: localSale.payment_status,
                             discount: payload.discount || 0,
                             invoice_number: payload.invoice_number,
                             order_ref: payload.order_ref,
