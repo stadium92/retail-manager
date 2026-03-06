@@ -296,46 +296,58 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     setIsLoading(true);
     try {
       console.log('[OrderLoad] Searching for ref:', cleanRef);
-      // Fetch all sales for this store
+      // Fetch sales from local data service
       const sales = await OfflineDataService.getSales(storeId);
+      const products = useMasterDataStore.getState().products;
+
+      // Find sale matching invoice_number or order_ref (Case insensitive)
       const foundSale = sales.find(s => 
-        (s.invoice_number && String(s.invoice_number).toLowerCase() === cleanRef.toLowerCase()) || 
-        (s.order_ref && String(s.order_ref).toLowerCase() === cleanRef.toLowerCase())
+        (s.invoice_number && String(s.invoice_number).toLowerCase().includes(cleanRef.toLowerCase())) || 
+        (s.order_ref && String(s.order_ref).toLowerCase().includes(cleanRef.toLowerCase()))
       );
       
       if (foundSale) {
-        console.log('[OrderLoad] Found sale:', foundSale.id, foundSale);
+        console.log('[OrderLoad] Found sale object:', foundSale);
         const rawItems = foundSale.sale_items || foundSale.items || [];
         
-        const newItems: SanifereLineItem[] = Array.isArray(rawItems) ? rawItems.map((item: any, index: number) => {
-          const product = item.product || {};
-          const packSize = product.packaging ? parseInt(String(product.packaging).match(/(\d+)/)?.[1] || '1', 10) : 1;
+        if (rawItems.length === 0) {
+            toast.info(t('common.noData') + ': ' + cleanRef + ' (Empty items)');
+            setIsLoading(false);
+            return;
+        }
+
+        const newItems: SanifereLineItem[] = rawItems.map((item: any, index: number) => {
+          const pid = item.product_id || (item.product && item.product.id);
+          const cachedProduct = products.find(p => p.id === pid) || item.product || {};
+          
+          const packSize = cachedProduct.packaging ? parseInt(String(cachedProduct.packaging).match(/(\d+)/)?.[1] || '1', 10) : 1;
+          const unitPrice = Number(item.unit_price || item.price || 0);
           
           return {
             id: crypto.randomUUID(),
             lineNumber: index + 1,
-            productId: item.product_id || product.id,
-            designation: item.product_name || product.name || 'Unknown',
-            code: product.sku || '',
+            productId: pid,
+            designation: item.product_name || item.product?.name || cachedProduct.name || 'Unknown',
+            code: item.product?.sku || cachedProduct.sku || '',
             conditionnement: packSize,
-            stock: product.quantity || 0,
-            unitPrice: Number(item.unit_price) || 0,
-            basePrice: Number(product.unit_price) || Number(item.unit_price) || 0,
+            stock: cachedProduct.quantity || 0,
+            unitPrice: unitPrice,
+            basePrice: Number(cachedProduct.unit_price) || unitPrice,
             quantity: Number(item.quantity) || 1,
             discountPercent: Number(item.discount) || 0,
-            lineTotal: Number(item.total) || 0,
-            isBox: item.is_box || false,
-            unit_type: product.unit_type || (item.is_box ? 'Carton' : 'Piece'),
+            lineTotal: Number(item.total) || (unitPrice * Number(item.quantity || 1)),
+            isBox: item.is_box || (Number(item.quantity) % packSize === 0 && packSize > 1 && unitPrice > (Number(cachedProduct.unit_price) || 0)),
+            unit_type: cachedProduct.unit_type || (item.is_box ? 'Carton' : 'Piece'),
             priceTiers: { 
-               1: Number(product.unit_price) || 0, 
-               2: Number(product.selling_price_2) || 0, 
-               3: Number(product.selling_price_3) || 0, 
-               4: Number(product.selling_price_4) || 0 
+               1: Number(cachedProduct.unit_price) || 0, 
+               2: Number(cachedProduct.selling_price_2) || 0, 
+               3: Number(cachedProduct.selling_price_3) || 0, 
+               4: Number(cachedProduct.selling_price_4) || 0 
             }
           };
-        }) : [];
+        });
 
-        // Add mandatory empty row for further input
+        // Add mandatory empty row for navigation
         newItems.push({
           id: crypto.randomUUID(),
           lineNumber: newItems.length + 1,
@@ -361,10 +373,11 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         });
         toast.success(t('common.success'));
       } else {
+        console.warn('[OrderLoad] No sale found for ref:', cleanRef);
         toast.error(t('common.noData') + ': ' + cleanRef);
       }
     } catch (e) {
-      console.error('[OrderLoad] Fatal Error:', e);
+      console.error('[OrderLoad] Fatal Mapping Error:', e);
       toast.error(t('common.error'));
     } finally {
       setIsLoading(false);

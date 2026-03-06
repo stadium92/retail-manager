@@ -54,6 +54,10 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
   };
 
   const [formData, setFormData] = useState(initialFormState);
+
+
+  const [multiItems, setMultiItems] = useState<Array<typeof initialFormState & { id: string; isOpen: boolean }>>([]);
+
   const fetchData = useCallback(async () => {
     console.log('[FichiersProduits] Fetching data for store:', storeId);
     setLoading(true);
@@ -97,10 +101,6 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     }
   }, [storeId, t, setFamilies, setLoading]);
 
-  const [multiItems, setMultiItems] = useState<Array<typeof initialFormState & { id: string; isOpen: boolean }>>([]);
-
-
-
   useEffect(() => {
     const handleScannerInput = (e: any) => {
       const code = e.detail?.code;
@@ -141,6 +141,10 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     window.addEventListener('localDbDataUpdated', handleRefresh);
     return () => window.removeEventListener('localDbDataUpdated', handleRefresh);
   }, [storeId, fetchData]);
+
+
+
+
 
   const handleNumChange = (field: keyof typeof initialFormState, index?: number) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
