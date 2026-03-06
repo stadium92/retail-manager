@@ -73,66 +73,78 @@ export function FicheCaisseModule({ storeId }: FicheCaisseModuleProps) {
   const currentDate = new Date();
 
   // Fetch today's sales and payments
-  useEffect(() => {
-    const fetchDaySales = async () => {
-      if (!storeId) return;
+  const fetchData = useCallback(async () => {
+    if (!storeId) return;
+    
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    console.log('[FicheCaisse] Fetching transactions for today...');
+
+    try {
+      const headers = await OfflineAuthService.getAuthHeaders();
+      if (!headers) return;
+
+      // Fetch Sales
+      const salesRes = await fetch(`${localBridgeBaseUrl}/rest/v1/sales?store_id=${storeId}`, { headers });
+      const sales = await salesRes.json().catch(() => []);
       
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
+      // Fetch Supplier Payments (Expenses)
+      const paymentsRes = await fetch(`${localBridgeBaseUrl}/rest/v1/supplier_payments?store_id=${storeId}`, { headers });
+      const payments = await paymentsRes.json().catch(() => []);
 
-      try {
-        const headers = await OfflineAuthService.getAuthHeaders();
-        if (!headers) return;
-
-        // Fetch Sales
-        const salesRes = await fetch(`${localBridgeBaseUrl}/rest/v1/sales?store_id=${storeId}`, { headers });
-        const sales = await salesRes.json().catch(() => []);
+      if (salesRes.ok) {
+        const todaySales = (sales as any[]).filter(s => s.created_at && new Date(s.created_at) >= todayStart && s.sale_type !== 'proforma');
         
-        // Fetch Supplier Payments (Expenses)
-        const paymentsRes = await fetch(`${localBridgeBaseUrl}/rest/v1/supplier_payments?store_id=${storeId}`, { headers });
-        const payments = await paymentsRes.json().catch(() => []);
-
-        if (salesRes.ok) {
-          const todaySales = (sales as any[]).filter(s => s.created_at && new Date(s.created_at) >= todayStart && s.sale_type !== 'proforma');
+        const cashTotal = todaySales
+          .filter(s => s.payment_method === 'cash')
+          .reduce((sum, s) => sum + (s.total_price || 0), 0);
           
-          const cashTotal = todaySales
-            .filter(s => s.payment_method === 'cash')
-            .reduce((sum, s) => sum + (s.total_price || 0), 0);
-            
-          const creditTotal = todaySales
-            .filter(s => s.payment_method === 'credit')
-            .reduce((sum, s) => sum + (s.total_price || 0), 0);
+        const creditTotal = todaySales
+          .filter(s => s.payment_method === 'credit')
+          .reduce((sum, s) => sum + (s.total_price || 0), 0);
 
-          const chequeTotal = todaySales
-            .filter(s => s.payment_method === 'cheque')
-            .reduce((sum, s) => sum + (s.total_price || 0), 0);
+        const chequeTotal = todaySales
+          .filter(s => s.payment_method === 'cheque')
+          .reduce((sum, s) => sum + (s.total_price || 0), 0);
 
-          const supplierTotal = (payments as any[])
-            .filter(p => p.created_at && new Date(p.created_at) >= todayStart)
-            .reduce((sum, p) => sum + (p.amount || 0), 0);
+        const supplierTotal = (payments as any[])
+          .filter(p => p.created_at && new Date(p.created_at) >= todayStart)
+          .reduce((sum, p) => sum + (p.amount || 0), 0);
 
-          setDayData(prev => ({ 
-            ...prev, 
-            especesJour: cashTotal,
-            cheques: chequeTotal,
-            venteCredit: creditTotal,
-            reglementFournisseur: supplierTotal
-          }));
+        setDayData(prev => ({ 
+          ...prev, 
+          especesJour: cashTotal,
+          cheques: chequeTotal,
+          venteCredit: creditTotal,
+          reglementFournisseur: supplierTotal
+        }));
 
-          setComputerValues({
-            especes: cashTotal,
-            cheques: chequeTotal,
-            credits: 0, // Need client_payments table for this
-            ventesCredit: creditTotal
-          });
-        }
-      } catch (err) {
-        console.error('FicheCaisse Error:', err);
+        setComputerValues({
+          especes: cashTotal,
+          cheques: chequeTotal,
+          credits: 0, 
+          ventesCredit: creditTotal
+        });
+      }
+    } catch (err) {
+      console.error('[FicheCaisse] Fetch error:', err);
+    }
+  }, [storeId, localBridgeBaseUrl]);
+
+  useEffect(() => {
+    fetchData();
+
+    const handleRefresh = (e: any) => {
+      if (e.detail?.type === 'sale') {
+        console.log('[FicheCaisse] Refreshing due to sale event');
+        fetchData();
       }
     };
-    
-    fetchDaySales();
-  }, [storeId, localBridgeBaseUrl]);
+
+    window.addEventListener('localDbDataUpdated', handleRefresh);
+    return () => window.removeEventListener('localDbDataUpdated', handleRefresh);
+  }, [fetchData]);
 
   // Calculate totals
   const billTotal = useMemo(() => {

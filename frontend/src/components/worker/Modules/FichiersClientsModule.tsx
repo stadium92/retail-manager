@@ -161,6 +161,7 @@ export function FichiersClientsModule({ storeId }: FichiersClientsModuleProps) {
       // For now we assume local bridge is primary
     }
 
+    window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'client' } }));
     setIsDialogOpen(false);
     resetForm();
   };

@@ -308,6 +308,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
         }
 
         toast({ title: t('common.success') });
+        window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'product' } }));
         setIsDialogOpen(false);
         await fetchData();
     } catch (err: any) {

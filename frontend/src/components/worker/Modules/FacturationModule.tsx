@@ -7,14 +7,13 @@ import { POSTotals } from '@/components/pos/POSTotals';
 import { BarcodeScanner } from '@/components/shared/BarcodeScanner';
 import { Product } from '@/types';
 import { OfflineSalesService } from '@/services/OfflineSalesService';
+import { OfflineInventoryService } from '@/services/OfflineInventoryService';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { useFormatters } from '@/utils/formatting';
 import { useRegisterShortcuts } from '@/contexts/ShortcutsContext';
 import { useSettingsStore } from '@/stores/useSettingsStore';
-import { getDataClient } from '@/lib/dataClient';
-import { OfflineAuthService } from '@/services/OfflineAuthService';
 
 interface FacturationModuleProps {
   storeId: string;
@@ -114,45 +113,37 @@ export function FacturationModule({ storeId, mode }: FacturationModuleProps) {
           group: 'POS'
         }
       ]);
-  // Fetch products from products table via local bridge
-  useEffect(() => {
-    const fetchProducts = async () => {
-      if (!storeId) return;
-      setIsLoading(true);
-      try {
-        const { localBridgeBaseUrl } = getDataClient();
-        const headers = await OfflineAuthService.getAuthHeaders();
-        if (!headers) {
-          setIsLoading(false);
-          return;
-        }
-        const params = new URLSearchParams({ store_id: storeId });
-        const response = await fetch(`${localBridgeBaseUrl}/rest/v1/products?${params.toString()}`, { headers });
-        const data = await response.json().catch(() => []);
-        if (response.ok && data) {
-          const mappedProducts = (data as any[]).map((item: any) => ({
-            id: item.id,
-            store_id: item.store_id,
-            name: item.name,
-            description: item.description,
-            sku: item.sku,
-            unit_price: Number(item.unit_price) || 0,
-            cost_price: Number(item.cost_price) || 0,
-            quantity: item.quantity,
-            min_quantity: item.min_quantity,
-            image_url: item.image_url,
-            created_at: item.created_at,
-            updated_at: item.updated_at,
-          }));
-          setProducts(mappedProducts.map(mapProductToInventoryItem));
-        }
-      } catch (e) {
-        console.error('Failed to fetch products:', e);
+  // Fetch products robustly
+  const fetchData = useCallback(async () => {
+    if (!storeId) return;
+    setIsLoading(true);
+    console.log('[Facturation] Fetching robust inventory...');
+    try {
+      const { data, error } = await OfflineInventoryService.getInventory(storeId, { notify: false });
+      if (error) throw error;
+      if (data) {
+        setProducts(data.map(item => mapProductToInventoryItem(item as any)));
       }
+    } catch (err) {
+      console.error('[Facturation] Fetch error:', err);
+    } finally {
       setIsLoading(false);
-    };
-    fetchProducts();
+    }
   }, [storeId]);
+
+  useEffect(() => {
+    fetchData();
+
+    const handleRefresh = (e: any) => {
+      if (e.detail?.type === 'inventory' || e.detail?.type === 'product' || e.detail?.type === 'sale') {
+        console.log('[Facturation] Refreshing data due to DB update event');
+        fetchData();
+      }
+    };
+
+    window.addEventListener('localDbDataUpdated', handleRefresh);
+    return () => window.removeEventListener('localDbDataUpdated', handleRefresh);
+  }, [fetchData]);
 
   const handleScanResult = useCallback((result: string) => {
     const product = products.find(p => 

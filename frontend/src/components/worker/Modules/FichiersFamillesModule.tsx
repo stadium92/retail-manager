@@ -163,6 +163,7 @@ export function FichiersFamillesModule({ storeId }: FichiersFamillesModuleProps)
           toast({ title: t('common.success'), description: t('menu.program.newFamily') });
         }
         await fetchFamilies();
+        window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'family' } }));
         setIsDialogOpen(false);
         resetForm();
         return;

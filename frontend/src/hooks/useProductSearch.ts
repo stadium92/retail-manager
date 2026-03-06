@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getDataClient, smartFetch } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { Product } from '@/types';
@@ -10,8 +10,21 @@ interface SearchResult {
 }
 
 export function useProductSearch(storeId: string, enabled: boolean = true) {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Listen for local DB updates to invalidate search cache
+  useEffect(() => {
+    const handleRefresh = (e: any) => {
+      if (e.detail?.type === 'inventory' || e.detail?.type === 'product') {
+        console.log('[useProductSearch] Invalidating products-search due to DB update');
+        queryClient.invalidateQueries({ queryKey: ['products-search'] });
+      }
+    };
+    window.addEventListener('localDbDataUpdated', handleRefresh);
+    return () => window.removeEventListener('localDbDataUpdated', handleRefresh);
+  }, [queryClient]);
 
   // Debounce search input
   useEffect(() => {
@@ -152,14 +165,15 @@ export function useProductSearch(storeId: string, enabled: boolean = true) {
       return { data: [], total: 0 }; 
     },
     enabled: enabled && !!storeId,
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    staleTime: 0, // Always fetch fresh data
   });
 
   return {
     search,
     setSearch,
     results: query.data?.data || [],
-    isLoading: query.isLoading,
+    isLoading: query.isLoading || query.isFetching,
     total: query.data?.total || 0,
+    refetch: () => query.refetch(),
   };
 }

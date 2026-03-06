@@ -180,6 +180,7 @@ export function FichiersFournisseursModule({ storeId }: FichiersFournisseursModu
       toast({ title: t('common.success') });
     }
 
+    window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'supplier' } }));
     setIsDialogOpen(false);
     resetForm();
   };

@@ -24,6 +24,7 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
           if (!isDialogOpen) {
               e.preventDefault();
               e.stopPropagation();
+              if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
               window.dispatchEvent(new CustomEvent('nav-pay-shortcut'));
               return;
           }

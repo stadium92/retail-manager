@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Button } from '@/components/ui/button';
@@ -38,6 +38,7 @@ import { OfflineInventoryService } from '@/services/OfflineInventoryService';
 import { usePurchasingStore } from '@/stores/usePurchasingStore';
 import { LocalProductFamily } from '@/services/LocalDatabase';
 import { useTranslation } from 'react-i18next';
+import { useFormatters } from '@/utils/formatting';
 
 interface StockModuleProps {
   storeId: string;
@@ -47,6 +48,7 @@ interface StockModuleProps {
 
 export function StockModule({ storeId, mode }: StockModuleProps) {
   const { t, i18n } = useTranslation();
+  const { formatCurrency } = useFormatters();
   const { 
     search, setSearch, 
     filter, setFilter, 
@@ -101,94 +103,42 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
   const [prevUnitType, setPrevUnitType] = useState('Pièce');
 
   // Auto-scale quantity and prices when unit type changes
+  const fetchModuleData = useCallback(async () => {
+    if (!storeId) return;
+    console.log('[StockModule] Fetching module data for mode:', mode);
+    try {
+      if (mode === 'listing-stock') {
+         const familiesRes = await OfflineInventoryService.getProductFamilies(storeId);
+         if (familiesRes.data) setFamilies(familiesRes.data);
+         fetchSuppliers(storeId);
+      }
+      if (mode === 'mouvements-stock') {
+        const { movements: movData, offlineMessage } = await OfflineDataService.getStockMovements(storeId);
+        setMovements(movData);
+        if (offlineMessage) setMovementsMessage(offlineMessage);
+      }
+    } catch (error) {
+      console.error('[StockModule] Fetch error:', error);
+    }
+  }, [storeId, mode, fetchSuppliers]);
+
+  const fetchBatches = useCallback(async () => {
+    if (selectedProductId && storeId) {
+      const { data } = await OfflineInventoryService.getProductBatches(storeId, selectedProductId);
+      if (data) setBatches(data);
+      else setBatches([]);
+    }
+  }, [selectedProductId, storeId]);
+
   useEffect(() => {
-    if (formData.unit_type === prevUnitType) return;
+    fetchModuleData();
+  }, [fetchModuleData]);
 
-    const packaging = parseInt(formData.packaging) || 1;
-    if (packaging <= 1) {
-      setPrevUnitType(formData.unit_type);
-      return;
-    }
-
-    const isNowPack = ['Carton', 'Box', 'Pack'].includes(formData.unit_type);
-    const wasPack = ['Carton', 'Box', 'Pack'].includes(prevUnitType);
-
-    if (isNowPack && !wasPack) {
-      // Switching Piece -> Box: divide qty, multiply prices
-      setFormData(prev => ({
-        ...prev,
-        quantity: (parseFloat(prev.quantity || '0') / packaging).toString(),
-        price: (parseFloat(prev.price || '0') * packaging).toString(),
-        selling_price_2: prev.selling_price_2 ? (parseFloat(prev.selling_price_2) * packaging).toString() : '',
-        selling_price_3: prev.selling_price_3 ? (parseFloat(prev.selling_price_3) * packaging).toString() : '',
-        selling_price_4: prev.selling_price_4 ? (parseFloat(prev.selling_price_4) * packaging).toString() : '',
-        cost: prev.cost ? (parseFloat(prev.cost) * packaging).toString() : '',
-        wholesale_price_ht: prev.wholesale_price_ht ? (parseFloat(prev.wholesale_price_ht) * packaging).toString() : '',
-        wholesale_price_ttc: prev.wholesale_price_ttc ? (parseFloat(prev.wholesale_price_ttc) * packaging).toString() : '',
-      }));
-    } else if (!isNowPack && wasPack) {
-      // Switching Box -> Piece: multiply qty, divide prices
-      setFormData(prev => ({
-        ...prev,
-        quantity: (parseFloat(prev.quantity || '0') * packaging).toString(),
-        price: (parseFloat(prev.price || '0') / packaging).toString(),
-        selling_price_2: prev.selling_price_2 ? (parseFloat(prev.selling_price_2) / packaging).toString() : '',
-        selling_price_3: prev.selling_price_3 ? (parseFloat(prev.selling_price_3) / packaging).toString() : '',
-        selling_price_4: prev.selling_price_4 ? (parseFloat(prev.selling_price_4) / packaging).toString() : '',
-        cost: prev.cost ? (parseFloat(prev.cost) / packaging).toString() : '',
-        wholesale_price_ht: prev.wholesale_price_ht ? (parseFloat(prev.wholesale_price_ht) / packaging).toString() : '',
-        wholesale_price_ttc: prev.wholesale_price_ttc ? (parseFloat(prev.wholesale_price_ttc) / packaging).toString() : '',
-      }));
-    }
-
-    setPrevUnitType(formData.unit_type);
-  }, [formData.unit_type, formData.packaging]);
+  useEffect(() => {
+    fetchBatches();
+  }, [fetchBatches]);
 
   const getLocale = () => (i18n.language === 'fr' || i18n.language === 'bm') ? fr : enUS;
-  const formatCurrency = (amount: number) => amount.toLocaleString(i18n.language === 'bm' ? 'fr-ML' : i18n.language) + ' F';
-
-  useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!storeId) return;
-      try {
-        if (mode === 'listing-stock') {
-           const familiesRes = await OfflineInventoryService.getProductFamilies(storeId);
-           if (familiesRes.data) setFamilies(familiesRes.data);
-           fetchSuppliers(storeId);
-        }
-        if (mode === 'mouvements-stock') {
-          const { movements: movData, offlineMessage } = await OfflineDataService.getStockMovements(storeId);
-          setMovements(movData);
-          if (offlineMessage) setMovementsMessage(offlineMessage);
-        }
-      } catch (error) {
-        console.error(error);
-      }
-    };
-    fetchData();
-  }, [storeId, mode]);
-
-  useEffect(() => {
-    const fetchBatches = async () => {
-      if (selectedProductId && storeId) {
-        const { data } = await OfflineInventoryService.getProductBatches(storeId, selectedProductId);
-        if (data) setBatches(data);
-        else setBatches([]);
-      }
-    };
-    fetchBatches();
-  }, [selectedProductId, storeId]);
 
   const handleOpenForm = () => {
     setFormData({
@@ -273,6 +223,7 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
       if (error) toast.error(t('common.error'));
       else {
         toast.success(t('common.success'));
+        window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
         setFormOpen(false);
         refetchStock();
       }
@@ -295,6 +246,7 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
     try {
       for (const [id, qty] of Object.entries(inventoryChanges)) await OfflineDataService.updateProductStock(id, qty, 'Inventaire');
       toast.success(t('common.success'));
+      window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
       refetchStock();
       setInventoryChanges({});
     } catch (error) {

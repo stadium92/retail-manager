@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { WifiOff, TrendingUp, Package, Calculator } from 'lucide-react';
 import { OfflineDataService } from '@/services/OfflineDataService';
@@ -17,33 +17,34 @@ export function ValorisationStock({ storeId }: ValorisationStockProps) {
   const [loading, setLoading] = useState(true);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
-  useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
+  const fetchData = useCallback(async () => {
+    if (!storeId) return;
+    setLoading(true);
+    console.log('[ValorisationStock] Fetching stock valuation...');
+    try {
+      const data = await OfflineDataService.getStockValuation(storeId);
+      setValuation(data || { total_cost: 0, total_retail: 0, item_count: 0 });
+    } catch (err) {
+      console.error('[ValorisationStock] Fetch error:', err);
+      setValuation({ total_cost: 0, total_retail: 0, item_count: 0 });
+    } finally {
+      setLoading(false);
+    }
+  }, [storeId]);
 
   useEffect(() => {
-    const fetchValuation = async () => {
-      setLoading(true);
-      try {
-        const data = await OfflineDataService.getStockValuation(storeId);
-        setValuation(data || { total_cost: 0, total_retail: 0, item_count: 0 });
-      } catch (err) {
-        console.error('Valuation fetch failed:', err);
-        setValuation({ total_cost: 0, total_retail: 0, item_count: 0 });
-      } finally {
-        setLoading(false);
+    fetchData();
+
+    const handleRefresh = (e: any) => {
+      if (e.detail?.type === 'inventory' || e.detail?.type === 'product' || e.detail?.type === 'sale') {
+        console.log('[ValorisationStock] Refreshing due to DB update event');
+        fetchData();
       }
     };
 
-    fetchValuation();
-  }, [storeId]);
+    window.addEventListener('localDbDataUpdated', handleRefresh);
+    return () => window.removeEventListener('localDbDataUpdated', handleRefresh);
+  }, [fetchData]);
 
   if (loading) return (
     <div className="p-12 flex flex-col items-center justify-center space-y-4">

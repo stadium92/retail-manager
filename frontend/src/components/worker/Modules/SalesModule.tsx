@@ -64,7 +64,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   const { formatCurrency } = useFormatters();
   const { getKeyForAction } = useSettingsStore();
   const { user } = useAuth();
-  const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
+  const { localBridgeBaseUrl } = getDataClient();
   const { sessions, updateSession } = useSalesStore();
   const { clients, setClients, services } = useMasterDataStore();
   const { scanProduct } = useProductScanner(storeId);
@@ -106,12 +106,6 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     contentRef: printRef,
   });
 
-  useEffect(() => {
-    if (!savedInvoiceNumber) {
-      updateSession(mode, { invoiceNumber });
-    }
-  }, [invoiceNumber, savedInvoiceNumber, mode, updateSession]);
-
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [isLoading, setIsLoading] = useState(true);
   const [isProductLookupOpen, setIsProductLookupOpen] = useState(false);
@@ -119,24 +113,28 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [activeTier, setActiveTier] = useState<number>(1);
   const [initialSearchQuery, setInitialSearchQuery] = useState('');
+  const [store, setStore] = useState<any>(null);
 
-  // Fetch Store Default Tier
+  const fetchStoreSettings = useCallback(async () => {
+    if (!storeId) return;
+    try {
+      const { data } = await OfflineStoreService.getStore(storeId);
+      if (data) setStore(data);
+    } catch (error) {
+      console.error('[SalesModule] Store settings fetch error:', error);
+    }
+  }, [storeId]);
+
   useEffect(() => {
-    const fetchStoreSettings = async () => {
-      try {
-        const { data: stores } = await OfflineStoreService.getStores({ notify: false });
-        if (stores) {
-          const currentStore = stores.find(s => s.id === storeId);
-          if (currentStore && currentStore.default_price_tier) {
-            setActiveTier(currentStore.default_price_tier);
-          }
-        }
-      } catch (e) {
-        console.error("Failed to fetch store settings", e);
+    fetchStoreSettings();
+    const handleRefresh = (e: any) => {
+      if (e.detail?.type === 'settings' || e.detail?.type === 'store') {
+        fetchStoreSettings();
       }
     };
-    fetchStoreSettings();
-  }, [storeId]);
+    window.addEventListener('localDbDataUpdated', handleRefresh);
+    return () => window.removeEventListener('localDbDataUpdated', handleRefresh);
+  }, [fetchStoreSettings]);
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -147,7 +145,6 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       setIsLoading(true);
 
       try {
-        if (isLocalFirst) {
           const headers = await OfflineAuthService.getAuthHeaders();
           if (!headers) {
             setIsLoading(false);
@@ -159,9 +156,6 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
           if (clientRes.ok && clientPayload) {
             setClients(clientPayload);
           }
-        } else {
-          // No remote client available; clients remain as-is
-        }
       } catch (error) {
         console.error('Failed to fetch data:', error);
         toast.error(t('common.failedToLoad'));
@@ -171,7 +165,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     };
 
     fetchClients();
-  }, [storeId, isLocalFirst, localBridgeBaseUrl, clients.length, setClients, t]);
+  }, [storeId, localBridgeBaseUrl, clients.length, setClients, t]);
 
   const netTotal = useMemo(() => {
     return lineItems.reduce((sum, item) => sum + item.lineTotal, 0);
@@ -410,11 +404,6 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   };
 
   const addProduct = useCallback((product: Product) => {
-    // Prevent adding products with zero or negative stock (except for proforma)
-    if (mode !== 'proforma' && (!product.quantity || product.quantity <= 0)) {
-        toast.error(t('inventory.fields.outOfStock') || 'Product is out of stock');
-        return;
-    }
 
     const existingIndex = lineItems.findIndex(li => li.productId === product.id);
     const clientDiscount = currentSession.clientDiscount || 0;
@@ -423,14 +412,6 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       const newItems = [...lineItems];
       const item = newItems[existingIndex];
       
-      // Stock check for existing items
-      const potentialQty = item.quantity + 1;
-      const totalUnitsRequested = item.isBox ? potentialQty * (item.conditionnement || 1) : potentialQty;
-      
-      if (mode !== 'proforma' && totalUnitsRequested > (product.quantity || 0)) {
-          toast.error(t('inventory.fields.insufficientStock') || 'Insufficient stock');
-          return;
-      }
 
       const newQty = item.quantity + 1;
       newItems[existingIndex] = {
@@ -518,17 +499,6 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     const item = newItems[index];
     const numQty = quantity === '' ? 0 : Number(quantity);
 
-    // Stock check
-    if (mode !== 'proforma') {
-      const totalUnitsRequested = item.isBox ? numQty * (item.conditionnement || 1) : numQty;
-      if (totalUnitsRequested > (item.stock || 0)) {
-        toast.error(t('inventory.fields.insufficientStock') || 'Insufficient stock');
-        // Do not update the quantity, or maybe revert to max available? 
-        // For strict enforcement, we just return.
-        return;
-      }
-    }
-
     newItems[index] = {
       ...item,
       quantity,
@@ -580,15 +550,6 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     }
 
     const newIsBox = !item.isBox;
-
-    // Stock check
-    if (mode !== 'proforma') {
-      const totalUnitsRequested = newIsBox ? item.quantity * (item.conditionnement || 1) : item.quantity;
-      if (totalUnitsRequested > (item.stock || 0)) {
-        toast.error(t('inventory.fields.insufficientStock') || 'Insufficient stock');
-        return;
-      }
-    }
 
     // Fix: Do NOT change unitPrice. Keep base price.
     // Calculate line total using the new isBox flag and existing unitPrice.
@@ -710,6 +671,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       if (error) throw error;
 
       toast.success(t('worker.sales.saleRecorded'));
+      window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'sale' } }));
 
       updateSession(mode, {
         lineItems: [],
@@ -775,6 +737,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       if (error) throw error;
 
       toast.success(t('menu.program.saveSuccess', 'Draft saved successfully'));
+      window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'sale' } }));
       updateSession(mode, {
         lineItems: [],
         customerCode: '',
@@ -1094,7 +1057,17 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
 
       <PaymentDialog
         open={isPaymentOpen}
-        onOpenChange={setIsPaymentOpen}
+        onOpenChange={(open) => {
+            setIsPaymentOpen(open);
+            if (!open) {
+                // Focus the next line (last empty row) when payment widget closes
+                setTimeout(() => {
+                    const store = useNavigationStore.getState();
+                    store.jumpToLastEmptyRow();
+                    store.setMode('hover');
+                }, 100);
+            }
+        }}
         mode={mode}
         totalAmount={netTotal}
         onConfirm={handlePaymentConfirm}

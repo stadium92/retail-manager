@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -39,6 +39,7 @@ export function PaymentDialog({
   const [amountReceived, setAmountReceived] = useState<number>(totalAmount);
   const [partialPayment, setPartialPayment] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const { formatCurrency } = useFormatters();
   const { currency } = useSettingsStore();
@@ -65,6 +66,22 @@ export function PaymentDialog({
       setIsProcessing(false);
     }
   };
+
+  // Auto-select text when dialog opens
+  useEffect(() => {
+    if (open) {
+      console.log('[PaymentDialog] Dialog opened, triggering auto-select...');
+      // Increased delay to 150ms to ensure grid cleanup (blurs) are finished
+      const timer = setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          inputRef.current.setSelectionRange(0, inputRef.current.value.length);
+          console.log('[PaymentDialog] Input focused and selected');
+        }
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
 
   const quickAmounts = getCurrencyConfig(currency).quickAmounts;
 
@@ -118,7 +135,7 @@ export function PaymentDialog({
               <div>
                 <Label className="font-mono text-sm">{t('menu.program.receivedAmount')}</Label>
                 <NumericInput
-                  autoFocus
+                  ref={inputRef}
                   value={amountReceived}
                   onValueChange={(v) => setAmountReceived(v)}
                   onKeyDown={(e) => {
