@@ -8,7 +8,6 @@ import { OfflineSalesService } from '@/services/OfflineSalesService';
 import { OfflineInventoryService } from '@/services/OfflineInventoryService';
 import { useToast } from '@/hooks/use-toast';
 import { Product } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
 import { CheckoutModal } from './components/CheckoutModal';
 import { Button } from '@/components/ui/button';
 import { getDataClient } from '@/lib/dataClient';
@@ -89,12 +88,9 @@ export default function POSPage() {
         setIsLoading(true);
 
         let storeId: string | undefined = undefined;
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user?.user_metadata?.store_id) {
-            storeId = user.user_metadata.store_id;
-        } else {
-            const offlineSession = await OfflineAuthService.getOfflineSession();
-            storeId = offlineSession?.user?.user_metadata?.store_id;
+        const offlineSession = await OfflineAuthService.getOfflineSession();
+        if (offlineSession?.user?.user_metadata?.store_id) {
+            storeId = offlineSession.user.user_metadata.store_id;
         }
 
         const { data } = await OfflineInventoryService.getInventory(storeId, { notify: false });
@@ -178,18 +174,10 @@ export default function POSPage() {
             let userId = '';
             let storeId = '';
 
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                userId = user.id;
-                storeId = user.user_metadata?.store_id;
-            }
-
-            if (!storeId || !userId) {
-                const offlineSession = await OfflineAuthService.getOfflineSession();
-                if (offlineSession?.user) {
-                    userId = offlineSession.user.id;
-                    storeId = offlineSession.user.user_metadata?.store_id;
-                }
+            const offlineSession = await OfflineAuthService.getOfflineSession();
+            if (offlineSession?.user) {
+                userId = offlineSession.user.id;
+                storeId = offlineSession.user.user_metadata?.store_id;
             }
 
             if (!storeId) {

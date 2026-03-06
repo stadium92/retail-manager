@@ -6,7 +6,6 @@ import { POSSidebar } from '@/components/pos/POSSidebar';
 import { POSTotals } from '@/components/pos/POSTotals';
 import { BarcodeScanner } from '@/components/shared/BarcodeScanner';
 import { Product } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
 import { OfflineSalesService } from '@/services/OfflineSalesService';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,6 +13,8 @@ import { useTranslation } from 'react-i18next';
 import { useFormatters } from '@/utils/formatting';
 import { useRegisterShortcuts } from '@/contexts/ShortcutsContext';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { getDataClient } from '@/lib/dataClient';
+import { OfflineAuthService } from '@/services/OfflineAuthService';
 
 interface FacturationModuleProps {
   storeId: string;
@@ -113,33 +114,40 @@ export function FacturationModule({ storeId, mode }: FacturationModuleProps) {
           group: 'POS'
         }
       ]);
-  // Fetch products from products table
+  // Fetch products from products table via local bridge
   useEffect(() => {
     const fetchProducts = async () => {
       if (!storeId) return;
       setIsLoading(true);
-      const { data } = await supabase
-        .from('products')
-        .select('*')
-        .eq('store_id', storeId)
-        .order('name');
-      if (data) {
-        // Map products to expected format
-        const mappedProducts = data.map((item) => ({
-          id: item.id,
-          store_id: item.store_id,
-          name: item.name,
-          description: item.description,
-          sku: item.sku,
-          unit_price: Number(item.unit_price) || 0,
-          cost_price: Number(item.cost_price) || 0,
-          quantity: item.quantity,
-          min_quantity: item.min_quantity,
-          image_url: item.image_url,
-          created_at: item.created_at,
-          updated_at: item.updated_at,
-        }));
-        setProducts(mappedProducts.map(mapProductToInventoryItem));
+      try {
+        const { localBridgeBaseUrl } = getDataClient();
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (!headers) {
+          setIsLoading(false);
+          return;
+        }
+        const params = new URLSearchParams({ store_id: storeId });
+        const response = await fetch(`${localBridgeBaseUrl}/rest/v1/products?${params.toString()}`, { headers });
+        const data = await response.json().catch(() => []);
+        if (response.ok && data) {
+          const mappedProducts = (data as any[]).map((item: any) => ({
+            id: item.id,
+            store_id: item.store_id,
+            name: item.name,
+            description: item.description,
+            sku: item.sku,
+            unit_price: Number(item.unit_price) || 0,
+            cost_price: Number(item.cost_price) || 0,
+            quantity: item.quantity,
+            min_quantity: item.min_quantity,
+            image_url: item.image_url,
+            created_at: item.created_at,
+            updated_at: item.updated_at,
+          }));
+          setProducts(mappedProducts.map(mapProductToInventoryItem));
+        }
+      } catch (e) {
+        console.error('Failed to fetch products:', e);
       }
       setIsLoading(false);
     };

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { OfflineSalesService } from "@/services/OfflineSalesService";
-import { supabase } from "@/integrations/supabase/client";
+import { OfflineAuthService } from "@/services/OfflineAuthService";
 import { useToast } from "@/hooks/use-toast";
 import { POSLayout } from "./components/POSLayout";
 import {
@@ -42,10 +42,10 @@ export default function ProformaList() {
     const loadProformas = async () => {
         setIsLoading(true);
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user?.user_metadata?.store_id) return;
+            const offlineSession = await OfflineAuthService.getOfflineSession();
+            if (!offlineSession?.user?.user_metadata?.store_id) return;
 
-            const data = await OfflineSalesService.getProformas(user.user_metadata.store_id);
+            const data = await OfflineSalesService.getProformas(offlineSession.user.user_metadata.store_id);
             setProformas(data);
         } catch (error) {
             console.error(error);

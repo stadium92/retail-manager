@@ -3,7 +3,6 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { OfflineStoreService } from '@/services/OfflineStoreService';
 import { OfflineInventoryService } from '@/services/OfflineInventoryService';
 import { OfflineSalesService } from '@/services/OfflineSalesService';
-import { supabase } from '@/integrations/supabase/client';
 import { Store, InventoryItem, SaleWithDetails, Profile } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -77,23 +76,8 @@ export default function StoreDetailsPage() {
         return;
       }
 
-      // Fetch workers assigned to this store
-      const { data: roles } = await supabase
-        .from('user_roles')
-        .select('user_id, role')
-        .eq('store_id', storeId)
-        .eq('role', 'worker');
-
-      const workers = await Promise.all(
-        (roles || []).map(async (role) => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', role.user_id)
-            .maybeSingle();
-          return { profile: profile || { id: role.user_id, created_at: '', updated_at: '' }, role: role.role };
-        })
-      );
+      // Workers: not available without supabase, return empty
+      const workers: Array<{ profile: Profile; role: string }> = [];
 
       // Fetch inventory
       const { data: inventory } = await OfflineInventoryService.getInventory(storeId);

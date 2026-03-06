@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Button } from '@/components/ui/button';
@@ -128,12 +127,7 @@ export function ReglementsBonsModule({ storeId }: ReglementsBonsModuleProps) {
         return;
       }
 
-      const { data, error } = await supabase
-        .from('sales')
-        .select('id, created_at, customer_name, customer_phone, invoice_number, total_price, payment_status')
-        .eq('store_id', storeId)
-        .in('payment_status', ['pending', 'partial'])
-        .order('created_at', { ascending: false });
+      const { data, error } = { data: null as any, error: new Error('Remote client unavailable') };
 
       if (error) {
         console.error('Error fetching credit sales:', error);
@@ -195,18 +189,10 @@ export function ReglementsBonsModule({ storeId }: ReglementsBonsModuleProps) {
           body: JSON.stringify({ payment_status: newStatus }),
         });
       } else {
-        const { error } = await supabase
-          .from('sales')
-          .update({
-            payment_status: newStatus,
-          })
-          .eq('id', selectedSale.id);
-
-        if (error) {
-          toast.error(t('common.error'));
-          console.error('Settlement error:', error);
-          return;
-        }
+        // No remote client available; settlement requires local bridge
+        toast.error(t('common.error'));
+        console.error('Settlement requires local bridge mode');
+        return;
       }
 
       toast.success(t('common.success'));

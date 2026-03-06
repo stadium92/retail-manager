@@ -7,7 +7,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Save, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { OfflineDataService } from '@/services/OfflineDataService';

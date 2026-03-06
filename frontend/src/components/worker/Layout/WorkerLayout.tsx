@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { WorkerMenuBar, WorkerModule } from './WorkerMenuBar';
 import { WorkerStatusBar } from './WorkerStatusBar';
 import { cn } from '@/lib/utils';
@@ -112,57 +111,10 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
       let foundStoreId = user?.user_metadata?.store_id || '';
       let foundStoreName = '';
 
-      // Try online first
-      if (navigator.onLine) {
-        try {
-          const { data: roleData } = await supabase
-            .from('user_roles')
-            .select('store_id, role')
-            .eq('user_id', user.id)
-            .in('role', ['worker', 'master']);
-
-          const roleWithStore = roleData?.find(r => r.store_id);
-
-          if (roleWithStore?.store_id) {
-            foundStoreId = roleWithStore.store_id;
-          } else {
-            const isMaster = roleData?.some(r => r.role === 'master');
-            if (isMaster) {
-              const { data: ownedStores } = await supabase
-                .from('stores')
-                .select('id, name')
-                .eq('owner_id', user.id)
-                .limit(1)
-                .maybeSingle();
-
-              if (ownedStores) {
-                foundStoreId = ownedStores.id;
-                foundStoreName = ownedStores.name;
-              }
-            }
-          }
-
-          if (foundStoreId && !foundStoreName) {
-            const { data: storeData } = await supabase
-              .from('stores')
-              .select('name')
-              .eq('id', foundStoreId)
-              .maybeSingle();
-
-            if (storeData) {
-              foundStoreName = storeData.name;
-            }
-          }
-
-          if (foundStoreId) {
-            setStoreId(foundStoreId);
-            setStoreName(foundStoreName);
-            localStorage.setItem('worker_store_id', foundStoreId);
-            localStorage.setItem('worker_store_name', foundStoreName);
-          }
-        } catch (error) {
-          console.log('Failed to fetch store online, using cache');
-        }
+      // Try to resolve store name from local bridge or cache
+      if (foundStoreId) {
+        const cachedStoreName = localStorage.getItem('worker_store_name');
+        if (cachedStoreName) foundStoreName = cachedStoreName;
       }
 
       if (!foundStoreId) {

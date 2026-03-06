@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -128,11 +127,21 @@ export function SettingsModule({ storeId, mode }: SettingsModuleProps) {
 
     setIsChangingPassword(true);
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: passwordForm.newPassword,
+      // Password change requires server-side auth; use local bridge
+      const { getDataClient } = await import('@/lib/dataClient');
+      const { OfflineAuthService } = await import('@/services/OfflineAuthService');
+      const dc = getDataClient();
+      const headers = await OfflineAuthService.getAuthHeaders();
+      if (!headers) throw new Error('Session expired');
+      const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/auth/update-password`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: passwordForm.newPassword }),
       });
-
-      if (error) throw error;
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.message || 'Password update failed');
+      }
 
       toast.success(t('common.success'));
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });

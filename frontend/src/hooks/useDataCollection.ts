@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 
@@ -36,25 +35,8 @@ export function useDataCollection(storeId?: string) {
           return;
         }
 
-        let query = supabase
-          .from('sales')
-          .select('created_at');
-
-        if (storeId) {
-          query = query.eq('store_id', storeId);
-        }
-
-        const { data, error } = await query;
-
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-          // Get unique days based on created_at
-          const uniqueDays = new Set(
-            data.map(sale => new Date(sale.created_at).toDateString())
-          );
-          setDaysCollected(uniqueDays.size);
-        }
+        // No remote fallback available; default to 0 days collected
+        setDaysCollected(0);
       } catch (error) {
         console.error('Error checking data collection:', error);
       } finally {

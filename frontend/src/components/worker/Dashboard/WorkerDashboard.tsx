@@ -11,7 +11,6 @@ import { Package, ShoppingCart, Truck } from 'lucide-react';
 import { OfflineManager } from '@/services/OfflineManager';
 import { OfflineSalesService } from '@/services/OfflineSalesService';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
 import { useTranslation } from 'react-i18next';
 
 export function WorkerDashboard() {
@@ -39,7 +38,8 @@ export function WorkerDashboard() {
   }, [user]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    const { OfflineAuthService } = await import('@/services/OfflineAuthService');
+    await OfflineAuthService.signOut();
   };
 
   return (

@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useReactToPrint } from 'react-to-print';
 import { InvoiceTemplate, InvoiceData } from '@/components/printing/InvoiceTemplate';
-import { supabase } from '@/integrations/supabase/client';
 import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { OfflineSalesService } from '@/services/OfflineSalesService';
@@ -158,11 +157,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
             setClients(clientPayload);
           }
         } else {
-          const { data: clientData } = await supabase
-            .from('clients')
-            .select('*')
-            .eq('store_id', storeId);
-            if (clientData) setClients(clientData); 
+          // No remote client available; clients remain as-is
         }
       } catch (error) {
         console.error('Failed to fetch data:', error);

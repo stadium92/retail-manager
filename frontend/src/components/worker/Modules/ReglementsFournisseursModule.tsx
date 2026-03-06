@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { usePurchasingStore, Supplier } from '@/stores/usePurchasingStore';
-import { supabase } from '@/integrations/supabase/client';
 import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { Button } from '@/components/ui/button';
@@ -128,15 +127,7 @@ export function ReglementsFournisseursModule({ storeId, isMasterView }: Reglemen
             }
           }
         } else if (navigator.onLine) {
-          const { data } = await (supabase as any)
-            .from('supplier_payments')
-            .select('*, supplier:suppliers(name)')
-            .eq('store_id', storeId)
-            .order('created_at', { ascending: false });
-          if (data) {
-            remote = data;
-            success = true;
-          }
+          // No remote fallback available; payments remain from local cache
         }
 
         if (success && remote.length > 0) {

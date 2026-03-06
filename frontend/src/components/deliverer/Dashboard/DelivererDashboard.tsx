@@ -4,7 +4,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { supabase } from '@/integrations/supabase/client';
 import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { Phone, MapPin, Navigation, CheckCircle2, Package, Truck, Map } from 'lucide-react';
@@ -81,63 +80,20 @@ export function DelivererDashboard() {
   const setupAutoSync = () => {
     const syncHandlers = {
       delivery_update: async (data: any) => {
-        if (useLocalBridge) {
-          await localBridgeRequest(`/rest/v1/deliveries/${data.id}`, {
-            method: 'PATCH',
-            body: JSON.stringify(data.updates),
-          });
-          return true;
-        }
-        const { error } = await supabase
-          .from('deliveries')
-          .update(data.updates)
-          .eq('id', data.id);
-        return !error;
+        await localBridgeRequest(`/rest/v1/deliveries/${data.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify(data.updates),
+        });
+        return true;
       },
     };
     OfflineManager.setupAutoSync(syncHandlers);
   };
 
   const setupRealtime = () => {
-    if (useLocalBridge) {
-      return;
-    }
-    const channel = supabase
-      .channel('deliveries-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'deliveries',
-        },
-        (payload) => {
-          const { eventType, new: newRecord, old: oldRecord } = payload;
-          
-          // Show toast notification for status changes
-          if (eventType === 'UPDATE' && oldRecord.status !== newRecord.status) {
-            toast({
-              title: t('deliverer.dashboard.notifications.statusUpdate'),
-              description: t('deliverer.dashboard.notifications.statusChanged', { status: t(`deliveries.${newRecord.status}`) }),
-            });
-          }
-          
-          // Show notification when delivery is assigned to this deliverer
-          if (eventType === 'INSERT' || (eventType === 'UPDATE' && !oldRecord.deliverer_id && newRecord.deliverer_id)) {
-            toast({
-              title: t('deliverer.dashboard.notifications.newDelivery'),
-              description: t('deliverer.dashboard.notifications.assignedTo', { customer: newRecord.customer_name }),
-            });
-          }
-          
-          fetchDeliveries();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // Realtime subscriptions removed (supabase client deleted).
+    // Deliveries are refreshed via polling or manual refresh.
+    return;
   };
 
   const fetchDeliveries = async () => {
@@ -155,28 +111,8 @@ export function DelivererDashboard() {
         return;
       }
 
-      // Fetch deliveries assigned to this user
-      const { data, error } = await supabase
-        .from('deliveries')
-        .select('*')
-        .eq('deliverer_id', user.id)
-        .in('status', ['assigned', 'in_transit', 'pending'])
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching deliveries:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load deliveries',
-          variant: 'destructive',
-        });
-        setLoading(false);
-        return;
-      }
-
-      if (data) {
-        setDeliveries(data as DeliveryData[]);
-      }
+      // Non-local-bridge fallback removed; deliveries default to empty
+      setDeliveries([]);
     } catch (error) {
       console.error('Unexpected error fetching deliveries:', error);
       toast({
@@ -201,37 +137,17 @@ export function DelivererDashboard() {
     }
 
     try {
-      if (!useLocalBridge && OfflineManager.isOnline()) {
-        const { error } = await supabase
-          .from('deliveries')
-          .update(updates)
-          .eq('id', deliveryId);
-
-        if (error) {
-          console.error('Error updating delivery status:', error);
-          throw error;
-        }
-
+      if (useLocalBridge) {
+        await localBridgeRequest(`/rest/v1/deliveries/${deliveryId}`, {
+          method: 'PATCH',
+          body: JSON.stringify(updates),
+        });
         toast({
           title: t('deliverer.dashboard.statusUpdated'),
           description: t('deliverer.dashboard.statusMarked', { status: t(`deliveries.${newStatus}`) }),
         });
-        
-        // Refresh deliveries after successful update
         await fetchDeliveries();
       } else {
-        if (useLocalBridge) {
-          await localBridgeRequest(`/rest/v1/deliveries/${deliveryId}`, {
-            method: 'PATCH',
-            body: JSON.stringify(updates),
-          });
-          toast({
-            title: t('deliverer.dashboard.statusUpdated'),
-            description: t('deliverer.dashboard.statusMarked', { status: t(`deliveries.${newStatus}`) }),
-          });
-          await fetchDeliveries();
-          return;
-        }
         // Queue for offline sync
         OfflineManager.addToQueue('delivery_update', {
           id: deliveryId,
@@ -266,7 +182,7 @@ export function DelivererDashboard() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await OfflineAuthService.signOut();
   };
 
   if (loading) {
@@ -314,11 +230,11 @@ export function DelivererDashboard() {
             <OfflineIndicator
               syncHandlers={{
                 delivery_update: async (data: any) => {
-                  const { error } = await supabase
-                    .from('deliveries')
-                    .update(data.updates)
-                    .eq('id', data.id);
-                  return !error;
+                  await localBridgeRequest(`/rest/v1/deliveries/${data.id}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify(data.updates),
+                  });
+                  return true;
                 },
               }}
             />
