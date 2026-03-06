@@ -22,6 +22,7 @@ export const createCashRepo = (db: Database.Database) => {
       ) VALUES (
         @id, @store_id, @worker_id, @type, @amount, @category, @description, @reference, @created_at, @updated_at
       )
+      ON CONFLICT(id) DO NOTHING
     `),
     list: db.prepare('SELECT * FROM cash_transactions WHERE store_id = ? ORDER BY created_at DESC'),
     delete: db.prepare('DELETE FROM cash_transactions WHERE id = ?'),
@@ -33,13 +34,15 @@ export const createCashRepo = (db: Database.Database) => {
     },
 
     insertCashTransaction(tx: LocalCashTransaction) {
-      stmts.insert.run({
+      const result = stmts.insert.run({
         ...tx,
         worker_id: tx.worker_id ?? null,
         description: tx.description ?? null,
         reference: tx.reference ?? null,
       });
-      emitOutbox(db, tx.store_id, 'cash_transaction', tx.id, 'create', tx as unknown as Record<string, unknown>);
+      if (result.changes > 0) {
+        emitOutbox(db, tx.store_id, 'cash_transaction', tx.id, 'create', tx as unknown as Record<string, unknown>);
+      }
     },
 
     deleteCashTransaction(id: string) {
