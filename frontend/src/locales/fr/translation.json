@@ -62,7 +62,8 @@
     "added": "Ajouté à la liste",
     "enterConfirm": "ENTRÉE: Confirmer",
     "escClose": "ESC: Fermer",
-    "itemsFound": "{{count}} articles trouvés"
+    "itemsFound": "{{count}} articles trouvés",
+    "totalPage": "TOTAL PAGE"
   },
   "helpCenter": {
     "title": "Centre d'Aide",
@@ -1074,7 +1075,15 @@
       "purchaseTracking": "Suivi ACHATS",
       "purchaseByFamily": "Achats Familles/produits",
       "dailyPurchases": "Achats journaliers",
-      "periodPurchases": "Achats par période"
+      "periodPurchases": "Achats par période",
+      "situation_client": "Situation CLIENT",
+      "suivi_ventes_jour": "Ventes journalières",
+      "suivi_ventes_produit": "Ventes par produit",
+      "suivi_ventes_factures": "Liste des factures",
+      "situation_fournisseur": "Situation FOURNISSEUR",
+      "suivi_achats_famille": "Achats Familles/produits",
+      "suivi_achats_jour": "Achats journaliers",
+      "suivi_achats_periode": "Achats par période"
     },
     "management": {
       "trigger": "Gestion",

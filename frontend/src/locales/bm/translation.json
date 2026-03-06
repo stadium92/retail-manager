@@ -62,7 +62,8 @@
     "added": "A fàrala lisɛ la",
     "enterConfirm": "ENTER: Dɔn",
     "escClose": "ESC: Datugu",
-    "itemsFound": "{{count}} bɛnɛ sɔrɔla"
+    "itemsFound": "{{count}} bɛnɛ sɔrɔla",
+    "totalPage": "Bɛɛ fan bɛɛ"
   },
   "helpCenter": {
     "title": "Dɛmɛ Yɔrɔ",
@@ -1082,7 +1083,15 @@
       "purchaseTracking": "Fen san lajɛ",
       "purchaseByFamily": "Fen san gwan fɛ",
       "dailyPurchases": "Don o don san",
-      "periodPurchases": "San waati fɛ"
+      "periodPurchases": "San waati fɛ",
+      "situation_client": "Jatigɛla cogo",
+      "suivi_ventes_jour": "Don o don sɔrɔ",
+      "suivi_ventes_produit": "Sɔrɔ fen fɛ",
+      "suivi_ventes_factures": "Facturew tɔgɔ",
+      "situation_fournisseur": "Fournisseur cogo",
+      "suivi_achats_famille": "Fen san gwan fɛ",
+      "suivi_achats_jour": "Don o don san",
+      "suivi_achats_periode": "San waati fɛ"
     },
     "management": {
       "trigger": "Ɲɛnabɔli",
@@ -1090,7 +1099,7 @@
       "cashJournal": "Caisse gafɛ",
       "dashboard": "Kunnafoni yɔrɔ",
       "statistics": "Statistikw",
-      "stockStatus": "Fenw Cogoya",
+      "stockStatus": "Bɛnɛ cogo",
       "lossExit": "Fen min banna",
       "lossExitDescription": "Nin yɔrɔ in kɛ ka fen minnu tɛ feere se ka kɛ tun (expiration, tiɲɛni wala sonsanniya). O b'a to i ka bɛnɛ jate ka jija.",
       "reasons": {
@@ -1117,7 +1126,6 @@
       "revenueEvolution": "Wari sɔrɔ yɛlɛmali",
       "workerPerformance": "Baarakɛla baara",
       "categoryDistribution": "Sugu cɛmancɛ",
-      "stockStatus": "Bɛnɛ cogo",
       "volume": "Hakɛ",
       "recordExpense": "Wari bɔli kɛ",
       "recordExpenseDescription": "Wari bɔli kunnafoni...",
