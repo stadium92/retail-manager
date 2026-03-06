@@ -30,7 +30,7 @@ export function useProductSearch(storeId: string, enabled: boolean = true) {
 
       console.log('[useProductSearch] Searching for:', debouncedSearch, 'in store:', storeId);
 
-      const { isLocalFirst, localBridgeBaseUrl, supabase } = getDataClient();
+      const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
       
       if (isLocalFirst) {
         try {
@@ -147,48 +147,9 @@ export function useProductSearch(storeId: string, enabled: boolean = true) {
         }
       }
       
-      // Master / Online Mode: Fetch from Supabase
-      console.log('[useProductSearch] Fetching from Supabase...');
-      let q = (supabase as any).from('products').select('*', { count: 'exact' });
-      
-      if (storeId && storeId !== 'all') {
-        q = q.eq('store_id', storeId);
-      }
-      
-      if (debouncedSearch) {
-        q = q.or(`name.ilike.%${debouncedSearch}%,sku.ilike.%${debouncedSearch}%`);
-      }
-      
-      const { data, count, error } = await q.range(0, 49).order('name');
-      
-      if (error) {
-        console.error('[useProductSearch] Supabase error:', error);
-        throw error;
-      }
-      
-      return { 
-        data: (data || []).map((p: any) => ({
-            id: p.id,
-            name: p.name,
-            sku: p.sku,
-            barcode: p.sku,
-            unit_price: p.unit_price || p.price || 0,
-            cost_price: p.cost_price || p.cost || 0,
-            wholesale_price: p.wholesale_price_ttc || p.wholesale_price || 0,
-            wholesale_price_ht: p.wholesale_price_ht || 0,
-            wholesale_price_ttc: p.wholesale_price_ttc || 0,
-            selling_price_2: p.selling_price_2 || 0,
-            selling_price_3: p.selling_price_3 || 0,
-            selling_price_4: p.selling_price_4 || 0,
-            quantity: p.quantity || 0,
-            min_quantity: p.min_quantity || 0,
-            packaging: p.packaging || '1',
-            unit_type: p.unit_type || 'Piece',
-            category_id: p.category || p.category_id,
-            store_id: p.store_id
-        } as any)), 
-        total: count || 0 
-      }; 
+      // Non-local-first path removed (supabase no longer available)
+      console.warn('[useProductSearch] non-local-first path is not supported');
+      return { data: [], total: 0 }; 
     },
     enabled: enabled && !!storeId,
     staleTime: 1000 * 60 * 5, // Cache for 5 minutes

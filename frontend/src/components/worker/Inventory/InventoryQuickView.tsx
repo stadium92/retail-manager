@@ -25,7 +25,7 @@ export function InventoryQuickView() {
   const [filteredItems, setFilteredItems] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
-  const { supabase, isLocalFirst, localBridgeBaseUrl } = getDataClient();
+  const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
 
   const useLocalBridge = isLocalFirst;
 
@@ -107,46 +107,9 @@ export function InventoryQuickView() {
         return;
       }
 
-      // Get worker's assigned store from user_roles
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('store_id')
-        .eq('user_id', user.id)
-        .eq('role', 'worker')
-        .single();
-
-      if (roleError || !roleData?.store_id) {
-        console.error('Error fetching worker store:', roleError);
-        setLoading(false);
-        return;
-      }
-
-      // Fetch products from products table for assigned store only
-      const { data, error } = await supabase
-        .from('products')
-        .select('id, name, sku, unit_price, quantity, min_quantity')
-        .eq('store_id', roleData.store_id)
-        .order('name');
-
-      if (error) {
-        console.error('Error fetching inventory:', error);
-        setLoading(false);
-        return;
-      }
-
-      if (data) {
-        // Map products fields to Product interface
-        const mappedItems = data.map(item => ({
-          id: item.id,
-          name: item.name,
-          sku: item.sku,
-          unit_price: Number(item.unit_price) || 0,
-          quantity: item.quantity,
-          min_quantity: item.min_quantity,
-        }));
-        setItems(mappedItems);
-        setFilteredItems(mappedItems);
-      }
+      // Non-local-first path removed (supabase no longer available)
+      console.warn('InventoryQuickView: non-local-first path is not supported');
+      setLoading(false);
     } catch (error) {
       console.error('Unexpected error fetching inventory:', error);
       toast({

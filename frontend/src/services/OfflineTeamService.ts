@@ -696,15 +696,23 @@ export class OfflineTeamService {
         return { success: true };
       }
 
-      // Try to sync immediately if online
-      // Delete role first
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('id', roleId);
-
-      if (roleError) {
-        console.error('Failed to delete role from server:', roleError);
+      // Try to sync immediately if online via local bridge
+      const dataClient = getDataClient();
+      try {
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (headers) {
+          const res = await smartFetch(`${dataClient.localBridgeBaseUrl}/rest/v1/user_roles?id=eq.${encodeURIComponent(roleId)}`, {
+            method: 'DELETE',
+            headers,
+          });
+          if (!res.ok) {
+            throw new Error('Failed to delete role from server');
+          }
+        } else {
+          throw new Error('Not authenticated');
+        }
+      } catch (syncErr) {
+        console.error('Failed to delete role from server:', syncErr);
         // Queue for later sync
         await LocalDatabase.addToSyncQueue({
           id: crypto.randomUUID(),
@@ -784,14 +792,23 @@ export class OfflineTeamService {
         return { data: localStores };
       }
 
-      // Fetch from server
-      const { data: remoteStores, error } = await supabase
-        .from('stores')
-        .select('*')
-        .order('name');
-
-      if (error) {
-        console.error('Failed to fetch remote stores:', error);
+      // Fetch from server via local bridge
+      let remoteStores: any[] = [];
+      try {
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (headers) {
+          const res = await smartFetch(`${dataClient.localBridgeBaseUrl}/rest/v1/stores`, { headers });
+          if (res.ok) {
+            remoteStores = await res.json().catch(() => []);
+          } else {
+            console.error('Failed to fetch remote stores:', res.status);
+            return { data: localStores };
+          }
+        } else {
+          return { data: localStores };
+        }
+      } catch (fetchErr) {
+        console.error('Failed to fetch remote stores:', fetchErr);
         return { data: localStores };
       }
 

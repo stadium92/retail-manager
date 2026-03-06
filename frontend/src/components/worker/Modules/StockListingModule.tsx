@@ -30,7 +30,7 @@ export function StockListingModule({ storeId }: StockListingModuleProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<StockFilter>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { supabase, isLocalFirst, localBridgeBaseUrl } = getDataClient();
+  const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -58,34 +58,9 @@ export function StockListingModule({ storeId }: StockListingModuleProps) {
           return;
         }
 
-        const { data } = await supabase
-          .from('products')
-          .select('*')
-          .eq('store_id', storeId)
-          .order('name');
-        
-        if (data) {
-          // Map products to Product interface
-          const mappedProducts: Product[] = data.map(item => ({
-            id: item.id,
-            store_id: item.store_id,
-            name: item.name,
-            description: item.description,
-            sku: item.sku,
-            barcode: item.barcode || item.sku,
-            unit_price: Number(item.unit_price) || 0,
-            cost_price: Number(item.cost_price) || 0,
-            quantity: item.quantity,
-            min_quantity: item.min_quantity,
-            packaging: item.packaging || '1',
-            unit_type: item.unit_type || 'Piece',
-            category: item.category || item.category_id,
-            image_url: item.image_url,
-            created_at: item.created_at,
-            updated_at: item.updated_at,
-          }));
-          setProducts(mappedProducts);
-        }
+        // Non-local-first path removed (supabase no longer available)
+        console.warn('StockListingModule: non-local-first path is not supported');
+        setProducts([]);
       } catch (error) {
         console.error('Failed to fetch products', error);
         setProducts([]);

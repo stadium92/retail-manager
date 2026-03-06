@@ -21,7 +21,7 @@ interface FichiersFamillesModuleProps {
 
 export function FichiersFamillesModule({ storeId }: FichiersFamillesModuleProps) {
   const { t } = useTranslation();
-  const { supabase, isLocalFirst, localBridgeBaseUrl } = getDataClient();
+  const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
   const { families, setFamilies, deleteFamily, setLoading } = useMasterDataStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -169,21 +169,10 @@ export function FichiersFamillesModule({ storeId }: FichiersFamillesModuleProps)
       }
 
       if (editingFamily) {
-        const { error } = await supabase
-          .from('product_families')
-          .update(payload)
-          .eq('id', editingFamily.id)
-          .eq('store_id', storeId);
-
-        if (error) throw error;
-        toast({ title: t('common.success'), description: t('menu.program.editFamily') });
+        // Non-local-first path removed (supabase no longer available)
+        console.warn('FichiersFamillesModule: non-local-first save path is not supported');
       } else {
-        const { error } = await supabase
-          .from('product_families')
-          .insert(payload);
-
-        if (error) throw error;
-        toast({ title: t('common.success'), description: t('menu.program.newFamily') });
+        console.warn('FichiersFamillesModule: non-local-first save path is not supported');
       }
 
       await fetchFamilies();
@@ -218,13 +207,8 @@ export function FichiersFamillesModule({ storeId }: FichiersFamillesModuleProps)
         return;
       }
 
-      const { error } = await supabase
-        .from('product_families')
-        .delete()
-        .eq('id', id)
-        .eq('store_id', storeId);
-
-      if (error) throw error;
+      // Non-local-first path removed (supabase no longer available)
+      console.warn('FichiersFamillesModule: non-local-first delete path is not supported');
 
       deleteFamily(id);
       toast({ title: t('common.success') });
