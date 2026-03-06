@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { User, Session } from '@/services/OfflineAuthService';
 import { AppRole, UserRole } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { DEV_MODE_UUIDS } from '@/utils/devMode';
@@ -142,12 +141,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     try {
-      // Try local roles first (faster, works offline)
+      // Use local roles only
       await LocalDatabase.init();
       const localRoles = await LocalDatabase.getRolesByUserId(userId);
       
-      if (localRoles.length > 0 && !navigator.onLine) {
-        console.log('Using cached local roles:', localRoles);
+      if (localRoles.length > 0) {
+        console.log('Using local roles:', localRoles);
         setRoles(localRoles.map(r => ({
           id: r.id,
           user_id: r.user_id,
@@ -159,77 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      console.log('Fetching roles from Supabase...');
-      
-      // Create a timeout promise
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Supabase request timed out')), 5000)
-      );
-
-      const rolesPromise = supabase
-        .from('user_roles')
-        .select('*')
-        .eq('user_id', userId);
-
-      // Race the query against the timeout
-      const { data, error } = await Promise.race([
-        rolesPromise.then(res => ({ data: res.data, error: res.error })),
-        timeoutPromise.then(() => ({ data: null, error: { message: 'Timeout' } }))
-      ]) as any;
-
-      console.log('Supabase query result:', { data, error });
-
-      if (error) {
-        console.error('Error fetching user roles:', error);
-        // Fall back to local roles if available, regardless of online status
-        if (localRoles.length > 0) {
-          console.log('Falling back to cached local roles:', localRoles);
-          setRoles(localRoles.map(r => ({
-            id: r.id,
-            user_id: r.user_id,
-            role: r.role as AppRole,
-            store_id: r.store_id,
-            created_at: r.created_at,
-          })));
-        } else {
-          const devRole = determineRoleFromDevId(userId);
-          if (devRole) {
-            setRoles([{
-              id: 'temp-dev',
-              user_id: userId,
-              role: devRole,
-              store_id: undefined,
-              created_at: new Date().toISOString()
-            }]);
-          } else {
-            setRoles([]);
-          }
-        }
-        setRolesLoading(false);
-        return;
-      }
-
-      if (data && data.length > 0) {
-        console.log('Found roles from database:', data);
-        setRoles(data);
-        
-        // Cache roles locally for offline use
-        for (const role of data) {
-          await LocalDatabase.saveRole({
-            id: role.id,
-            user_id: role.user_id,
-            role: role.role as 'master' | 'worker' | 'deliverer',
-            store_id: role.store_id || undefined,
-            created_at: role.created_at,
-            synced: true,
-          });
-        }
-        
-        setRolesLoading(false);
-        return;
-      }
-
-      console.log('No roles found in database for user:', userId);
+      console.log('No roles found locally for user:', userId);
       
       const devRole = determineRoleFromDevId(userId);
       if (devRole) {
@@ -242,14 +171,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           created_at: new Date().toISOString()
         }]);
       } else {
-        console.warn('Real user has no roles assigned. User should contact admin.');
+        console.warn('User has no roles assigned. User should contact admin.');
         setRoles([]);
       }
       setRolesLoading(false);
     } catch (err) {
       console.error('Unexpected error in fetchUserRoles:', err);
       
-      // Attempt fallback to local roles on crash/timeout
+      // Attempt fallback to local roles on crash
       try {
         await LocalDatabase.init();
         const localRoles = await LocalDatabase.getRolesByUserId(userId);
@@ -292,70 +221,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }, 500);
 
-      // Check for offline session first
+      // Restore session from local storage / local bridge
       try {
         const offlineSession = await OfflineAuthService.getOfflineSession();
-        if (offlineSession && offlineSession.user && !navigator.onLine) {
+        if (offlineSession && offlineSession.user) {
           console.log('Restored offline session');
           setUser(offlineSession.user);
           setSession(offlineSession.session);
           setRoles(offlineSession.roles);
           setLoading(false);
-          return () => clearInterval(safetyInterval);
+          return () => {
+            clearInterval(safetyInterval);
+            rolesLoadingStartTimeRef.current = null;
+          };
         }
       } catch (err) {
         console.warn('Failed to restore offline session:', err);
-        // Continue to Supabase check
       }
 
-      // Set up auth state listener
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        async (event, session) => {
-          console.log('Auth state changed:', event, session?.user?.id);
-          setSession(session);
-          setUser(session?.user ?? null);
-
-          if (session?.user) {
-            rolesLoadingStartTimeRef.current = Date.now();
-            await fetchUserRoles(session.user.id);
-          } else {
-            setRoles([]);
-            setRolesLoading(false);
-            rolesLoadingStartTimeRef.current = null;
-          }
-
-          setLoading(false);
-        }
-      );
-
-      // Check for existing session
-      supabase.auth.getSession().then(async ({ data: { session } }) => {
-        console.log('🔍 getSession result:', {
-          hasSession: !!session,
-          userId: session?.user?.id,
-          email: session?.user?.email
-        });
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        if (session?.user) {
-          console.log('✅ Found cached session, fetching roles...');
-          fetchUserRoles(session.user.id);
-        } else if (offlineSession?.user) {
-          // No online session but we have offline session
-          console.log('Using offline session fallback');
-          setUser(offlineSession.user);
-          setSession(offlineSession.session);
-          setRoles(offlineSession.roles);
-          setLoading(false);
-        } else {
-          console.log('❌ No cached session found');
-          setLoading(false);
-        }
-      });
+      // No session found
+      console.log('No cached session found');
+      setLoading(false);
 
       return () => {
-        subscription.unsubscribe();
         clearInterval(safetyInterval);
         rolesLoadingStartTimeRef.current = null;
       };
@@ -411,50 +299,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName: string) => {
     const dataClient = getDataClient();
-    const isOnline = navigator.onLine;
-
-    if (!dataClient.isLocalFirst && isOnline) {
-      // Online signup via Supabase
-      const redirectUrl = `${window.location.origin}/`;
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: { full_name: fullName },
-        },
-      });
-
-      if (error) {
-        toast({
-          title: 'Sign Up Error',
-          description: error.message,
-          variant: 'destructive',
-        });
-        return { error };
-      }
-
-      // Cache for offline use
-      if (data.user) {
-        await LocalDatabase.init();
-        await LocalDatabase.saveUser({
-          id: data.user.id,
-          email,
-          password_hash: LocalDatabase.hashPassword(password),
-          full_name: fullName,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          synced: true,
-        });
-      }
-
-      toast({
-        title: 'Account Created!',
-        description: 'Your account has been created successfully.',
-      });
-
-      return { error: null };
-    }
 
     if (dataClient.isLocalFirst) {
       const bootstrapResult = await OfflineAuthService.bootstrapMaster(email, password, fullName);
@@ -484,7 +328,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: null };
     }
 
-    // Offline signup (non-LocalBridge) - create locally and queue for sync
+    // Fallback: create locally and queue for sync
     const result = await OfflineAuthService.createUser(email, password, fullName, 'worker');
     
     if (!result.success) {
