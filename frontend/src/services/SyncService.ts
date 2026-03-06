@@ -4,9 +4,7 @@
  */
 
 import { LocalDatabase, SyncQueueItem } from './LocalDatabase';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { SupabaseProvisioningService } from './SupabaseProvisioningService';
 import { smartFetch } from '@/lib/dataClient';
 import i18n from '@/i18n/config';
 
@@ -129,222 +127,57 @@ export class SyncService {
    * Sync user creation
    */
   private static async syncUserCreate(data: any): Promise<boolean> {
-    try {
-      const result = await SupabaseProvisioningService.provisionUser({
-        email: data.email,
-        password: data.password,
-        full_name: data.fullName,
-        role: data.role,
-        store_id: data.storeId,
-      });
-
-      if (!result.success) {
-        console.error('Failed to sync user creation:', result.error);
-        return false;
-      }
-
-      // Update local user as synced
-      if (data.localUserId) {
-        const localUser = await LocalDatabase.getUser(data.localUserId);
-        if (localUser) {
-          localUser.synced = true;
-          await LocalDatabase.saveUser(localUser);
-        }
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error syncing user creation:', error);
-      return false;
-    }
+    // Cloud sync disabled – user creation is local-only via the local bridge.
+    console.warn('[SyncService] syncUserCreate: cloud sync disabled, skipping item.');
+    return true;
   }
 
   /**
    * Sync a sale - uses sale_items for multi-item sales
    */
   private static async syncSale(data: any): Promise<boolean> {
-    try {
-      // For legacy single-item sales or multi-item sales
-      const items = data.items || [];
-      const firstItem = items[0];
-      
-      // Insert sale with item_id (required by schema) - use first item or placeholder
-      const { error: saleError } = await supabase.from('sales').insert({
-        id: data.id,
-        store_id: data.store_id,
-        worker_id: data.worker_id,
-        item_id: firstItem?.product?.id || firstItem?.product_id || data.item_id,
-        unit_price: firstItem?.product?.unit_price || firstItem?.unit_price || data.unit_price || 0,
-        quantity: items.reduce((sum: number, i: any) => sum + (i.quantity || 0), 0) || data.quantity || 1,
-        total_price: data.total_price,
-        customer_name: data.customer_name,
-        customer_phone: data.customer_phone,
-        notes: data.notes,
-      });
-
-      if (saleError) {
-        console.error('Failed to sync sale:', saleError);
-        return false;
-      }
-
-      // Insert sale items for multi-item sales
-      if (items.length > 0) {
-        const saleItems = items.map((item: any) => ({
-          sale_id: data.id,
-          product_id: item.product?.id || item.product_id,
-          product_name: item.product?.name || item.product_name,
-          quantity: item.quantity,
-          unit_price: item.product?.unit_price || item.unit_price,
-          total: item.total || item.lineTotal,
-          discount: item.discount || 0,
-        }));
-
-        const { error: itemsError } = await supabase.from('sale_items').insert(saleItems);
-        if (itemsError) {
-          console.error('Failed to sync sale items:', itemsError);
-          // Sale was created, items failed - partial success
-        }
-      }
-
-      // Mark local sale as synced
-      await LocalDatabase.markSaleSynced(data.id);
-      return true;
-    } catch (error) {
-      console.error('Error syncing sale:', error);
-      return false;
-    }
+    // Cloud sync disabled – sales are stored locally via the local bridge.
+    console.warn('[SyncService] syncSale: cloud sync disabled, skipping item.');
+    await LocalDatabase.markSaleSynced(data.id);
+    return true;
   }
 
   /**
    * Sync inventory update (to products table)
    */
   private static async syncInventoryUpdate(data: any): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('products')
-        .upsert({
-          id: data.id,
-          store_id: data.store_id,
-          name: data.name || data.product_name,
-          sku: data.sku,
-          barcode: data.barcode,
-          description: data.description,
-          quantity: data.quantity ?? data.stock,
-          unit_price: data.unit_price || data.price,
-          cost_price: data.cost_price || data.cost,
-          wholesale_price: data.wholesale_price,
-          wholesale_price_ht: data.wholesale_price_ht,
-          wholesale_price_ttc: data.wholesale_price_ttc,
-          selling_price_2: data.selling_price_2,
-          selling_price_3: data.selling_price_3,
-          selling_price_4: data.selling_price_4,
-          packaging: data.packaging,
-          unit_type: data.unit_type,
-          category_id: data.category_id || data.category,
-          brand: data.brand,
-          aisle: data.aisle,
-          image_url: data.image_url,
-          low_stock_threshold: data.low_stock_threshold ?? data.min_quantity,
-          reorder_quantity: data.reorder_quantity,
-          expiry_date: data.expiry_date,
-          updated_at: new Date().toISOString(),
-        });
-
-      if (error) {
-        console.error('Failed to sync inventory:', error);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error syncing inventory:', error);
-      return false;
-    }
+    // Cloud sync disabled – inventory is managed locally via the local bridge.
+    console.warn('[SyncService] syncInventoryUpdate: cloud sync disabled, skipping item.');
+    return true;
   }
 
   /**
    * Sync delivery update
    */
   private static async syncDeliveryUpdate(data: any): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('deliveries')
-        .update({
-          status: data.status,
-          delivered_at: data.delivered_at,
-          notes: data.notes,
-        })
-        .eq('id', data.id);
-
-      if (error) {
-        console.error('Failed to sync delivery update:', error);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error syncing delivery update:', error);
-      return false;
-    }
+    // Cloud sync disabled – deliveries are managed locally via the local bridge.
+    console.warn('[SyncService] syncDeliveryUpdate: cloud sync disabled, skipping item.');
+    return true;
   }
 
   /**
    * Sync store creation
    */
   private static async syncStoreCreate(data: any): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('stores')
-        .insert({
-          id: data.id,
-          name: data.name,
-          address: data.address,
-          phone: data.phone,
-          owner_id: data.owner_id,
-        });
-
-      if (error) {
-        console.error('Failed to sync store creation:', error);
-        return false;
-      }
-
-      // Mark local store as synced
-      await LocalDatabase.markStoreSynced(data.id);
-      return true;
-    } catch (error) {
-      console.error('Error syncing store creation:', error);
-      return false;
-    }
+    // Cloud sync disabled – stores are created locally via the local bridge.
+    console.warn('[SyncService] syncStoreCreate: cloud sync disabled, skipping item.');
+    await LocalDatabase.markStoreSynced(data.id);
+    return true;
   }
 
   /**
    * Sync store update
    */
   private static async syncStoreUpdate(data: any): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('stores')
-        .update({
-          name: data.name,
-          address: data.address,
-          city: data.city,
-          phone: data.phone,
-          email: data.email,
-          is_active: data.is_active,
-        })
-        .eq('id', data.id);
-
-      if (error) {
-        console.error('Failed to sync store update:', error);
-        return false;
-      }
-
-      await LocalDatabase.markStoreSynced(data.id);
-      return true;
-    } catch (error) {
-      console.error('Error syncing store update:', error);
-      return false;
-    }
+    // Cloud sync disabled – stores are updated locally via the local bridge.
+    console.warn('[SyncService] syncStoreUpdate: cloud sync disabled, skipping item.');
+    await LocalDatabase.markStoreSynced(data.id);
+    return true;
   }
 
 
