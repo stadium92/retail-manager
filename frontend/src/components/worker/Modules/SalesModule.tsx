@@ -182,11 +182,20 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   }, [lineItems]);
 
     const openPayment = useCallback(() => {
-    if (lineItems.length === 0) return;
+    console.log('[SalesModule] openPayment actual trigger. Cart size:', lineItems.length);
+    const hasValidItems = lineItems.some(item => !!item.productId);
+    if (!hasValidItems) {
+        console.warn('[SalesModule] Cannot open payment for empty cart');
+        return;
+    }
+    
+    // Safety: Reset background navigation mode
     const store = useNavigationStore.getState();
-    store.setMode('hover'); // Ensure we aren't in edit mode in the background
-    openPayment();
-  }, [lineItems.length]);
+    store.setMode('hover');
+    store.setActiveCell(null);
+    
+    setIsPaymentOpen(true);
+  }, [lineItems, setIsPaymentOpen]);
 
   const handlePrint = useCallback(() => {
     if (lineItems.length === 0) return;
@@ -290,7 +299,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   }, [clients, services, lineItems, mode, updateSession, t]);
 
   const handleOrderRefLoad = useCallback(async (ref: string) => {
-    const cleanRef = ref?.trim();
+    const cleanRef = ref?.trim().toLowerCase();
     if (!cleanRef || !storeId) return;
     
     setIsLoading(true);
@@ -299,76 +308,60 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       const sales = await OfflineDataService.getSales(storeId);
       const allProducts = useMasterDataStore.getState().products || [];
 
-      const foundSale = sales.find(s => 
-        (s.invoice_number && String(s.invoice_number).toLowerCase() === cleanRef.toLowerCase()) || 
-        (s.order_ref && String(s.order_ref).toLowerCase() === cleanRef.toLowerCase()) ||
-        (s.id && String(s.id).toLowerCase().includes(cleanRef.toLowerCase()))
-      );
+      // Fuzzy find: match if cleanRef is ANYWHERE in invoice_number, order_ref, or ID
+      const foundSale = sales.find(s => {
+        const inv = String(s.invoice_number || '').toLowerCase();
+        const ord = String(s.order_ref || '').toLowerCase();
+        const sid = String(s.id || '').toLowerCase();
+        return inv.includes(cleanRef) || ord.includes(cleanRef) || sid.includes(cleanRef);
+      });
       
       if (foundSale) {
-        console.log('[OrderLoad] Found sale:', foundSale.id);
+        console.log('[OrderLoad] SUCCESS! Found sale:', foundSale.id);
         const rawItems = foundSale.sale_items || foundSale.items || [];
         
-        const newItems: SanifereLineItem[] = (Array.isArray(rawItems) ? rawItems : []).map((item: any, index: number) => {
+        const mappedItems = (Array.isArray(rawItems) ? rawItems : []).map((item: any, index: number) => {
           try {
-            if (!item) throw new Error('Item is null');
-            
             const pid = item.product_id || (item.product && item.product.id);
-            const cachedProduct = allProducts.find(p => p.id === pid) || item.product || {};
+            const p = allProducts.find(prod => prod.id === pid) || item.product || {};
             
-            const packStr = String(cachedProduct.packaging || '1');
-            const match = packStr.match(/(\d+)/);
-            const packSize = match ? parseInt(match[1], 10) : 1;
+            const packStr = String(p.packaging || '1');
+            const packSize = parseInt(packStr.match(/(\d+)/)?.[1] || '1', 10);
             
             const unitPrice = Number(item.unit_price || item.price || 0);
-            const baseUnitPrice = Number(cachedProduct.unit_price || unitPrice || 0);
+            const basePrice = Number(p.unit_price || unitPrice || 0);
 
             return {
               id: crypto.randomUUID(),
               lineNumber: index + 1,
               productId: pid || undefined,
-              designation: item.product_name || cachedProduct.name || 'Unknown',
-              code: cachedProduct.sku || item.sku || '',
+              designation: item.product_name || p.name || 'Item #' + (index+1),
+              code: p.sku || item.sku || '',
               conditionnement: packSize,
-              stock: Number(cachedProduct.quantity || 0),
+              stock: Number(p.quantity || 0),
               unitPrice: unitPrice,
-              basePrice: baseUnitPrice,
+              basePrice: basePrice,
               quantity: Number(item.quantity || 1),
               discountPercent: Number(item.discount || 0),
               lineTotal: Number(item.total || (unitPrice * Number(item.quantity || 1))),
-              isBox: !!(item.is_box || (packSize > 1 && unitPrice > (baseUnitPrice + 1))),
-              unit_type: cachedProduct.unit_type || 'Piece',
+              isBox: !!(item.is_box || (packSize > 1 && unitPrice > (basePrice + 1))),
+              unit_type: p.unit_type || 'Piece',
               priceTiers: { 
-                 1: Number(cachedProduct.unit_price || 0), 
-                 2: Number(cachedProduct.selling_price_2 || 0), 
-                 3: Number(cachedProduct.selling_price_3 || 0), 
-                 4: Number(cachedProduct.selling_price_4 || 0) 
+                 1: Number(p.unit_price || 0), 
+                 2: Number(p.selling_price_2 || 0), 
+                 3: Number(p.selling_price_3 || 0), 
+                 4: Number(p.selling_price_4 || 0) 
               }
             };
-          } catch (e) {
-            console.warn('[OrderLoad] Mapping item error:', e);
-            return {
-              id: crypto.randomUUID(),
-              lineNumber: index + 1,
-              designation: 'Error item',
-              code: '',
-              conditionnement: 1,
-              stock: 0,
-              unitPrice: 0,
-              basePrice: 0,
-              quantity: 1,
-              discountPercent: 0,
-              lineTotal: 0,
-              isBox: false,
-              priceTiers: { 1: 0, 2: 0, 3: 0, 4: 0 }
-            };
+          } catch (err) {
+            return null; // Filter out broken items
           }
-        });
+        }).filter(Boolean) as SanifereLineItem[];
 
         // Add mandatory empty row
-        newItems.push({
+        mappedItems.push({
           id: crypto.randomUUID(),
-          lineNumber: newItems.length + 1,
+          lineNumber: mappedItems.length + 1,
           designation: '',
           code: '',
           conditionnement: 1,
@@ -383,7 +376,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         });
 
         updateSession(mode, {
-          lineItems: newItems,
+          lineItems: mappedItems,
           customerName: foundSale.customer_name || '',
           customerCode: foundSale.customer_code || '',
           customerAddress: foundSale.customer_address || '',
@@ -391,11 +384,12 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         });
         toast.success(t('common.success'));
       } else {
+        console.warn('[OrderLoad] Sale not found for:', cleanRef);
         toast.error(t('common.noData') + ': ' + cleanRef);
       }
     } catch (e: any) {
       console.error('[OrderLoad] Mapping error:', e);
-      toast.error(`Erreur: ${e.message || 'Mapping'}`);
+      toast.error('Mapping Error: ' + (e.message || 'Check logs'));
     } finally {
       setIsLoading(false);
     }
@@ -552,6 +546,18 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     };
     updateSession(mode, { lineItems: newItems });
   }, [lineItems, mode, updateSession]);
+
+    const openPaymentRef = useRef(openPayment);
+  const handleSaveProformaRef = useRef(handleSaveProforma);
+  const handleHardwareScanRef = useRef(handleHardwareScan);
+  const handleOrderRefLoadRef = useRef(handleOrderRefLoad);
+
+  useEffect(() => {
+    openPaymentRef.current = openPayment;
+    handleSaveProformaRef.current = handleSaveProforma;
+    handleHardwareScanRef.current = handleHardwareScan;
+    handleOrderRefLoadRef.current = handleOrderRefLoad;
+  });
 
   const handleDesignationChange = useCallback((index: number, value: string) => {
     setInitialSearchQuery(value);
@@ -933,10 +939,10 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     window.addEventListener('nav-toggle-packing', handleToggleEvent);
     window.addEventListener('nav-open-search', handleSearchEvent);
     window.addEventListener('nav-adjust-quantity', handleAdjustQtyEvent);
-    window.addEventListener('scanner-input', handleHardwareScan);
-    window.addEventListener('nav-pay-shortcut', openPayment);
+    window.addEventListener('scanner-input', (e) => handleHardwareScanRef.current(e));
+    window.addEventListener('nav-pay-shortcut', () => openPaymentRef.current());
     window.addEventListener('nav-search-shortcut', () => setIsProductLookupOpen(true));
-    window.addEventListener('nav-save-shortcut', handleSaveProforma);
+    window.addEventListener('nav-save-shortcut', () => handleSaveProformaRef.current());
     window.addEventListener('nav-capture-keystroke', handleCaptureKeystroke);
     
     return () => {
@@ -944,10 +950,10 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       window.removeEventListener('nav-toggle-packing', handleToggleEvent);
       window.removeEventListener('nav-open-search', handleSearchEvent);
       window.removeEventListener('nav-adjust-quantity', handleAdjustQtyEvent);
-      window.removeEventListener('scanner-input', handleHardwareScan);
-      window.removeEventListener('nav-pay-shortcut', openPayment);
+      window.removeEventListener('scanner-input', (e) => handleHardwareScanRef.current(e));
+      window.removeEventListener('nav-pay-shortcut', () => openPaymentRef.current());
       window.removeEventListener('nav-search-shortcut', () => setIsProductLookupOpen(true));
-      window.removeEventListener('nav-save-shortcut', handleSaveProforma);
+      window.removeEventListener('nav-save-shortcut', () => handleSaveProformaRef.current());
       window.removeEventListener('nav-capture-keystroke', handleCaptureKeystroke);
     };
   }, [lineItems, handleDeleteLine, handleToggleUnit, handleQuantityChange, handleDesignationChange]);
