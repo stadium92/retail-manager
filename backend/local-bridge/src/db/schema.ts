@@ -295,7 +295,7 @@ export const initializeSchema = (db: Database.Database) => {
       updated_at TEXT NOT NULL
     );
 
-    -- Stock deduction is now handled explicitly inside createSaleWithItems()
+    -- Stock deduction is handled explicitly in the createSaleWithItems transaction
     -- to support ACID transactions and allow negative stock.
     DROP TRIGGER IF EXISTS sale_items_ai;
 

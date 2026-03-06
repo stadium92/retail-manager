@@ -146,11 +146,10 @@ export const createSalesRepo = (db: Database.Database) => {
         // and only for non-proforma sales
         if (itemResult.changes > 0 && item.product_id && saleData.sale_type !== 'proforma') {
           const product = stmts.getProductStock.get(item.product_id) as { id: string; quantity: number } | undefined;
-          if (!product) {
-            throw new Error(`Product not found: ${item.product_id}`);
+          if (product) {
+            // User requested: allow negative stock for regularization later
+            stmts.deductStock.run(item.quantity, item.product_id);
           }
-          // Allow negative stock for regularization later
-          stmts.deductStock.run(item.quantity, item.product_id);
         }
       }
 
