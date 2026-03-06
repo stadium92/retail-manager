@@ -79,9 +79,9 @@ export function SanifereHeader({
           <div className="flex items-center gap-2">
             <span>N° {t('menu.program.orderRef')}:</span>
             {onInvoiceNumberChange ? (
-              <input 
-                type="text" 
-                value={invoiceNumber || ''}
+              <input
+              type="text"
+              value={invoiceNumber || ''}
               onChange={(e) => onInvoiceNumberChange(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -89,14 +89,8 @@ export function SanifereHeader({
                   onOrderRefLoad?.(invoiceNumber || '');
                 }
               }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    onOrderRefLoad?.(invoiceNumber || '');
-                  }
-                }}
-                className="bg-white/90 px-2 py-0.5 text-black font-bold w-32 border-none focus:ring-2 focus:ring-blue-500"
-              />
+              className="bg-[hsl(180,100%,40%)] px-2 py-0.5 text-black font-bold w-32 border-none focus:outline-none focus:ring-1 focus:ring-yellow-400"
+            />
             ) : (
               <span className="bg-white/90 px-2 py-0.5 text-black font-bold">{displayInvoiceNumber}</span>
             )}
@@ -132,6 +126,12 @@ export function SanifereHeader({
               type="text"
               value={invoiceNumber || ''}
               onChange={(e) => onInvoiceNumberChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  onOrderRefLoad?.(invoiceNumber || '');
+                }
+              }}
               className="bg-[hsl(180,100%,40%)] px-2 py-0.5 text-black font-bold w-32 border-none focus:outline-none focus:ring-1 focus:ring-yellow-400"
             />
           ) : (
