@@ -81,8 +81,20 @@ export function SanifereHeader({
             {onInvoiceNumberChange ? (
               <input 
                 type="text" 
-                value={invoiceNumber || ''} 
-                onChange={(e) => onInvoiceNumberChange(e.target.value)}
+                value={invoiceNumber || ''}
+              onChange={(e) => onInvoiceNumberChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  onOrderRefLoad?.(invoiceNumber || '');
+                }
+              }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    onOrderRefLoad?.(invoiceNumber || '');
+                  }
+                }}
                 className="bg-white/90 px-2 py-0.5 text-black font-bold w-32 border-none focus:ring-2 focus:ring-blue-500"
               />
             ) : (

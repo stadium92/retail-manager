@@ -5,6 +5,7 @@ import { InvoiceTemplate, InvoiceData } from '@/components/printing/InvoiceTempl
 import { supabase } from '@/integrations/supabase/client';
 import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
+import { OfflineDataService } from '@/services/OfflineDataService';
 import { OfflineSalesService } from '@/services/OfflineSalesService';
 import { Product } from '@/types';
 import { toast } from 'sonner';
@@ -182,6 +183,10 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   }, [lineItems]);
 
     const openPayment = useCallback(() => {
+    // BLUR ANY BACKGROUND INPUT
+    if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+    }
     console.log('[SalesModule] openPayment actual trigger. Cart size:', lineItems.length);
     const hasValidItems = lineItems.some(item => !!item.productId || !!item.designation);
     if (!hasValidItems) {
@@ -949,6 +954,9 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     const onScannerInput = (e: any) => handleHardwareScanRef.current(e);
 
     window.addEventListener('scanner-input', onScannerInput);
+    window.addEventListener('nav-pay-shortcut', onPayShortcut);
+    window.addEventListener('nav-search-shortcut', onSearchShortcut);
+    window.addEventListener('nav-save-shortcut', onSaveShortcut);
     window.addEventListener('nav-capture-keystroke', handleCaptureKeystroke);
     
     return () => {
@@ -958,6 +966,9 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       window.removeEventListener('nav-adjust-quantity', handleAdjustQtyEvent);
 
       window.removeEventListener('scanner-input', onScannerInput);
+      window.removeEventListener('nav-pay-shortcut', onPayShortcut);
+      window.removeEventListener('nav-search-shortcut', onSearchShortcut);
+      window.removeEventListener('nav-save-shortcut', onSaveShortcut);
       window.removeEventListener('nav-capture-keystroke', handleCaptureKeystroke);
     };
   }, [lineItems, handleDeleteLine, handleToggleUnit, handleQuantityChange, handleDesignationChange]);
