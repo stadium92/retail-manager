@@ -17,6 +17,11 @@ export function useGlobalKeyboard() {
     const getState = store.getState;
 
     function handleKeyDown(e: KeyboardEvent) {
+      // Check if a modal/dialog is open to avoid intercepting keys meant for the modal
+      const isDialogOpen = !!document.querySelector('[role="dialog"]');
+      if (isDialogOpen) return; // Completely ignore grid keys when a dialog is open
+
+      const isInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
       const state = getState();
 
       // 1. Any key press → switch to keyboard input method
@@ -94,7 +99,6 @@ export function useGlobalKeyboard() {
         }
       }
 
-      const isInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
 
       // ---------------------------------------------------------------
       // While in HOVER mode (navigation between cells)

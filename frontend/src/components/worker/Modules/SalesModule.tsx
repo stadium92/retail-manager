@@ -181,6 +181,13 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     return lineItems.reduce((sum, item) => sum + item.lineTotal, 0);
   }, [lineItems]);
 
+    const openPayment = useCallback(() => {
+    if (lineItems.length === 0) return;
+    const store = useNavigationStore.getState();
+    store.setMode('hover'); // Ensure we aren't in edit mode in the background
+    openPayment();
+  }, [lineItems.length]);
+
   const handlePrint = useCallback(() => {
     if (lineItems.length === 0) return;
     
@@ -283,47 +290,52 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   }, [clients, services, lineItems, mode, updateSession, t]);
 
   const handleOrderRefLoad = useCallback(async (ref: string) => {
-    if (!ref || !storeId) return;
+    const cleanRef = ref?.trim();
+    if (!cleanRef || !storeId) return;
+    
     setIsLoading(true);
     try {
-      // First, get sales from local data service
+      console.log('[OrderLoad] Searching for ref:', cleanRef);
+      // Fetch all sales for this store
       const sales = await OfflineDataService.getSales(storeId);
-      // Find a sale that matches either the invoice_number or order_ref
-      const foundSale = sales.find(s => s.invoice_number === ref || s.order_ref === ref);
+      const foundSale = sales.find(s => 
+        (s.invoice_number && String(s.invoice_number).toLowerCase() === cleanRef.toLowerCase()) || 
+        (s.order_ref && String(s.order_ref).toLowerCase() === cleanRef.toLowerCase())
+      );
       
       if (foundSale) {
-        // Map the sale items back to SanifereLineItem format
-        const newItems: SanifereLineItem[] = (foundSale.sale_items || foundSale.items || []).map((item: any, index: number) => {
-          const packStr = String(item.product?.packaging || '1');
-          const match = packStr.match(/(\d+)/);
-          const conditionnement = match ? parseInt(match[1], 10) : 1;
-          const isBox = conditionnement > 1 && item.quantity % conditionnement === 0 && (item.unit_price > (item.product?.unit_price || 0));
-
+        console.log('[OrderLoad] Found sale:', foundSale.id, foundSale);
+        const rawItems = foundSale.sale_items || foundSale.items || [];
+        
+        const newItems: SanifereLineItem[] = Array.isArray(rawItems) ? rawItems.map((item: any, index: number) => {
+          const product = item.product || {};
+          const packSize = product.packaging ? parseInt(String(product.packaging).match(/(\d+)/)?.[1] || '1', 10) : 1;
+          
           return {
             id: crypto.randomUUID(),
             lineNumber: index + 1,
-            productId: item.product_id || item.product?.id,
-            designation: item.product_name || item.product?.name || '',
-            code: item.product?.sku || '',
-            conditionnement,
-            stock: item.product?.quantity || 0,
-            unitPrice: item.unit_price,
-            basePrice: item.product?.unit_price || item.unit_price,
-            quantity: item.quantity,
-            discountPercent: item.discount || 0,
-            lineTotal: item.total || 0,
-            isBox: isBox,
-            unit_type: item.product?.unit_type || (isBox ? 'Carton' : 'Piece'),
+            productId: item.product_id || product.id,
+            designation: item.product_name || product.name || 'Unknown',
+            code: product.sku || '',
+            conditionnement: packSize,
+            stock: product.quantity || 0,
+            unitPrice: Number(item.unit_price) || 0,
+            basePrice: Number(product.unit_price) || Number(item.unit_price) || 0,
+            quantity: Number(item.quantity) || 1,
+            discountPercent: Number(item.discount) || 0,
+            lineTotal: Number(item.total) || 0,
+            isBox: item.is_box || false,
+            unit_type: product.unit_type || (item.is_box ? 'Carton' : 'Piece'),
             priceTiers: { 
-               1: item.product?.unit_price || 0, 
-               2: item.product?.selling_price_2 || 0, 
-               3: item.product?.selling_price_3 || 0, 
-               4: item.product?.selling_price_4 || 0 
+               1: Number(product.unit_price) || 0, 
+               2: Number(product.selling_price_2) || 0, 
+               3: Number(product.selling_price_3) || 0, 
+               4: Number(product.selling_price_4) || 0 
             }
           };
-        });
+        }) : [];
 
-        // Add empty row at end for navigation consistency
+        // Add mandatory empty row for further input
         newItems.push({
           id: crypto.randomUUID(),
           lineNumber: newItems.length + 1,
@@ -340,21 +352,19 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
           priceTiers: { 1: 0, 2: 0, 3: 0, 4: 0 }
         });
 
-        // Update the current session with the loaded data
         updateSession(mode, {
           lineItems: newItems,
           customerName: foundSale.customer_name || '',
-          customerCode: foundSale.client_id || '', // Rough match if client_id exists
+          customerCode: foundSale.customer_code || foundSale.client_id || '',
           customerAddress: foundSale.customer_address || '',
-          orderRef: foundSale.order_ref || '',
-          invoiceNumber: foundSale.invoice_number || '',
+          orderRef: foundSale.order_ref || foundSale.invoice_number || '',
         });
         toast.success(t('common.success'));
       } else {
-        toast.error(t('common.noData') || 'Order not found');
+        toast.error(t('common.noData') + ': ' + cleanRef);
       }
     } catch (e) {
-      console.error('Failed to load order', e);
+      console.error('[OrderLoad] Fatal Error:', e);
       toast.error(t('common.error'));
     } finally {
       setIsLoading(false);
@@ -452,23 +462,27 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     toast.success(t('worker.sales.itemFound', { name: product.name }));
   }, [lineItems, mode, updateSession, t, activeTier, currentSession.clientDiscount]);
 
-    // Handle Hardware Scanner Input
+    // Handle Hardware Scanner Input (Fast Scan)
   const handleHardwareScan = useCallback(async (e: any) => {
     const code = e.detail?.code;
     if (!code) return;
     
+    console.log('[Scanner] High speed input detected:', code);
+    
     // Find the product
     const product = await scanProduct(code);
     if (product) {
-        // Add it directly
+        // Add it directly (consumption logic is inside addProduct)
         addProduct(product);
         
-        // After adding, focus the next empty row
+        // SPEED FEATURE: Jump to the NEXT empty row immediately after scanning
         setTimeout(() => {
             const store = useNavigationStore.getState();
             store.jumpToLastEmptyRow();
-        }, 150);
+        }, 100);
     } else {
+        // If not found, maybe it's just a barcode they are typing manually?
+        // We'll leave it in the designation field (captured via handleCaptureKeystroke)
         toast.error(t('worker.sales.itemNotFound') + ': ' + code);
     }
   }, [scanProduct, addProduct, t]);
@@ -756,10 +770,10 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
 
       if (e.key === keyPay) {
         e.preventDefault();
-        if (lineItems.length > 0) setIsPaymentOpen(true);
+        if (lineItems.length > 0) openPayment();
       } else if (e.key === keyValidate) {
         e.preventDefault();
-        if (lineItems.length > 0) setIsPaymentOpen(true);
+        if (lineItems.length > 0) openPayment();
       } else if (e.key === keySave) {
         e.preventDefault();
         handleSaveProforma();
@@ -903,6 +917,9 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   // Global Keyboard listener for the entire Sales Module grid focus
   useEffect(() => {
     const handleGlobalKey = (e: KeyboardEvent) => {
+      // TRAP: Ignore all grid global keys if any modal is open
+      if (isPaymentOpen || isProductLookupOpen || isScanning) return;
+
       const { activeCell, inputMethod } = useNavigationStore.getState();
       const target = e.target as HTMLElement;
       const isInputOrButton = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.tagName === 'BUTTON' || target?.getAttribute('role') === 'menuitem';
@@ -978,8 +995,8 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
                     />      <SanifereFooter
         mode={mode}
         netTotal={netTotal}
-        onValidate={() => lineItems.length > 0 && setIsPaymentOpen(true)}
-        onSettlement={() => lineItems.length > 0 && setIsPaymentOpen(true)}
+        onValidate={() => lineItems.length > 0 && openPayment()}
+        onSettlement={() => lineItems.length > 0 && openPayment()}
         onProductCard={() => setIsProductLookupOpen(true)}
         onDelete={() => selectedIndex >= 0 && handleDeleteLine(selectedIndex)}
         onSave={handleSaveProforma}

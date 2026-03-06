@@ -54,22 +54,52 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
   };
 
   const [formData, setFormData] = useState(initialFormState);
+  const fetchData = async () => {
+    console.log('[FichiersProduits] Fetching data for store:', storeId);
+    setLoading(true);
+    try {
+      const [inventoryRes, familiesRes] = await Promise.all([
+        OfflineInventoryService.getInventory(storeId, { notify: false }),
+        OfflineInventoryService.getProductFamilies(storeId)
+      ]);
+      
+      console.log('[FichiersProduits] Inventory response:', inventoryRes.data?.length || 0, 'items');
+
+      if (inventoryRes.data) {
+        const mapped = inventoryRes.data.map(item => ({
+          ...item,
+          purchase_price: Number(item.cost || (item as any).cost_price || 0),
+          selling_price_detail: Number(item.price || (item as any).unit_price || 0),
+          current_stock: Number(item.quantity ?? (item as any).stock ?? (item as any).current_stock ?? 0),
+          min_stock_alert: Number(item.low_stock_threshold ?? (item as any).min_quantity ?? 0),
+          unit_type: item.unit_type || 'Pièce',
+          family_id: item.category_id || (item as any).category || (item as any).family_id,
+          brand: item.brand || '',
+          packaging: item.packaging || '1',
+          aisle: item.aisle || '',
+          expiry_date: item.expiry_date,
+          store_id: item.store_id,
+          image_url: item.image_url,
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+        } as unknown as ProductMaster));
+        setLocalProducts(mapped);
+      }
+      if (familiesRes.data) {
+        console.log('[FichiersProduits] Families fetched:', familiesRes.data.length);
+        setFamilies(familiesRes.data as any);
+      }
+    } catch (err) {
+      console.error('[FichiersProduits] Fetch error:', err);
+      toast({ title: t('common.error'), variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const [multiItems, setMultiItems] = useState<Array<typeof initialFormState & { id: string; isOpen: boolean }>>([]);
 
-  useEffect(() => {
-    if (storeId) {
-      fetchData();
-    }
 
-    const handleRefresh = (e: any) => {
-      if (e.detail?.type === 'inventory') {
-        fetchData();
-      }
-    };
-
-    window.addEventListener('localDbDataUpdated', handleRefresh);
-    return () => window.removeEventListener('localDbDataUpdated', handleRefresh);
-  }, [storeId, fetchData]);
 
   useEffect(() => {
     const handleScannerInput = (e: any) => {
@@ -96,6 +126,21 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     window.addEventListener('scanner-input', handleScannerInput);
     return () => window.removeEventListener('scanner-input', handleScannerInput);
   }, [isDialogOpen, t, registrationMode]);
+
+    useEffect(() => {
+    if (storeId) {
+      fetchData();
+    }
+
+    const handleRefresh = (e: any) => {
+      if (e.detail?.type === 'inventory') {
+        fetchData();
+      }
+    };
+
+    window.addEventListener('localDbDataUpdated', handleRefresh);
+    return () => window.removeEventListener('localDbDataUpdated', handleRefresh);
+  }, [storeId, fetchData]);
 
   const handleNumChange = (field: keyof typeof initialFormState, index?: number) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -181,48 +226,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     setEditingProduct(null);
   };
 
-  const fetchData = async () => {
-    console.log('[FichiersProduits] Fetching data for store:', storeId);
-    setLoading(true);
-    try {
-      const [inventoryRes, familiesRes] = await Promise.all([
-        OfflineInventoryService.getInventory(storeId, { notify: false }),
-        OfflineInventoryService.getProductFamilies(storeId)
-      ]);
-      
-      console.log('[FichiersProduits] Inventory response:', inventoryRes.data?.length || 0, 'items');
 
-      if (inventoryRes.data) {
-        const mapped = inventoryRes.data.map(item => ({
-          ...item,
-          purchase_price: Number(item.cost || (item as any).cost_price || 0),
-          selling_price_detail: Number(item.price || (item as any).unit_price || 0),
-          current_stock: Number(item.quantity ?? (item as any).stock ?? (item as any).current_stock ?? 0),
-          min_stock_alert: Number(item.low_stock_threshold ?? (item as any).min_quantity ?? 0),
-          unit_type: item.unit_type || 'Pièce',
-          family_id: item.category_id || (item as any).category || (item as any).family_id,
-          brand: item.brand || '',
-          packaging: item.packaging || '1',
-          aisle: item.aisle || '',
-          expiry_date: item.expiry_date,
-          store_id: item.store_id,
-          image_url: item.image_url,
-          created_at: item.created_at,
-          updated_at: item.updated_at,
-        } as unknown as ProductMaster));
-        setLocalProducts(mapped);
-      }
-      if (familiesRes.data) {
-        console.log('[FichiersProduits] Families fetched:', familiesRes.data.length);
-        setFamilies(familiesRes.data as any);
-      }
-    } catch (err) {
-      console.error('[FichiersProduits] Fetch error:', err);
-      toast({ title: t('common.error'), variant: 'destructive' });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getPackSize = (pStr: string | number | undefined) => {
     if (!pStr) return 1;
@@ -569,7 +573,14 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
             </div>
           </DialogHeader>
           
-          <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="flex-1 flex flex-col min-h-0 bg-background overflow-hidden">
+          <form onSubmit={(e) => { 
+        e.preventDefault(); 
+        // Only save if the target wasn't an input (prevent scanner Enter from submitting)
+        const target = e.nativeEvent?.target as HTMLElement;
+        if (target?.tagName !== 'INPUT') {
+            handleSave(); 
+        }
+    }} className="flex-1 flex flex-col min-h-0 bg-background overflow-hidden">
             <div className="flex-1 overflow-y-auto">
               {registrationMode === 'single' ? (
                 <div className="p-8">
