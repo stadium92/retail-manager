@@ -100,8 +100,6 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
     reorder_quantity: '',
   });
 
-  const [prevUnitType, setPrevUnitType] = useState('Pièce');
-
   // Auto-scale quantity and prices when unit type changes
   const fetchModuleData = useCallback(async () => {
     if (!storeId) return;

@@ -119,7 +119,12 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     if (!storeId) return;
     try {
       const { data } = await OfflineStoreService.getStore(storeId);
-      if (data) setStore(data);
+      if (data) {
+        setStore(data);
+        if (data.default_price_tier) {
+          setActiveTier(data.default_price_tier);
+        }
+      }
     } catch (error) {
       console.error('[SalesModule] Store settings fetch error:', error);
     }
