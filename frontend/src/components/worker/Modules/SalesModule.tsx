@@ -468,10 +468,18 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       } else {
         updateSession(mode, { lineItems: [...lineItems, newItem] });
         setSelectedIndex(lineItems.length);
+        }
       }
-    }
-    
-    toast.success(t('worker.sales.itemFound', { name: product.name }));
+      
+      // Ensure focus jumps to Quantity column (index 5)
+      setTimeout(() => {
+          const store = useNavigationStore.getState();
+          const targetRow = firstEmptyIndex !== -1 ? firstEmptyIndex : lineItems.length;
+          store.setActiveCell({ row: targetRow, col: 5 });
+          store.setMode('hover');
+      }, 150);
+      
+      toast.success(t('worker.sales.itemFound', { name: product.name }));
   }, [lineItems, mode, updateSession, t, activeTier, currentSession.clientDiscount]);
 
     // Handle Hardware Scanner Input (Fast Scan)
@@ -1067,7 +1075,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
             setTimeout(() => {
                 const store = useNavigationStore.getState();
                 if (store.activeCell) {
-                    store.setActiveCell({ row: store.activeCell.row, col: 4 }); // Jump to Price col
+                    store.setActiveCell({ row: store.activeCell.row, col: 5 }); // Jump to Quantity col
                     store.setMode('hover');
                 }
             }, 100);
