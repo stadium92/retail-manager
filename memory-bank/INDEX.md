@@ -76,6 +76,8 @@ Located in: `ai/`
 ---
 
 ## 📊 Analysis & Insights
+- [Analysis: Post-Supabase Stability & Multi-Interface Coverage](analysis/STABILITY_CONSOLIDATION_REPORT.md)
+  - **Focus:** Technical documentation of the Heartbeat, ACID transactions, and No-Ghost logic covering both Master and Worker sides.
 
 ### Analysis Directory Structure
 Located in: `analysis/`
