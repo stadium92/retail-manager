@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (e) {
             console.warn('[AuthContext] Heartbeat refresh failed:', e);
         }
-    }, 120000); // Every 2 minutes
+    }, 600_000); // Every 10 minutes (5 min before 15-min token expiry)
 
     return () => clearInterval(heartbeat);
   }, [user]);

@@ -203,7 +203,32 @@ export const createProductsRepo = (db: Database.Database) => {
           @created_by,
           @updated_by
         )
-        ON CONFLICT(id) DO UPDATE SET updated_at = excluded.updated_at
+        ON CONFLICT(id) DO UPDATE SET
+          name = excluded.name,
+          sku = excluded.sku,
+          barcode = excluded.barcode,
+          description = excluded.description,
+          cost_price = excluded.cost_price,
+          unit_price = excluded.unit_price,
+          wholesale_price = excluded.wholesale_price,
+          wholesale_price_ht = excluded.wholesale_price_ht,
+          wholesale_price_ttc = excluded.wholesale_price_ttc,
+          selling_price_2 = excluded.selling_price_2,
+          selling_price_3 = excluded.selling_price_3,
+          selling_price_4 = excluded.selling_price_4,
+          min_quantity = excluded.min_quantity,
+          low_stock_threshold = excluded.low_stock_threshold,
+          quantity = excluded.quantity,
+          category = excluded.category,
+          image_url = excluded.image_url,
+          aisle = excluded.aisle,
+          brand = excluded.brand,
+          unit_type = excluded.unit_type,
+          packaging = excluded.packaging,
+          expiry_date = excluded.expiry_date,
+          reorder_quantity = excluded.reorder_quantity,
+          updated_at = excluded.updated_at,
+          updated_by = excluded.updated_by
       `)
       .run({
         ...product,
@@ -220,6 +245,7 @@ export const createProductsRepo = (db: Database.Database) => {
         selling_price_3: product.selling_price_3 ?? null,
         selling_price_4: product.selling_price_4 ?? null,
         min_quantity: product.min_quantity ?? 0,
+        low_stock_threshold: product.low_stock_threshold ?? product.min_quantity ?? 0,
         quantity: product.quantity ?? 0,
         category: product.category ?? null,
         image_url: product.image_url ?? null,

@@ -16,8 +16,19 @@ export const OfflineSalesService = {
                 const headers = await OfflineAuthService.getAuthHeaders();
                 if (!headers) throw new Error('Not authenticated');
 
+                // Map cart items to the shape the backend expects (product_id, product_name, unit_price)
+                const mappedItems = items.map((item: any) => ({
+                    id: item.id || undefined,
+                    product_id: item.product_id || item.product?.id || null,
+                    product_name: item.product_name || item.product?.name || 'Unknown',
+                    quantity: item.quantity,
+                    unit_price: item.unit_price ?? item.unitPrice ?? 0,
+                    discount: item.discount ?? 0,
+                    total: item.total ?? item.lineTotal ?? 0,
+                }));
+
                 // Standard backend POST /rest/v1/sales expects items in the same object
-                const payload = { ...sale, items };
+                const payload = { ...sale, items: mappedItems };
 
                 console.log('[OfflineSales] Sending sale to bridge:', payload);
 
