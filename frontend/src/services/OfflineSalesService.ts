@@ -12,36 +12,42 @@ export const OfflineSalesService = {
         
         if (isLocalFirst) {
             try {
+                const { OfflineAuthService } = await import('./OfflineAuthService');
                 const headers = await OfflineAuthService.getAuthHeaders();
                 if (!headers) throw new Error('Not authenticated');
 
-                const response = await smartFetch(`${localBridgeBaseUrl}/rest/v1/rpc/create_sale_with_items`, {
+                // Standard backend POST /rest/v1/sales expects items in the same object
+                const payload = { ...sale, items };
+
+                console.log('[OfflineSales] Sending sale to bridge:', payload);
+
+                const response = await smartFetch(`${localBridgeBaseUrl}/rest/v1/sales`, {
                     method: 'POST',
-                    body: JSON.stringify({ sale, items })
+                    headers: { ...headers, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 });
 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ message: 'Bridge write failed' }));
+                    console.error('[OfflineSales] Bridge error:', errorData);
                     throw new Error(errorData.message || 'Failed to save sale to local bridge');
                 }
 
-                return { data: await response.json() };
+                const result = await response.json();
+                console.log('[OfflineSales] Sale saved successfully:', result);
+                return { data: result };
             } catch (error) {
                 console.error('[OfflineSales] Create sale failed:', error);
                 return { error };
             }
         }
 
-        // True Offline / Web Fallback
+        // Web Fallback (True Offline)
         try {
             await LocalDatabase.init();
             const saleId = sale.id || crypto.randomUUID();
-            const newSale = { ...sale, id: saleId, synced: false };
+            const newSale = { ...sale, id: saleId, items, synced: false };
             await LocalDatabase.saveSale(newSale);
-            
-            // Queue for cloud sync if not in local-first mode
-            // (Standard offline logic here)
-            
             return { data: newSale };
         } catch (error) {
             return { error };
@@ -52,6 +58,7 @@ export const OfflineSalesService = {
       const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
       if (isLocalFirst) {
         try {
+            const { OfflineAuthService } = await import('./OfflineAuthService');
             const headers = await OfflineAuthService.getAuthHeaders();
             if (!headers) throw new Error('Not authenticated');
             const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/sales?store_id=${storeId}`, { headers });
@@ -71,6 +78,7 @@ export const OfflineSalesService = {
             let sales: any[] = [];
 
             if (isLocalFirst) {
+                const { OfflineAuthService } = await import('./OfflineAuthService');
                 const headers = await OfflineAuthService.getAuthHeaders();
                 if (headers) {
                     const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/sales?store_id=${storeId}`, { headers });
@@ -83,10 +91,10 @@ export const OfflineSalesService = {
 
             const today = new Date().toISOString().split('T')[0];
             const todaySales = sales
-                .filter(s => s.created_at.startsWith(today) && s.sale_type !== 'proforma')
+                .filter(s => s.created_at && s.created_at.startsWith(today) && s.sale_type !== 'proforma')
                 .reduce((sum, s) => sum + (s.total_price || 0), 0);
 
-            // Simple week/month calculation for local mode
+            // Simple calculation for local mode
             const weekSales = todaySales; 
             const monthSales = todaySales;
 

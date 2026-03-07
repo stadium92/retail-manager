@@ -660,11 +660,11 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         ? clients.find(c => c.id === currentSession.clientId) 
         : undefined;
 
-      const { error } = await OfflineSalesService.createSale({
+      const { error } = await OfflineSalesService.createSaleWithItems({
         store_id: storeId,
         worker_id: user?.id || '',
         client_id: currentSession.clientId || undefined,
-        items: cartItems,
+        
         total_price: netTotal,
         payment_method: paymentMethod as 'cash' | 'card' | 'credit',
         sale_type: saleType,
@@ -674,7 +674,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         invoice_number: invoiceNumber,
         order_ref: orderRef,
         discount: currentSession.clientDiscount || 0,
-      });
+      }, cartItems);
 
       if (error) throw error;
 

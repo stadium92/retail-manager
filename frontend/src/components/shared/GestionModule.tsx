@@ -1170,7 +1170,7 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
                         {todayLosses.map(mov => (
                           <TableRow key={mov.id} className="h-11 border-b">
                             <TableCell className="text-xs font-mono text-muted-foreground">
-                              {format(new Date(mov.date), 'HH:mm')}
+                              {format(new Date(mov.created_at || mov.date || new Date()), 'HH:mm')}
                             </TableCell>
                             <TableCell className="text-xs font-bold uppercase">{mov.product_name}</TableCell>
                             <TableCell className="text-xs text-center font-bold text-danger font-mono">-{mov.quantity}</TableCell>
