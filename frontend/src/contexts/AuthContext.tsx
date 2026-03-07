@@ -38,6 +38,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isBackendReady, setIsBackendReady] = useState(false);
   const rolesLoadingStartTimeRef = useRef<number | null>(null);
 
+    // 3. Proactive Session Heartbeat: Keep LocalBridge token fresh
+  useEffect(() => {
+    if (!user) return;
+    
+    console.log('[AuthContext] Initializing proactive session heartbeat');
+    const heartbeat = setInterval(async () => {
+        try {
+            await OfflineAuthService.getAuthHeaders();
+        } catch (e) {
+            console.warn('[AuthContext] Heartbeat refresh failed:', e);
+        }
+    }, 120000); // Every 2 minutes
+
+    return () => clearInterval(heartbeat);
+  }, [user]);
+
   // Poll Backend Readiness
   useEffect(() => {
     const dataClient = getDataClient();
