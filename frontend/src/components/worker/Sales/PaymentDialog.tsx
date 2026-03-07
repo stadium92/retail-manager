@@ -149,7 +149,7 @@ export function PaymentDialog({
                       }
                     }
                   }}
-                  className="text-4xl h-16 font-black font-mono text-right bg-white border-2 border-primary"
+                  className="!text-7xl md:!text-7xl h-24 font-black font-mono text-right bg-white border-4 border-primary shadow-lg"
                 />
               </div>
 
