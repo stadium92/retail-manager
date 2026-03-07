@@ -86,12 +86,10 @@ export function FicheCaisseModule({ storeId }: FicheCaisseModuleProps) {
       if (!headers) return;
 
       // Fetch Sales
-      const salesRes = await fetch(`${localBridgeBaseUrl}/rest/v1/sales?store_id=${storeId}`, { headers });
-      const sales = await salesRes.json().catch(() => []);
+      const sales = await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/sales?store_id=${storeId}`, { method: 'GET' });
+      const payments = await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/supplier_payments?store_id=${storeId}`, { method: 'GET' });
       
-      // Fetch Supplier Payments (Expenses)
-      const paymentsRes = await fetch(`${localBridgeBaseUrl}/rest/v1/supplier_payments?store_id=${storeId}`, { headers });
-      const payments = await paymentsRes.json().catch(() => []);
+      const salesRes = { ok: true }; // Mock to keep the rest of the logic intact
 
       if (salesRes.ok) {
         const todaySales = (sales as any[]).filter(s => s.created_at && new Date(s.created_at) >= todayStart && s.sale_type !== 'proforma');
@@ -170,7 +168,18 @@ export function FicheCaisseModule({ storeId }: FicheCaisseModuleProps) {
         observations: observations || `Caissier: ${cashierName}`
       };
 
-      const success = await OfflineDataService.submitCashClosing(closingData);
+      // Fallback to direct bridge request since submitCashClosing was removed
+      let success = false;
+      try {
+        await OfflineAuthService.localBridgeRequest('/rest/v1/cash_closings', {
+            method: 'POST',
+            body: JSON.stringify(closingData)
+        });
+        success = true;
+      } catch (err) {
+        console.error('Submit cash closing failed', err);
+        success = false;
+      }
       
       if (success) {
         // Export PDF
