@@ -141,25 +141,29 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
             store.getState().moveLeft();
             return;
           case 'ArrowDown': {
-            e.preventDefault();
-            const col = GRID_COLUMNS[state.activeCell.col];
-            if (col === 'price') {
-                window.dispatchEvent(new CustomEvent('nav-adjust-price', { detail: { row: state.activeCell.row, delta: -1 } }));
-            } else {
-                store.getState().moveDown();
+              e.preventDefault();
+              const col = GRID_COLUMNS[state.activeCell.col];
+              if (col === 'price') {
+                  window.dispatchEvent(new CustomEvent('nav-adjust-price', { detail: { row: state.activeCell.row, delta: -1 } }));
+              } else if (col === 'quantity') {
+                  window.dispatchEvent(new CustomEvent('nav-adjust-quantity', { detail: { row: state.activeCell.row, delta: -1 } }));
+              } else {
+                  store.getState().moveDown();
+              }
+              return;
             }
-            return;
-          }
           case 'ArrowUp': {
-            e.preventDefault();
-            const col = GRID_COLUMNS[state.activeCell.col];
-            if (col === 'price') {
-                window.dispatchEvent(new CustomEvent('nav-adjust-price', { detail: { row: state.activeCell.row, delta: 1 } }));
-            } else {
-                store.getState().moveUp();
+              e.preventDefault();
+              const col = GRID_COLUMNS[state.activeCell.col];
+              if (col === 'price') {
+                  window.dispatchEvent(new CustomEvent('nav-adjust-price', { detail: { row: state.activeCell.row, delta: 1 } }));
+              } else if (col === 'quantity') {
+                  window.dispatchEvent(new CustomEvent('nav-adjust-quantity', { detail: { row: state.activeCell.row, delta: 1 } }));
+              } else {
+                  store.getState().moveUp();
+              }
+              return;
             }
-            return;
-          }
           case '+':
           case '=': {
             e.preventDefault();
