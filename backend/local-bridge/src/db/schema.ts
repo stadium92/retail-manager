@@ -298,12 +298,7 @@ export const initializeSchema = (db: Database.Database) => {
     -- Stock deduction is handled explicitly in the createSaleWithItems transaction
     -- to support ACID transactions and allow negative stock.
     
-    CREATE TRIGGER IF NOT EXISTS sale_items_ai AFTER INSERT ON sale_items
-    BEGIN
-      UPDATE products
-      SET quantity = quantity - new.quantity
-      WHERE id = new.product_id;
-    END;
+    DROP TRIGGER IF EXISTS sale_items_ai;
 
     -- Scheduled Orders
     CREATE TABLE IF NOT EXISTS scheduled_orders (

@@ -9,6 +9,7 @@ import { CurrencySwitcher } from '@/components/shared/CurrencySwitcher';
 import { HardwareStatus } from '@/components/shared/HardwareStatus';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { getDataClient, smartFetch } from '@/lib/dataClient';
+import { LocalDatabase } from '@/services/LocalDatabase';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { toast } from 'sonner';
 
@@ -48,36 +49,18 @@ export function WorkerStatusBar({ storeName, userEmail, activeModule, onLogout, 
     };
   }, []);
 
-  const handleManualSync = async () => {
-    if (!isOnline) {
-        toast.error(t('common.offline'));
-        return;
-    }
-    
-    const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
-    if (!isLocalFirst) return;
-
-    setIsSyncing(true);
-    try {
-        const headers = await OfflineAuthService.getAuthHeaders();
-        if (!headers) throw new Error('Not authenticated');
-
-        const res = await smartFetch(`${localBridgeBaseUrl}/sync/pull${storeId ? `?store_id=${storeId}` : ''}`, { headers });
-        if (res.ok) {
-            const data = await res.json();
-            toast.success(t('common.success'), { 
-                description: `${data.products} products synchronized.` 
-            });
-            // Trigger a global update event
-            window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
-        } else {
-            const err = await res.json();
-            throw new Error(err.message || 'Sync failed');
+  const handleHardReset = async () => {
+    if (confirm("DANGER: This will wipe the browser cache (IndexedDB and LocalStorage). Your local SQLite database will NOT be affected. Use this to fix 'Ghost Files' or stale interface data. Continue?")) {
+        setIsSyncing(true);
+        try {
+            await LocalDatabase.clearAll();
+            localStorage.clear();
+            toast.success("Cache wiped. Reloading app...");
+            setTimeout(() => window.location.reload(), 1000);
+        } catch (e) {
+            toast.error("Failed to clear cache");
+            setIsSyncing(false);
         }
-    } catch (e: any) {
-        toast.error(t('common.error'), { description: e.message });
-    } finally {
-        setIsSyncing(false);
     }
   };
 
@@ -135,12 +118,12 @@ export function WorkerStatusBar({ storeName, userEmail, activeModule, onLogout, 
           variant="ghost"
           size="sm"
           disabled={isSyncing || !isOnline}
-          onClick={handleManualSync}
+          onClick={handleHardReset}
           className="h-6 px-2 text-primary-foreground hover:bg-primary-foreground/10 dark:text-foreground flex items-center gap-1"
-          title={t('common.syncNow', 'Synchroniser')}
+          title="Hard Reset Browser Cache"
         >
           <RefreshCw className={cn("h-3 w-3", isSyncing && "animate-spin")} />
-          {!isSyncing && <span className="text-[10px] font-bold uppercase tracking-tighter hidden md:inline">Sync</span>}
+          {!isSyncing && <span className="text-[10px] font-bold uppercase tracking-tighter hidden md:inline">Reset Cache</span>}
         </Button>
 
         {/* Connection Status */}

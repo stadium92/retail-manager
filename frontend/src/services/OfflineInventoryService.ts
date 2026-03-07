@@ -115,20 +115,16 @@ export const OfflineInventoryService = {
               const remoteProducts = Array.isArray(payload) ? payload : (payload.data || []);
               const mappedItems = remoteProducts.map(mapDbToInventoryItem);
               
-              // FORCE RECONCILIATION: Bridge is the absolute truth.
-              // We wipe the local cache for this store and replace it.
+              // SAFE RECONCILIATION: Update local cache with bridge data
               const reconcileCache = async () => {
                   try {
-                      // 1. Clear existing local inventory for this store
-                      await LocalDatabase.clearTable('inventory'); 
-                      
-                      // 2. Save fresh data from bridge
+                      // Save/Update fresh data from bridge without deleting everything else first
                       for (const remote of remoteProducts) {
                           await LocalDatabase.saveInventoryItem(mapToLocalInventory(remote, true));
                       }
-                      console.log('[OfflineInventory] Cache reconciled with bridge truth');
+                      console.log('[OfflineInventory] Cache synchronized with bridge');
                   } catch (err) {
-                      console.error('[OfflineInventory] Reconciliation failed:', err);
+                      console.error('[OfflineInventory] Sync failed:', err);
                   }
               };
               reconcileCache();
@@ -148,14 +144,16 @@ export const OfflineInventoryService = {
         }
       }
 
-      // 2. Fallback: ONLY use local cache if NOT in local-first mode
-      // If we are in local-first mode and the bridge failed, we SHOULD NOT show stale browser cache
-      if (!dc.isLocalFirst) {
-          const localInventory = await LocalDatabase.getInventory(storeId);
-          if (localInventory.length > 0) {
-            return { data: localInventory.map(mapLocalInventoryToItem) };
-          }
+      // 2. Strict Fallback
+      const localInventory = await LocalDatabase.getInventory(storeId);
+      if (localInventory.length > 0) {
+        // If we are in local-first mode and have data, but bridge failed, 
+        // we can show local data but with a warning.
+        console.warn('[OfflineInventory] Returning cached data because bridge is unreachable');
+        return { data: localInventory.map(mapLocalInventoryToItem) };
       }
+
+      return { data: [] };
 
       return { data: [] };
     } catch (error) {

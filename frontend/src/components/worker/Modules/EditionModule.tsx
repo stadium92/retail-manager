@@ -100,7 +100,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
   const storeSuppliers = useMasterDataStore(state => state.suppliers);
   // Subscribe to products store for fallback
   const products = useMasterDataStore(state => state.products);
-  const setProducts = useMasterDataStore(state => state.setProducts);
+  
   const masterUsers = useMasterDataStore(state => state.users);
   const setUsers = useMasterDataStore(state => state.setUsers);
 
@@ -156,9 +156,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
          productsLoadedRef.current = true;
          const inventoryRes = await OfflineInventoryService.getInventory(storeId);
          // Only update if we actually got items to avoid infinite loop on empty inventory
-         if (inventoryRes.data && inventoryRes.data.length > 0) {
-           setProducts(inventoryRes.data);
-         }
+         
       }
 
       switch (mode) {
@@ -237,7 +235,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
     }
 
     setIsLoading(false);
-  }, [storeId, mode, dateRange, storeSuppliers, selectedClientId, selectedSupplierId, t, setProducts, masterUsers, products, setUsers]);
+  }, [storeId, mode, dateRange, storeSuppliers, selectedClientId, selectedSupplierId, t, masterUsers, products, setUsers]);
 
   useEffect(() => {
     loadData();
@@ -247,9 +245,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
       const detail = (e as CustomEvent).detail;
       if (detail?.type === 'inventory' && storeId) {
         const inventoryRes = await OfflineInventoryService.getInventory(storeId, { notify: false });
-        if (inventoryRes.data && inventoryRes.data.length > 0) {
-          setProducts(inventoryRes.data);
-        }
+        
       }
     };
 

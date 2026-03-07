@@ -142,7 +142,10 @@ export const createSalesRepo = (db: Database.Database) => {
           batch_id: item.batch_id ?? null,
         });
 
-// Stock deduction is handled by DB trigger sale_items_ai
+        // EXPLICIT STOCK DEDUCTION
+        if (itemResult.changes > 0 && item.product_id && saleData.sale_type !== 'proforma') {
+          stmts.deductStock.run(item.quantity, item.product_id);
+        }
       }
 
       // 4. Update Client Balance if credit sale
