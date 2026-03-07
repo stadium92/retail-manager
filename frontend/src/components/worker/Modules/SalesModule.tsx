@@ -5,6 +5,7 @@ import { InvoiceTemplate, InvoiceData } from '@/components/printing/InvoiceTempl
 import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { OfflineDataService } from '@/services/OfflineDataService';
+import { OfflineInventoryService } from '@/services/OfflineInventoryService';
 import { OfflineSalesService } from '@/services/OfflineSalesService';
 import { Product } from '@/types';
 import { toast } from 'sonner';
@@ -307,7 +308,9 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     try {
       console.log('[OrderLoad] Searching for:', cleanRef);
       const sales = await OfflineDataService.getSales(storeId);
-      const allProducts = useMasterDataStore.getState().products || [];
+      // Fetch the latest product data from the DB to ensure stock levels are 100% accurate
+      const inventoryRes = await OfflineInventoryService.getInventory(storeId, { notify: false });
+      const allProducts = inventoryRes.data || [];
 
       // Fuzzy find: match if cleanRef is ANYWHERE in invoice_number, order_ref, or ID
       const foundSale = sales.find(s => {
