@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -147,7 +147,7 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
   }, [storeId, dateRange]);
 
   // Fetch data - uses local sources
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     // If we're in Worker mode, storeId is required. 
     // In Master mode, storeId can be empty string (All Stores).
     // We only return if storeId is strictly undefined (not yet initialized).
@@ -239,11 +239,11 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
     }
 
     setIsLoading(false);
-  };
+  }, [storeId, t, dateRange]);
 
   useEffect(() => {
     fetchData();
-  }, [storeId, t, dateRange]);
+  }, [fetchData]);
 
   const handleRecordPettyCash = async () => {
     const amount = parseFloat(pettyCashForm.amount);

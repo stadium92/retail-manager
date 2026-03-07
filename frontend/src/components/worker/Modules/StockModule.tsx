@@ -132,6 +132,21 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
     fetchModuleData();
   }, [fetchModuleData]);
 
+  // Real-time reactivity: listen for DB update events (sale, inventory)
+  useEffect(() => {
+    const handleDbUpdate = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.type === 'sale' || detail?.type === 'inventory') {
+        console.log('[StockModule] Refreshing data due to DB update event:', detail?.type);
+        refetchStock();
+        fetchModuleData();
+      }
+    };
+
+    window.addEventListener('localDbDataUpdated', handleDbUpdate);
+    return () => window.removeEventListener('localDbDataUpdated', handleDbUpdate);
+  }, [refetchStock, fetchModuleData]);
+
   useEffect(() => {
     fetchBatches();
   }, [fetchBatches]);
