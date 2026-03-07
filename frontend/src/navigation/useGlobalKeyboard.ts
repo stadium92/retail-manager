@@ -206,6 +206,11 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
 
       // If we are navigating via grid but try to type, auto-enter edit AND capture the character
       if (state.mode === 'hover' && state.activeCell && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        // IMPORTANT: Prevent default browser behavior so it doesn't append to the existing value
+        // Our nav-capture-keystroke event will handle setting the initial value (overwrite or append as needed)
+        e.preventDefault();
+        
+        store.getState().setMode('edit');
         store.getState().setMode('edit');
         
         // Dispatch an event to capture the first keystroke so it isn't lost
