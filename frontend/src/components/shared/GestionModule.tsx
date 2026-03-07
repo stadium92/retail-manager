@@ -369,6 +369,18 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
     return Object.values(productSales).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
   }, [sales, analytics]);
 
+          const stockHealthData = useMemo(() => {
+          if (analytics?.stock_health) {
+            return [
+              { name: t('inventory.inStock'), value: analytics.stock_health.ok, color: '#00FF66' },
+              { name: t('inventory.lowStock'), value: analytics.stock_health.low, color: '#FFD700' },
+              { name: t('inventory.outOfStock'), value: analytics.stock_health.out, color: '#FF6B6B' },
+            ].filter(d => d.value > 0);
+          }
+          // Fallback to computing from current view if analytics missing
+          return [];
+        }, [analytics, t]);
+
   // Handle loss recording - works offline
   const handleRecordLoss = async () => {
     if (!lossForm.product || lossForm.quantity <= 0) {
@@ -607,17 +619,7 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
         );
 
       case 'tableau-bord':
-        const stockHealthData = useMemo(() => {
-          if (analytics?.stock_health) {
-            return [
-              { name: t('inventory.inStock'), value: analytics.stock_health.ok, color: '#00FF66' },
-              { name: t('inventory.lowStock'), value: analytics.stock_health.low, color: '#FFD700' },
-              { name: t('inventory.outOfStock'), value: analytics.stock_health.out, color: '#FF6B6B' },
-            ].filter(d => d.value > 0);
-          }
-          // Fallback to computing from current view if analytics missing
-          return [];
-        }, [analytics, t]);
+
 
         return (
           <div className="space-y-4">
