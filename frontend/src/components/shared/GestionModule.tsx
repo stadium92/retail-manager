@@ -121,7 +121,7 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
     
     const handleDataUpdated = (e: CustomEvent) => {
       // 1. Check type
-      if (e.detail?.type !== 'sales' && e.detail?.type !== 'inventory') return;
+      if (e.detail?.type !== 'sales' && e.detail?.type !== 'sale' && e.detail?.type !== 'inventory' && e.detail?.type !== 'product') return;
       
       // 2. Check storeId (if provided in event) to only refresh what's relevant
       if (e.detail?.storeId && e.detail.storeId !== storeId) return;
@@ -322,9 +322,10 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
   const categoryData = useMemo(() => {
     const categories: Record<string, number> = {};
     sales.forEach(sale => {
-      (sale.sale_items || []).forEach((item) => {
-        const cat = item.category_name || t('common.other');
-        categories[cat] = (categories[cat] || 0) + item.total;
+      const items = (sale.items?.length ? sale.items : (sale.sale_items?.length ? sale.sale_items : []));
+      items.forEach((item: any) => {
+        const cat = item.category_name || item.category || t('common.other');
+        categories[cat] = (categories[cat] || 0) + (item.total || item.lineTotal || 0);
       });
     });
     return Object.entries(categories)
@@ -346,7 +347,7 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
 
   // Top selling products
   const topProducts = useMemo(() => {
-    if (analytics?.top_products) {
+    if (analytics?.top_products?.length) {
       return analytics.top_products.map(p => ({
         name: p.name,
         qty: p.quantity,
@@ -355,12 +356,14 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
     }
     const productSales: Record<string, { name: string; qty: number; revenue: number }> = {};
     sales.forEach(sale => {
-      (sale.sale_items || []).forEach((item) => {
-        if (!productSales[item.product_name]) {
-          productSales[item.product_name] = { name: item.product_name, qty: 0, revenue: 0 };
+      const items = (sale.items?.length ? sale.items : sale.sale_items) || [];
+      items.forEach((item: any) => {
+        const name = item.product_name || item.productName || item.designation || 'Unknown';
+        if (!productSales[name]) {
+          productSales[name] = { name, qty: 0, revenue: 0 };
         }
-        productSales[item.product_name].qty += item.quantity;
-        productSales[item.product_name].revenue += item.total;
+        productSales[name].qty += Number(item.quantity || 0);
+        productSales[name].revenue += Number(item.total || item.lineTotal || 0);
       });
     });
     return Object.values(productSales).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
@@ -604,11 +607,17 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
         );
 
       case 'tableau-bord':
-        const stockHealthData = analytics?.stock_health ? [
-          { name: t('inventory.inStock'), value: analytics.stock_health.ok, color: '#00FF66' },
-          { name: t('inventory.lowStock'), value: analytics.stock_health.low, color: '#FFD700' },
-          { name: t('inventory.outOfStock'), value: analytics.stock_health.out, color: '#FF6B6B' },
-        ].filter(d => d.value > 0) : [];
+        const stockHealthData = useMemo(() => {
+          if (analytics?.stock_health) {
+            return [
+              { name: t('inventory.inStock'), value: analytics.stock_health.ok, color: '#00FF66' },
+              { name: t('inventory.lowStock'), value: analytics.stock_health.low, color: '#FFD700' },
+              { name: t('inventory.outOfStock'), value: analytics.stock_health.out, color: '#FF6B6B' },
+            ].filter(d => d.value > 0);
+          }
+          // Fallback to computing from current view if analytics missing
+          return [];
+        }, [analytics, t]);
 
         return (
           <div className="space-y-4">
@@ -851,7 +860,7 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
 
         sales.forEach(sale => {
           const hour = new Date(sale.created_at).getHours();
-          hourlyData[hour].revenue += sale.total_price;
+          hourlyData[hour].revenue += Number(sale.total_price || 0);
           hourlyData[hour].count += 1;
         });
 

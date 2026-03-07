@@ -72,7 +72,7 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
   getTopWorkers(storeId: string, limit = 5, from?: string, to?: string): { name: string; sales_count: number; revenue: number }[] {
     let sql = `
         SELECT 
-          u.full_name as name, 
+          COALESCE(u.full_name, s.worker_id, 'Inconnu') as name, 
           COUNT(s.id) as sales_count, 
           SUM(COALESCE(CAST(s.total_price AS REAL), 0)) as revenue
         FROM sales s
@@ -87,7 +87,7 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
     }
 
     sql += `
-        GROUP BY u.full_name
+        GROUP BY name
         ORDER BY revenue DESC
         LIMIT ?
     `;
@@ -121,8 +121,8 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
   getStockHealth(storeId: string): { ok: number; low: number; out: number } {
     const row = db.prepare(`
       SELECT 
-        COALESCE(SUM(CASE WHEN quantity > COALESCE(min_quantity, 10) THEN 1 ELSE 0 END), 0) as ok,
-        COALESCE(SUM(CASE WHEN quantity > 0 AND quantity <= COALESCE(min_quantity, 10) THEN 1 ELSE 0 END), 0) as low,
+        COALESCE(SUM(CASE WHEN quantity > COALESCE(low_stock_threshold, min_quantity, 10) THEN 1 ELSE 0 END), 0) as ok,
+        COALESCE(SUM(CASE WHEN quantity > 0 AND quantity <= COALESCE(low_stock_threshold, min_quantity, 10) THEN 1 ELSE 0 END), 0) as low,
         COALESCE(SUM(CASE WHEN quantity <= 0 THEN 1 ELSE 0 END), 0) as out
       FROM products
       WHERE (? = '' OR store_id = ?)

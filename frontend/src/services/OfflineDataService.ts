@@ -92,7 +92,7 @@ class OfflineDataServiceClass {
             }
 
             const { OfflineTeamService } = await import('./OfflineTeamService');
-            const { data: users } = await OfflineTeamService.getTeam(storeId);
+            const { data: users } = await OfflineTeamService.getAllUsers();
             const nameMap = (users || []).reduce((acc, u) => ({ ...acc, [u.id]: u.full_name }), {} as Record<string, string>);
 
             const workerMap: Record<string, WorkerStats> = {};
@@ -263,16 +263,82 @@ class OfflineDataServiceClass {
     }
 
     async getDashboardAnalytics(storeId: string, from: Date, to: Date): Promise<any | null> {
-        const { isLocalFirst } = getDataClient();
-        if (isLocalFirst) {
-            const params = new URLSearchParams({ 
-                store_id: storeId,
-                from: from.toISOString(),
-                to: to.toISOString()
+        try {
+            const { isLocalFirst } = getDataClient();
+            if (isLocalFirst) {
+                const params = new URLSearchParams({ 
+                    store_id: storeId,
+                    from: from.toISOString(),
+                    to: to.toISOString()
+                });
+                const result = await OfflineAuthService.localBridgeRequest<any>(`/rest/v1/analytics/dashboard?${params.toString()}`, { method: 'GET' });
+                if (result) return result;
+            }
+            
+            // FRONTEND FALLBACK: Compute analytics manually
+            const sales = await this.getSales(storeId, from, to);
+            const { OfflineInventoryService } = await import('./OfflineInventoryService');
+            const { data: products } = await OfflineInventoryService.getInventory(storeId);
+            
+            const today = new Date().toISOString().split('T')[0];
+            const todaySales = sales.filter(s => s.created_at && s.created_at.startsWith(today) && s.sale_type !== 'proforma');
+            
+            // Compute top products
+            const prodMap: Record<string, { name: string; quantity: number; revenue: number }> = {};
+            sales.filter(s => s.sale_type !== 'proforma').forEach(s => {
+                const items = (s.items?.length ? s.items : s.sale_items) || [];
+                items.forEach((item: any) => {
+                    const name = item.product_name || 'Unknown';
+                    if (!prodMap[name]) prodMap[name] = { name, quantity: 0, revenue: 0 };
+                    prodMap[name].quantity += Number(item.quantity || 0);
+                    prodMap[name].revenue += Number(item.total || 0);
+                });
             });
-            return await OfflineAuthService.localBridgeRequest<any>(`/rest/v1/dashboard_analytics?${params.toString()}`, { method: 'GET' });
+            const top_products = Object.values(prodMap).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+
+            // Compute top workers
+            const workerMap: Record<string, { name: string; sales_count: number; revenue: number }> = {};
+            sales.filter(s => s.sale_type !== 'proforma').forEach(s => {
+                const name = s.worker_id || 'Inconnu';
+                if (!workerMap[name]) workerMap[name] = { name, sales_count: 0, revenue: 0 };
+                workerMap[name].sales_count++;
+                workerMap[name].revenue += Number(s.total_price || 0);
+            });
+            const top_workers = Object.values(workerMap).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+
+            // Compute stock health
+            const stock_health = (products || []).reduce((acc, p) => {
+                const qty = Number(p.quantity || 0);
+                const threshold = Number(p.min_quantity || p.low_stock_threshold || 10);
+                if (qty <= 0) acc.out++;
+                else if (qty <= threshold) acc.low++;
+                else acc.ok++;
+                return acc;
+            }, { ok: 0, low: 0, out: 0 });
+
+            // Basic weekly revenue (last 7 days from "to")
+            const weekly_revenue = [];
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(to);
+                d.setDate(d.getDate() - i);
+                const dateStr = d.toISOString().split('T')[0];
+                const dayTotal = sales
+                    .filter(s => s.created_at.startsWith(dateStr) && s.sale_type !== 'proforma')
+                    .reduce((sum, s) => sum + Number(s.total_price || 0), 0);
+                weekly_revenue.push({ date: dateStr, revenue: dayTotal });
+            }
+
+            return {
+                daily_revenue: todaySales.reduce((sum, s) => sum + (s.total_price || 0), 0),
+                weekly_revenue,
+                top_products,
+                top_workers,
+                stock_health
+            };
+        } catch (error) {
+            console.error('getDashboardAnalytics error:', error);
+            return null;
         }
-        return null;
     }
 
     async getCashTransactions(storeId: string, from?: Date): Promise<any[]> {
