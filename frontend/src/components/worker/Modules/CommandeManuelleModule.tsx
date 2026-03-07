@@ -51,12 +51,12 @@ export function CommandeManuelleModule({ storeId }: CommandeManuelleModuleProps)
       throw new Error('LocalBridge session expired. Please sign in again.');
     }
     const response = await fetch(`${localBridgeBaseUrl}${path}`, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(init.headers || {}),
-        ...headers,
-      },
+        ...init,
+        headers: {
+          ...headers,
+          ...(init.headers || {}),
+          ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        },
     });
     let payload: any = null;
     if (response.status !== 204) {

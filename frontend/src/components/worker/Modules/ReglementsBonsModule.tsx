@@ -80,7 +80,11 @@ export function ReglementsBonsModule({ storeId }: ReglementsBonsModuleProps) {
       }
       const response = await fetch(`${localBridgeBaseUrl}${path}`, {
         ...init,
-        headers: { ...headers, ...(init.headers || {}) },
+        headers: {
+          ...headers,
+          ...(init.headers || {}),
+          ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        },
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {

@@ -82,7 +82,9 @@ export function StockListingModule({ storeId }: StockListingModuleProps) {
             toast({ title: "Cache effacé", description: "Rechargement en cours..." });
             setTimeout(() => window.location.reload(), 1500);
         } catch (e) {
-            toast({ title: "Erreur", description: "Échec du nettoyage", variant: "destructive" });
+            console.error('[HardReset] Error:', e);
+            toast({ title: "Note", description: "Nettoyage partiel effectué. Rechargement...", variant: "default" });
+            setTimeout(() => window.location.reload(), 1500);
         }
     }
   };

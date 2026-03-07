@@ -75,12 +75,12 @@ export function CommandeAutoModule({ storeId }: CommandeAutoModuleProps) {
       throw new Error('LocalBridge session expired. Please sign in again.');
     }
     const response = await fetch(`${localBridgeBaseUrl}${path}`, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(init.headers || {}),
-        ...headers,
-      },
+        ...init,
+        headers: {
+          ...headers,
+          ...(init.headers || {}),
+          ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        },
     });
     let payload: any = null;
     if (response.status !== 204) {
@@ -192,7 +192,7 @@ export function CommandeAutoModule({ storeId }: CommandeAutoModuleProps) {
   const deleteSchedule = async (id: string) => {
     if (!confirm(t('common.confirm'))) return;
     try {
-      await localBridgeRequest(`/rest/v1/scheduled_orders/${id}`, { method: 'DELETE', body: '{}' });
+      await localBridgeRequest(`/rest/v1/scheduled_orders/${id}`, { method: 'DELETE',  });
       fetchScheduledOrders();
     } catch (err) {
       toast.error(t('common.error'));

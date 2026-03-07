@@ -229,7 +229,7 @@ export class OfflineAuthService {
     console.log(`ðŸ” [OfflineAuth] Requesting: ${baseUrl}${path}`, { method: init.method });
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     try {
       // Use smartFetch to bypass mixed content restrictions (http://127.0.0.1 from https://tauri.localhost)

@@ -507,15 +507,44 @@ class LocalDatabaseService {
 
   async clearAll(): Promise<void> {
     const db = await this.ensureDb();
-    const stores = ['users', 'roles', 'sales', 'inventory', 'stores', 'suppliers', 'supplier_payments', 'purchase_orders', 'sync_queue', 'session', 'product_families'];
+    const stores = Array.from(db.objectStoreNames);
+    console.log('LocalDatabase: Clearing all stores:', stores);
+    
     for (const s of stores) {
-      db.transaction(s, 'readwrite').objectStore(s).clear();
+        await new Promise((resolve) => {
+            try {
+                const tx = db.transaction(s, 'readwrite');
+                tx.objectStore(s).clear();
+                tx.oncomplete = () => resolve(true);
+                tx.onerror = () => {
+                    console.warn(`LocalDatabase: Failed to clear store ${s}`, tx.error);
+                    resolve(false);
+                };
+            } catch (e) {
+                console.warn(`LocalDatabase: Transaction error for store ${s}`, e);
+                resolve(false);
+            }
+        });
     }
+    console.log('LocalDatabase: Clear all process finished');
   }
 
   async clearTable(tableName: string): Promise<void> {
     const db = await this.ensureDb();
-    db.transaction(tableName, 'readwrite').objectStore(tableName).clear();
+    if (!db.objectStoreNames.contains(tableName)) {
+        console.warn(`LocalDatabase: Table ${tableName} does not exist, skipping clear`);
+        return;
+    }
+    return new Promise((resolve, reject) => {
+        try {
+            const tx = db.transaction(tableName, 'readwrite');
+            tx.objectStore(tableName).clear();
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        } catch (e) {
+            reject(e);
+        }
+    });
   }
 
   hashPassword(password: string): string {

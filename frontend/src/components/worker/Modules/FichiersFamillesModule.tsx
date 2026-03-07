@@ -48,12 +48,12 @@ export function FichiersFamillesModule({ storeId }: FichiersFamillesModuleProps)
     }
 
     const response = await fetch(`${localBridgeBaseUrl}${path}`, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(init.headers || {}),
-        ...headers,
-      },
+        ...init,
+        headers: {
+          ...headers,
+          ...(init.headers || {}),
+          ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        },
     });
 
     let payload: any = null;
@@ -202,7 +202,7 @@ export function FichiersFamillesModule({ storeId }: FichiersFamillesModuleProps)
     setDeletingId(id);
     try {
       if (useLocalBridge) {
-        await localBridgeRequest(`/rest/v1/product_families/${id}`, { method: 'DELETE', body: '{}' });
+        await localBridgeRequest(`/rest/v1/product_families/${id}`, { method: 'DELETE',  });
         deleteFamily(id);
         toast({ title: t('common.success') });
         return;

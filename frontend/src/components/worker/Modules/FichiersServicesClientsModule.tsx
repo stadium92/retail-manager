@@ -40,12 +40,12 @@ export function FichiersServicesClientsModule({ storeId }: FichiersServicesClien
       throw new Error('LocalBridge session expired. Please sign in again.');
     }
     const response = await fetch(`${localBridgeBaseUrl}${path}`, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(init.headers || {}),
-        ...headers,
-      },
+        ...init,
+        headers: {
+          ...headers,
+          ...(init.headers || {}),
+          ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        },
     });
     let payload: any = null;
     if (response.status !== 204) {
@@ -141,7 +141,7 @@ export function FichiersServicesClientsModule({ storeId }: FichiersServicesClien
     
     if (useLocalBridge) {
       try {
-        await localBridgeRequest(`/rest/v1/client_services/${id}`, { method: 'DELETE', body: '{}' });
+        await localBridgeRequest(`/rest/v1/client_services/${id}`, { method: 'DELETE',  });
         deleteService(id);
         toast({ title: t('common.success') });
       } catch (error) {
