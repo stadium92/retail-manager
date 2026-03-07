@@ -68,11 +68,11 @@ export function StockListingModule({ storeId }: StockListingModuleProps) {
       }
     } catch (error) {
       console.error('[StockListing] Service fetch error:', error);
-      if (products.length === 0) setProducts([]);
+      setProducts(prev => prev.length === 0 ? [] : prev);
     } finally {
       setIsLoading(false);
     }
-  }, [storeId, products.length]);
+  }, [storeId]);
 
   const handleHardReset = async () => {
     if (confirm("DANGER: Cela va effacer le cache local du navigateur. Vos produits dans la base de données SQLite ne seront PAS affectés. Utilisez ceci pour supprimer les 'Produits Fantômes'. Continuer ?")) {

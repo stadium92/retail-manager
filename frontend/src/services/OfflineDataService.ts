@@ -8,6 +8,52 @@ interface DailyRevenue {
     count: number;
 }
 
+export interface SaleWithItems {
+    id: string;
+    store_id: string;
+    worker_id?: string;
+    client_id?: string;
+    customer_name?: string;
+    customer_phone?: string;
+    sale_type: string;
+    total_price: number;
+    discount: number;
+    tax: number;
+    payment_method: string;
+    payment_status: string;
+    notes?: string;
+    invoice_number?: string;
+    created_at: string;
+    updated_at: string;
+    sale_items?: any[];
+    items?: any[];
+}
+
+export interface PurchaseWithSupplier {
+    id: string;
+    store_id: string;
+    supplier_id?: string;
+    supplier_name?: string;
+    order_ref?: string;
+    status: string;
+    total_amount: number;
+    notes?: string;
+    created_at: string;
+    updated_at: string;
+    items?: any[];
+}
+
+export interface StockMovement {
+    id: string;
+    product_id: string;
+    product_name?: string;
+    movement_type: string;
+    quantity: number;
+    reason?: string;
+    source?: string;
+    created_at: string;
+}
+
 interface WorkerStats {
     id: string;
     name: string;
@@ -258,6 +304,196 @@ class OfflineDataServiceClass {
             });
             if (!res.ok) throw new Error('Failed to update stock on bridge');
           }
+      }
+    }
+
+    async getSales(storeId: string, from?: Date, to?: Date): Promise<SaleWithItems[]> {
+      try {
+        const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
+
+        if (isLocalFirst) {
+          const { OfflineAuthService } = await import('./OfflineAuthService');
+          const headers = await OfflineAuthService.getAuthHeaders();
+          if (headers) {
+            const params = new URLSearchParams({ store_id: storeId });
+            if (from) params.append('date_from', from.toISOString());
+            if (to) params.append('date_to', to.toISOString());
+            const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/sales?${params.toString()}`, { headers });
+            if (res.ok) return await res.json();
+            throw new Error('Bridge unreachable');
+          }
+        }
+
+        const sales = await LocalDatabase.getSales(storeId);
+        return sales as unknown as SaleWithItems[];
+      } catch (error) {
+        console.error('getSales error:', error);
+        return [];
+      }
+    }
+
+    async getClientTransactions(storeId: string, clientId: string): Promise<any[]> {
+      try {
+        const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
+
+        if (isLocalFirst) {
+          const { OfflineAuthService } = await import('./OfflineAuthService');
+          const headers = await OfflineAuthService.getAuthHeaders();
+          if (headers) {
+            const params = new URLSearchParams({ store_id: storeId, client_id: clientId });
+            const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/client_transactions?${params.toString()}`, { headers });
+            if (res.ok) return await res.json();
+            throw new Error('Bridge unreachable');
+          }
+        }
+
+        return [];
+      } catch (error) {
+        console.error('getClientTransactions error:', error);
+        return [];
+      }
+    }
+
+    async getSupplierTransactions(storeId: string, supplierId: string): Promise<any[]> {
+      try {
+        const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
+
+        if (isLocalFirst) {
+          const { OfflineAuthService } = await import('./OfflineAuthService');
+          const headers = await OfflineAuthService.getAuthHeaders();
+          if (headers) {
+            const params = new URLSearchParams({ store_id: storeId, supplier_id: supplierId });
+            const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/supplier_transactions?${params.toString()}`, { headers });
+            if (res.ok) return await res.json();
+            throw new Error('Bridge unreachable');
+          }
+        }
+
+        return [];
+      } catch (error) {
+        console.error('getSupplierTransactions error:', error);
+        return [];
+      }
+    }
+
+    async getPurchaseOrders(storeId: string, from?: Date, to?: Date): Promise<PurchaseWithSupplier[]> {
+      try {
+        const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
+
+        if (isLocalFirst) {
+          const { OfflineAuthService } = await import('./OfflineAuthService');
+          const headers = await OfflineAuthService.getAuthHeaders();
+          if (headers) {
+            const params = new URLSearchParams({ store_id: storeId });
+            if (from) params.append('date_from', from.toISOString());
+            if (to) params.append('date_to', to.toISOString());
+            const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/purchase_orders?${params.toString()}`, { headers });
+            if (res.ok) return await res.json();
+            throw new Error('Bridge unreachable');
+          }
+        }
+
+        return [];
+      } catch (error) {
+        console.error('getPurchaseOrders error:', error);
+        return [];
+      }
+    }
+
+    async getAllPurchaseItems(storeId: string, from?: Date, to?: Date): Promise<any[]> {
+      try {
+        const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
+
+        if (isLocalFirst) {
+          const { OfflineAuthService } = await import('./OfflineAuthService');
+          const headers = await OfflineAuthService.getAuthHeaders();
+          if (headers) {
+            const params = new URLSearchParams({ store_id: storeId });
+            if (from) params.append('date_from', from.toISOString());
+            if (to) params.append('date_to', to.toISOString());
+            const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/purchase_items?${params.toString()}`, { headers });
+            if (res.ok) return await res.json();
+            throw new Error('Bridge unreachable');
+          }
+        }
+
+        return [];
+      } catch (error) {
+        console.error('getAllPurchaseItems error:', error);
+        return [];
+      }
+    }
+
+    async getDashboardAnalytics(storeId: string, from: Date, to: Date): Promise<any | null> {
+      try {
+        const [revenue, workerPerf, productPerf, valuation] = await Promise.all([
+          this.getDailyRevenue(storeId),
+          this.getWorkerPerformance(storeId),
+          this.getProductPerformance(storeId),
+          this.getStockValuation(storeId),
+        ]);
+
+        return {
+          daily_revenue: revenue.today,
+          weekly_revenue: [],
+          top_products: productPerf.map(p => ({ name: p.name, quantity: p.quantity, revenue: p.revenue })),
+          top_workers: workerPerf.map(w => ({ name: w.name, sales_count: w.sales_count, revenue: w.revenue })),
+          stock_health: valuation ? {
+            ok: valuation.item_count,
+            low: 0,
+            out: 0,
+          } : undefined,
+        };
+      } catch (error) {
+        console.error('getDashboardAnalytics error:', error);
+        return null;
+      }
+    }
+
+    async getCashTransactions(storeId: string, from?: Date): Promise<any[]> {
+      try {
+        const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
+
+        if (isLocalFirst) {
+          const { OfflineAuthService } = await import('./OfflineAuthService');
+          const headers = await OfflineAuthService.getAuthHeaders();
+          if (headers) {
+            const params = new URLSearchParams({ store_id: storeId });
+            if (from) params.append('date_from', from.toISOString());
+            const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/cash_transactions?${params.toString()}`, { headers });
+            if (res.ok) return await res.json();
+            throw new Error('Bridge unreachable');
+          }
+        }
+
+        return [];
+      } catch (error) {
+        console.error('getCashTransactions error:', error);
+        return [];
+      }
+    }
+
+    async createCashTransaction(data: any): Promise<boolean> {
+      try {
+        const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
+
+        if (isLocalFirst) {
+          const { OfflineAuthService } = await import('./OfflineAuthService');
+          const headers = await OfflineAuthService.getAuthHeaders();
+          if (headers) {
+            const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/cash_transactions`, {
+              method: 'POST',
+              headers: { ...headers, 'Content-Type': 'application/json' },
+              body: JSON.stringify(data),
+            });
+            return res.ok;
+          }
+        }
+
+        return false;
+      } catch (error) {
+        console.error('createCashTransaction error:', error);
+        return false;
       }
     }
 }

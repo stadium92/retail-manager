@@ -161,13 +161,9 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
 
       switch (mode) {
         case 'situation-client':
-          // Fetch Clients for selector
-          const { localBridgeBaseUrl } = (await import('@/lib/dataClient')).getDataClient();
-          const headers = await (await import('@/services/OfflineAuthService')).OfflineAuthService.getAuthHeaders();
-          const clientsRes = await fetch(`${localBridgeBaseUrl}/rest/v1/clients?store_id=${storeId}`, { headers });
-          if (clientsRes.ok) {
-            setClients(await clientsRes.json());
-          }
+          // Fetch Clients via OfflineDataService (uses proper auth headers + retry)
+          const clientsList = await OfflineDataService.getClients(storeId);
+          setClients(clientsList);
           
           if (selectedClientId) {
             const txs = await OfflineDataService.getClientTransactions(storeId, selectedClientId);
@@ -240,12 +236,12 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
   useEffect(() => {
     loadData();
 
-    // Listen for background inventory updates (e.g. after timeout)
+    // Listen for DB updates to refresh data reactively
     const handleDbUpdate = async (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      if (detail?.type === 'inventory' && storeId) {
-        const inventoryRes = await OfflineInventoryService.getInventory(storeId, { notify: false });
-        
+      if (detail?.type === 'sale' || detail?.type === 'inventory' || detail?.type === 'client' || detail?.type === 'supplier') {
+        console.log('[EditionModule] Refreshing data due to DB update event:', detail?.type);
+        loadData();
       }
     };
 
