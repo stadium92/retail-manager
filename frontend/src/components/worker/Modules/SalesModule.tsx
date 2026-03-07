@@ -649,7 +649,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
           },
           quantity: totalUnitsForDb,
           discount: item.discountPercent,
-          unitPrice: basePriceForDb,
+          unit_price: basePriceForDb,
           lineTotal: item.lineTotal,
           total: item.lineTotal,
         };

@@ -158,10 +158,11 @@ export class OfflineAuthService {
   private static clearLocalBridgeSession() {
     if (typeof window === 'undefined') return;
     try {
-      window.localStorage.removeItem(LOCALBRIDGE_SESSION_KEY);
+      // In Local-First, we prefer to keep the session even if refresh fails momentarily
+      console.warn('[OfflineAuth] Session clear requested, but ignored for Local-First stability');
       TokenManager.releaseRefreshLock();
     } catch (error) {
-      console.error('Failed to clear LocalBridge session cache', error);
+      console.error('Failed to handle session clear', error);
     }
   }
 
@@ -169,16 +170,13 @@ export class OfflineAuthService {
     // Acquire cross-tab lock to prevent multiple refreshes
     if (!TokenManager.acquireRefreshLock()) {
         console.log('[OfflineAuth] Refresh in progress in another tab, waiting...');
-        // Wait up to 5 seconds for other tab to finish
         for (let i = 0; i < 10; i++) {
             await new Promise(r => setTimeout(r, 500));
             const freshCache = this.getLocalBridgeSession();
             if (freshCache && TokenManager.isValid(freshCache.accessToken)) {
-                console.log('[OfflineAuth] Other tab finished refresh, using new token.');
                 return freshCache;
             }
         }
-        // Fallthrough: if other tab timed out or failed, try ourselves
     }
 
     try {
@@ -215,17 +213,20 @@ export class OfflineAuthService {
     // 1. Proactive Refresh: Check if token expires within 5 minutes
     if (Date.now() >= cache.accessTokenExpiresAt - ACCESS_EXPIRY_BUFFER_MS) {
       if (cache.refreshToken) {
-        return (await this.refreshLocalBridgeSession(cache.refreshToken)) ?? cache;
+        console.log('[OfflineAuth] Token near expiry, proactive refresh...');
+        const refreshed = await this.refreshLocalBridgeSession(cache.refreshToken);
+        if (refreshed) return refreshed;
       }
     }
 
     // 2. Validate current token structure
-    if (!TokenManager.isValid(cache.accessToken)) {
+    if (!cache.accessToken || typeof cache.accessToken !== 'string' || cache.accessToken.split('.').length !== 3) {
+      console.warn('[OfflineAuth] Invalid access token format, attempting refresh...');
       if (cache.refreshToken) {
-          return await this.refreshLocalBridgeSession(cache.refreshToken);
+          const refreshed = await this.refreshLocalBridgeSession(cache.refreshToken);
+          if (refreshed) return refreshed;
       }
-      this.clearLocalBridgeSession();
-      return null;
+      return cache; // Return old cache anyway, let 401 retry handle it
     }
 
     return cache;
@@ -321,7 +322,7 @@ export class OfflineAuthService {
     }
 
     try {
-      await this.localBridgeRequest<LocalBridgeBootstrapResponse>('/auth/bootstrap', {
+      await this.localBridgeRequest('/auth/bootstrap', {
         method: 'POST',
         body: JSON.stringify({
           email,
@@ -356,7 +357,6 @@ export class OfflineAuthService {
   private static async localBridgeLogout() {
     const cache = this.getLocalBridgeSession();
     if (!cache) {
-      this.clearLocalBridgeSession();
       return;
     }
 
@@ -368,7 +368,9 @@ export class OfflineAuthService {
     } catch (error) {
       console.warn('LocalBridge logout failed (continuing):', error);
     } finally {
-      this.clearLocalBridgeSession();
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(LOCALBRIDGE_SESSION_KEY);
+      }
     }
   }
   
@@ -395,7 +397,7 @@ export class OfflineAuthService {
           user: null,
           session: null,
           roles: [],
-          error: 'User not found. Please sign in online first to cache credentials.',
+          error: 'User not found.',
           isOffline: true,
         };
       }
