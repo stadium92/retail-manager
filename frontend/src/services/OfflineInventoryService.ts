@@ -115,19 +115,8 @@ export const OfflineInventoryService = {
               const remoteProducts = Array.isArray(payload) ? payload : (payload.data || []);
               const mappedItems = remoteProducts.map(mapDbToInventoryItem);
               
-              // SAFE RECONCILIATION: Update local cache with bridge data
-              const reconcileCache = async () => {
-                  try {
-                      // Save/Update fresh data from bridge without deleting everything else first
-                      for (const remote of remoteProducts) {
-                          await LocalDatabase.saveInventoryItem(mapToLocalInventory(remote, true));
-                      }
-                      console.log('[OfflineInventory] Cache synchronized with bridge');
-                  } catch (err) {
-                      console.error('[OfflineInventory] Sync failed:', err);
-                  }
-              };
-              reconcileCache();
+              // NO CACHE SYNC: We rely purely on the Local Bridge to avoid "Ghost Files".
+              // Browser IndexedDB is now ONLY used as an emergency read-only fallback.
               
               // Update cache without blocking
               
@@ -144,15 +133,12 @@ export const OfflineInventoryService = {
         }
       }
 
-      // 2. Strict Fallback
+      // 2. Emergency Fallback: ONLY use IndexedDB if bridge is literally offline
       const localInventory = await LocalDatabase.getInventory(storeId);
-      if (localInventory.length > 0) {
-        // If we are in local-first mode and have data, but bridge failed, 
-        // we can show local data but with a warning.
-        console.warn('[OfflineInventory] Returning cached data because bridge is unreachable');
+      if (localInventory.length > 0 && !dc.isLocalFirst) {
         return { data: localInventory.map(mapLocalInventoryToItem) };
       }
-
+      // If we are Local-First and bridge failed, we must NOT show ghost data from browser
       return { data: [] };
 
       return { data: [] };

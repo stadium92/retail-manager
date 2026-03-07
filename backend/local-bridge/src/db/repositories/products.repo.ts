@@ -358,10 +358,13 @@ export const createProductsRepo = (db: Database.Database) => {
   },
 
   deleteProductFamily(familyId: string) {
-    db.prepare('DELETE FROM product_families WHERE id = ?').run(familyId);
-    db
-      .prepare('UPDATE products SET category = NULL WHERE category = ?')
-      .run(familyId);
+    const transaction = db.transaction((id: string) => {
+      // 1. Nullify references in products FIRST to avoid FK constraint violation
+      db.prepare('UPDATE products SET category = NULL WHERE category = ?').run(id);
+      // 2. Then delete the family
+      db.prepare('DELETE FROM product_families WHERE id = ?').run(id);
+    });
+    transaction(familyId);
   },
 
   // ===== Product Batches =====

@@ -238,7 +238,7 @@ export function FichiersFournisseursModule({ storeId }: FichiersFournisseursModu
     if (!confirm(t('inventory.deleteConfirm'))) return;
     if (useLocalBridge) {
       try {
-        await localBridgeRequest(`/rest/v1/suppliers/${id}`, { method: 'DELETE' });
+        await localBridgeRequest(`/rest/v1/suppliers/${id}`, { method: 'DELETE', body: '{}' });
         deleteSupplier(id);
         toast({ title: t('common.success') });
       } catch (error) {

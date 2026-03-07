@@ -192,7 +192,7 @@ export function CommandeAutoModule({ storeId }: CommandeAutoModuleProps) {
   const deleteSchedule = async (id: string) => {
     if (!confirm(t('common.confirm'))) return;
     try {
-      await localBridgeRequest(`/rest/v1/scheduled_orders/${id}`, { method: 'DELETE' });
+      await localBridgeRequest(`/rest/v1/scheduled_orders/${id}`, { method: 'DELETE', body: '{}' });
       fetchScheduledOrders();
     } catch (err) {
       toast.error(t('common.error'));

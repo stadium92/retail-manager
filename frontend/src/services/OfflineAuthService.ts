@@ -207,8 +207,9 @@ export class OfflineAuthService {
 
     if (Date.now() >= cache.accessTokenExpiresAt - ACCESS_EXPIRY_BUFFER_MS) {
       // Prevent loop: If refresh token is also invalid/expired, stop here
-      if (!TokenManager.isValid(cache.refreshToken)) {
-         console.warn('Refresh token invalid/expired, stopping loop');
+      // The refresh token is an opaque hex string, so we just check if it exists.
+      if (!cache.refreshToken) {
+         console.warn('No refresh token available, stopping loop');
          this.clearLocalBridgeSession();
          return null;
       }
@@ -246,7 +247,7 @@ export class OfflineAuthService {
         if (retry) {
           console.log('401 detected, attempting refresh...');
           const session = this.getLocalBridgeSession();
-          if (session?.refreshToken && TokenManager.isValid(session.refreshToken)) {
+          if (session?.refreshToken) {
             const refreshed = await this.refreshLocalBridgeSession(session.refreshToken);
             if (refreshed) {
               return this.localBridgeRequest<T>(path, init, false);

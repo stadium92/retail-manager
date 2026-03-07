@@ -141,7 +141,7 @@ export function FichiersServicesClientsModule({ storeId }: FichiersServicesClien
     
     if (useLocalBridge) {
       try {
-        await localBridgeRequest(`/rest/v1/client_services/${id}`, { method: 'DELETE' });
+        await localBridgeRequest(`/rest/v1/client_services/${id}`, { method: 'DELETE', body: '{}' });
         deleteService(id);
         toast({ title: t('common.success') });
       } catch (error) {

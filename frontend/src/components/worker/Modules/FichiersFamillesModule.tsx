@@ -202,7 +202,7 @@ export function FichiersFamillesModule({ storeId }: FichiersFamillesModuleProps)
     setDeletingId(id);
     try {
       if (useLocalBridge) {
-        await localBridgeRequest(`/rest/v1/product_families/${id}`, { method: 'DELETE' });
+        await localBridgeRequest(`/rest/v1/product_families/${id}`, { method: 'DELETE', body: '{}' });
         deleteFamily(id);
         toast({ title: t('common.success') });
         return;

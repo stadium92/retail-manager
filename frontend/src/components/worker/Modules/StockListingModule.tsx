@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { toast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
 import { useFormatters } from '@/utils/formatting';
 
@@ -72,6 +73,19 @@ export function StockListingModule({ storeId }: StockListingModuleProps) {
       setIsLoading(false);
     }
   }, [storeId, products.length]);
+
+  const handleHardReset = async () => {
+    if (confirm("DANGER: Cela va effacer le cache local du navigateur. Vos produits dans la base de données SQLite ne seront PAS affectés. Utilisez ceci pour supprimer les 'Produits Fantômes'. Continuer ?")) {
+        try {
+            await LocalDatabase.clearAll();
+            localStorage.clear();
+            toast({ title: "Cache effacé", description: "Rechargement en cours..." });
+            setTimeout(() => window.location.reload(), 1500);
+        } catch (e) {
+            toast({ title: "Erreur", description: "Échec du nettoyage", variant: "destructive" });
+        }
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -179,6 +193,15 @@ export function StockListingModule({ storeId }: StockListingModuleProps) {
         
         {/* Stats */}
         <div className="flex items-center gap-4 text-sm">
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            onClick={handleHardReset}
+            className="h-8 bg-red-600 hover:bg-red-700"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Hard Reset
+          </Button>
           <div className="px-3 py-1 bg-success/20 text-success rounded-lg">
             ✓ {stats.ok} OK
           </div>
