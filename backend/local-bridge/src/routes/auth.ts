@@ -32,7 +32,7 @@ const workerProvisionSchema = z.object({
   store_name: z.string().min(1).optional(),
 });
 
-const ACCESS_TOKEN_TTL_SECONDS = 3600; // 1 Hour
+const ACCESS_TOKEN_TTL_SECONDS = 86400; // 24 Hours // 1 Hour
 const REFRESH_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 const issueAccessToken = (userId: string, email: string, role: string, storeId: string | null) =>
