@@ -130,7 +130,7 @@ class OfflineDataServiceClass {
 
             const prodMap: Record<string, ProductPerformance> = {};
             sales.filter(s => s.sale_type !== 'proforma').forEach(sale => {
-                const items = sale.items || sale.sale_items || [];
+                const items = (sale.items?.length ? sale.items : sale.sale_items) || [];
                 items.forEach((item: any) => {
                     const pid = item.product_id || 'unknown';
                     if (!prodMap[pid]) {
@@ -292,6 +292,16 @@ class OfflineDataServiceClass {
             if (from) params.append('date_from', from.toISOString());
             if (to) params.append('date_to', to.toISOString());
             return await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/purchase_orders?${params.toString()}`, { method: 'GET' });
+        }
+        return [];
+    }
+    async getAllPurchaseItems(storeId: string, from?: Date, to?: Date): Promise<any[]> {
+        const { isLocalFirst } = getDataClient();
+        if (isLocalFirst) {
+            const params = new URLSearchParams({ store_id: storeId });
+            if (from) params.append('date_from', from.toISOString());
+            if (to) params.append('date_to', to.toISOString());
+            return await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/purchase_order_items?${params.toString()}`, { method: 'GET' });
         }
         return [];
     }

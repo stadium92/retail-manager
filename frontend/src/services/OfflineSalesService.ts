@@ -13,7 +13,7 @@ export const OfflineSalesService = {
             try {
                 // Map cart items to the shape the backend expects (product_id, product_name, unit_price)
                 const mappedItems = items.map((item: any) => ({
-                    id: item.id || undefined,
+                    id: item.id || crypto.randomUUID(),
                     // Try all possible variations of product ID and Name
                     product_id: item.product_id || item.productId || item.product?.id || null,
                     product_name: item.product_name || item.productName || item.designation || item.product?.name || 'Unknown',
