@@ -70,8 +70,10 @@ export function PaymentDialog({
   // Auto-select text when dialog opens
   useEffect(() => {
     if (open) {
-      console.log('[PaymentDialog] Dialog opened, triggering auto-select...');
-      // Increased delay to 150ms to ensure grid cleanup (blurs) are finished
+      console.log('[PaymentDialog] Dialog opened, resetting amount and triggering auto-select...');
+      setAmountReceived(totalAmount);
+      setPartialPayment(totalAmount);
+      
       const timer = setTimeout(() => {
         if (inputRef.current) {
           inputRef.current.focus();
@@ -133,7 +135,7 @@ export function PaymentDialog({
           {selectedMethod === 'cash' && (
             <div className="space-y-3">
               <div>
-                <Label className="font-mono text-sm">{t('menu.program.receivedAmount')}</Label>
+                <Label className="font-black font-mono text-lg uppercase mb-2 block text-primary">{t('menu.program.receivedAmount')}</Label>
                 <NumericInput
                   ref={inputRef}
                   value={amountReceived}
@@ -147,7 +149,7 @@ export function PaymentDialog({
                       }
                     }
                   }}
-                  className="text-xl font-bold font-mono text-right bg-white"
+                  className="text-4xl h-16 font-black font-mono text-right bg-white border-2 border-primary"
                 />
               </div>
 
