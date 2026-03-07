@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { Product } from '@/types';
@@ -12,6 +12,19 @@ interface StockSearchResult {
 export type StockFilter = 'all' | 'in_stock' | 'out_of_stock' | 'low_stock';
 
 export function useStockSearch(storeId: string, enabled: boolean = true) {
+  const queryClient = useQueryClient();
+  
+  // Listen for local DB updates to invalidate search cache
+  useEffect(() => {
+    const handleRefresh = (e: any) => {
+      if (e.detail?.type === 'inventory' || e.detail?.type === 'product' || e.detail?.type === 'sale') {
+        console.log('[useStockSearch] Invalidating stock-search due to DB update');
+        queryClient.invalidateQueries({ queryKey: ['stock-search'] });
+      }
+    };
+    window.addEventListener('localDbDataUpdated', handleRefresh);
+    return () => window.removeEventListener('localDbDataUpdated', handleRefresh);
+  }, [queryClient]);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filter, setFilter] = useState<StockFilter>('all');
@@ -153,7 +166,7 @@ export function useStockSearch(storeId: string, enabled: boolean = true) {
       return { data: mappedData, total }; 
     },
     enabled: enabled && !!storeId,
-    staleTime: 1000 * 60, // 1 minute cache
+    staleTime: 0, // Always fetch fresh data
     keepPreviousData: true,
   });
 

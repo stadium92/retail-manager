@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -8,8 +8,6 @@ import {
 } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
-import { Delivery } from '@/types';
 import { formatDistanceToNow } from 'date-fns';
 
 interface Notification {
@@ -24,40 +22,8 @@ export function NotificationCenter() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  useEffect(() => {
-    const channel = supabase
-      .channel('notifications-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'deliveries',
-        },
-        (payload) => {
-          const delivery = payload.new as Delivery;
-          const oldDelivery = payload.old as Delivery;
-          
-          if (delivery.status !== oldDelivery.status) {
-            const newNotification: Notification = {
-              id: `${delivery.id}-${Date.now()}`,
-              type: 'delivery_update',
-              message: `Delivery for ${delivery.customer_name} is now ${delivery.status.replace('_', ' ')}`,
-              timestamp: new Date().toISOString(),
-              read: false,
-            };
-            
-            setNotifications((prev) => [newNotification, ...prev].slice(0, 10));
-            setUnreadCount((prev) => prev + 1);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  // Realtime subscriptions removed (supabase client deleted).
+  // Notifications will be populated by a future local event bus.
 
   const markAllAsRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));

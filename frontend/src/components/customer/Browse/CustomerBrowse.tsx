@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
+import { getDataClient } from '@/lib/dataClient';
+import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { Search, Package, ShoppingBag, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
@@ -42,31 +43,35 @@ export function CustomerBrowse() {
   const fetchProducts = async () => {
     try {
       console.log('CustomerBrowse: Fetching products...');
-      // Fetch all available products from products table
-      const { data, error } = await supabase
-        .from('products')
-        .select('id, name, description, sku, unit_price, quantity, image_url')
-        .gt('quantity', 0)
-        .order('name');
+      const { localBridgeBaseUrl } = getDataClient();
+      const headers = await OfflineAuthService.getAuthHeaders();
+      if (!headers) {
+        console.error('CustomerBrowse: No auth headers available');
+        setLoading(false);
+        return;
+      }
+      const response = await fetch(`${localBridgeBaseUrl}/rest/v1/products`, { headers });
+      const data = await response.json().catch(() => []);
 
-      if (error) {
-        console.error('CustomerBrowse: Error fetching products:', error);
+      if (!response.ok) {
+        console.error('CustomerBrowse: Error fetching products:', data);
         setLoading(false);
         return;
       }
 
       if (data) {
         console.log('CustomerBrowse: Products loaded:', data.length);
-        // Map products fields to Product interface
-        const mappedItems = data.map(item => ({
-          id: item.id,
-          name: item.name,
-          description: item.description,
-          sku: item.sku,
-          unit_price: Number(item.unit_price) || 0,
-          quantity: item.quantity,
-          image_url: item.image_url,
-        }));
+        const mappedItems = (data as any[])
+          .filter((item: any) => item.quantity > 0)
+          .map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            description: item.description,
+            sku: item.sku,
+            unit_price: Number(item.unit_price) || 0,
+            quantity: item.quantity,
+            image_url: item.image_url,
+          }));
         setItems(mappedItems);
         setFilteredItems(mappedItems);
       }

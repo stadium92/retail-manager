@@ -50,7 +50,13 @@ const workerCreateSchema = z.object({
   p_unit_price: z.number().optional(),
   p_cost_price: z.number().nullable().optional(),
   p_wholesale_price: z.number().nullable().optional(),
+  p_wholesale_price_ht: z.number().nullable().optional(),
+  p_wholesale_price_ttc: z.number().nullable().optional(),
+  p_selling_price_2: z.number().nullable().optional(),
+  p_selling_price_3: z.number().nullable().optional(),
+  p_selling_price_4: z.number().nullable().optional(),
   p_min_quantity: z.number().optional(),
+  p_low_stock_threshold: z.number().optional(),
   p_quantity: z.number().optional(),
 });
 
@@ -197,7 +203,7 @@ export async function registerProductRoutes(app: FastifyInstance) {
     const now = new Date().toISOString();
     const productId = crypto.randomUUID();
 
-    db.insertProduct({
+    const product = db.insertProduct({
       id: productId,
       store_id: targetStoreId,
       name: body.name,
@@ -229,7 +235,6 @@ export async function registerProductRoutes(app: FastifyInstance) {
       updated_by: claims.sub,
     });
 
-    const product = db.getProductById(productId);
     return reply.status(201).send(product);
   });
 
@@ -520,7 +525,7 @@ export async function registerProductRoutes(app: FastifyInstance) {
     const now = new Date().toISOString();
     const productId = crypto.randomUUID();
 
-    db.insertProduct({
+    const product = db.insertProduct({
       id: productId,
       store_id: storeId,
       name: body.p_name,
@@ -531,7 +536,13 @@ export async function registerProductRoutes(app: FastifyInstance) {
       unit_price: body.p_unit_price ?? 0,
       cost_price: body.p_cost_price ?? null,
       wholesale_price: body.p_wholesale_price ?? null,
+      wholesale_price_ht: body.p_wholesale_price_ht ?? null,
+      wholesale_price_ttc: body.p_wholesale_price_ttc ?? null,
+      selling_price_2: body.p_selling_price_2 ?? null,
+      selling_price_3: body.p_selling_price_3 ?? null,
+      selling_price_4: body.p_selling_price_4 ?? null,
       min_quantity: body.p_min_quantity ?? 0,
+      low_stock_threshold: body.p_low_stock_threshold ?? body.p_min_quantity ?? 0,
       quantity: body.p_quantity ?? 0,
       image_url: null,
       created_at: now,
@@ -540,7 +551,6 @@ export async function registerProductRoutes(app: FastifyInstance) {
       updated_by: claims.sub,
     });
 
-    const product = db.getProductById(productId);
     return reply.status(201).send(product);
   });
 

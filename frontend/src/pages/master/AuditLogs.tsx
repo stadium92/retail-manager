@@ -154,19 +154,9 @@ export default function AuditLogsPage() {
             }
             return response.json() as Promise<{ data: AuditLog[], total: number }>;
         } else {
-            // Online mode (Master)
-            const { supabase } = getDataClient();
-            let q = supabase.from('audit_logs').select('*', { count: 'exact' });
-            
-            if (actionFilter !== 'all') q = q.eq('action_type', actionFilter);
-            if (storeFilter !== 'all') q = q.eq('store_id', storeFilter);
-            q = q.gte('timestamp', dateRange.from.toISOString());
-            q = q.lte('timestamp', dateRange.to.toISOString());
-            q = q.order('timestamp', { ascending: false }).limit(500);
-
-            const { data: logs, count, error } = await q;
-            if (error) throw error;
-            return { data: (logs || []) as AuditLog[], total: count || 0 };
+            // Online mode no longer supported (supabase removed)
+            console.warn('AuditLogs: non-local-first path is not supported');
+            return { data: [] as AuditLog[], total: 0 };
         }
       } catch (err: any) {
         console.error('Audit logs fetch error:', err);

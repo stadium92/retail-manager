@@ -1,13 +1,11 @@
-import { supabase } from '@/integrations/supabase/client';
-
 export class ImageService {
   /**
-   * Upload image to Supabase Storage (with offline support)
-   * When offline, returns a local blob URL and queues for later sync
+   * Upload image locally (returns blob URL)
+   * When offline, queues base64 data for later sync
    * @param file - File object to upload
    * @param folder - Folder path in storage (e.g., 'inventory', 'stores')
    * @param fileName - Optional custom file name
-   * @returns URL of uploaded image (or local blob URL if offline)
+   * @returns Local blob URL of the image
    */
   static async uploadImage(
     file: File,
@@ -53,57 +51,20 @@ export class ImageService {
         return { data: localUrl, isOffline: true };
       }
 
-      // Generate unique file name
-      const fileExt = file.name.split('.').pop();
-      const filePath = fileName 
-        ? `${folder}/${fileName}.${fileExt}`
-        : `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-
-      // Upload to Supabase Storage
-      const { data, error } = await supabase.storage
-        .from('images')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (error) {
-        return { error };
-      }
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('images')
-        .getPublicUrl(filePath);
-
-      return { data: publicUrl };
+      // Cloud storage disabled - always use local blob URL
+      const localUrl = URL.createObjectURL(file);
+      return { data: localUrl, isOffline: true };
     } catch (error) {
-      // If network error, try offline fallback
-      if (!navigator.onLine || (error as Error)?.message?.includes('Load failed')) {
-        const localUrl = URL.createObjectURL(file);
-        return { data: localUrl, isOffline: true };
-      }
       return { error };
     }
   }
 
   /**
-   * Delete image from Supabase Storage
+   * Delete image (no-op for local blob URLs)
    */
-  static async deleteImage(imageUrl: string): Promise<{ error?: any }> {
-    try {
-      // Extract file path from URL
-      const urlParts = imageUrl.split('/');
-      const filePath = urlParts.slice(-2).join('/'); // Get last two parts (folder/filename)
-
-      const { error } = await supabase.storage
-        .from('images')
-        .remove([filePath]);
-
-      return { error };
-    } catch (error) {
-      return { error };
-    }
+  static async deleteImage(_imageUrl: string): Promise<{ error?: any }> {
+    // Cloud storage disabled - no-op for local blob URLs
+    return {};
   }
 
   /**

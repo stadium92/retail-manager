@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { usePurchasingStore, Supplier } from '@/stores/usePurchasingStore';
-import { supabase } from '@/integrations/supabase/client';
 import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { Button } from '@/components/ui/button';
@@ -71,12 +70,12 @@ export function ReglementsFournisseursModule({ storeId, isMasterView }: Reglemen
       throw new Error('LocalBridge session expired. Please sign in again.');
     }
     const response = await fetch(`${localBridgeBaseUrl}${path}`, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(init.headers || {}),
-        ...headers,
-      },
+        ...init,
+        headers: {
+          ...headers,
+          ...(init.headers || {}),
+          ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        },
     });
     let payload: any = null;
     if (response.status !== 204) {
@@ -128,15 +127,7 @@ export function ReglementsFournisseursModule({ storeId, isMasterView }: Reglemen
             }
           }
         } else if (navigator.onLine) {
-          const { data } = await (supabase as any)
-            .from('supplier_payments')
-            .select('*, supplier:suppliers(name)')
-            .eq('store_id', storeId)
-            .order('created_at', { ascending: false });
-          if (data) {
-            remote = data;
-            success = true;
-          }
+          // No remote fallback available; payments remain from local cache
         }
 
         if (success && remote.length > 0) {

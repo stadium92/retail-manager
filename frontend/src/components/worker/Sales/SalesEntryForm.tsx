@@ -40,7 +40,7 @@ export function SalesEntryForm() {
   const [submitting, setSubmitting] = useState(false);
   const [storeId, setStoreId] = useState<string>('');
   const [isScanning, setIsScanning] = useState(false);
-  const { supabase, isLocalFirst, localBridgeBaseUrl } = getDataClient();
+  const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
 
   const formatCurrency = (amount: number) => {
     return amount.toLocaleString(i18n.language === 'bm' ? 'fr-ML' : i18n.language) + ' XAF';
@@ -101,33 +101,10 @@ export function SalesEntryForm() {
       return;
     }
 
-    const { data, error } = await supabase
-      .from('user_roles')
-      .select('store_id')
-      .eq('user_id', user.id)
-      .eq('role', 'worker')
-      .single();
-
-    if (error) {
-      console.error('Error fetching worker store:', error);
-      toast({
-        title: t('common.error'),
-        description: t('worker.sales.couldNotLoadStore'),
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (data?.store_id) {
-      setStoreId(data.store_id);
-    } else {
-      toast({
-        title: t('worker.sales.noStoreAssigned'),
-        description: t('worker.sales.contactManager'),
-        variant: 'destructive',
-      });
-    }
-  }, [t, useLocalBridge, user, supabase, toast]);
+    // Non-local-first path removed (supabase no longer available)
+    console.warn('fetchUserStore: non-local-first path is not supported');
+    return;
+  }, [t, useLocalBridge, user, toast]);
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -156,29 +133,8 @@ export function SalesEntryForm() {
         return;
       }
 
-      const { data } = await supabase
-        .from('products')
-        .select('*')
-        .eq('store_id', storeId)
-        .gt('quantity', 0);
-
-      if (data) {
-        const mappedProducts: Product[] = data.map(item => ({
-          id: item.id,
-          store_id: item.store_id,
-          name: item.name,
-          description: item.description,
-          sku: item.sku,
-          unit_price: Number(item.unit_price) || 0,
-          cost_price: Number(item.cost_price) || 0,
-          quantity: item.quantity,
-          min_quantity: item.min_quantity,
-          image_url: item.image_url,
-          created_at: item.created_at,
-          updated_at: item.updated_at,
-        }));
-        setProducts(mappedProducts);
-      }
+      // Non-local-first path removed (supabase no longer available)
+      console.warn('fetchProducts: non-local-first path is not supported');
     } catch (error) {
       console.error('Failed to fetch products', error);
       toast({
@@ -187,7 +143,7 @@ export function SalesEntryForm() {
         variant: 'destructive',
       });
     }
-  }, [localBridgeRequest, storeId, supabase, t, useLocalBridge, toast]);
+  }, [localBridgeRequest, storeId, t, useLocalBridge, toast]);
 
   useEffect(() => {
     fetchUserStore();
@@ -255,53 +211,8 @@ export function SalesEntryForm() {
     setSubmitting(true);
 
     try {
-        if (!useLocalBridge && OfflineManager.isOnline()) {
-        const firstItem = selectedItems[0];
-        
-        const { data: sale, error } = await supabase
-          .from('sales')
-          .insert([{
-            store_id: storeId,
-            worker_id: user?.id,
-            customer_name: customerName || null,
-            customer_phone: customerPhone || null,
-            item_id: firstItem.product.id,
-            unit_price: firstItem.price,
-            quantity: selectedItems.reduce((sum, si) => sum + si.quantity, 0),
-            total_price: calculateTotal(),
-            notes: null,
-          }])
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        const saleItems = selectedItems.map(si => ({
-          sale_id: sale.id,
-          product_id: si.product.id,
-          product_name: si.product.name,
-          quantity: si.quantity,
-          unit_price: si.price,
-          total: si.price * si.quantity,
-        }));
-
-        await supabase.from('sale_items').insert(saleItems);
-
-        if (needsDelivery) {
-          await supabase.from('deliveries').insert([{
-            sale_id: sale.id,
-            store_id: storeId,
-            customer_name: customerName,
-            customer_phone: customerPhone,
-            delivery_address: deliveryAddress,
-            status: 'pending',
-          }]);
-        }
-
-        toast({
-          title: t('worker.sales.saleRecorded'),
-          description: t('worker.sales.itemsSold', { count: selectedItems.length, total: formatCurrency(calculateTotal()) }),
-        });
+        if (false) {
+        // Non-local-first direct supabase path removed
         } else {
           if (useLocalBridge) {
             const saleResult = await OfflineSalesService.createSale({

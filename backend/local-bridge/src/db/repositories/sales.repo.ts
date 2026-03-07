@@ -15,6 +15,7 @@ export const createSalesRepo = (db: Database.Database) => {
         @sale_type, @total_price, @discount, @tax, @payment_method,
         @payment_status, @notes, @invoice_number, @created_at, @updated_at
       )
+      ON CONFLICT(id) DO NOTHING
     `),
     insertItem: db.prepare(`
       INSERT INTO sale_items (
@@ -24,6 +25,7 @@ export const createSalesRepo = (db: Database.Database) => {
         @id, @sale_id, @product_id, @product_name, @quantity, @unit_price,
         @discount, @total, @batch_id, @created_at
       )
+      ON CONFLICT(id) DO NOTHING
     `),
     getSale: db.prepare('SELECT * FROM sales WHERE id = ? LIMIT 1'),
     listItems: db.prepare(`
@@ -35,6 +37,8 @@ export const createSalesRepo = (db: Database.Database) => {
       ORDER BY si.created_at ASC
     `),
     updateClientBalance: db.prepare('UPDATE clients SET current_balance = current_balance + ? WHERE id = ?'),
+    getProductStock: db.prepare('SELECT id, quantity FROM products WHERE id = ? LIMIT 1'),
+    deductStock: db.prepare('UPDATE products SET quantity = quantity - ? WHERE id = ?'),
   };
 
   return {
@@ -80,8 +84,8 @@ export const createSalesRepo = (db: Database.Database) => {
     return stmts.getSale.get(saleId) as LocalSale | undefined;
   },
 
-  insertSale(sale: LocalSale) {
-    stmts.insertSale.run({
+  insertSale(sale: LocalSale): LocalSale | undefined {
+    const result = stmts.insertSale.run({
       ...sale,
       worker_id: sale.worker_id ?? null,
       client_id: (sale as any).client_id ?? null,
@@ -94,16 +98,23 @@ export const createSalesRepo = (db: Database.Database) => {
       notes: sale.notes ?? null,
       invoice_number: sale.invoice_number ?? null,
     });
-    emitOutbox(db, sale.store_id, 'sale', sale.id, 'create', sale as unknown as Record<string, unknown>);
+    if (result.changes > 0) {
+      emitOutbox(db, sale.store_id, 'sale', sale.id, 'create', sale as unknown as Record<string, unknown>);
+    }
+    return stmts.getSale.get(sale.id) as LocalSale | undefined;
   },
 
   /**
-   * Atomic transaction to create a sale and its items
+   * Atomic transaction to create a sale and its items.
+   * - Idempotent: ON CONFLICT(id) DO NOTHING prevents duplicates on retry.
+   * - Stock is explicitly deducted within the transaction for non-proforma sales.
+   * - Rolls back entirely if any step fails.
+   * Returns the sale as stored in the database.
    */
-  createSaleWithItems(sale: LocalSale, items: LocalSaleItem[]) {
+  createSaleWithItems(sale: LocalSale, items: LocalSaleItem[]): LocalSale | undefined {
     const transaction = db.transaction((saleData: LocalSale, itemsData: LocalSaleItem[]) => {
-      // 1. Insert Sale
-      stmts.insertSale.run({
+      // 1. Insert Sale (idempotent — ON CONFLICT DO NOTHING)
+      const saleResult = stmts.insertSale.run({
         ...saleData,
         worker_id: saleData.worker_id ?? null,
         client_id: (saleData as any).client_id ?? null,
@@ -117,17 +128,27 @@ export const createSalesRepo = (db: Database.Database) => {
         invoice_number: saleData.invoice_number ?? null,
       });
 
-      // 2. Insert Items
+      // If sale already exists (idempotent retry), skip items & stock
+      if (saleResult.changes === 0) {
+        return;
+      }
+
+      // 2. Insert Items + 3. Deduct Stock
       for (const item of itemsData) {
-        stmts.insertItem.run({
+        const itemResult = stmts.insertItem.run({
           ...item,
           product_id: item.product_id ?? null,
           discount: item.discount ?? 0,
           batch_id: item.batch_id ?? null,
         });
+
+        // EXPLICIT STOCK DEDUCTION
+        if (itemResult.changes > 0 && item.product_id && saleData.sale_type !== 'proforma') {
+          stmts.deductStock.run(item.quantity, item.product_id);
+        }
       }
 
-      // 3. Update Client Balance if credit
+      // 4. Update Client Balance if credit sale
       if (saleData.payment_method === 'credit' && (saleData as any).client_id) {
         stmts.updateClientBalance.run(saleData.total_price, (saleData as any).client_id);
       }
@@ -136,10 +157,16 @@ export const createSalesRepo = (db: Database.Database) => {
     transaction(sale, items);
 
     // Emit outbox events (outside transaction to avoid blocking)
-    emitOutbox(db, sale.store_id, 'sale', sale.id, 'create', sale as unknown as Record<string, unknown>);
-    for (const item of items) {
-      emitOutbox(db, sale.store_id, 'sale_item', item.id, 'create', item as unknown as Record<string, unknown>);
+    // Only emit if the sale was actually created (getSale confirms it exists)
+    const created = stmts.getSale.get(sale.id) as LocalSale | undefined;
+    if (created) {
+      emitOutbox(db, sale.store_id, 'sale', sale.id, 'create', sale as unknown as Record<string, unknown>);
+      for (const item of items) {
+        emitOutbox(db, sale.store_id, 'sale_item', item.id, 'create', item as unknown as Record<string, unknown>);
+      }
     }
+
+    return created;
   },
 
   updateSale(
@@ -172,16 +199,18 @@ export const createSalesRepo = (db: Database.Database) => {
   },
 
   insertSaleItem(item: LocalSaleItem) {
-    stmts.insertItem.run({
+    const result = stmts.insertItem.run({
       ...item,
       product_id: item.product_id ?? null,
       discount: item.discount ?? 0,
       batch_id: item.batch_id ?? null,
     });
-    // Retrieve store_id from the parent sale for the outbox event
-    const sale = stmts.getSale.get(item.sale_id) as { store_id: string } | undefined;
-    if (sale) {
-      emitOutbox(db, sale.store_id, 'sale_item', item.id, 'create', item as unknown as Record<string, unknown>);
+    // Only emit outbox if the item was actually inserted (not a duplicate)
+    if (result.changes > 0) {
+      const sale = stmts.getSale.get(item.sale_id) as { store_id: string } | undefined;
+      if (sale) {
+        emitOutbox(db, sale.store_id, 'sale_item', item.id, 'create', item as unknown as Record<string, unknown>);
+      }
     }
   },
 };

@@ -142,8 +142,8 @@ export const createProductsRepo = (db: Database.Database) => {
     return row as LocalProduct | undefined;
   },
 
-  insertProduct(product: LocalProduct) {
-    db.prepare(`
+  insertProduct(product: LocalProduct): LocalProduct | undefined {
+    const result = db.prepare(`
         INSERT INTO products (
           id,
           store_id,
@@ -159,7 +159,7 @@ export const createProductsRepo = (db: Database.Database) => {
           selling_price_2,
           selling_price_3,
           selling_price_4,
-          min_quantity,
+          min_quantity, low_stock_threshold,
           quantity,
           category,
           image_url,
@@ -188,7 +188,7 @@ export const createProductsRepo = (db: Database.Database) => {
           @selling_price_2,
           @selling_price_3,
           @selling_price_4,
-          @min_quantity,
+          @min_quantity, @low_stock_threshold,
           @quantity,
           @category,
           @image_url,
@@ -203,6 +203,32 @@ export const createProductsRepo = (db: Database.Database) => {
           @created_by,
           @updated_by
         )
+        ON CONFLICT(id) DO UPDATE SET
+          name = excluded.name,
+          sku = excluded.sku,
+          barcode = excluded.barcode,
+          description = excluded.description,
+          cost_price = excluded.cost_price,
+          unit_price = excluded.unit_price,
+          wholesale_price = excluded.wholesale_price,
+          wholesale_price_ht = excluded.wholesale_price_ht,
+          wholesale_price_ttc = excluded.wholesale_price_ttc,
+          selling_price_2 = excluded.selling_price_2,
+          selling_price_3 = excluded.selling_price_3,
+          selling_price_4 = excluded.selling_price_4,
+          min_quantity = excluded.min_quantity,
+          low_stock_threshold = excluded.low_stock_threshold,
+          quantity = excluded.quantity,
+          category = excluded.category,
+          image_url = excluded.image_url,
+          aisle = excluded.aisle,
+          brand = excluded.brand,
+          unit_type = excluded.unit_type,
+          packaging = excluded.packaging,
+          expiry_date = excluded.expiry_date,
+          reorder_quantity = excluded.reorder_quantity,
+          updated_at = excluded.updated_at,
+          updated_by = excluded.updated_by
       `)
       .run({
         ...product,
@@ -219,6 +245,7 @@ export const createProductsRepo = (db: Database.Database) => {
         selling_price_3: product.selling_price_3 ?? null,
         selling_price_4: product.selling_price_4 ?? null,
         min_quantity: product.min_quantity ?? 0,
+        low_stock_threshold: product.low_stock_threshold ?? product.min_quantity ?? 0,
         quantity: product.quantity ?? 0,
         category: product.category ?? null,
         image_url: product.image_url ?? null,
@@ -232,7 +259,10 @@ export const createProductsRepo = (db: Database.Database) => {
         updated_by: product.updated_by ?? null,
       });
     const inserted = db.prepare('SELECT * FROM products WHERE id = ? LIMIT 1').get(product.id) as LocalProduct | undefined;
-    emitOutbox(db, product.store_id, 'product', product.id, 'create', (inserted ?? product) as unknown as Record<string, unknown>);
+    if (result.changes > 0) {
+      emitOutbox(db, product.store_id, 'product', product.id, 'create', (inserted ?? product) as unknown as Record<string, unknown>);
+    }
+    return inserted;
   },
 
   updateProduct(
@@ -324,6 +354,7 @@ export const createProductsRepo = (db: Database.Database) => {
           @created_at,
           @updated_at
         )
+        ON CONFLICT(id) DO NOTHING
       `
       )
       .run({
@@ -353,10 +384,13 @@ export const createProductsRepo = (db: Database.Database) => {
   },
 
   deleteProductFamily(familyId: string) {
-    db.prepare('DELETE FROM product_families WHERE id = ?').run(familyId);
-    db
-      .prepare('UPDATE products SET category = NULL WHERE category = ?')
-      .run(familyId);
+    const transaction = db.transaction((id: string) => {
+      // 1. Nullify references in products FIRST to avoid FK constraint violation
+      db.prepare('UPDATE products SET category = NULL WHERE category = ?').run(id);
+      // 2. Then delete the family
+      db.prepare('DELETE FROM product_families WHERE id = ?').run(id);
+    });
+    transaction(familyId);
   },
 
   // ===== Product Batches =====
@@ -388,6 +422,7 @@ export const createProductsRepo = (db: Database.Database) => {
           @purchase_price, @purchase_type, @quantity_received, @quantity_remaining,
           @received_at, @expiry_date, @notes, @created_at
         )
+        ON CONFLICT(id) DO NOTHING
       `)
       .run({
         ...batch,

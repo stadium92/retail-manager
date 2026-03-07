@@ -17,6 +17,38 @@ export function useGlobalKeyboard() {
     const getState = store.getState;
 
     function handleKeyDown(e: KeyboardEvent) {
+const isDialogOpen = !!document.querySelector('[role="dialog"]');
+      
+      // 0. HANDLE GLOBAL SHORTCUTS FIRST (Allow them even if focused in an input)
+      if (e.key === 'F4' || e.key === 'F2') {
+          if (!isDialogOpen) {
+              e.preventDefault();
+              e.stopPropagation();
+              if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+              window.dispatchEvent(new CustomEvent('nav-pay-shortcut'));
+              return;
+          }
+      }
+      if (e.key === 'F3') {
+          if (!isDialogOpen) {
+              e.preventDefault();
+              e.stopPropagation();
+              window.dispatchEvent(new CustomEvent('nav-search-shortcut'));
+              return;
+          }
+      }
+      if (e.key === 'F10') {
+          if (!isDialogOpen) {
+              e.preventDefault();
+              e.stopPropagation();
+              window.dispatchEvent(new CustomEvent('nav-save-shortcut'));
+              return;
+          }
+      }
+
+      if (isDialogOpen) return; // Completely ignore grid keys when a dialog is open
+
+      const isInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
       const state = getState();
 
       // 1. Any key press → switch to keyboard input method
@@ -94,7 +126,6 @@ export function useGlobalKeyboard() {
         }
       }
 
-      const isInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
 
       // ---------------------------------------------------------------
       // While in HOVER mode (navigation between cells)
@@ -109,14 +140,30 @@ export function useGlobalKeyboard() {
             e.preventDefault();
             store.getState().moveLeft();
             return;
-          case 'ArrowDown':
-            e.preventDefault();
-            store.getState().moveDown();
-            return;
-          case 'ArrowUp':
-            e.preventDefault();
-            store.getState().moveUp();
-            return;
+          case 'ArrowDown': {
+              e.preventDefault();
+              const col = GRID_COLUMNS[state.activeCell.col];
+              if (col === 'price') {
+                  window.dispatchEvent(new CustomEvent('nav-adjust-price', { detail: { row: state.activeCell.row, delta: -1 } }));
+              } else if (col === 'quantity') {
+                  window.dispatchEvent(new CustomEvent('nav-adjust-quantity', { detail: { row: state.activeCell.row, delta: -1 } }));
+              } else {
+                  store.getState().moveDown();
+              }
+              return;
+            }
+          case 'ArrowUp': {
+              e.preventDefault();
+              const col = GRID_COLUMNS[state.activeCell.col];
+              if (col === 'price') {
+                  window.dispatchEvent(new CustomEvent('nav-adjust-price', { detail: { row: state.activeCell.row, delta: 1 } }));
+              } else if (col === 'quantity') {
+                  window.dispatchEvent(new CustomEvent('nav-adjust-quantity', { detail: { row: state.activeCell.row, delta: 1 } }));
+              } else {
+                  store.getState().moveUp();
+              }
+              return;
+            }
           case '+':
           case '=': {
             e.preventDefault();
@@ -142,7 +189,10 @@ export function useGlobalKeyboard() {
                 store.getState().advanceToNextRow();
             } else if (col === 'conditionnement') {
                 window.dispatchEvent(new CustomEvent('nav-toggle-packing', { detail: { row: state.activeCell.row } }));
-            } else if (col !== 'stock' && col !== 'total') {
+            } else if (col === 'designation' || col === 'price' || col === 'code') {
+                // JUMP TO QUANTITY
+                store.getState().setActiveCell({ row: state.activeCell.row, col: 5 });
+            } else {
                 store.getState().setMode('edit');
             }
             return;
@@ -156,6 +206,11 @@ export function useGlobalKeyboard() {
 
       // If we are navigating via grid but try to type, auto-enter edit AND capture the character
       if (state.mode === 'hover' && state.activeCell && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        // IMPORTANT: Prevent default browser behavior so it doesn't append to the existing value
+        // Our nav-capture-keystroke event will handle setting the initial value (overwrite or append as needed)
+        e.preventDefault();
+        
+        store.getState().setMode('edit');
         store.getState().setMode('edit');
         
         // Dispatch an event to capture the first keystroke so it isn't lost

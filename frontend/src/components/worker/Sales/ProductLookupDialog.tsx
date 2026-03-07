@@ -40,7 +40,7 @@ export function ProductLookupDialog({
   const { stores } = useMasterDataStore();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const selectedRowRef = useRef<HTMLDivElement>(null);
-  const { search, setSearch, results = [], isLoading } = useProductSearch(storeId, open);
+  const { search, setSearch, results = [], isLoading, refetch } = useProductSearch(storeId, open);
 
   console.log('[ProductLookupDialog] storeId:', storeId, 'open:', open, 'results:', results?.length);
 
@@ -133,7 +133,7 @@ export function ProductLookupDialog({
                 />
                 {isLoading && <div className="absolute right-4 top-3.5 animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-transparent" />}
             </div>
-            <Button variant="outline" onClick={() => setSearch(search)} className="h-12 w-12 border-2"><RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} /></Button>
+            <Button variant="outline" onClick={() => refetch()} className="h-12 w-12 border-2"><RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} /></Button>
           </div>
         </div>
 

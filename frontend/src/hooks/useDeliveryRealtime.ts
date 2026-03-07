@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { Delivery, DeliveryStatus } from '@/types';
@@ -47,29 +46,8 @@ export function useDeliveryRealtime(storeId?: string) {
   useEffect(() => {
     fetchDeliveries();
 
-    if (useLocalBridge) {
-      return;
-    }
-
-    const channel = supabase
-      .channel('deliveries-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'deliveries',
-          filter: storeId ? `store_id=eq.${storeId}` : undefined,
-        },
-        (payload) => {
-          handleRealtimeUpdate(payload);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // Realtime subscriptions removed (supabase client deleted).
+    // Deliveries refresh on mount or via manual refetch.
   }, [storeId, useLocalBridge]);
 
   const fetchDeliveries = async () => {
@@ -93,30 +71,14 @@ export function useDeliveryRealtime(storeId?: string) {
             setDeliveries([]);
             return;
           }
-          // Fall back to Supabase when online
+          // No remote fallback available
+          console.error('Error fetching deliveries via local bridge:', error);
+          setDeliveries([]);
         }
       }
 
-      let query = supabase
-        .from('deliveries')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (storeId) {
-        query = query.eq('store_id', storeId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      
-      // Map to ensure proper typing of status
-      const typedDeliveries: Delivery[] = (data || []).map(d => ({
-        ...d,
-        status: d.status as DeliveryStatus,
-      }));
-      
-      setDeliveries(typedDeliveries);
+      // No remote client available; deliveries default to empty
+      setDeliveries([]);
     } catch (error) {
       console.error('Error fetching deliveries:', error);
       if (!useLocalBridge) {

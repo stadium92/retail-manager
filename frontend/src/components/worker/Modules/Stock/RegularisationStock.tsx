@@ -315,16 +315,16 @@ export function RegularisationStock({ storeId }: RegularisationStockProps) {
                 {history.map(m => (
                   <TableRow key={m.id} className="h-11 border-b hover:bg-muted/5 transition-colors">
                     <TableCell className="text-xs font-mono text-muted-foreground">
-                      {format(new Date(m.date), 'HH:mm')}
+                      {format(new Date(m.created_at || m.date || new Date()), 'HH:mm')}
                     </TableCell>
                     <TableCell className="text-xs font-black uppercase truncate max-w-[200px]">
                       {m.product_name}
                     </TableCell>
                     <TableCell className={cn(
                       "text-xs text-center font-black font-mono",
-                      m.type === 'in' ? "text-success" : "text-danger"
+                      (m.movement_type || m.type) === 'in' ? "text-success" : "text-danger"
                     )}>
-                      {m.type === 'in' ? '+' : '-'}{m.quantity}
+                      {(m.movement_type || m.type) === 'in' ? '+' : '-'}{m.quantity}
                     </TableCell>
                     <TableCell className="text-right">
                       <Badge variant="outline" className="text-[8px] uppercase border-muted-foreground/30 font-bold px-1 h-4">

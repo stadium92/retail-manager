@@ -193,6 +193,7 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
       }
 
       toast.success(t('common.success'));
+      window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
       setReceiptItems([]);
       setSelectedOrderId('');
       setIsAdHoc(false);

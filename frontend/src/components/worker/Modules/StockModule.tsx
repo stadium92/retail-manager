@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Button } from '@/components/ui/button';
@@ -38,6 +38,7 @@ import { OfflineInventoryService } from '@/services/OfflineInventoryService';
 import { usePurchasingStore } from '@/stores/usePurchasingStore';
 import { LocalProductFamily } from '@/services/LocalDatabase';
 import { useTranslation } from 'react-i18next';
+import { useFormatters } from '@/utils/formatting';
 
 interface StockModuleProps {
   storeId: string;
@@ -47,6 +48,7 @@ interface StockModuleProps {
 
 export function StockModule({ storeId, mode }: StockModuleProps) {
   const { t, i18n } = useTranslation();
+  const { formatCurrency } = useFormatters();
   const { 
     search, setSearch, 
     filter, setFilter, 
@@ -98,97 +100,58 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
     reorder_quantity: '',
   });
 
-  const [prevUnitType, setPrevUnitType] = useState('Pièce');
-
   // Auto-scale quantity and prices when unit type changes
+  const fetchModuleData = useCallback(async () => {
+    if (!storeId) return;
+    console.log('[StockModule] Fetching module data for mode:', mode);
+    try {
+      if (mode === 'listing-stock') {
+         const familiesRes = await OfflineInventoryService.getProductFamilies(storeId);
+         if (familiesRes.data) setFamilies(familiesRes.data);
+         fetchSuppliers(storeId);
+      }
+      if (mode === 'mouvements-stock') {
+        const { movements: movData, offlineMessage } = await OfflineDataService.getStockMovements(storeId);
+        setMovements(movData);
+        if (offlineMessage) setMovementsMessage(offlineMessage);
+      }
+    } catch (error) {
+      console.error('[StockModule] Fetch error:', error);
+    }
+  }, [storeId, mode, fetchSuppliers]);
+
+  const fetchBatches = useCallback(async () => {
+    if (selectedProductId && storeId) {
+      const { data } = await OfflineInventoryService.getProductBatches(storeId, selectedProductId);
+      if (data) setBatches(data);
+      else setBatches([]);
+    }
+  }, [selectedProductId, storeId]);
+
   useEffect(() => {
-    if (formData.unit_type === prevUnitType) return;
+    fetchModuleData();
+  }, [fetchModuleData]);
 
-    const packaging = parseInt(formData.packaging) || 1;
-    if (packaging <= 1) {
-      setPrevUnitType(formData.unit_type);
-      return;
-    }
+  // Real-time reactivity: listen for DB update events (sale, inventory)
+  useEffect(() => {
+    const handleDbUpdate = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.type === 'sale' || detail?.type === 'inventory') {
+        console.log('[StockModule] Refreshing data due to DB update event:', detail?.type);
+        refetchStock();
+        fetchModuleData();
+      }
+    };
 
-    const isNowPack = ['Carton', 'Box', 'Pack'].includes(formData.unit_type);
-    const wasPack = ['Carton', 'Box', 'Pack'].includes(prevUnitType);
+    window.addEventListener('localDbDataUpdated', handleDbUpdate);
+    return () => window.removeEventListener('localDbDataUpdated', handleDbUpdate);
+  }, [refetchStock, fetchModuleData]);
 
-    if (isNowPack && !wasPack) {
-      // Switching Piece -> Box: divide qty, multiply prices
-      setFormData(prev => ({
-        ...prev,
-        quantity: (parseFloat(prev.quantity || '0') / packaging).toString(),
-        price: (parseFloat(prev.price || '0') * packaging).toString(),
-        selling_price_2: prev.selling_price_2 ? (parseFloat(prev.selling_price_2) * packaging).toString() : '',
-        selling_price_3: prev.selling_price_3 ? (parseFloat(prev.selling_price_3) * packaging).toString() : '',
-        selling_price_4: prev.selling_price_4 ? (parseFloat(prev.selling_price_4) * packaging).toString() : '',
-        cost: prev.cost ? (parseFloat(prev.cost) * packaging).toString() : '',
-        wholesale_price_ht: prev.wholesale_price_ht ? (parseFloat(prev.wholesale_price_ht) * packaging).toString() : '',
-        wholesale_price_ttc: prev.wholesale_price_ttc ? (parseFloat(prev.wholesale_price_ttc) * packaging).toString() : '',
-      }));
-    } else if (!isNowPack && wasPack) {
-      // Switching Box -> Piece: multiply qty, divide prices
-      setFormData(prev => ({
-        ...prev,
-        quantity: (parseFloat(prev.quantity || '0') * packaging).toString(),
-        price: (parseFloat(prev.price || '0') / packaging).toString(),
-        selling_price_2: prev.selling_price_2 ? (parseFloat(prev.selling_price_2) / packaging).toString() : '',
-        selling_price_3: prev.selling_price_3 ? (parseFloat(prev.selling_price_3) / packaging).toString() : '',
-        selling_price_4: prev.selling_price_4 ? (parseFloat(prev.selling_price_4) / packaging).toString() : '',
-        cost: prev.cost ? (parseFloat(prev.cost) / packaging).toString() : '',
-        wholesale_price_ht: prev.wholesale_price_ht ? (parseFloat(prev.wholesale_price_ht) / packaging).toString() : '',
-        wholesale_price_ttc: prev.wholesale_price_ttc ? (parseFloat(prev.wholesale_price_ttc) / packaging).toString() : '',
-      }));
-    }
-
-    setPrevUnitType(formData.unit_type);
-  }, [formData.unit_type, formData.packaging]);
+  useEffect(() => {
+    fetchBatches();
+  }, [fetchBatches]);
 
   const getLocale = () => (i18n.language === 'fr' || i18n.language === 'bm') ? fr : enUS;
-  const formatCurrency = (amount: number) => amount.toLocaleString(i18n.language === 'bm' ? 'fr-ML' : i18n.language) + ' F';
-
-  useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!storeId) return;
-      try {
-        if (mode === 'listing-stock') {
-           const familiesRes = await OfflineInventoryService.getProductFamilies(storeId);
-           if (familiesRes.data) setFamilies(familiesRes.data);
-           fetchSuppliers(storeId);
-        }
-        if (mode === 'mouvements-stock') {
-          const { movements: movData, offlineMessage } = await OfflineDataService.getStockMovements(storeId);
-          setMovements(movData);
-          if (offlineMessage) setMovementsMessage(offlineMessage);
-        }
-      } catch (error) {
-        console.error(error);
-      }
-    };
-    fetchData();
-  }, [storeId, mode]);
-
-  useEffect(() => {
-    const fetchBatches = async () => {
-      if (selectedProductId && storeId) {
-        const { data } = await OfflineInventoryService.getProductBatches(storeId, selectedProductId);
-        if (data) setBatches(data);
-        else setBatches([]);
-      }
-    };
-    fetchBatches();
-  }, [selectedProductId, storeId]);
 
   const handleOpenForm = () => {
     setFormData({
@@ -201,6 +164,19 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
     });
     setFormOpen(true);
   };
+
+  // Global scanner interceptor
+  useEffect(() => {
+    const handleScannerInput = (e: any) => {
+      const code = e.detail?.code;
+      if (code && formOpen) {
+        setFormData(prev => ({ ...prev, sku: code }));
+        toast.success(t('scanner.codeScanned') || 'Code scanned');
+      }
+    };
+    window.addEventListener('scanner-input', handleScannerInput);
+    return () => window.removeEventListener('scanner-input', handleScannerInput);
+  }, [formOpen, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -260,6 +236,7 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
       if (error) toast.error(t('common.error'));
       else {
         toast.success(t('common.success'));
+        window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
         setFormOpen(false);
         refetchStock();
       }
@@ -282,6 +259,7 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
     try {
       for (const [id, qty] of Object.entries(inventoryChanges)) await OfflineDataService.updateProductStock(id, qty, 'Inventaire');
       toast.success(t('common.success'));
+      window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
       refetchStock();
       setInventoryChanges({});
     } catch (error) {
@@ -396,7 +374,15 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2"><Label>{t('inventory.fields.barcodeOrSku')}</Label>
                             <div className="flex gap-2">
-                              <Input value={formData.sku} onChange={e => setFormData({...formData, sku: e.target.value})} />
+                              <Input 
+                                value={formData.sku} 
+                                onChange={e => setFormData({...formData, sku: e.target.value})} 
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault(); // Prevent scanner from submitting the whole form
+                                  }
+                                }}
+                              />
                               <Button type="button" variant="outline" size="icon" onClick={() => setIsScanningForSku(true)}><Barcode className="h-4 w-4" /></Button>
                             </div>
                           </div>
@@ -525,7 +511,7 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
                             {batches.map(batch => (
                               <TableRow key={batch.id} className="h-8">
                                 <TableCell className="text-xs text-muted-foreground">
-                                  {format(new Date(batch.received_at), 'dd/MM/yy')}
+                                  {format(new Date(batch.received_at || new Date()), 'dd/MM/yy')}
                                 </TableCell>
                                 <TableCell className="text-xs text-center">{batch.quantity_received}</TableCell>
                                 <TableCell className="text-xs text-center font-bold text-primary">{batch.quantity_remaining}</TableCell>
@@ -548,7 +534,7 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
           </div>
         );
       case 'mouvements-stock':
-        return (<Card className="h-full flex flex-col"><CardHeader className="py-3 border-b"><div className="flex items-center gap-4 flex-wrap"><div className="flex items-center gap-2"><Input type="date" className="w-auto h-8" /><span className="text-muted-foreground">-</span><Input type="date" className="w-auto h-8" /></div><Input placeholder={t('common.filter')} className="w-48 h-8" /><Button variant="outline" size="sm" className="ml-auto"><Download className="h-4 w-4 mr-2" />{t('export.title')}</Button><OfflineIndicator /></div></CardHeader><CardContent className="flex-1 p-0 overflow-hidden">{movementsMessage && (<div className="p-4 bg-warning/10 border-b border-warning/20 text-warning text-sm">{movementsMessage}</div>)}<ScrollArea className="h-full"><Table><TableHeader className="sticky top-0 bg-background"><TableRow><TableHead className="text-xs">{t('storeDetails.sales.table.date')}</TableHead><TableHead className="text-xs">{t('inventory.table.name')}</TableHead><TableHead className="text-xs">Type</TableHead><TableHead className="text-xs text-center">{t('inventory.table.quantity')}</TableHead><TableHead className="text-xs">{t('menu.program.reason')}</TableHead></TableRow></TableHeader><TableBody>{movements.map(mov => (<TableRow key={mov.id} className="h-10"><TableCell className="text-xs">{format(new Date(mov.date), 'dd/MM/yyyy HH:mm', { locale: getLocale() })}</TableCell><TableCell className="text-xs font-medium">{mov.product_name}</TableCell><TableCell><Badge variant={mov.type === 'in' ? 'default' : mov.type === 'out' ? 'destructive' : 'secondary'} className="text-xs">{mov.type === 'in' ? t('menu.program.income') : mov.type === 'out' ? t('menu.program.expenses') : 'Ajust.'}</Badge></TableCell><TableCell className={cn("text-xs text-center font-medium", mov.type === 'in' ? 'text-success' : mov.type === 'out' ? 'text-danger' : 'text-warning')}>{mov.type === 'in' ? '+' : '-'}{mov.quantity}</TableCell><TableCell className="text-xs">{mov.reason}</TableCell></TableRow>))}</TableBody></Table></ScrollArea></CardContent></Card>);
+        return (<Card className="h-full flex flex-col"><CardHeader className="py-3 border-b"><div className="flex items-center gap-4 flex-wrap"><div className="flex items-center gap-2"><Input type="date" className="w-auto h-8" /><span className="text-muted-foreground">-</span><Input type="date" className="w-auto h-8" /></div><Input placeholder={t('common.filter')} className="w-48 h-8" /><Button variant="outline" size="sm" className="ml-auto"><Download className="h-4 w-4 mr-2" />{t('export.title')}</Button><OfflineIndicator /></div></CardHeader><CardContent className="flex-1 p-0 overflow-hidden">{movementsMessage && (<div className="p-4 bg-warning/10 border-b border-warning/20 text-warning text-sm">{movementsMessage}</div>)}<ScrollArea className="h-full"><Table><TableHeader className="sticky top-0 bg-background"><TableRow><TableHead className="text-xs">{t('storeDetails.sales.table.date')}</TableHead><TableHead className="text-xs">{t('inventory.table.name')}</TableHead><TableHead className="text-xs">Type</TableHead><TableHead className="text-xs text-center">{t('inventory.table.quantity')}</TableHead><TableHead className="text-xs">{t('menu.program.reason')}</TableHead></TableRow></TableHeader><TableBody>{movements.map(mov => (<TableRow key={mov.id} className="h-10"><TableCell className="text-xs">{format(new Date(mov.created_at || mov.date || new Date()), 'dd/MM/yyyy HH:mm', { locale: getLocale() })}</TableCell><TableCell className="text-xs font-medium">{mov.product_name}</TableCell><TableCell><Badge variant={(mov.movement_type || mov.type) === 'in' ? 'default' : (mov.movement_type || mov.type) === 'out' ? 'destructive' : 'secondary'} className="text-xs">{(mov.movement_type || mov.type) === 'in' ? t('menu.program.income') : (mov.movement_type || mov.type) === 'out' ? t('menu.program.expenses') : 'Ajust.'}</Badge></TableCell><TableCell className={cn("text-xs text-center font-medium", (mov.movement_type || mov.type) === 'in' ? 'text-success' : (mov.movement_type || mov.type) === 'out' ? 'text-danger' : 'text-warning')}>{(mov.movement_type || mov.type) === 'in' ? '+' : '-'}{mov.quantity}</TableCell><TableCell className="text-xs">{mov.reason}</TableCell></TableRow>))}</TableBody></Table></ScrollArea></CardContent></Card>);
       case 'regularisation-stock': return <RegularisationStock storeId={storeId} />;
       case 'valorisation-stock': return <ValorisationStock storeId={storeId} />;
       case 'inventaire-stock':

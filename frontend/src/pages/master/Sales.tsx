@@ -156,6 +156,9 @@ export default function SalesPage() {
   };
 
   const filteredSales = sales.filter((sale) => {
+    // Do not include proformas in the main sales tracking
+    if (sale.sale_type === 'proforma') return false;
+
     const totalPrice = Number(sale.total_price);
     const itemNames = sale.sale_items?.map(i => i.product_name.toLowerCase()).join(' ') || '';
     const matchesSearch = sale.customer_name?.toLowerCase().includes(searchQuery.toLowerCase()) || itemNames.includes(searchQuery.toLowerCase()) || sale.invoice_number?.toLowerCase().includes(searchQuery.toLowerCase());

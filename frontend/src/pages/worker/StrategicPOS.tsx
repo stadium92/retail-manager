@@ -7,7 +7,6 @@ import { POSSidebar } from '@/components/pos/POSSidebar';
 import { POSTotals } from '@/components/pos/POSTotals';
 import { BarcodeScanner } from '@/components/shared/BarcodeScanner';
 import { InventoryItem } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
 import { OfflineSalesService } from '@/services/OfflineSalesService';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -43,13 +42,8 @@ export default function StrategicPOS() {
         if (storeId) setStoreId(storeId);
         return;
       }
-      const { data } = await supabase
-        .from('user_roles')
-        .select('store_id')
-        .eq('user_id', user.id)
-        .in('role', ['worker', 'master'])
-        .single();
-      if (data?.store_id) setStoreId(data.store_id);
+      const storeIdFromMeta = user.user_metadata?.store_id;
+      if (storeIdFromMeta) setStoreId(storeIdFromMeta);
     };
     fetchStore();
   }, [user, useLocalBridge]);
@@ -91,29 +85,6 @@ export default function StrategicPOS() {
         }
         setIsLoading(false);
         return;
-      }
-      const { data } = await supabase
-        .from('products')
-        .select('*')
-        .eq('store_id', storeId)
-        .order('name');
-      if (data) {
-        const mappedProducts: InventoryItem[] = data.map(item => ({
-          id: item.id,
-          name: item.name,
-          description: item.description || undefined,
-          sku: item.sku || undefined,
-          price: Number(item.unit_price) || 0,
-          cost: Number(item.cost_price) || 0,
-          quantity: item.quantity,
-          low_stock_threshold: item.min_quantity || undefined,
-          category_id: item.category || undefined,
-          store_id: item.store_id,
-          image_url: item.image_url || undefined,
-          created_at: item.created_at,
-          updated_at: item.updated_at,
-        }));
-        setProducts(mappedProducts);
       }
       setIsLoading(false);
     };
@@ -192,7 +163,7 @@ export default function StrategicPOS() {
   }, [products, t]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await OfflineAuthService.signOut();
   };
 
   return (

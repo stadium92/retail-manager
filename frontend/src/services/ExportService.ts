@@ -189,7 +189,7 @@ export class ExportService {
 
       const storeName = (storeMap && storeMap[sale.store_id]) || sale.store?.name || sale.store_id || '';
 
-      const items = sale.items || sale.sale_items || [];
+      const items = (sale.items?.length ? sale.items : sale.sale_items) || [];
 
       if (items.length === 0) {
         return [{

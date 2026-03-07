@@ -157,9 +157,9 @@ export async function registerSalesRoutes(app: FastifyInstance) {
     }));
 
     // Use atomic transaction
-    db.createSaleWithItems(saleData as any, items as any);
+    const created = db.createSaleWithItems(saleData as any, items as any);
 
-    return reply.status(201).send(db.getSaleById(saleId));
+    return reply.status(201).send(created);
   });
 
   app.patch('/rest/v1/sales/:id', async (request, reply) => {

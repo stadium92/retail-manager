@@ -295,15 +295,10 @@ export const initializeSchema = (db: Database.Database) => {
       updated_at TEXT NOT NULL
     );
 
-    -- Trigger to deduct inventory when a sale item is recorded
+    -- Stock deduction is handled explicitly in the createSaleWithItems transaction
+    -- to support ACID transactions and allow negative stock.
+    
     DROP TRIGGER IF EXISTS sale_items_ai;
-    CREATE TRIGGER sale_items_ai AFTER INSERT ON sale_items
-    WHEN (SELECT sale_type FROM sales WHERE id = new.sale_id) != 'proforma'
-    BEGIN
-      UPDATE products
-      SET quantity = quantity - new.quantity
-      WHERE id = new.product_id;
-    END;
 
     -- Scheduled Orders
     CREATE TABLE IF NOT EXISTS scheduled_orders (

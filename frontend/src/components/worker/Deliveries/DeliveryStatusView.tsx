@@ -3,7 +3,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
 import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { Truck, Phone, MapPin, Clock } from 'lucide-react';
@@ -84,37 +83,9 @@ export function DeliveryStatusView() {
         return;
       }
 
-      // Get worker's assigned store from user_roles
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('store_id')
-        .eq('user_id', user.id)
-        .eq('role', 'worker')
-        .single();
-
-      if (roleError || !roleData?.store_id) {
-        console.error('Error fetching worker store:', roleError);
-        setLoading(false);
-        return;
-      }
-
-      // Fetch deliveries for assigned store only (read-only for workers)
-      const { data, error } = await supabase
-        .from('deliveries')
-        .select('*')
-        .eq('store_id', roleData.store_id)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (error) {
-        console.error('Error fetching deliveries:', error);
-        setLoading(false);
-        return;
-      }
-
-      if (data) {
-        setDeliveries(data as DeliveryData[]);
-      }
+      // Non-local-bridge fallback: no remote client available
+      console.log('Deliveries: local bridge not enabled, skipping fetch');
+      setDeliveries([]);
     } catch (error) {
       console.error('Unexpected error fetching deliveries:', error);
     } finally {

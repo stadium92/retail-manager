@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -121,7 +121,7 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
     
     const handleDataUpdated = (e: CustomEvent) => {
       // 1. Check type
-      if (e.detail?.type !== 'sales' && e.detail?.type !== 'inventory') return;
+if (e.detail?.type !== 'sales' && e.detail?.type !== 'sale' && e.detail?.type !== 'inventory' && e.detail?.type !== 'product') return;
       
       // 2. Check storeId (if provided in event) to only refresh what's relevant
       if (e.detail?.storeId && e.detail.storeId !== storeId) return;
@@ -147,7 +147,7 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
   }, [storeId, dateRange]);
 
   // Fetch data - uses local sources
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     // If we're in Worker mode, storeId is required. 
     // In Master mode, storeId can be empty string (All Stores).
     // We only return if storeId is strictly undefined (not yet initialized).
@@ -239,11 +239,11 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
     }
 
     setIsLoading(false);
-  };
+  }, [storeId, t, dateRange]);
 
   useEffect(() => {
     fetchData();
-  }, [storeId, t, dateRange]);
+  }, [fetchData]);
 
   const handleRecordPettyCash = async () => {
     const amount = parseFloat(pettyCashForm.amount);
@@ -299,8 +299,8 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
     
     // Profit based on price - cost
     const totalProfit = sales.reduce((sum, sale) => {
-      const saleItems = sale.sale_items || [];
-      // This is an estimate as sale_items might not have cost_price directly
+      const saleItems = (sale.items?.length ? sale.items : sale.sale_items) || [];
+      // This is an estimate as items might not have cost_price directly
       // In a full implementation, we'd join with products table or look up cost
       return sum + (sale.total_price * 0.25); // Default 25% margin estimate
     }, 0);
@@ -322,9 +322,10 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
   const categoryData = useMemo(() => {
     const categories: Record<string, number> = {};
     sales.forEach(sale => {
-      (sale.sale_items || []).forEach((item) => {
-        const cat = item.category_name || t('common.other');
-        categories[cat] = (categories[cat] || 0) + item.total;
+const items = (sale.items?.length ? sale.items : (sale.sale_items?.length ? sale.sale_items : []));
+            items.forEach((item: any) => {
+              const cat = item.category_name || item.category || t('common.other');
+              categories[cat] = (categories[cat] || 0) + (item.total || item.lineTotal || 0);
       });
     });
     return Object.entries(categories)
@@ -346,7 +347,7 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
 
   // Top selling products
   const topProducts = useMemo(() => {
-    if (analytics?.top_products) {
+    if (analytics?.top_products?.length) {
       return analytics.top_products.map(p => ({
         name: p.name,
         qty: p.quantity,
@@ -355,16 +356,30 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
     }
     const productSales: Record<string, { name: string; qty: number; revenue: number }> = {};
     sales.forEach(sale => {
-      (sale.sale_items || []).forEach((item) => {
-        if (!productSales[item.product_name]) {
-          productSales[item.product_name] = { name: item.product_name, qty: 0, revenue: 0 };
+const items = (sale.items?.length ? sale.items : sale.sale_items) || [];
+            items.forEach((item: any) => {
+              const name = item.product_name || item.productName || item.designation || 'Unknown';
+              if (!productSales[name]) {
+                productSales[name] = { name, qty: 0, revenue: 0 };
         }
-        productSales[item.product_name].qty += item.quantity;
-        productSales[item.product_name].revenue += item.total;
+        productSales[name].qty += Number(item.quantity || 0);
+        productSales[name].revenue += Number(item.total || item.lineTotal || 0);
       });
     });
     return Object.values(productSales).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
   }, [sales, analytics]);
+
+          const stockHealthData = useMemo(() => {
+          if (analytics?.stock_health) {
+            return [
+              { name: t('inventory.inStock'), value: analytics.stock_health.ok, color: '#00FF66' },
+              { name: t('inventory.lowStock'), value: analytics.stock_health.low, color: '#FFD700' },
+              { name: t('inventory.outOfStock'), value: analytics.stock_health.out, color: '#FF6B6B' },
+            ].filter(d => d.value > 0);
+          }
+          // Fallback to computing from current view if analytics missing
+          return [];
+        }, [analytics, t]);
 
   // Handle loss recording - works offline
   const handleRecordLoss = async () => {
@@ -604,11 +619,7 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
         );
 
       case 'tableau-bord':
-        const stockHealthData = analytics?.stock_health ? [
-          { name: t('inventory.inStock'), value: analytics.stock_health.ok, color: '#00FF66' },
-          { name: t('inventory.lowStock'), value: analytics.stock_health.low, color: '#FFD700' },
-          { name: t('inventory.outOfStock'), value: analytics.stock_health.out, color: '#FF6B6B' },
-        ].filter(d => d.value > 0) : [];
+
 
         return (
           <div className="space-y-4">
@@ -851,7 +862,7 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
 
         sales.forEach(sale => {
           const hour = new Date(sale.created_at).getHours();
-          hourlyData[hour].revenue += sale.total_price;
+          hourlyData[hour].revenue += Number(sale.total_price || 0);
           hourlyData[hour].count += 1;
         });
 
@@ -860,7 +871,7 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
         // Average Basket Value
         const abv = kpis.orderCount > 0 ? kpis.totalRevenue / kpis.orderCount : 0;
         const avgItems = kpis.orderCount > 0 
-          ? sales.reduce((sum, s) => sum + (s.sale_items?.length || 0), 0) / kpis.orderCount 
+          ? sales.reduce((sum, s) => sum + ((s.items?.length ? s.items : s.sale_items) || []).length, 0) / kpis.orderCount 
           : 0;
 
         return (
@@ -1170,7 +1181,7 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
                         {todayLosses.map(mov => (
                           <TableRow key={mov.id} className="h-11 border-b">
                             <TableCell className="text-xs font-mono text-muted-foreground">
-                              {format(new Date(mov.date), 'HH:mm')}
+                              {format(new Date(mov.created_at || mov.date || new Date()), 'HH:mm')}
                             </TableCell>
                             <TableCell className="text-xs font-bold uppercase">{mov.product_name}</TableCell>
                             <TableCell className="text-xs text-center font-bold text-danger font-mono">-{mov.quantity}</TableCell>

@@ -6,8 +6,8 @@ import { POSSidebar } from '@/components/pos/POSSidebar';
 import { POSTotals } from '@/components/pos/POSTotals';
 import { BarcodeScanner } from '@/components/shared/BarcodeScanner';
 import { Product } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
 import { OfflineSalesService } from '@/services/OfflineSalesService';
+import { OfflineInventoryService } from '@/services/OfflineInventoryService';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -113,38 +113,37 @@ export function FacturationModule({ storeId, mode }: FacturationModuleProps) {
           group: 'POS'
         }
       ]);
-  // Fetch products from products table
-  useEffect(() => {
-    const fetchProducts = async () => {
-      if (!storeId) return;
-      setIsLoading(true);
-      const { data } = await supabase
-        .from('products')
-        .select('*')
-        .eq('store_id', storeId)
-        .order('name');
+  // Fetch products robustly
+  const fetchData = useCallback(async () => {
+    if (!storeId) return;
+    setIsLoading(true);
+    console.log('[Facturation] Fetching robust inventory...');
+    try {
+      const { data, error } = await OfflineInventoryService.getInventory(storeId, { notify: false });
+      if (error) throw error;
       if (data) {
-        // Map products to expected format
-        const mappedProducts = data.map((item) => ({
-          id: item.id,
-          store_id: item.store_id,
-          name: item.name,
-          description: item.description,
-          sku: item.sku,
-          unit_price: Number(item.unit_price) || 0,
-          cost_price: Number(item.cost_price) || 0,
-          quantity: item.quantity,
-          min_quantity: item.min_quantity,
-          image_url: item.image_url,
-          created_at: item.created_at,
-          updated_at: item.updated_at,
-        }));
-        setProducts(mappedProducts.map(mapProductToInventoryItem));
+        setProducts(data.map(item => mapProductToInventoryItem(item as any)));
       }
+    } catch (err) {
+      console.error('[Facturation] Fetch error:', err);
+    } finally {
       setIsLoading(false);
-    };
-    fetchProducts();
+    }
   }, [storeId]);
+
+  useEffect(() => {
+    fetchData();
+
+    const handleRefresh = (e: any) => {
+      if (e.detail?.type === 'inventory' || e.detail?.type === 'product' || e.detail?.type === 'sale') {
+        console.log('[Facturation] Refreshing data due to DB update event');
+        fetchData();
+      }
+    };
+
+    window.addEventListener('localDbDataUpdated', handleRefresh);
+    return () => window.removeEventListener('localDbDataUpdated', handleRefresh);
+  }, [fetchData]);
 
   const handleScanResult = useCallback((result: string) => {
     const product = products.find(p => 

@@ -4,7 +4,6 @@ import { useDeliveryRealtime } from '@/hooks/useDeliveryRealtime';
 import { OfflineStoreService } from '@/services/OfflineStoreService';
 import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -121,9 +120,7 @@ export default function DeliveriesPage() {
     if (selection.selectedCount === 0) return;
 
     const deletePromises = selection.selectedItems.map((delivery) =>
-      useLocalBridge
-        ? localBridgeRequest(`/rest/v1/deliveries/${delivery.id}`, { method: 'DELETE' })
-        : supabase.from('deliveries').delete().eq('id', delivery.id)
+      localBridgeRequest(`/rest/v1/deliveries/${delivery.id}`, { method: 'DELETE' })
     );
 
     const results = await Promise.allSettled(deletePromises);

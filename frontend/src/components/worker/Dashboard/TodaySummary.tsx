@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
 import { Coins, ShoppingBag } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { getDataClient } from '@/lib/dataClient';
@@ -60,23 +59,9 @@ export function TodaySummary() {
         return;
       }
 
-      // Get today's sales for this worker only
-      const { data, error } = await supabase
-        .from('sales')
-        .select('total_price')
-        .eq('worker_id', user.id)
-        .gte('created_at', today.toISOString());
-
-      if (error) {
-        console.error('Error fetching today summary:', error);
-        setLoading(false);
-        return;
-      }
-
-      if (data) {
-      setSalesCount(data.length);
-        setTotalRevenue(data.reduce((sum, sale) => sum + Number(sale.total_price || 0), 0));
-    }
+      // Local bridge path handles all data fetching above; no remote fallback needed.
+      setSalesCount(0);
+      setTotalRevenue(0);
     } catch (error) {
       console.error('Unexpected error fetching today summary:', error);
     } finally {

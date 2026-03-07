@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { getDataClient, smartFetch } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
+import { OfflineInventoryService } from '@/services/OfflineInventoryService';
 import { Product } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { toast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
 import { useFormatters } from '@/utils/formatting';
 
@@ -30,72 +32,76 @@ export function StockListingModule({ storeId }: StockListingModuleProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<StockFilter>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { supabase, isLocalFirst, localBridgeBaseUrl } = getDataClient();
+  const { localBridgeBaseUrl } = getDataClient();
+
+  const fetchData = useCallback(async () => {
+    if (!storeId) return;
+    setIsLoading(true);
+    console.log('[StockListing] Fetching robust inventory via OfflineInventoryService...');
+
+    try {
+      const { data, error } = await OfflineInventoryService.getInventory(storeId, { notify: false });
+      
+      if (error) throw error;
+
+      if (data) {
+        const mappedProducts: Product[] = data.map(item => ({
+          id: item.id,
+          store_id: item.store_id,
+          name: item.name,
+          description: item.description || '',
+          sku: item.sku,
+          barcode: item.barcode || item.sku || '',
+          unit_price: item.price || 0,
+          cost_price: item.cost || 0,
+          wholesale_price_ttc: item.wholesale_price_ttc || 0,
+          quantity: item.quantity,
+          min_quantity: item.low_stock_threshold || 10,
+          packaging: item.packaging || '1',
+          unit_type: item.unit_type || 'Piece',
+          category: item.category_id || '',
+          image_url: item.image_url,
+          created_at: item.created_at || '',
+          updated_at: item.updated_at || '',
+        }));
+        setProducts(mappedProducts);
+      }
+    } catch (error) {
+      console.error('[StockListing] Service fetch error:', error);
+      setProducts(prev => prev.length === 0 ? [] : prev);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [storeId]);
+
+  const handleHardReset = async () => {
+    if (confirm("DANGER: Cela va effacer le cache local du navigateur. Vos produits dans la base de données SQLite ne seront PAS affectés. Utilisez ceci pour supprimer les 'Produits Fantômes'. Continuer ?")) {
+        try {
+            await LocalDatabase.clearAll();
+            localStorage.clear();
+            toast({ title: "Cache effacé", description: "Rechargement en cours..." });
+            setTimeout(() => window.location.reload(), 1500);
+        } catch (e) {
+            console.error('[HardReset] Error:', e);
+            toast({ title: "Note", description: "Nettoyage partiel effectué. Rechargement...", variant: "default" });
+            setTimeout(() => window.location.reload(), 1500);
+        }
+    }
+  };
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      if (!storeId) return;
-      setIsLoading(true);
+    fetchData();
 
-      try {
-        if (isLocalFirst) {
-          const params = new URLSearchParams();
-          params.set('store_id', storeId);
-          const headers = await OfflineAuthService.getAuthHeaders();
-          
-          if (!headers) throw new Error('Not authenticated');
-
-          const response = await smartFetch(`${localBridgeBaseUrl}/rest/v1/products?${params.toString()}`, {
-            headers,
-          });
-
-          if (response.ok) {
-              const data = await response.json();
-              setProducts(data || []);
-          } else {
-              setProducts([]);
-          }
-          return;
-        }
-
-        const { data } = await supabase
-          .from('products')
-          .select('*')
-          .eq('store_id', storeId)
-          .order('name');
-        
-        if (data) {
-          // Map products to Product interface
-          const mappedProducts: Product[] = data.map(item => ({
-            id: item.id,
-            store_id: item.store_id,
-            name: item.name,
-            description: item.description,
-            sku: item.sku,
-            barcode: item.barcode || item.sku,
-            unit_price: Number(item.unit_price) || 0,
-            cost_price: Number(item.cost_price) || 0,
-            quantity: item.quantity,
-            min_quantity: item.min_quantity,
-            packaging: item.packaging || '1',
-            unit_type: item.unit_type || 'Piece',
-            category: item.category || item.category_id,
-            image_url: item.image_url,
-            created_at: item.created_at,
-            updated_at: item.updated_at,
-          }));
-          setProducts(mappedProducts);
-        }
-      } catch (error) {
-        console.error('Failed to fetch products', error);
-        setProducts([]);
-      } finally {
-        setIsLoading(false);
+    const handleRefresh = (e: any) => {
+      if (e.detail?.type === 'inventory' || e.detail?.type === 'product' || e.detail?.type === 'sale') {
+        console.log('[StockListing] Refreshing data due to DB update event');
+        fetchData();
       }
     };
-    
-    fetchProducts();
-  }, [storeId, isLocalFirst]);
+
+    window.addEventListener('localDbDataUpdated', handleRefresh);
+    return () => window.removeEventListener('localDbDataUpdated', handleRefresh);
+  }, [fetchData]);
 
   const getStockStatus = (quantity: number, threshold: number = 10): StockFilter => {
     if (quantity <= 0) return 'rupture';
@@ -179,12 +185,7 @@ export function StockListingModule({ storeId }: StockListingModuleProps) {
             type="button"
             variant="outline" 
             size="sm" 
-            onClick={() => {
-                // Since fetchData is an effect, we just need to trigger a re-run if needed
-                // or just call it directly if it was defined as a function.
-                // In this file, fetchProducts is inside useEffect. 
-                // I'll refactor it to a useCallback.
-            }}
+            onClick={fetchData}
             className="h-8"
           >
             <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
@@ -194,6 +195,15 @@ export function StockListingModule({ storeId }: StockListingModuleProps) {
         
         {/* Stats */}
         <div className="flex items-center gap-4 text-sm">
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            onClick={handleHardReset}
+            className="h-8 bg-red-600 hover:bg-red-700"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Hard Reset
+          </Button>
           <div className="px-3 py-1 bg-success/20 text-success rounded-lg">
             ✓ {stats.ok} OK
           </div>

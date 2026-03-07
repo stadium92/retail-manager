@@ -21,7 +21,7 @@ interface FichiersFamillesModuleProps {
 
 export function FichiersFamillesModule({ storeId }: FichiersFamillesModuleProps) {
   const { t } = useTranslation();
-  const { supabase, isLocalFirst, localBridgeBaseUrl } = getDataClient();
+  const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
   const { families, setFamilies, deleteFamily, setLoading } = useMasterDataStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -48,12 +48,12 @@ export function FichiersFamillesModule({ storeId }: FichiersFamillesModuleProps)
     }
 
     const response = await fetch(`${localBridgeBaseUrl}${path}`, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(init.headers || {}),
-        ...headers,
-      },
+        ...init,
+        headers: {
+          ...headers,
+          ...(init.headers || {}),
+          ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        },
     });
 
     let payload: any = null;
@@ -163,27 +163,17 @@ export function FichiersFamillesModule({ storeId }: FichiersFamillesModuleProps)
           toast({ title: t('common.success'), description: t('menu.program.newFamily') });
         }
         await fetchFamilies();
+        window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'family' } }));
         setIsDialogOpen(false);
         resetForm();
         return;
       }
 
       if (editingFamily) {
-        const { error } = await supabase
-          .from('product_families')
-          .update(payload)
-          .eq('id', editingFamily.id)
-          .eq('store_id', storeId);
-
-        if (error) throw error;
-        toast({ title: t('common.success'), description: t('menu.program.editFamily') });
+        // Non-local-first path removed (supabase no longer available)
+        console.warn('FichiersFamillesModule: non-local-first save path is not supported');
       } else {
-        const { error } = await supabase
-          .from('product_families')
-          .insert(payload);
-
-        if (error) throw error;
-        toast({ title: t('common.success'), description: t('menu.program.newFamily') });
+        console.warn('FichiersFamillesModule: non-local-first save path is not supported');
       }
 
       await fetchFamilies();
@@ -212,19 +202,14 @@ export function FichiersFamillesModule({ storeId }: FichiersFamillesModuleProps)
     setDeletingId(id);
     try {
       if (useLocalBridge) {
-        await localBridgeRequest(`/rest/v1/product_families/${id}`, { method: 'DELETE' });
+        await localBridgeRequest(`/rest/v1/product_families/${id}`, { method: 'DELETE',  });
         deleteFamily(id);
         toast({ title: t('common.success') });
         return;
       }
 
-      const { error } = await supabase
-        .from('product_families')
-        .delete()
-        .eq('id', id)
-        .eq('store_id', storeId);
-
-      if (error) throw error;
+      // Non-local-first path removed (supabase no longer available)
+      console.warn('FichiersFamillesModule: non-local-first delete path is not supported');
 
       deleteFamily(id);
       toast({ title: t('common.success') });

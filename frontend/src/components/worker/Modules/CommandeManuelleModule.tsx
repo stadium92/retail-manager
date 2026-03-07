@@ -36,7 +36,7 @@ export function CommandeManuelleModule({ storeId }: CommandeManuelleModuleProps)
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
-  const { supabase, isLocalFirst, localBridgeBaseUrl } = getDataClient();
+  const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
 
   const useLocalBridge = isLocalFirst;
 
@@ -51,12 +51,12 @@ export function CommandeManuelleModule({ storeId }: CommandeManuelleModuleProps)
       throw new Error('LocalBridge session expired. Please sign in again.');
     }
     const response = await fetch(`${localBridgeBaseUrl}${path}`, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(init.headers || {}),
-        ...headers,
-      },
+        ...init,
+        headers: {
+          ...headers,
+          ...(init.headers || {}),
+          ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        },
     });
     let payload: any = null;
     if (response.status !== 204) {
@@ -101,13 +101,9 @@ export function CommandeManuelleModule({ storeId }: CommandeManuelleModuleProps)
       return;
     }
 
-    const { data } = await supabase
-      .from('products')
-      .select('id, name, cost_price, packaging, wholesale_price_ttc, wholesale_price_ht, selling_price_4, selling_price_2')
-      .eq('store_id', storeId)
-      .eq('is_active', true)
-      .order('name');
-    setProducts(data || []);
+    // Non-local-first path removed (supabase no longer available)
+    console.warn('CommandeManuelleModule: non-local-first path is not supported');
+    setProducts([]);
   };
 
   const parsePackSize = (packaging: string | null): number => {

@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { supabase } from '@/integrations/supabase/client';
 import { getDataClient, smartFetch } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { useMasterDataStore } from './useMasterDataStore';
@@ -104,8 +103,7 @@ export const usePurchasingStore = create<PurchasingState>((set, get) => ({
           if (res.ok) remote = await res.json();
         }
       } else if (navigator.onLine) {
-        const { data } = await supabase.from('suppliers').select('*').eq('store_id', storeId).order('name');
-        if (data) remote = data;
+        // No remote client available; rely on local cache
       }
 
       if (remote.length > 0) {
@@ -140,8 +138,7 @@ export const usePurchasingStore = create<PurchasingState>((set, get) => ({
           if (res.ok) remote = await res.json();
         }
       } else if (navigator.onLine) {
-        const { data } = await supabase.from('purchase_orders').select('*, supplier:suppliers(name)').eq('store_id', storeId).order('created_at', { ascending: false });
-        if (data) remote = data;
+        // No remote client available; rely on local cache
       }
 
       if (remote.length > 0) {
@@ -174,7 +171,7 @@ export const usePurchasingStore = create<PurchasingState>((set, get) => ({
           }
         }
       }
-      const { data } = await (supabase as any).from('purchase_items').select('*, product:products(name, packaging)').eq('order_id', orderId);
+      const { data } = { data: null as any };
       if (data) set({ orderItems: data });
     } catch (e) {}
   },
@@ -202,8 +199,7 @@ export const usePurchasingStore = create<PurchasingState>((set, get) => ({
           });
         }
       } else {
-        await supabase.from('purchase_orders').insert([localOrder]);
-        await supabase.from('purchase_items').insert(items.map(i => ({ ...i, purchase_order_id: orderId })));
+        // No remote client available; order saved locally only
       }
     } catch (e) {}
   },
@@ -221,7 +217,7 @@ export const usePurchasingStore = create<PurchasingState>((set, get) => ({
           });
         }
       } else {
-        await supabase.from('purchase_orders').update({ status }).eq('id', orderId);
+        // No remote client available
       }
       set(state => ({ orders: state.orders.map(o => o.id === orderId ? { ...o, status: status as any } : o) }));
     } catch (e) {}
@@ -240,8 +236,7 @@ export const usePurchasingStore = create<PurchasingState>((set, get) => ({
           });
         }
       } else {
-        // Complex Supabase logic usually handled by RPC or multiple calls
-        await supabase.rpc('receive_purchase_order', { p_order_id: orderId, p_items: items });
+        // Complex Supabase logic removed; receive only via local bridge
       }
       set(state => ({ orders: state.orders.map(o => o.id === orderId ? { ...o, status: 'received' } : o) }));
     } catch (e) {}
@@ -269,8 +264,7 @@ export const usePurchasingStore = create<PurchasingState>((set, get) => ({
           }
         }
       } else {
-        const { error } = await supabase.from('purchase_orders').delete().eq('id', orderId);
-        if (error) throw error;
+        // No remote client available; deleted locally
       }
       console.log('[PurchasingStore] Order deleted successfully');
     } catch (e: any) {
@@ -297,7 +291,7 @@ export const usePurchasingStore = create<PurchasingState>((set, get) => ({
           }
         }
       }
-      const { data } = await (supabase as any).from('suppliers').insert([supplier]).select().single();
+      const { data } = { data: null as any };
       if (data) {
         set(state => ({ suppliers: [...state.suppliers, data] }));
         return data;
@@ -319,7 +313,7 @@ export const usePurchasingStore = create<PurchasingState>((set, get) => ({
           });
         }
       } else {
-        await supabase.from('supplier_payments').insert([payment]);
+        // No remote client available
       }
     } catch (e) {}
   },

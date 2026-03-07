@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -39,6 +39,7 @@ export function PaymentDialog({
   const [amountReceived, setAmountReceived] = useState<number>(totalAmount);
   const [partialPayment, setPartialPayment] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const { formatCurrency } = useFormatters();
   const { currency } = useSettingsStore();
@@ -66,11 +67,39 @@ export function PaymentDialog({
     }
   };
 
+  // Auto-select text when dialog opens
+  useEffect(() => {
+    if (open) {
+      console.log('[PaymentDialog] Dialog opened, resetting amount and triggering auto-select...');
+      setAmountReceived(totalAmount);
+      setPartialPayment(totalAmount);
+      
+      const timer = setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          inputRef.current.setSelectionRange(0, inputRef.current.value.length);
+          console.log('[PaymentDialog] Input focused and selected');
+        }
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
+
   const quickAmounts = getCurrencyConfig(currency).quickAmounts;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-[hsl(180,60%,85%)] border-4 border-[hsl(180,60%,40%)] p-0">
+      <DialogContent 
+        className="max-w-md bg-[hsl(180,60%,85%)] border-4 border-[hsl(180,60%,40%)] p-0"
+        onKeyDown={(e) => {
+          // Trap Enter key to confirm payment and prevent grid navigation
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            handleConfirm();
+          }
+        }}
+      >
         <DialogHeader className="bg-[hsl(180,60%,40%)] px-4 py-3">
           <DialogTitle className="text-white font-mono text-lg uppercase">
             {t('menu.program.voucherSettlement')} - {mode === 'vente-detail' ? t('sidebar.sales') : t('menu.program.invoice')}
@@ -106,11 +135,21 @@ export function PaymentDialog({
           {selectedMethod === 'cash' && (
             <div className="space-y-3">
               <div>
-                <Label className="font-mono text-sm">{t('menu.program.receivedAmount')}</Label>
+                <Label className="font-black font-mono text-lg uppercase mb-2 block text-primary">{t('menu.program.receivedAmount')}</Label>
                 <NumericInput
+                  ref={inputRef}
                   value={amountReceived}
                   onValueChange={(v) => setAmountReceived(v)}
-                  className="text-xl font-bold font-mono text-right bg-white"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (!(change < 0) && !isProcessing) {
+                        handleConfirm();
+                      }
+                    }
+                  }}
+                  className="!text-7xl md:!text-7xl h-24 font-black font-mono text-right bg-white border-4 border-primary shadow-lg"
                 />
               </div>
 
@@ -155,6 +194,15 @@ export function PaymentDialog({
                   value={partialPayment}
                   onValueChange={(v) => setPartialPayment(v)}
                   max={totalAmount}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (!isProcessing) {
+                        handleConfirm();
+                      }
+                    }
+                  }}
                   className="text-lg font-bold font-mono text-right bg-white"
                 />
               </div>

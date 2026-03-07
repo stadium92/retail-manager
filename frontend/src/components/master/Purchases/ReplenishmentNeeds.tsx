@@ -123,29 +123,9 @@ export function ReplenishmentNeeds({ storeId }: Props) {
            console.error('[loadNeeds] Fetch returned:', res.status, res.statusText);
         }
       } else {
-        // Master view fallback or online mode
-        const { supabase } = getDataClient();
-        const { data: remoteData, error } = await (supabase as any).from('products')
-            .select('*')
-            .eq('store_id', storeId)
-            .lt('quantity', 10); // Simple logic for needs if endpoint unavailable
-            
-        if (error) {
-           console.error('[loadNeeds] Supabase fetch error:', error);
-           throw error;
-        }
-            
-        data = (remoteData || []).map((p: any) => ({
-            product_id: p.id,
-            product_name: p.name,
-            sku: p.sku,
-            current_stock: p.quantity,
-            min_stock: p.min_quantity,
-            suggested_qty: Math.max(0, (p.reorder_quantity || 20) - p.quantity),
-            source: 'low_stock',
-            unit_type: p.unit_type,
-            packaging: p.packaging
-        }));
+        // Non-local-first path removed (supabase no longer available)
+        console.warn('[loadNeeds] non-local-first path is not supported');
+        data = [];
       }
 
       const needsData = data.map((item: any) => {
