@@ -920,10 +920,23 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       const rowIndex = e.detail?.row;
       const colIndex = e.detail?.col;
       const key = e.detail?.key;
-      if (typeof rowIndex === 'number' && lineItems[rowIndex] && colIndex === 0) {
-        // Col 0 is designation. Append the character.
+      
+      if (typeof rowIndex !== 'number' || !lineItems[rowIndex]) return;
+
+      if (colIndex === 0) {
+        // Col 0: Designation. Append the character.
         const currentVal = lineItems[rowIndex].designation || '';
         handleDesignationChange(rowIndex, currentVal + key);
+      } else if (colIndex === 5) {
+        // Col 5: Quantity. OVERWRITE with the key if it's a number.
+        if (/[0-9]/.test(key)) {
+            handleQuantityChange(rowIndex, key);
+        }
+      } else if (colIndex === 4) {
+        // Col 4: Price. OVERWRITE with the key if it's a number.
+        if (/[0-9]/.test(key)) {
+            handlePriceChange(rowIndex, key);
+        }
       }
     };
 

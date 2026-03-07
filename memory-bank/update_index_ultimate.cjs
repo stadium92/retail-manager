@@ -2,7 +2,7 @@ const fs = require('fs');
 let content = fs.readFileSync('/Users/mohamedcoulibaly/MVP/Pro/retail-manager/memory-bank/INDEX.md', 'utf8');
 
 const insertionPoint = "## 📜 Key PRDs (Phase 6+)\n";
-const newEntry = "- **[`CLAUDE_ULTIMATE_STABILIZATION_PROMPT.md`](CLAUDE_ULTIMATE_STABILIZATION_PROMPT.md)** - **ULTIMATE**: Comprehensive prompt for total system stabilization, security hardening (Heartbeat/Interceptors), and schema consistency across the entire codebase.\n";
+const newEntry = "- **[`CLAUDE_UNIVERSAL_SYNC_FIX.md`](CLAUDE_UNIVERSAL_SYNC_FIX.md)** - **SYNC FIX**: Comprehensive prompt to resolve 'failed to load' errors in Edition/Gestion and enable real-time stock reactivity via secure request interceptors.\n";
 
 if (content.includes(insertionPoint)) {
     content = content.replace(insertionPoint, insertionPoint + newEntry);

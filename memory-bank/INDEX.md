@@ -161,6 +161,7 @@ To ensure stability and prevent regressions, use the following branch pattern:
 - **`security/DeLorean`**: Dedicated for clock-tamper and license protections.
 
 ## 📜 Key PRDs (Phase 6+)
+- **[`CLAUDE_UNIVERSAL_SYNC_FIX.md`](CLAUDE_UNIVERSAL_SYNC_FIX.md)** - **SYNC FIX**: Comprehensive prompt to resolve 'failed to load' errors in Edition/Gestion and enable real-time stock reactivity via secure request interceptors.
 - **[`CLAUDE_ULTIMATE_STABILIZATION_PROMPT.md`](CLAUDE_ULTIMATE_STABILIZATION_PROMPT.md)** - **ULTIMATE**: Comprehensive prompt for total system stabilization, security hardening (Heartbeat/Interceptors), and schema consistency across the entire codebase.
 - **[`PRD-006-LocalBridge-Consolidation.md`](PRD-006-LocalBridge-Consolidation.md)** - **NEW**: Architecture Roadmap and strategy for stabilizing the LocalBridge backend with ACID transactions and frontend idempotency after the Supabase removal.
 - **[`docs/PRD-008-Comprehensive-Fixes.md`](docs/PRD-008-Comprehensive-Fixes.md)** - **CONSOLIDATED**: Master list of bugs and feature requests categorized for Phase 6+ development.
