@@ -439,7 +439,7 @@ class OfflineDataServiceClass {
           top_products: productPerf.map(p => ({ name: p.name, quantity: p.quantity, revenue: p.revenue })),
           top_workers: workerPerf.map(w => ({ name: w.name, sales_count: w.sales_count, revenue: w.revenue })),
           stock_health: valuation ? {
-            ok: Math.max(0, valuation.item_count - 0),
+            ok: valuation.item_count,
             low: 0,
             out: 0,
           } : undefined,
