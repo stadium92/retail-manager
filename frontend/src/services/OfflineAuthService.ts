@@ -235,7 +235,7 @@ export class OfflineAuthService {
   /**
    * localBridgeRequest - Robust request wrapper with auto-retry on 401
    */
-  private static async localBridgeRequest<T>(
+  public static async localBridgeRequest<T>(
     path: string,
     init: RequestInit,
     retry = true

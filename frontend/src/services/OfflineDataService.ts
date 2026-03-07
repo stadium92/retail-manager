@@ -1,11 +1,26 @@
 import { LocalDatabase } from "./LocalDatabase";
-import { getDataClient, smartFetch } from "@/lib/dataClient";
+import { getDataClient } from "@/lib/dataClient";
+import { OfflineAuthService } from "./OfflineAuthService";
 
 interface DailyRevenue {
     today: number;
     week: number;
     month: number;
     count: number;
+}
+
+interface WorkerStats {
+    id: string;
+    name: string;
+    sales_count: number;
+    revenue: number;
+}
+
+interface ProductPerformance {
+    id: string;
+    name: string;
+    quantity: number;
+    revenue: number;
 }
 
 export interface SaleWithItems {
@@ -25,82 +40,37 @@ export interface SaleWithItems {
     invoice_number?: string;
     created_at: string;
     updated_at: string;
+    items?: any[];
     sale_items?: any[];
-    items?: any[];
-}
-
-export interface PurchaseWithSupplier {
-    id: string;
-    store_id: string;
-    supplier_id?: string;
-    supplier_name?: string;
-    order_ref?: string;
-    status: string;
-    total_amount: number;
-    notes?: string;
-    created_at: string;
-    updated_at: string;
-    items?: any[];
-}
-
-export interface StockMovement {
-    id: string;
-    product_id: string;
-    product_name?: string;
-    movement_type: string;
-    quantity: number;
-    reason?: string;
-    source?: string;
-    created_at: string;
-}
-
-interface WorkerStats {
-    id: string;
-    name: string;
-    sales_count: number;
-    revenue: number;
-}
-
-interface ProductPerformance {
-    id: string;
-    name: string;
-    quantity: number;
-    revenue: number;
 }
 
 class OfflineDataServiceClass {
-  // Loop Prevention: Track last sync time per store/type to avoid rapid-fire updates
-  private lastSync: Record<string, number> = {};
-  private SYNC_COOLDOWN = 30000; // 30 seconds
+    // Loop Prevention: Track last sync time per store/type to avoid rapid-fire updates
+    private lastSync: Record<string, number> = {};
+    private SYNC_COOLDOWN = 30000; // 30 seconds
 
-  private shouldSync(key: string): boolean {
-    // Always return false to stop background background cycles
-    return false;
-  }
+    private shouldSync(key: string): boolean {
+        // Always return false to stop background background cycles
+        return false;
+    }
 
     async getDailyRevenue(storeId: string): Promise<DailyRevenue> {
         try {
-            const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
+            const { isLocalFirst } = getDataClient();
             let sales: any[] = [];
 
             if (isLocalFirst) {
-                const { OfflineAuthService } = await import('./OfflineAuthService');
-                const headers = await OfflineAuthService.getAuthHeaders();
-                if (headers) {
-                    const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/sales?store_id=${storeId}`, { headers });
-                    if (res.ok) sales = await res.json();
-                    else throw new Error('Bridge unreachable');
-                }
+                sales = await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/sales?store_id=${storeId}`, { method: 'GET' });
             } else {
                 sales = await LocalDatabase.getSales(storeId);
             }
 
             const today = new Date().toISOString().split('T')[0];
-            const todaySales = sales.filter(s => s.created_at.startsWith(today) && s.sale_type !== 'proforma');
+            const todaySales = sales.filter(s => s.created_at && s.created_at.startsWith(today) && s.sale_type !== 'proforma');
             
             return {
                 today: todaySales.reduce((sum, s) => sum + (s.total_price || 0), 0),
-                week: 0, // Simplified for brevity
+                week: 0, 
                 month: 0,
                 count: todaySales.length
             };
@@ -112,17 +82,11 @@ class OfflineDataServiceClass {
 
     async getWorkerPerformance(storeId: string): Promise<WorkerStats[]> {
         try {
-            const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
+            const { isLocalFirst } = getDataClient();
             let sales: any[] = [];
 
             if (isLocalFirst) {
-                const { OfflineAuthService } = await import('./OfflineAuthService');
-                const headers = await OfflineAuthService.getAuthHeaders();
-                if (headers) {
-                    const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/sales?store_id=${storeId}`, { headers });
-                    if (res.ok) sales = await res.json();
-                    else throw new Error('Bridge unreachable');
-                }
+                sales = await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/sales?store_id=${storeId}`, { method: 'GET' });
             } else {
                 sales = await LocalDatabase.getSales(storeId);
             }
@@ -155,24 +119,19 @@ class OfflineDataServiceClass {
 
     async getProductPerformance(storeId: string): Promise<ProductPerformance[]> {
         try {
-            const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
+            const { isLocalFirst } = getDataClient();
             let sales: any[] = [];
 
             if (isLocalFirst) {
-                const { OfflineAuthService } = await import('./OfflineAuthService');
-                const headers = await OfflineAuthService.getAuthHeaders();
-                if (headers) {
-                    const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/sales?store_id=${storeId}`, { headers });
-                    if (res.ok) sales = await res.json();
-                    else throw new Error('Bridge unreachable');
-                }
+                sales = await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/sales?store_id=${storeId}`, { method: 'GET' });
             } else {
                 sales = await LocalDatabase.getSales(storeId);
             }
 
             const prodMap: Record<string, ProductPerformance> = {};
             sales.filter(s => s.sale_type !== 'proforma').forEach(sale => {
-                (sale.items || []).forEach((item: any) => {
+                const items = sale.items || sale.sale_items || [];
+                items.forEach((item: any) => {
                     const pid = item.product_id || 'unknown';
                     if (!prodMap[pid]) {
                         prodMap[pid] = { id: pid, name: item.product_name, quantity: 0, revenue: 0 };
@@ -191,17 +150,11 @@ class OfflineDataServiceClass {
 
     async getStockValuation(storeId: string): Promise<{ total_cost: number; total_retail: number; item_count: number }> {
         try {
-            const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
+            const { isLocalFirst } = getDataClient();
             let products: any[] = [];
 
             if (isLocalFirst) {
-                const { OfflineAuthService } = await import('./OfflineAuthService');
-                const headers = await OfflineAuthService.getAuthHeaders();
-                if (headers) {
-                    const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/products?store_id=${storeId}`, { headers });
-                    if (res.ok) products = await res.json();
-                    else throw new Error('Bridge unreachable');
-                }
+                products = await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/products?store_id=${storeId}`, { method: 'GET' });
             } else {
                 products = await LocalDatabase.getInventory(storeId);
             }
@@ -220,281 +173,127 @@ class OfflineDataServiceClass {
         }
     }
 
-    async getClients(storeId: string): Promise<any[]> {
-      const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
-      if (isLocalFirst) {
-        const { OfflineAuthService } = await import('./OfflineAuthService');
-        const headers = await OfflineAuthService.getAuthHeaders();
-        if (headers) {
-          const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/clients?store_id=${storeId}`, { headers });
-          if (res.ok) return await res.json();
+    async getSales(storeId: string, from?: Date, to?: Date): Promise<SaleWithItems[]> {
+        try {
+            const { isLocalFirst } = getDataClient();
+            if (isLocalFirst) {
+                const params = new URLSearchParams({ store_id: storeId });
+                if (from) params.append('date_from', from.toISOString());
+                if (to) params.append('date_to', to.toISOString());
+                return await OfflineAuthService.localBridgeRequest<SaleWithItems[]>(`/rest/v1/sales?${params.toString()}`, { method: 'GET' });
+            }
+            const sales = await LocalDatabase.getSales(storeId);
+            return sales as unknown as SaleWithItems[];
+        } catch (error) {
+            console.error('getSales error:', error);
+            throw error;
         }
-        throw new Error('Bridge unreachable');
-      }
-      return await LocalDatabase.getSuppliers(storeId); // Note: Original code used getSuppliers for clients fallback
     }
 
-    async getSupplierPayments(storeId: string): Promise<any[]> {
-      const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
-      if (isLocalFirst) {
-        const { OfflineAuthService } = await import('./OfflineAuthService');
-        const headers = await OfflineAuthService.getAuthHeaders();
-        if (headers) {
-          const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/supplier_payments?store_id=${storeId}`, { headers });
-          if (res.ok) return await res.json();
+    async getClients(storeId: string): Promise<any[]> {
+        const { isLocalFirst } = getDataClient();
+        if (isLocalFirst) {
+            return await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/clients?store_id=${storeId}`, { method: 'GET' });
         }
-        throw new Error('Bridge unreachable');
-      }
-      return await LocalDatabase.getSupplierPayments(storeId);
+        return await LocalDatabase.getSuppliers(storeId);
+    }
+
+    async getSupplierPayments(storeId: string, from?: Date): Promise<any[]> {
+        const { isLocalFirst } = getDataClient();
+        if (isLocalFirst) {
+            const params = new URLSearchParams({ store_id: storeId });
+            if (from) params.append('date_from', from.toISOString());
+            return await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/supplier_payments?${params.toString()}`, { method: 'GET' });
+        }
+        return await LocalDatabase.getSupplierPayments(storeId);
     }
 
     async getCashClosings(storeId: string): Promise<any[]> {
-      const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
-      if (isLocalFirst) {
-        const { OfflineAuthService } = await import('./OfflineAuthService');
-        const headers = await OfflineAuthService.getAuthHeaders();
-        if (headers) {
-          const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/cash_closings?store_id=${storeId}`, { headers });
-          if (res.ok) return await res.json();
-        }
-        throw new Error('Bridge unreachable');
-      }
-      return await LocalDatabase.getCashClosings(storeId);
-    }
-
-    async getStockMovements(storeId: string): Promise<{ movements: any[]; offlineMessage?: string }> {
-      try {
-          const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
-          if (isLocalFirst) {
-              const { OfflineAuthService } = await import('./OfflineAuthService');
-              const headers = await OfflineAuthService.getAuthHeaders();
-              if (headers) {
-                  const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/inventory_movements?store_id=${storeId}`, { headers });
-                  if (res.ok) {
-                      const data = await res.json();
-                      return { movements: data };
-                  }
-              }
-              throw new Error('Bridge unreachable');
-          }
-          return { movements: [], offlineMessage: "Connectez-vous au pont local pour voir les mouvements." };
-      } catch (error) {
-          console.error('getStockMovements error:', error);
-          return { movements: [], offlineMessage: "Erreur lors du chargement des mouvements." };
-      }
-    }
-
-    async updateProductStock(productId: string, newQuantity: number, reason: string): Promise<void> {
-      const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
-      const { OfflineAuthService } = await import('./OfflineAuthService');
-      
-      if (isLocalFirst) {
-          const headers = await OfflineAuthService.getAuthHeaders();
-          if (headers) {
-            const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/inventory_movements`, {
-              method: 'POST',
-              headers: { ...headers, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                  product_id: productId,
-                  movement_type: 'adjustment',
-                  quantity: newQuantity,
-                  reason: reason,
-                  source: 'manual'
-              })
-            });
-            if (!res.ok) throw new Error('Failed to update stock on bridge');
-          }
-      }
-    }
-
-    async getSales(storeId: string, from?: Date, to?: Date): Promise<SaleWithItems[]> {
-      try {
-        const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
-
+        const { isLocalFirst } = getDataClient();
         if (isLocalFirst) {
-          const { OfflineAuthService } = await import('./OfflineAuthService');
-          const headers = await OfflineAuthService.getAuthHeaders();
-          if (headers) {
-            const params = new URLSearchParams({ store_id: storeId });
-            if (from) params.append('date_from', from.toISOString());
-            if (to) params.append('date_to', to.toISOString());
-            const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/sales?${params.toString()}`, { headers });
-            if (res.ok) return await res.json();
-            throw new Error('Bridge unreachable');
-          }
+            return await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/cash_closings?store_id=${storeId}`, { method: 'GET' });
         }
-
-        const sales = await LocalDatabase.getSales(storeId);
-        return sales as unknown as SaleWithItems[];
-      } catch (error) {
-        console.error('getSales error:', error);
-        return [];
-      }
+        return await LocalDatabase.getCashClosings(storeId);
     }
 
     async getClientTransactions(storeId: string, clientId: string): Promise<any[]> {
-      try {
-        const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
-
+        const { isLocalFirst } = getDataClient();
         if (isLocalFirst) {
-          const { OfflineAuthService } = await import('./OfflineAuthService');
-          const headers = await OfflineAuthService.getAuthHeaders();
-          if (headers) {
-            const params = new URLSearchParams({ store_id: storeId, client_id: clientId });
-            const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/client_transactions?${params.toString()}`, { headers });
-            if (res.ok) return await res.json();
-            throw new Error('Bridge unreachable');
-          }
+            return await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/client_transactions?store_id=${storeId}&client_id=${clientId}`, { method: 'GET' });
         }
-
         return [];
-      } catch (error) {
-        console.error('getClientTransactions error:', error);
-        return [];
-      }
     }
 
     async getSupplierTransactions(storeId: string, supplierId: string): Promise<any[]> {
-      try {
-        const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
-
+        const { isLocalFirst } = getDataClient();
         if (isLocalFirst) {
-          const { OfflineAuthService } = await import('./OfflineAuthService');
-          const headers = await OfflineAuthService.getAuthHeaders();
-          if (headers) {
-            const params = new URLSearchParams({ store_id: storeId, supplier_id: supplierId });
-            const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/supplier_transactions?${params.toString()}`, { headers });
-            if (res.ok) return await res.json();
-            throw new Error('Bridge unreachable');
-          }
+            return await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/supplier_transactions?store_id=${storeId}&supplier_id=${supplierId}`, { method: 'GET' });
         }
-
         return [];
-      } catch (error) {
-        console.error('getSupplierTransactions error:', error);
-        return [];
-      }
     }
 
-    async getPurchaseOrders(storeId: string, from?: Date, to?: Date): Promise<PurchaseWithSupplier[]> {
-      try {
-        const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
-
-        if (isLocalFirst) {
-          const { OfflineAuthService } = await import('./OfflineAuthService');
-          const headers = await OfflineAuthService.getAuthHeaders();
-          if (headers) {
-            const params = new URLSearchParams({ store_id: storeId });
-            if (from) params.append('date_from', from.toISOString());
-            if (to) params.append('date_to', to.toISOString());
-            const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/purchase_orders?${params.toString()}`, { headers });
-            if (res.ok) return await res.json();
-            throw new Error('Bridge unreachable');
-          }
+    async getStockMovements(storeId: string): Promise<{ movements: any[]; offlineMessage?: string }> {
+        try {
+            const { isLocalFirst } = getDataClient();
+            if (isLocalFirst) {
+                const data = await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/inventory_movements?store_id=${storeId}`, { method: 'GET' });
+                return { movements: data };
+            }
+            return { movements: [], offlineMessage: "Connectez-vous au pont local." };
+        } catch (error) {
+            console.error('getStockMovements error:', error);
+            return { movements: [], offlineMessage: "Erreur de chargement." };
         }
-
-        return [];
-      } catch (error) {
-        console.error('getPurchaseOrders error:', error);
-        return [];
-      }
     }
 
-    async getAllPurchaseItems(storeId: string, from?: Date, to?: Date): Promise<any[]> {
-      try {
-        const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
-
+    async updateProductStock(productId: string, newQuantity: number, reason: string): Promise<void> {
+        const { isLocalFirst } = getDataClient();
         if (isLocalFirst) {
-          const { OfflineAuthService } = await import('./OfflineAuthService');
-          const headers = await OfflineAuthService.getAuthHeaders();
-          if (headers) {
-            const params = new URLSearchParams({ store_id: storeId });
-            if (from) params.append('date_from', from.toISOString());
-            if (to) params.append('date_to', to.toISOString());
-            const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/purchase_items?${params.toString()}`, { headers });
-            if (res.ok) return await res.json();
-            throw new Error('Bridge unreachable');
-          }
+            await OfflineAuthService.localBridgeRequest('/rest/v1/inventory_movements', {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    product_id: productId,
+                    movement_type: 'adjustment',
+                    quantity: newQuantity,
+                    reason: reason,
+                    source: 'manual'
+                })
+            });
         }
-
-        return [];
-      } catch (error) {
-        console.error('getAllPurchaseItems error:', error);
-        return [];
-      }
     }
 
     async getDashboardAnalytics(storeId: string, from: Date, to: Date): Promise<any | null> {
-      try {
-        const [revenue, workerPerf, productPerf, valuation] = await Promise.all([
-          this.getDailyRevenue(storeId),
-          this.getWorkerPerformance(storeId),
-          this.getProductPerformance(storeId),
-          this.getStockValuation(storeId),
-        ]);
-
-        return {
-          daily_revenue: revenue.today,
-          weekly_revenue: [],
-          top_products: productPerf.map(p => ({ name: p.name, quantity: p.quantity, revenue: p.revenue })),
-          top_workers: workerPerf.map(w => ({ name: w.name, sales_count: w.sales_count, revenue: w.revenue })),
-          stock_health: valuation ? {
-            ok: valuation.item_count,
-            low: 0,
-            out: 0,
-          } : undefined,
-        };
-      } catch (error) {
-        console.error('getDashboardAnalytics error:', error);
+        const { isLocalFirst } = getDataClient();
+        if (isLocalFirst) {
+            const params = new URLSearchParams({ 
+                store_id: storeId,
+                from: from.toISOString(),
+                to: to.toISOString()
+            });
+            return await OfflineAuthService.localBridgeRequest<any>(`/rest/v1/dashboard_analytics?${params.toString()}`, { method: 'GET' });
+        }
         return null;
-      }
     }
 
     async getCashTransactions(storeId: string, from?: Date): Promise<any[]> {
-      try {
-        const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
-
+        const { isLocalFirst } = getDataClient();
         if (isLocalFirst) {
-          const { OfflineAuthService } = await import('./OfflineAuthService');
-          const headers = await OfflineAuthService.getAuthHeaders();
-          if (headers) {
             const params = new URLSearchParams({ store_id: storeId });
-            if (from) params.append('date_from', from.toISOString());
-            const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/cash_transactions?${params.toString()}`, { headers });
-            if (res.ok) return await res.json();
-            throw new Error('Bridge unreachable');
-          }
+            if (from) params.append('from', from.toISOString());
+            return await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/cash_transactions?${params.toString()}`, { method: 'GET' });
         }
-
         return [];
-      } catch (error) {
-        console.error('getCashTransactions error:', error);
-        return [];
-      }
     }
 
-    async createCashTransaction(data: any): Promise<boolean> {
-      try {
-        const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
-
+    async getPurchaseOrders(storeId: string, from?: Date, to?: Date): Promise<any[]> {
+        const { isLocalFirst } = getDataClient();
         if (isLocalFirst) {
-          const { OfflineAuthService } = await import('./OfflineAuthService');
-          const headers = await OfflineAuthService.getAuthHeaders();
-          if (headers) {
-            const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/cash_transactions`, {
-              method: 'POST',
-              headers: { ...headers, 'Content-Type': 'application/json' },
-              body: JSON.stringify(data),
-            });
-            return res.ok;
-          }
+            const params = new URLSearchParams({ store_id: storeId });
+            if (from) params.append('date_from', from.toISOString());
+            if (to) params.append('date_to', to.toISOString());
+            return await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/purchase_orders?${params.toString()}`, { method: 'GET' });
         }
-
-        return false;
-      } catch (error) {
-        console.error('createCashTransaction error:', error);
-        return false;
-      }
+        return [];
     }
 }
 

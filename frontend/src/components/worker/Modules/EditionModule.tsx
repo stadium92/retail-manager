@@ -260,7 +260,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
     const aggregated: Record<string, { name: string; quantity: number; total: number }> = {};
     // Proformas do not count towards actual product sales volume
     sales.filter(s => s.sale_type !== 'proforma').forEach(sale => {
-      (sale.sale_items || []).forEach(item => {
+      ((sale.items || sale.sale_items || []) || []).forEach(item => {
         const name = getProductName(item);
         if (!aggregated[name]) {
           aggregated[name] = { name, quantity: 0, total: 0 };
@@ -521,7 +521,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                     </TableHeader>
                     <TableBody>
                       {filteredSales.flatMap(sale => 
-                        (sale.sale_items || []).map((item, idx) => (
+                        ((sale.items || sale.sale_items || []) || []).map((item, idx) => (
                           <TableRow key={`${sale.id}-${idx}`} className="h-9">
                             <TableCell className="text-xs">
                               {sale.created_at ? format(new Date(sale.created_at), 'HH:mm', { locale: getLocale() }) : '—'}
@@ -651,8 +651,8 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-xs font-bold uppercase">{sale.customer_name || t('customer.counterClient')}</TableCell>
-                          <TableCell className="text-xs font-mono max-w-[200px] truncate" title={sale.sale_items?.map(i => getProductName(i)).join(', ')}>
-                            {sale.sale_items?.map(i => getProductName(i)).join(', ') || '—'}
+                          <TableCell className="text-xs font-mono max-w-[200px] truncate" title={(sale.items || sale.sale_items || [])?.map(i => getProductName(i)).join(', ')}>
+                            {(sale.items || sale.sale_items || [])?.map(i => getProductName(i)).join(', ') || '—'}
                           </TableCell>
                           <TableCell className="text-xs font-medium">{workerMap[sale.worker_id || ''] || ((isLoading && !workerMap[sale.worker_id || '']) ? '...' : (sale.worker_id ? (sale.worker_id.length < 15 ? sale.worker_id : `ID: ${sale.worker_id.slice(0,8)}`) : '—'))}</TableCell>
                           <TableCell className="text-xs text-right font-black font-mono text-primary">{formatCurrency(sale.total_price)}</TableCell>

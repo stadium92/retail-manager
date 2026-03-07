@@ -1,6 +1,5 @@
 import { LocalDatabase } from "./LocalDatabase";
-import { CartItem } from "@/stores/usePOSStore";
-import { getDataClient, smartFetch } from "@/lib/dataClient";
+import { getDataClient } from "@/lib/dataClient";
 import { OfflineAuthService } from "./OfflineAuthService";
 
 export const OfflineSalesService = {
@@ -8,23 +7,20 @@ export const OfflineSalesService = {
      * Create a sale with items atomically on the local bridge
      */
     async createSaleWithItems(sale: any, items: any[]): Promise<{ data?: any; error?: any }> {
-        const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
+        const { isLocalFirst } = getDataClient();
         
         if (isLocalFirst) {
             try {
-                const { OfflineAuthService } = await import('./OfflineAuthService');
-                const headers = await OfflineAuthService.getAuthHeaders();
-                if (!headers) throw new Error('Not authenticated');
-
                 // Map cart items to the shape the backend expects (product_id, product_name, unit_price)
                 const mappedItems = items.map((item: any) => ({
                     id: item.id || undefined,
-                    product_id: item.product_id || item.product?.id || null,
-                    product_name: item.product_name || item.product?.name || 'Unknown',
-                    quantity: item.quantity,
-                    unit_price: item.unit_price ?? item.unitPrice ?? 0,
-                    discount: item.discount ?? 0,
-                    total: item.total ?? item.lineTotal ?? 0,
+                    // Try all possible variations of product ID and Name
+                    product_id: item.product_id || item.productId || item.product?.id || null,
+                    product_name: item.product_name || item.productName || item.designation || item.product?.name || 'Unknown',
+                    quantity: Number(item.quantity) || 0,
+                    unit_price: Number(item.unit_price ?? item.unitPrice ?? 0),
+                    discount: Number(item.discount ?? item.discountPercent ?? 0),
+                    total: Number(item.total ?? item.lineTotal ?? 0),
                 }));
 
                 // Standard backend POST /rest/v1/sales expects items in the same object
@@ -32,19 +28,11 @@ export const OfflineSalesService = {
 
                 console.log('[OfflineSales] Sending sale to bridge:', payload);
 
-                const response = await smartFetch(`${localBridgeBaseUrl}/rest/v1/sales`, {
+                const result = await OfflineAuthService.localBridgeRequest<any>('/rest/v1/sales', {
                     method: 'POST',
-                    headers: { ...headers, 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ message: 'Bridge write failed' }));
-                    console.error('[OfflineSales] Bridge error:', errorData);
-                    throw new Error(errorData.message || 'Failed to save sale to local bridge');
-                }
-
-                const result = await response.json();
                 console.log('[OfflineSales] Sale saved successfully:', result);
                 return { data: result };
             } catch (error) {
@@ -66,15 +54,10 @@ export const OfflineSalesService = {
     },
 
     async getSales(storeId: string): Promise<any[]> {
-      const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
+      const { isLocalFirst } = getDataClient();
       if (isLocalFirst) {
         try {
-            const { OfflineAuthService } = await import('./OfflineAuthService');
-            const headers = await OfflineAuthService.getAuthHeaders();
-            if (!headers) throw new Error('Not authenticated');
-            const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/sales?store_id=${storeId}`, { headers });
-            if (res.ok) return await res.json();
-            throw new Error('Bridge unreachable');
+            return await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/sales?store_id=${storeId}`, { method: 'GET' });
         } catch (e) {
             console.error('[OfflineSales] Fetch failed:', e);
             throw e;
@@ -85,17 +68,11 @@ export const OfflineSalesService = {
 
     async getSaleMetrics(storeId: string): Promise<{ todaySales: number; weekSales: number; monthSales: number; error?: any }> {
         try {
-            const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
+            const { isLocalFirst } = getDataClient();
             let sales: any[] = [];
 
             if (isLocalFirst) {
-                const { OfflineAuthService } = await import('./OfflineAuthService');
-                const headers = await OfflineAuthService.getAuthHeaders();
-                if (headers) {
-                    const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/sales?store_id=${storeId}`, { headers });
-                    if (res.ok) sales = await res.json();
-                    else throw new Error('Bridge unreachable');
-                }
+                sales = await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/sales?store_id=${storeId}`, { method: 'GET' });
             } else {
                 sales = await LocalDatabase.getSales(storeId);
             }
