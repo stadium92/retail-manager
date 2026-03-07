@@ -189,6 +189,7 @@ export const OfflineInventoryService = {
           
           if (!res.ok) {
             const err = await res.json().catch(() => ({ message: 'Bridge write failed' }));
+            await LocalDatabase.deleteInventoryItem(id);
             throw new Error(err.message || 'Failed to create product in local bridge');
           }
           

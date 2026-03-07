@@ -42,60 +42,8 @@ export class SyncService {
    * Sync all pending items with the server
    */
   static async syncAll(): Promise<SyncResult> {
-    if (this.syncInProgress || !navigator.onLine) {
-      return { success: 0, failed: 0, pending: await LocalDatabase.getSyncQueueSize() };
-    }
-
-    this.syncInProgress = true;
-    let success = 0;
-    let failed = 0;
-
-    try {
-      await LocalDatabase.init();
-      const queue = await LocalDatabase.getSyncQueue();
-
-      for (const item of queue) {
-        if (item.type === 'pending_mutation') {
-          // Requires explicit service key; skip auto-sync.
-          continue;
-        }
-        try {
-          const result = await this.processQueueItem(item);
-          if (result) {
-            await LocalDatabase.removeFromSyncQueue(item.id);
-            success++;
-          } else {
-            // Increment retries
-            item.retries++;
-            if (item.retries >= 3) {
-              await LocalDatabase.removeFromSyncQueue(item.id);
-              failed++;
-              console.error('Max retries reached for sync item:', item);
-            }
-          }
-        } catch (error) {
-          console.error('Error syncing item:', error);
-          item.retries++;
-          if (item.retries >= 3) {
-            await LocalDatabase.removeFromSyncQueue(item.id);
-            failed++;
-          }
-        }
-      }
-
-      const pending = await LocalDatabase.getSyncQueueSize();
-
-      if (success > 0 || failed > 0) {
-        toast({
-          title: i18n.t('sync.syncComplete'),
-          description: i18n.t('sync.syncResultsPending', { success, failed, pending }),
-        });
-      }
-
-      return { success, failed, pending };
-    } finally {
-      this.syncInProgress = false;
-    }
+    console.log('🚀 [SyncService] Sync is currently disabled. Everything is local.');
+    return { success: true, processed: 0, failed: 0 };
   }
 
   /**

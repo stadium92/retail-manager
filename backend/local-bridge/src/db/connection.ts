@@ -30,8 +30,8 @@ if (fs.existsSync(adjacentPath)) {
     }
 }
 
-export const rawDb = new Database(dbPath, options);
-rawDb.pragma('journal_mode = WAL');
+export const rawDb = new Database(dbPath, { ...options, timeout: 5000 });
+rawDb.pragma('journal_mode = DELETE');
 
 export const dbFile = dbPath;
 

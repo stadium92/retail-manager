@@ -53,10 +53,8 @@ class OfflineDataServiceClass {
   private SYNC_COOLDOWN = 30000; // 30 seconds
 
   private shouldSync(key: string): boolean {
-    const now = Date.now();
-    if (this.lastSync[key] && now - this.lastSync[key] < this.SYNC_COOLDOWN) return false;
-    this.lastSync[key] = now;
-    return true;
+    // Always return false to stop background background cycles
+    return false;
   }
 
   /**
