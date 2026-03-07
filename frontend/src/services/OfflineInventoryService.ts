@@ -33,7 +33,7 @@ function mapDbToInventoryItem(product: any): InventoryItem {
     packaging: product.packaging,
     expiry_date: product.expiry_date,
     reorder_quantity: Number(product.reorder_quantity) || 0,
-    low_stock_threshold: Number(product.min_quantity || product.low_stock_threshold) || 10,
+    low_stock_threshold: Number(product.low_stock_threshold ?? product.min_quantity) || 10,
     image_url: product.image_url,
     created_at: product.created_at,
     updated_at: product.updated_at,
@@ -139,8 +139,6 @@ export const OfflineInventoryService = {
         return { data: localInventory.map(mapLocalInventoryToItem) };
       }
       // If we are Local-First and bridge failed, we must NOT show ghost data from browser
-      return { data: [] };
-
       return { data: [] };
     } catch (error) {
       console.error('[OfflineInventory] getInventory fatal error:', error);
