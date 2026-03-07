@@ -140,14 +140,26 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
             e.preventDefault();
             store.getState().moveLeft();
             return;
-          case 'ArrowDown':
+          case 'ArrowDown': {
             e.preventDefault();
-            store.getState().moveDown();
+            const col = GRID_COLUMNS[state.activeCell.col];
+            if (col === 'price') {
+                window.dispatchEvent(new CustomEvent('nav-adjust-price', { detail: { row: state.activeCell.row, delta: -1 } }));
+            } else {
+                store.getState().moveDown();
+            }
             return;
-          case 'ArrowUp':
+          }
+          case 'ArrowUp': {
             e.preventDefault();
-            store.getState().moveUp();
+            const col = GRID_COLUMNS[state.activeCell.col];
+            if (col === 'price') {
+                window.dispatchEvent(new CustomEvent('nav-adjust-price', { detail: { row: state.activeCell.row, delta: 1 } }));
+            } else {
+                store.getState().moveUp();
+            }
             return;
+          }
           case '+':
           case '=': {
             e.preventDefault();
@@ -173,7 +185,10 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
                 store.getState().advanceToNextRow();
             } else if (col === 'conditionnement') {
                 window.dispatchEvent(new CustomEvent('nav-toggle-packing', { detail: { row: state.activeCell.row } }));
-            } else if (col !== 'stock' && col !== 'total') {
+            } else if (col === 'designation' || col === 'price' || col === 'code') {
+                // JUMP TO QUANTITY
+                store.getState().setActiveCell({ row: state.activeCell.row, col: 5 });
+            } else {
                 store.getState().setMode('edit');
             }
             return;

@@ -499,6 +499,20 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     }
   }, [scanProduct, addProduct, t]);
 
+  const handlePriceChange = useCallback((index: number, unitPrice: any) => {
+    const newItems = [...lineItems];
+    const item = newItems[index];
+    if (!item) return;
+    const numPrice = unitPrice === '' ? 0 : Number(unitPrice);
+
+    newItems[index] = {
+      ...item,
+      unitPrice,
+      lineTotal: calculateLineTotal(numPrice, Number(item.quantity) || 0, Number(item.discountPercent) || 0, item.isBox, item.conditionnement),
+    };
+    updateSession(mode, { lineItems: newItems });
+  }, [lineItems, mode, updateSession]);
+
   const handleQuantityChange = useCallback((index: number, quantity: any) => {
     const newItems = [...lineItems];
     const item = newItems[index];
@@ -533,18 +547,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     updateSession(mode, { lineItems: newItems });
   }, [lineItems, mode, updateSession]);
 
-  const handlePriceChange = useCallback((index: number, value: any) => {
-    const newItems = [...lineItems];
-    const item = newItems[index];
-    const numPrice = value === '' ? 0 : Number(value);
-    newItems[index] = { 
-      ...item, 
-      unitPrice: value,
-      lineTotal: calculateLineTotal(numPrice, Number(item.quantity) || 0, Number(item.discountPercent) || 0, item.isBox, item.conditionnement)
-    };
-    updateSession(mode, { lineItems: newItems });
-  }, [lineItems, mode, updateSession]);
-
+  
   const handleToggleUnit = useCallback((index: number) => {
     const newItems = [...lineItems];
     const item = newItems[index];
@@ -896,6 +899,15 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         handleQuantityChange(rowIndex, Math.max(1, currentQty + delta));
       }
     };
+    const handleAdjustPriceEvent = (e: any) => {
+      const rowIndex = e.detail?.row;
+      const delta = e.detail?.delta;
+      if (typeof rowIndex === 'number' && lineItems[rowIndex]) {
+        const currentPrice = Number(lineItems[rowIndex].unitPrice) || 0;
+        // Increase/decrease by 500 units
+        handlePriceChange(rowIndex, Math.max(0, currentPrice + (delta * 500)));
+      }
+    };
     const handleCaptureKeystroke = (e: any) => {
       const rowIndex = e.detail?.row;
       const colIndex = e.detail?.col;
@@ -911,6 +923,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     window.addEventListener('nav-toggle-packing', handleToggleEvent);
     window.addEventListener('nav-open-search', handleSearchEvent);
     window.addEventListener('nav-adjust-quantity', handleAdjustQtyEvent);
+    window.addEventListener('nav-adjust-price', handleAdjustPriceEvent);
     const onPayShortcut = () => openPaymentRef.current();
     const onSearchShortcut = () => setIsProductLookupOpen(true);
     const onSaveShortcut = () => handleSaveProformaRef.current();
@@ -927,6 +940,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       window.removeEventListener('nav-toggle-packing', handleToggleEvent);
       window.removeEventListener('nav-open-search', handleSearchEvent);
       window.removeEventListener('nav-adjust-quantity', handleAdjustQtyEvent);
+      window.removeEventListener('nav-adjust-price', handleAdjustPriceEvent);
 
       window.removeEventListener('scanner-input', onScannerInput);
       window.removeEventListener('nav-pay-shortcut', onPayShortcut);
@@ -934,7 +948,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       window.removeEventListener('nav-save-shortcut', onSaveShortcut);
       window.removeEventListener('nav-capture-keystroke', handleCaptureKeystroke);
     };
-  }, [lineItems, handleDeleteLine, handleToggleUnit, handleQuantityChange, handleDesignationChange]);
+  }, [lineItems, handleDeleteLine, handleToggleUnit, handleQuantityChange, handleDesignationChange, handlePriceChange]);
 
   // Global Keyboard listener for the entire Sales Module grid focus
   useEffect(() => {
