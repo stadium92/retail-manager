@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { db } from '../db/index.js';
 import { env } from '../env.js';
-import { authenticateRequest, type Role } from './utils/auth.js';
+import { authenticateRequest } from './utils/auth.js';
 
 const bootstrapSchema = z.object({
   email: z.string().email(),
@@ -251,42 +251,6 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     db.updateSessionTokens(session.id, accessToken, newRefreshToken, newExpiry);
 
     return reply.send(buildLoginResponse(user, primaryRole, storeId, accessToken, newRefreshToken));
-  });
-
-
-  app.post('/auth/token_exchange', async (request, reply) => {
-    const parsed = z.object({
-      supabase_service_key: z.string().min(1),
-    }).safeParse(request.body ?? {});
-
-    if (!parsed.success) {
-      return reply.status(400).send({ error: 'ValidationFailed', details: parsed.error.flatten() });
-    }
-
-    if (!env.supabaseServiceKey || parsed.data.supabase_service_key !== env.supabaseServiceKey) {
-      return reply.status(401).send({ error: 'Unauthorized', message: 'Invalid Supabase service key.' });
-    }
-
-    const now = Math.floor(Date.now() / 1000);
-    const accessToken = jwt.sign(
-      {
-        sub: 'supabase-sync',
-        email: 'supabase-sync@localbridge',
-        role: 'supabase-sync',
-        aud: ['localbridge'],
-        iss: 'localbridge',
-        type: 'access',
-        iat: now,
-      },
-      env.jwtSecret,
-      { expiresIn: ACCESS_TOKEN_TTL_SECONDS }
-    );
-
-    return reply.send({
-      token_type: 'bearer',
-      access_token: accessToken,
-      expires_in: ACCESS_TOKEN_TTL_SECONDS,
-    });
   });
 
   app.post('/auth/logout', async (request, reply) => {

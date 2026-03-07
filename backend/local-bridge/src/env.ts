@@ -25,7 +25,7 @@ export const env = {
   port: numberFromEnv(process.env.PORT, 8787),
   dataDir: process.env.DATA_DIR || getDefaultDataDir(),
   jwtSecret: process.env.JWT_SECRET || 'dev-secret',
-  supabaseUrl: process.env.SUPABASE_URL || '',
-  supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY || '',
+  
+  
 
 };
