@@ -121,7 +121,7 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
     
     const handleDataUpdated = (e: CustomEvent) => {
       // 1. Check type
-      if (e.detail?.type !== 'sales' && e.detail?.type !== 'sale' && e.detail?.type !== 'inventory' && e.detail?.type !== 'product') return;
+if (e.detail?.type !== 'sales' && e.detail?.type !== 'sale' && e.detail?.type !== 'inventory' && e.detail?.type !== 'product') return;
       
       // 2. Check storeId (if provided in event) to only refresh what's relevant
       if (e.detail?.storeId && e.detail.storeId !== storeId) return;
@@ -299,8 +299,8 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
     
     // Profit based on price - cost
     const totalProfit = sales.reduce((sum, sale) => {
-      const saleItems = sale.sale_items || [];
-      // This is an estimate as sale_items might not have cost_price directly
+      const saleItems = (sale.items?.length ? sale.items : sale.sale_items) || [];
+      // This is an estimate as items might not have cost_price directly
       // In a full implementation, we'd join with products table or look up cost
       return sum + (sale.total_price * 0.25); // Default 25% margin estimate
     }, 0);
@@ -322,10 +322,10 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
   const categoryData = useMemo(() => {
     const categories: Record<string, number> = {};
     sales.forEach(sale => {
-      const items = (sale.items?.length ? sale.items : (sale.sale_items?.length ? sale.sale_items : []));
-      items.forEach((item: any) => {
-        const cat = item.category_name || item.category || t('common.other');
-        categories[cat] = (categories[cat] || 0) + (item.total || item.lineTotal || 0);
+const items = (sale.items?.length ? sale.items : (sale.sale_items?.length ? sale.sale_items : []));
+            items.forEach((item: any) => {
+              const cat = item.category_name || item.category || t('common.other');
+              categories[cat] = (categories[cat] || 0) + (item.total || item.lineTotal || 0);
       });
     });
     return Object.entries(categories)
@@ -356,11 +356,11 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
     }
     const productSales: Record<string, { name: string; qty: number; revenue: number }> = {};
     sales.forEach(sale => {
-      const items = (sale.items?.length ? sale.items : sale.sale_items) || [];
-      items.forEach((item: any) => {
-        const name = item.product_name || item.productName || item.designation || 'Unknown';
-        if (!productSales[name]) {
-          productSales[name] = { name, qty: 0, revenue: 0 };
+const items = (sale.items?.length ? sale.items : sale.sale_items) || [];
+            items.forEach((item: any) => {
+              const name = item.product_name || item.productName || item.designation || 'Unknown';
+              if (!productSales[name]) {
+                productSales[name] = { name, qty: 0, revenue: 0 };
         }
         productSales[name].qty += Number(item.quantity || 0);
         productSales[name].revenue += Number(item.total || item.lineTotal || 0);
@@ -871,7 +871,7 @@ export function GestionModule({ storeId, mode }: GestionModuleProps) {
         // Average Basket Value
         const abv = kpis.orderCount > 0 ? kpis.totalRevenue / kpis.orderCount : 0;
         const avgItems = kpis.orderCount > 0 
-          ? sales.reduce((sum, s) => sum + (s.sale_items?.length || 0), 0) / kpis.orderCount 
+          ? sales.reduce((sum, s) => sum + ((s.items?.length ? s.items : s.sale_items) || []).length, 0) / kpis.orderCount 
           : 0;
 
         return (
