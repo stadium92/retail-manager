@@ -186,6 +186,19 @@ export function SettingsModule({ storeId, mode }: SettingsModuleProps) {
     }
   };
 
+  const handleHardReset = async () => {
+    if (confirm("DANGER: This will wipe all browser cache (IndexedDB and LocalStorage). Your local SQLite database will NOT be affected. Use this to fix 'Ghost Files' or stale interface data. Continue?")) {
+        try {
+            await LocalDatabase.clearAll();
+            localStorage.clear();
+            toast.success("Cache wiped. Reloading app...");
+            setTimeout(() => window.location.reload(), 1500);
+        } catch (e) {
+            toast.error("Failed to clear cache");
+        }
+    }
+  };
+
   const renderContent = () => {
     switch (mode) {
       case 'preferences':
@@ -516,14 +529,24 @@ export function SettingsModule({ storeId, mode }: SettingsModuleProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Button 
-                  variant="destructive" 
-                  onClick={handleRepairDb}
-                  className="w-full"
-                >
-                  <Database className="h-4 w-4 mr-2" />
-                  Repair Database
-                </Button>
+                <div className="flex flex-col gap-3">
+                  <Button 
+                    variant="destructive" 
+                    onClick={handleRepairDb}
+                    className="w-full"
+                  >
+                    <Database className="h-4 w-4 mr-2" />
+                    Repair SQLite (Backend)
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    onClick={handleHardReset}
+                    className="w-full bg-red-700 hover:bg-red-800"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Hard Reset Cache (Browser)
+                  </Button>
+                </div>
                 <p className="text-xs text-muted-foreground mt-2">
                   Use this if you see "database disk image is malformed" errors.
                 </p>

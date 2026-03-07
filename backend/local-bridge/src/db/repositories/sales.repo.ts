@@ -142,15 +142,7 @@ export const createSalesRepo = (db: Database.Database) => {
           batch_id: item.batch_id ?? null,
         });
 
-        // Only deduct stock for newly inserted items with a valid product_id
-        // and only for non-proforma sales
-        if (itemResult.changes > 0 && item.product_id && saleData.sale_type !== 'proforma') {
-          const product = stmts.getProductStock.get(item.product_id) as { id: string; quantity: number } | undefined;
-          if (product) {
-            // User requested: allow negative stock for regularization later
-            stmts.deductStock.run(item.quantity, item.product_id);
-          }
-        }
+// Stock deduction is handled by DB trigger sale_items_ai
       }
 
       // 4. Update Client Balance if credit sale

@@ -113,22 +113,28 @@ export const OfflineInventoryService = {
             if (res.ok) {
               const payload = await res.json();
               const remoteProducts = Array.isArray(payload) ? payload : (payload.data || []);
-              
-              // Map and Cache in background
               const mappedItems = remoteProducts.map(mapDbToInventoryItem);
               
-              // Update cache without blocking
-              const syncCache = async () => {
-                  // SAVE/UPDATE remote items to cache
-                  for (const remote of remoteProducts) {
-                      await LocalDatabase.saveInventoryItem(mapToLocalInventory(remote, true));
+              // FORCE RECONCILIATION: Bridge is the absolute truth.
+              // We wipe the local cache for this store and replace it.
+              const reconcileCache = async () => {
+                  try {
+                      // 1. Clear existing local inventory for this store
+                      await LocalDatabase.clearTable('inventory'); 
+                      
+                      // 2. Save fresh data from bridge
+                      for (const remote of remoteProducts) {
+                          await LocalDatabase.saveInventoryItem(mapToLocalInventory(remote, true));
+                      }
+                      console.log('[OfflineInventory] Cache reconciled with bridge truth');
+                  } catch (err) {
+                      console.error('[OfflineInventory] Reconciliation failed:', err);
                   }
-                  
-                  // NOTE: We no longer automatically delete local items here to prevent "Ghost Files"
-                  // disappearing due to partial bridge responses or network lags.
-                  // Deletions should be handled by explicit DELETE events or a full re-sync.
               };
-              syncCache().catch(err => console.error('[OfflineInventory] Cache sync failed:', err));
+              reconcileCache();
+              
+              // Update cache without blocking
+              
 
               if (options?.notify !== false) {
                 window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
@@ -142,11 +148,13 @@ export const OfflineInventoryService = {
         }
       }
 
-      // 2. Fallback: Return from LocalDatabase cache
-      const localInventory = await LocalDatabase.getInventory(storeId);
-      if (localInventory.length > 0) {
-        console.log('[OfflineInventory] Returning cached data:', localInventory.length);
-        return { data: localInventory.map(mapLocalInventoryToItem) };
+      // 2. Fallback: ONLY use local cache if NOT in local-first mode
+      // If we are in local-first mode and the bridge failed, we SHOULD NOT show stale browser cache
+      if (!dc.isLocalFirst) {
+          const localInventory = await LocalDatabase.getInventory(storeId);
+          if (localInventory.length > 0) {
+            return { data: localInventory.map(mapLocalInventoryToItem) };
+          }
       }
 
       return { data: [] };
