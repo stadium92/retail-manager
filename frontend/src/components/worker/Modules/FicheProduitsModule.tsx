@@ -85,7 +85,7 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
 
     // IMPLEMENT ROBUST SYNC: Listen for global database updates
     const handleDataUpdate = (e: any) => {
-      if (e.detail?.type === 'inventory') {
+      if (e.detail?.type === 'inventory' || e.detail?.type === 'sale' || e.detail?.type === 'product') {
         console.log('FicheProduits: Syncing data from global update event');
         loadProducts(true);
       }

@@ -136,7 +136,7 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
   useEffect(() => {
     const handleDbUpdate = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      if (detail?.type === 'sale' || detail?.type === 'inventory') {
+      if (detail?.type === 'sale' || detail?.type === 'inventory' || detail?.type === 'product') {
         console.log('[StockModule] Refreshing data due to DB update event:', detail?.type);
         refetchStock();
         fetchModuleData();
