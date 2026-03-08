@@ -154,7 +154,7 @@ class OfflineDataServiceClass {
             let products: any[] = [];
 
             if (isLocalFirst) {
-                products = await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/products?store_id=${storeId}`, { method: 'GET' });
+                products = await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/products?store_id=${storeId}&limit=1000`, { method: 'GET' });
             } else {
                 products = await LocalDatabase.getInventory(storeId);
             }
