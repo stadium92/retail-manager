@@ -277,7 +277,7 @@ export class OfflineAuthService {
           details = await response.json();
         } catch (error) { /* ignore */ }
 
-        const errorMessage = details?.message || 'LocalBridge request failed';
+        const errorMessage = details?.message || details?.error || (details?.details ? JSON.stringify(details.details) : 'LocalBridge request failed');
         throw new Error(errorMessage);
       }
 

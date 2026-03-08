@@ -1,6 +1,6 @@
 {
   "name": "local-bridge",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "private": true,
   "bin": "dist/index.js",
   "pkg": {
