@@ -222,7 +222,7 @@ export function StockListingModule({ storeId }: StockListingModuleProps) {
       {/* Stock Table */}
       <div className="flex-1 glass-card overflow-hidden">
         {/* Table Header */}
-        <div className="grid grid-cols-[80px_1fr_120px_100px_100px_100px_100px_120px_120px] gap-2 px-4 py-2 bg-muted/50 border-b border-border/50 text-xs font-medium text-muted-foreground uppercase">
+        <div className="grid grid-cols-[80px_1fr_120px_100px_100px_100px_100px_120px_120px] gap-2 px-4 py-2 bg-muted border-b border-border text-xs font-medium text-muted-foreground uppercase sticky top-0 z-10 shadow-sm">
           <div>{t('menu.program.photo')}</div>
           <div>{t('pos.grid.headers.designation')}</div>
           <div>{t('pos.grid.headers.sku')}</div>
