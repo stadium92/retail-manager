@@ -68,7 +68,7 @@ export function InvoiceDetailsDialog({ sale, onClose }: InvoiceDetailsDialogProp
           <div className="border rounded-md">
             <ScrollArea className="h-[300px]">
               <Table>
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                   <TableRow>
                     <TableHead>{t('inventory.table.name')}</TableHead>
                     <TableHead className="text-center">{t('inventory.table.quantity')}</TableHead>

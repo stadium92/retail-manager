@@ -277,7 +277,7 @@ export function ReglementsFournisseursModule({ storeId, isMasterView }: Reglemen
           <CardContent className="p-0 flex-1 overflow-hidden">
             <ScrollArea className="h-full">
               <Table>
-                <TableHeader className="sticky top-0 bg-background z-10">
+                <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                   <TableRow className="bg-muted/30">
                     <TableHead className="text-[10px] uppercase font-bold">{t('menu.program.supplier')}</TableHead>
                     <TableHead className="text-[10px] uppercase font-bold text-right">{t('menu.program.dueBalance')}</TableHead>
@@ -364,7 +364,7 @@ export function ReglementsFournisseursModule({ storeId, isMasterView }: Reglemen
           <CardContent className="p-0 flex-1 overflow-hidden">
             <ScrollArea className="h-full">
               <Table>
-                <TableHeader className="sticky top-0 bg-background z-10">
+                <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                   <TableRow className="bg-muted/30">
                     <TableHead className="text-[10px] uppercase font-bold">{t('menu.program.date')}</TableHead>
                     <TableHead className="text-[10px] uppercase font-bold">{t('menu.program.supplier')}</TableHead>

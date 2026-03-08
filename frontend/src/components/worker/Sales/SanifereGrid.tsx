@@ -185,7 +185,7 @@ export function SanifereGrid({
       className="flex-1 flex flex-col overflow-hidden focus:outline-none select-none"
     >
       <div 
-        className="bg-[hsl(50,100%,45%)] text-black font-mono text-sm font-bold grid border-b-2 border-black"
+        className="bg-[hsl(50,100%,45%)] text-black font-mono text-sm font-bold grid border-b-2 border-black sticky top-0 z-10 shadow-md"
         style={{ gridTemplateColumns }}
       >
         <div className="px-1 py-1 border-r border-black/30 text-center relative">

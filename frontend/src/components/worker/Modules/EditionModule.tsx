@@ -431,7 +431,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
               <CardContent className="p-0">
                 <ScrollArea className="h-[450px]">
                   <Table>
-                    <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
+                    <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                       <TableRow className="bg-muted/30">
                         <TableHead className="text-[10px] uppercase font-bold">{t('menu.program.time')}</TableHead>
                         <TableHead className="text-[10px] uppercase font-bold">{t('common.type')}</TableHead>
@@ -506,7 +506,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
               <CardContent className="p-0">
                 <ScrollArea className="h-[450px]">
                   <Table>
-                    <TableHeader className="sticky top-0 bg-background">
+                    <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                       <TableRow>
                         <TableHead className="text-xs">{t('menu.program.time')}</TableHead>
                         <TableHead className="text-xs">{t('edition.orderRef')}</TableHead>
@@ -618,7 +618,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
               <CardContent className="p-0">
                 <ScrollArea className="h-[450px]">
                   <Table>
-                    <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
+                    <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                       <TableRow className="bg-muted/30">
                         <TableHead className="text-[10px] uppercase font-bold">{t('storeDetails.sales.table.date')}</TableHead>
                         <TableHead className="text-[10px] uppercase font-bold">{t('sales.invoice_number', 'N° Facture')}</TableHead>
@@ -723,7 +723,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
               <CardContent className="p-0">
                 <ScrollArea className="h-[450px]">
                   <Table>
-                    <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
+                    <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                       <TableRow className="bg-muted/30">
                         <TableHead className="text-[10px] uppercase font-bold w-12">#</TableHead>
                         <TableHead className="text-[10px] uppercase font-bold">{t('inventory.table.name')}</TableHead>
@@ -792,7 +792,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
               <CardContent className="p-0">
                 <ScrollArea className="h-[450px]">
                   <Table>
-                    <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
+                    <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                       <TableRow className="bg-muted/30">
                         <TableHead className="text-[10px] uppercase font-bold">{t('storeDetails.sales.table.date')}</TableHead>
                         <TableHead className="text-[10px] uppercase font-bold">{t('menu.program.supplier')}</TableHead>
@@ -866,7 +866,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
               <CardContent className="p-0">
                 <ScrollArea className="h-[450px]">
                   <Table>
-                    <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
+                    <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                       <TableRow className="bg-muted/30">
                         <TableHead className="text-[10px] uppercase font-bold">{t('inventory.fields.family')}</TableHead>
                         <TableHead className="text-[10px] uppercase font-bold text-center">{t('menu.management.quantityOrdered')}</TableHead>
@@ -965,7 +965,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
               <CardContent className="p-0">
                 <ScrollArea className="h-[450px]">
                   <Table>
-                    <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
+                    <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                       <TableRow className="bg-muted/30">
                         <TableHead className="text-[10px] uppercase font-bold">{t('menu.program.time')}</TableHead>
                         <TableHead className="text-[10px] uppercase font-bold">{t('common.type')}</TableHead>

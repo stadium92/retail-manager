@@ -321,8 +321,9 @@ export default function TeamPage() {
                   <p>{t('team.emptyWorkers')}</p>
                 </div>
               ) : (
+              <div className="overflow-auto max-h-[60vh]">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                     <TableRow>
                       <TableHead>{t('team.table.name')}</TableHead>
                       <TableHead>{t('team.table.email')}</TableHead>
@@ -379,6 +380,7 @@ export default function TeamPage() {
                     ))}
                   </TableBody>
                 </Table>
+              </div>
               )}
             </TabsContent>
 
@@ -390,8 +392,9 @@ export default function TeamPage() {
                   <p>{t('team.emptyDeliverers')}</p>
                 </div>
               ) : (
+                <div className="overflow-auto max-h-[60vh]">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                     <TableRow>
                       <TableHead>{t('team.table.name')}</TableHead>
                       <TableHead>{t('team.table.email')}</TableHead>
@@ -443,6 +446,7 @@ export default function TeamPage() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               )}
             </TabsContent>
           </CardContent>

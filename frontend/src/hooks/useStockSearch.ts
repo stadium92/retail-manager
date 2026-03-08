@@ -18,7 +18,7 @@ export function useStockSearch(storeId: string, enabled: boolean = true) {
   useEffect(() => {
     const handleRefresh = (e: any) => {
       if (e.detail?.type === 'inventory' || e.detail?.type === 'product' || e.detail?.type === 'sale') {
-        console.log('[useStockSearch] Invalidating stock-search due to DB update');
+        console.log('[useStockSearch] Event received:', e.detail?.type, '- Invalidating stock-search cache');
         queryClient.invalidateQueries({ queryKey: ['stock-search'] });
       }
     };
@@ -66,6 +66,7 @@ export function useStockSearch(storeId: string, enabled: boolean = true) {
       }
 
       if (isLocalFirst) {
+        console.log('[useStockSearch] Fetching from bridge for store:', storeId, 'search:', debouncedSearch);
         try {
             const payload = await OfflineAuthService.localBridgeRequest<any>(`/rest/v1/products?${params.toString()}`, { method: 'GET' });
             

@@ -339,7 +339,7 @@ export function CommandeAutoModule({ storeId }: CommandeAutoModuleProps) {
             <CardContent className="p-0 h-full">
               <div className="h-full overflow-auto">
                 <Table>
-                  <TableHeader className="sticky top-0 bg-background">
+                  <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                     <TableRow>
                       <TableHead className="w-10">
                         <Checkbox 
@@ -453,7 +453,7 @@ export function CommandeAutoModule({ storeId }: CommandeAutoModuleProps) {
           <Card className="flex-1">
             <CardContent className="p-0">
               <Table>
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                   <TableRow>
                     <TableHead>{t('menu.program.scheduleName')}</TableHead>
                     <TableHead>{t('menu.program.recurrence')}</TableHead>

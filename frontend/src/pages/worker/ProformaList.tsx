@@ -108,9 +108,9 @@ export default function ProformaList() {
                     <Button onClick={loadProformas} variant="outline">{t('common.refresh')}</Button>
                 </div>
 
-                <div className="bg-card rounded-lg border shadow-sm">
+                <div className="bg-card rounded-lg border shadow-sm overflow-auto max-h-[60vh]">
                     <Table>
-                        <TableHeader>
+                        <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                             <TableRow>
                                 <TableHead>{t('menu.program.date')}</TableHead>
                                 <TableHead>{t('pos.totals.customer')}</TableHead>

@@ -34,6 +34,8 @@ export const OfflineSalesService = {
                 });
 
                 console.log('[OfflineSales] Sale saved successfully:', result);
+                // Centralized event dispatch to ensure UI reactivity
+                window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'sale' } }));
                 return { data: result };
             } catch (error) {
                 console.error('[OfflineSales] Create sale failed:', error);
