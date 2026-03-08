@@ -1,7 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import crypto from 'crypto';
-import { db } from '../db/index.js';
+import { db, rawDb } from '../db/index.js';
+import { emitOutbox } from '../db/repositories/sync_helpers.js';
 import { authenticateRequest } from './utils/auth.js';
 
 const listQuerySchema = z.object({
@@ -86,6 +87,19 @@ const productUpdateSchema = z.object({
   reorder_quantity: z.number().optional(),
 });
 
+const familyCreateSchema = z.object({
+  store_id: z.string().min(1).optional(),
+  name: z.string().min(1),
+  description: z.string().nullable().optional(),
+  parent_id: z.string().nullable().optional(),
+});
+
+const familyUpdateSchema = z.object({
+  name: z.string().min(1).optional(),
+  description: z.string().nullable().optional(),
+  parent_id: z.string().nullable().optional(),
+});
+
 export async function registerProductRoutes(app: FastifyInstance) {
   app.get('/rest/v1/products', async (request, reply) => {
     const claims = authenticateRequest(request, reply);
@@ -142,8 +156,6 @@ export async function registerProductRoutes(app: FastifyInstance) {
       });
     }
 
-    // Fallback to legacy behavior (fetch all) for backward compatibility
-    // until frontend is fully migrated.
     const products = targetStoreId ? db.listProducts(targetStoreId) : db.listAllProducts();
     return reply.send(products);
   });
@@ -238,7 +250,6 @@ export async function registerProductRoutes(app: FastifyInstance) {
     return reply.status(201).send(product);
   });
 
-
   app.get('/rest/v1/inventory_movements', async (request, reply) => {
     const claims = authenticateRequest(request, reply);
     if (!claims) return;
@@ -267,86 +278,60 @@ export async function registerProductRoutes(app: FastifyInstance) {
   });
 
   app.post('/rest/v1/inventory_movements', async (request, reply) => {
-    const claims = authenticateRequest(request, reply, ['master', 'worker']);
-    if (!claims) return;
+    try {
+      const claims = authenticateRequest(request, reply, ['master', 'worker']);
+      if (!claims) return;
 
-    const parsed = z
-      .object({
-        store_id: z.string().optional(),
-        product_id: z.string().min(1),
-        product_name: z.string().nullable().optional(),
-        movement_type: z.enum(['adjustment', 'in', 'out']),
-        quantity: z.number().min(0),
-        reason: z.string().nullable().optional(),
-        source: z.string().nullable().optional(),
-      })
-      .safeParse(request.body ?? {});
+      const schema = z.object({
+          store_id: z.string().optional(),
+          product_id: z.string().min(1),
+          product_name: z.string().nullable().optional(),
+          movement_type: z.enum(['adjustment', 'in', 'out']),
+          quantity: z.number().min(0),
+          reason: z.string().nullable().optional(),
+          source: z.string().nullable().optional(),
+      });
 
-    if (!parsed.success) {
-      return reply.status(400).send({ error: 'ValidationFailed', details: parsed.error.flatten() });
-    }
+      const parsed = schema.safeParse(request.body ?? {});
 
-    const storeId = parsed.data.store_id ?? claims.store_id;
-    if (!storeId) {
-      return reply.status(400).send({ error: 'StoreRequired', message: 'Store is required.' });
-    }
+      if (!parsed.success) {
+        console.error('[InventoryMovement] Validation failed:', JSON.stringify(parsed.error.format(), null, 2));
+        return reply.status(400).send({ 
+          error: 'ValidationFailed', 
+          message: 'Données invalides', 
+          details: parsed.error.format() 
+        });
+      }
 
-    const product = db.getProductById(parsed.data.product_id);
-    if (!product) {
-      return reply.status(404).send({ error: 'NotFound', message: 'Product not found.' });
-    }
-    if (product.store_id !== storeId) {
-      return reply.status(400).send({ error: 'InvalidStore', message: 'Product does not belong to this store.' });
-    }
+      const storeId = parsed.data.store_id ?? claims.store_id;
+      if (!storeId) {
+        return reply.status(400).send({ error: 'StoreRequired', message: 'ID du magasin requis.' });
+      }
 
-    const movementId = crypto.randomUUID();
-    const now = new Date().toISOString();
-    let nextQuantity = product.quantity ?? 0;
-    if (parsed.data.movement_type === 'in') {
-      nextQuantity += parsed.data.quantity;
-    } else if (parsed.data.movement_type === 'out') {
-      nextQuantity = Math.max(0, nextQuantity - parsed.data.quantity);
-    } else if (parsed.data.movement_type === 'adjustment') {
-      nextQuantity = Math.max(0, parsed.data.quantity);
-    }
+      const product = db.getProductById(parsed.data.product_id);
+      if (!product) {
+        return reply.status(404).send({ error: 'NotFound', message: 'Produit non trouvé.' });
+      }
 
-    db.updateProduct(parsed.data.product_id, {
-      quantity: nextQuantity,
-      updated_at: now,
-      updated_by: claims.sub,
-    });
+      const movementId = crypto.randomUUID();
+      const now = new Date().toISOString();
+      
+      let nextQuantity = Number(product.quantity) || 0;
+      if (parsed.data.movement_type === 'in') {
+        nextQuantity += parsed.data.quantity;
+      } else if (parsed.data.movement_type === 'out') {
+        nextQuantity = Math.max(0, nextQuantity - parsed.data.quantity);
+      } else if (parsed.data.movement_type === 'adjustment') {
+        nextQuantity = Math.max(0, parsed.data.quantity);
+      }
 
-    db.insertInventoryMovement({
-      id: movementId,
-      store_id: storeId,
-      product_id: parsed.data.product_id,
-      product_name: parsed.data.product_name ?? product.name,
-      movement_type: parsed.data.movement_type,
-      quantity: parsed.data.quantity,
-      reason: parsed.data.reason ?? null,
-      source: parsed.data.source ?? null,
-      created_at: now,
-      created_by: claims.sub,
-    });
+      const updatedProduct = db.updateProduct(parsed.data.product_id, {
+        quantity: nextQuantity,
+        updated_at: now,
+        updated_by: claims.sub,
+      });
 
-    db.insertAuditLog({
-      id: crypto.randomUUID(),
-      timestamp: now,
-      user_id: claims.sub,
-      action_type: 'inventory_movement',
-      entity_affected: 'product',
-      entity_id: parsed.data.product_id,
-      old_value: String(product.quantity ?? 0),
-      new_value: String(nextQuantity),
-      store_id: storeId,
-    });
-
-    db.insertPendingMutation({
-      id: crypto.randomUUID(),
-      store_id: storeId,
-      mutation_type: 'upsert',
-      entity: 'inventory_movements',
-      payload: JSON.stringify({
+      const movement = {
         id: movementId,
         store_id: storeId,
         product_id: parsed.data.product_id,
@@ -356,12 +341,45 @@ export async function registerProductRoutes(app: FastifyInstance) {
         reason: parsed.data.reason ?? null,
         source: parsed.data.source ?? null,
         created_at: now,
-      }),
-      created_at: now,
-      status: 'pending',
-    });
+        created_by: claims.sub,
+      };
+      db.insertInventoryMovement(movement as any);
 
-    return reply.status(201).send({ id: movementId });
+      emitOutbox(rawDb, storeId, 'inventory_movement', movementId, 'create', movement as any);
+      if (updatedProduct) {
+          emitOutbox(rawDb, storeId, 'product', product.id, 'update', updatedProduct as any, (updatedProduct as any).version - 1);
+      }
+
+      db.insertAuditLog({
+        id: crypto.randomUUID(),
+        timestamp: now,
+        user_id: claims.sub,
+        action_type: 'inventory_movement',
+        entity_affected: 'product',
+        entity_id: parsed.data.product_id,
+        old_value: String(product.quantity ?? 0),
+        new_value: String(nextQuantity),
+        store_id: storeId,
+      });
+
+      db.insertPendingMutation({
+        id: crypto.randomUUID(),
+        store_id: storeId,
+        mutation_type: 'upsert',
+        entity: 'inventory_movements',
+        payload: JSON.stringify(movement),
+        created_at: now,
+        status: 'pending',
+      });
+
+      return reply.send({ success: true, id: movementId, new_quantity: nextQuantity });
+    } catch (e: any) {
+      console.error('[InventoryMovement] Fatal error:', e);
+      return reply.status(500).send({ 
+        error: 'InternalServerError', 
+        message: e.message || 'Une erreur interne est survenue.' 
+      });
+    }
   });
 
   app.get('/rest/v1/product_families', async (request, reply) => {
@@ -672,15 +690,3 @@ export async function registerProductRoutes(app: FastifyInstance) {
     return reply.send(db.listProductBatches(storeId, query.data.product_id));
   });
 }
-const familyCreateSchema = z.object({
-  store_id: z.string().min(1).optional(),
-  name: z.string().min(1),
-  description: z.string().nullable().optional(),
-  parent_id: z.string().nullable().optional(),
-});
-
-const familyUpdateSchema = z.object({
-  name: z.string().min(1).optional(),
-  description: z.string().nullable().optional(),
-  parent_id: z.string().nullable().optional(),
-});

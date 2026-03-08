@@ -215,7 +215,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
           },
           quantity: totalUnitsForDb,
           discount: item.discountPercent,
-          unitPrice: item.unitPrice,
+          unit_price: item.unitPrice,
           lineTotal: item.lineTotal,
           total: item.lineTotal,
         };
@@ -726,7 +726,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
           },
           quantity: totalUnitsForDb,
           discount: item.discountPercent,
-          unitPrice: item.unitPrice,
+          unit_price: item.unitPrice,
           lineTotal: item.lineTotal,
           total: item.lineTotal,
         };
@@ -736,11 +736,11 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         ? clients.find(c => c.id === currentSession.clientId) 
         : undefined;
 
-      const { error } = await OfflineSalesService.createSale({
+      const { error } = await OfflineSalesService.createSaleWithItems({
         store_id: storeId,
         worker_id: user?.id || '',
         client_id: currentSession.clientId || undefined,
-        items: cartItems,
+        
         total_price: netTotal,
         payment_method: 'credit', // Using credit/pending so it goes to receivables/invoices rather than cash
         payment_status: 'pending',
@@ -751,7 +751,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         invoice_number: invoiceNumber,
         order_ref: orderRef,
         discount: currentSession.clientDiscount || 0,
-      });
+      }, cartItems);
 
       if (error) throw error;
 

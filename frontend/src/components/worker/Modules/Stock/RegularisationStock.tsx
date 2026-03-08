@@ -119,7 +119,7 @@ export function RegularisationStock({ storeId }: RegularisationStockProps) {
 
       // We prefix with 'Regularisation: ' to ensure it's picked up by the filter
       const fullReason = `Regularisation: ${regReason}`;
-      await OfflineDataService.updateProductStock(regProduct.id, newQuantity, fullReason);
+      await OfflineDataService.updateProductStock(storeId, regProduct.id, newQuantity, fullReason);
       
       toast.success(`${t('common.success')}: ${regProduct.name} → ${newQuantity} ${t('inventory.unitPiece')}`);
       
@@ -128,7 +128,8 @@ export function RegularisationStock({ storeId }: RegularisationStockProps) {
       setRegReason('');
       fetchHistory(); // Refresh table
     } catch (error) {
-      toast.error(t('common.error'));
+      console.error('[Regularisation] Critical error:', error);
+      toast.error(`${t('common.error')}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }
