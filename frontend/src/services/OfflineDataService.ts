@@ -151,14 +151,15 @@ class OfflineDataServiceClass {
     async getStockValuation(storeId: string): Promise<{ total_cost: number; total_retail: number; item_count: number }> {
         try {
             const { isLocalFirst } = getDataClient();
-            let products: any[] = [];
-
             if (isLocalFirst) {
-                products = await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/products?store_id=${storeId}&limit=1000`, { method: 'GET' });
-            } else {
-                products = await LocalDatabase.getInventory(storeId);
+                const result = await OfflineAuthService.localBridgeRequest<any>(`/rest/v1/analytics/stock-valuation?store_id=${storeId}`, { method: 'GET' });
+                if (result) return result;
             }
-
+            
+            // Fallback to manual calculation if bridge fails
+            const payload = await OfflineAuthService.localBridgeRequest<any>(`/rest/v1/products?store_id=${storeId}&limit=1000`, { method: 'GET' });
+            const products = Array.isArray(payload) ? payload : (payload.data || []);
+            
             return products.reduce((acc, p) => {
                 const qty = Number(p.quantity ?? p.stock ?? 0);
                 return {

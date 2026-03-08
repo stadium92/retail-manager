@@ -180,6 +180,7 @@ export const OfflineInventoryService = {
           if (!res.ok) {
             const err = await res.json().catch(() => ({ message: 'Bridge write failed' }));
             await LocalDatabase.deleteInventoryItem(id);
+      window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
             throw new Error(err.message || 'Failed to create product in local bridge');
           }
           
@@ -243,6 +244,8 @@ export const OfflineInventoryService = {
         });
       }
 
+      // Centralized event dispatch
+      window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
       return { data: updated as InventoryItem };
     } catch (error) {
       console.error('Update item error:', error);
