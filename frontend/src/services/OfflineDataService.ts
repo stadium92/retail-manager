@@ -248,6 +248,8 @@ class OfflineDataServiceClass {
     }
 
     async updateProductStock(storeId: string, productId: string, newQuantity: number, reason: string): Promise<void> {
+        console.log('[OfflineDataService] updateProductStock request:', { storeId, productId, newQuantity, reason });
+        
         const { isLocalFirst } = getDataClient();
         if (isLocalFirst) {
             await OfflineAuthService.localBridgeRequest('/rest/v1/inventory_movements', {

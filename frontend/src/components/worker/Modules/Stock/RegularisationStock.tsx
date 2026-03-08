@@ -128,7 +128,8 @@ export function RegularisationStock({ storeId }: RegularisationStockProps) {
       setRegReason('');
       fetchHistory(); // Refresh table
     } catch (error) {
-      toast.error(t('common.error'));
+      console.error('[Regularisation] Critical error:', error);
+      toast.error(`${t('common.error')}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }
