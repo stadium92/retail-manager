@@ -333,5 +333,24 @@ export const OfflineInventoryService = {
     } catch (error) {
       return { error };
     }
+  },
+
+  async getStockValuation(storeId: string): Promise<{ total_cost: number; total_retail: number; item_count: number; error?: any }> {
+    try {
+      const dc = getDataClient();
+      if (dc.isLocalFirst) {
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (headers) {
+          const sid = storeId === 'all' ? '' : storeId;
+          const res = await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/analytics/stock-valuation?store_id=${sid}`, { headers });
+          if (res.ok) return await res.json();
+        }
+      }
+      // Sum local fallback if needed (simplified)
+      return { total_cost: 0, total_retail: 0, item_count: 0 };
+    } catch (error) {
+      console.error('Error fetching stock valuation:', error);
+      return { total_cost: 0, total_retail: 0, item_count: 0, error };
+    }
   }
 };
