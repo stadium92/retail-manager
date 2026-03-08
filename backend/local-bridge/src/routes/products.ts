@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { db } from '../db/index.js';
+import { emitOutbox } from '../db/repositories/sync_helpers.js';
 import { authenticateRequest } from './utils/auth.js';
 
 const listQuerySchema = z.object({
