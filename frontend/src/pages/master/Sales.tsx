@@ -278,7 +278,7 @@ export default function SalesPage() {
                         <TableCell><Badge variant="outline" className="font-black uppercase text-[9px] border-2 bg-background">{stores.find(s => s.id === sale.store_id)?.name || '?'}</Badge></TableCell>
                         <TableCell>
                           <div className="flex flex-col">
-                            <span className="text-xs font-black uppercase tracking-tighter truncate max-w-[250px]">{sale.sale_items?.map(i => i.product_name).join(', ') || '?'}</span>
+                            <span className="text-xs font-black uppercase tracking-tighter truncate max-w-[250px]">{(sale.items?.length ? sale.items : sale.sale_items)?.map(i => i.product_name || i.designation || 'Unknown').join(', ') || '?'}</span>
                             <span className="text-[8px] font-mono opacity-40">#{sale.invoice_number || sale.id.slice(0, 8)}</span>
                           </div>
                         </TableCell>
