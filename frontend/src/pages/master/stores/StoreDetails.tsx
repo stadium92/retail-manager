@@ -253,9 +253,9 @@ export default function StoreDetailsPage() {
                   <p className="text-muted-foreground">{t('storeDetails.inventory.empty')}</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-auto max-h-[60vh]">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                       <TableRow>
                         <TableHead>{t('storeDetails.inventory.table.name')}</TableHead>
                         <TableHead>{t('storeDetails.inventory.table.sku')}</TableHead>
@@ -306,9 +306,9 @@ export default function StoreDetailsPage() {
                   <p className="text-muted-foreground">{t('storeDetails.sales.empty')}</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-auto max-h-[60vh]">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                       <TableRow>
                         <TableHead>{t('storeDetails.sales.table.date')}</TableHead>
                         <TableHead>{t('storeDetails.sales.table.item')}</TableHead>
@@ -360,9 +360,9 @@ export default function StoreDetailsPage() {
                   <p className="text-muted-foreground">{t('storeDetails.workers.empty')}</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-auto max-h-[60vh]">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                       <TableRow>
                         <TableHead>{t('storeDetails.workers.table.name')}</TableHead>
                         <TableHead>{t('storeDetails.workers.table.email')}</TableHead>

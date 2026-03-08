@@ -226,9 +226,9 @@ export default function PurchasesPage() {
                   {t('purchases.noOrdersFound')}
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-auto max-h-[60vh]">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                       <TableRow>
                         <TableHead className="w-10"></TableHead>
                         <TableHead>{t('menu.program.date')}</TableHead>
@@ -279,7 +279,7 @@ export default function PurchasesPage() {
                               <div className="p-4 space-y-2">
                                 <h4 className="font-bold text-sm uppercase tracking-wider">{t('inventory.title')}</h4>
                                 <Table className="bg-background border rounded-md">
-                                  <TableHeader>
+                                  <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                                     <TableRow className="h-8">
                                       <TableHead className="text-[10px] uppercase">{t('inventory.table.name')}</TableHead>
                                       <TableHead className="text-[10px] uppercase text-center">{t('inventory.table.quantity')}</TableHead>

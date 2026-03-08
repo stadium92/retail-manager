@@ -224,7 +224,7 @@ export function FichiersClientsModule({ storeId }: FichiersClientsModuleProps) {
       <Card className="flex-1 overflow-hidden">
         <CardContent className="p-0 h-full overflow-auto">
           <Table>
-            <TableHeader className="sticky top-0 bg-card z-10">
+            <TableHeader className="sticky top-0 z-10 bg-card border-b-2 shadow-sm">
               <TableRow>
                 <TableHead className="w-12">#</TableHead>
                 <TableHead>{t('menu.program.clientCode')}</TableHead>

@@ -282,7 +282,7 @@ export function FichiersFournisseursModule({ storeId }: FichiersFournisseursModu
       <Card className="flex-1 overflow-hidden">
         <CardContent className="p-0 h-full overflow-auto">
           <Table>
-            <TableHeader className="sticky top-0 bg-card z-10">
+            <TableHeader className="sticky top-0 z-10 bg-card border-b-2 shadow-sm">
               <TableRow>
                 <TableHead className="w-12">#</TableHead>
                 <TableHead>{t('inventory.table.name')}</TableHead>
@@ -497,7 +497,7 @@ export function FichiersFournisseursModule({ storeId }: FichiersFournisseursModu
                   ) : (
                     <div className="h-full overflow-y-auto">
                       <Table>
-                        <TableHeader className="bg-muted/20 sticky top-0 z-10">
+                        <TableHeader className="bg-muted/20 sticky top-0 z-10 border-b-2 shadow-sm">
                           <TableRow className="h-8">
                             <TableHead className="text-[10px] font-black uppercase">{t('menu.program.date')}</TableHead>
                             <TableHead className="text-[10px] font-black uppercase text-right">{t('common.amount')}</TableHead>

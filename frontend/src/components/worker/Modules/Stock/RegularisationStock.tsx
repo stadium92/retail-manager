@@ -303,7 +303,7 @@ export function RegularisationStock({ storeId }: RegularisationStockProps) {
         <Card className="flex-1 overflow-hidden">
           <ScrollArea className="h-full">
             <Table>
-              <TableHeader className="sticky top-0 bg-background z-10">
+              <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                 <TableRow className="bg-muted/50 border-b-2">
                   <TableHead className="text-[10px] uppercase font-bold w-20">Heure</TableHead>
                   <TableHead className="text-[10px] uppercase font-bold">Produit</TableHead>
