@@ -390,7 +390,7 @@ const items = (sale.items?.length ? sale.items : sale.sale_items) || [];
 
     try {
       const newQuantity = Math.max(0, lossForm.product.quantity - lossForm.quantity);
-      await OfflineDataService.updateProductStock(lossForm.product.id, newQuantity, `Perte: ${lossForm.reason}`);
+      await OfflineDataService.updateProductStock(storeId, lossForm.product.id, newQuantity, `Perte: ${lossForm.reason}`);
       toast.success(t('common.success'));
       setLossForm({ product: null, quantity: 1, reason: 'expired', notes: '' });
       lowStockQuery.refetch();

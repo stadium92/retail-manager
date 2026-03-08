@@ -257,7 +257,7 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
     if (changeIds.length === 0) return toast.info(t('common.noData'));
     setIsSaving(true);
     try {
-      for (const [id, qty] of Object.entries(inventoryChanges)) await OfflineDataService.updateProductStock(id, qty, 'Inventaire');
+      for (const [id, qty] of Object.entries(inventoryChanges)) await OfflineDataService.updateProductStock(storeId, id, qty, 'Inventaire');
       toast.success(t('common.success'));
       window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
       refetchStock();
