@@ -276,7 +276,7 @@ export async function registerProductRoutes(app: FastifyInstance) {
         product_id: z.string().min(1),
         product_name: z.string().nullable().optional(),
         movement_type: z.enum(['adjustment', 'in', 'out']),
-        quantity: z.number().min(0.01),
+        quantity: z.number().min(0),
         reason: z.string().nullable().optional(),
         source: z.string().nullable().optional(),
       })
@@ -301,20 +301,20 @@ export async function registerProductRoutes(app: FastifyInstance) {
 
     const movementId = crypto.randomUUID();
     const now = new Date().toISOString();
-    const appliedQuantityDelta = parsed.data.movement_type === 'in'
-      ? parsed.data.quantity
-      : parsed.data.movement_type === 'out'
-        ? -parsed.data.quantity
-        : 0;
-
-    if (appliedQuantityDelta !== 0) {
-      const nextQuantity = Math.max(0, (product.quantity ?? 0) + appliedQuantityDelta);
-      db.updateProduct(parsed.data.product_id, {
-        quantity: nextQuantity,
-        updated_at: now,
-        updated_by: claims.sub,
-      });
+    let nextQuantity = product.quantity ?? 0;
+    if (parsed.data.movement_type === 'in') {
+      nextQuantity += parsed.data.quantity;
+    } else if (parsed.data.movement_type === 'out') {
+      nextQuantity = Math.max(0, nextQuantity - parsed.data.quantity);
+    } else if (parsed.data.movement_type === 'adjustment') {
+      nextQuantity = Math.max(0, parsed.data.quantity);
     }
+
+    db.updateProduct(parsed.data.product_id, {
+      quantity: nextQuantity,
+      updated_at: now,
+      updated_by: claims.sub,
+    });
 
     db.insertInventoryMovement({
       id: movementId,
@@ -337,7 +337,7 @@ export async function registerProductRoutes(app: FastifyInstance) {
       entity_affected: 'product',
       entity_id: parsed.data.product_id,
       old_value: String(product.quantity ?? 0),
-      new_value: String(Math.max(0, (product.quantity ?? 0) + appliedQuantityDelta)),
+      new_value: String(nextQuantity),
       store_id: storeId,
     });
 
