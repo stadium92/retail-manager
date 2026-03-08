@@ -285,7 +285,8 @@ export async function registerProductRoutes(app: FastifyInstance) {
         .safeParse(request.body ?? {});
 
       if (!parsed.success) {
-        console.error('[InventoryMovement] Validation failed:', parsed.error.flatten());
+        console.error('[InventoryMovement] BODY:', request.body);
+        console.error('[InventoryMovement] ERROR:', JSON.stringify(parsed.error.format()));
         return reply.status(400).send({ 
           error: 'ValidationFailed', 
           message: 'Données invalides', 

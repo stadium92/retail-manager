@@ -257,7 +257,7 @@ class OfflineDataServiceClass {
                 body: JSON.stringify({ 
                     store_id: storeId, product_id: productId,
                     movement_type: 'adjustment',
-                    quantity: newQuantity,
+                    quantity: Number(newQuantity),
                     reason: reason,
                     source: 'manual'
                 })
