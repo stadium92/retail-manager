@@ -87,6 +87,19 @@ const productUpdateSchema = z.object({
   reorder_quantity: z.number().optional(),
 });
 
+const familyCreateSchema = z.object({
+  store_id: z.string().min(1).optional(),
+  name: z.string().min(1),
+  description: z.string().nullable().optional(),
+  parent_id: z.string().nullable().optional(),
+});
+
+const familyUpdateSchema = z.object({
+  name: z.string().min(1).optional(),
+  description: z.string().nullable().optional(),
+  parent_id: z.string().nullable().optional(),
+});
+
 export async function registerProductRoutes(app: FastifyInstance) {
   app.get('/rest/v1/products', async (request, reply) => {
     const claims = authenticateRequest(request, reply);
@@ -143,8 +156,6 @@ export async function registerProductRoutes(app: FastifyInstance) {
       });
     }
 
-    // Fallback to legacy behavior (fetch all) for backward compatibility
-    // until frontend is fully migrated.
     const products = targetStoreId ? db.listProducts(targetStoreId) : db.listAllProducts();
     return reply.send(products);
   });
@@ -239,7 +250,6 @@ export async function registerProductRoutes(app: FastifyInstance) {
     return reply.status(201).send(product);
   });
 
-
   app.get('/rest/v1/inventory_movements', async (request, reply) => {
     const claims = authenticateRequest(request, reply);
     if (!claims) return;
@@ -272,8 +282,7 @@ export async function registerProductRoutes(app: FastifyInstance) {
       const claims = authenticateRequest(request, reply, ['master', 'worker']);
       if (!claims) return;
 
-      const parsed = z
-        .object({
+      const schema = z.object({
           store_id: z.string().optional(),
           product_id: z.string().min(1),
           product_name: z.string().nullable().optional(),
@@ -281,16 +290,16 @@ export async function registerProductRoutes(app: FastifyInstance) {
           quantity: z.number().min(0),
           reason: z.string().nullable().optional(),
           source: z.string().nullable().optional(),
-        })
-        .safeParse(request.body ?? {});
+      });
+
+      const parsed = schema.safeParse(request.body ?? {});
 
       if (!parsed.success) {
-        console.error('[InventoryMovement] BODY:', request.body);
-        console.error('[InventoryMovement] ERROR:', JSON.stringify(parsed.error.format()));
+        console.error('[InventoryMovement] Validation failed:', JSON.stringify(parsed.error.format(), null, 2));
         return reply.status(400).send({ 
           error: 'ValidationFailed', 
           message: 'Données invalides', 
-          details: parsed.error.flatten() 
+          details: parsed.error.format() 
         });
       }
 
@@ -368,7 +377,7 @@ export async function registerProductRoutes(app: FastifyInstance) {
       console.error('[InventoryMovement] Fatal error:', e);
       return reply.status(500).send({ 
         error: 'InternalServerError', 
-        message: e.message || 'Une erreur interne est survenue lors de la régularisation.' 
+        message: e.message || 'Une erreur interne est survenue.' 
       });
     }
   });
@@ -681,15 +690,3 @@ export async function registerProductRoutes(app: FastifyInstance) {
     return reply.send(db.listProductBatches(storeId, query.data.product_id));
   });
 }
-const familyCreateSchema = z.object({
-  store_id: z.string().min(1).optional(),
-  name: z.string().min(1),
-  description: z.string().nullable().optional(),
-  parent_id: z.string().nullable().optional(),
-});
-
-const familyUpdateSchema = z.object({
-  name: z.string().min(1).optional(),
-  description: z.string().nullable().optional(),
-  parent_id: z.string().nullable().optional(),
-});
