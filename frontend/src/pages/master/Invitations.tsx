@@ -274,9 +274,9 @@ export default function InvitationsPage() {
               <p className="text-muted-foreground">{t('invitations.emptyState')}</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[60vh]">
               <Table>
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                   <TableRow>
                     <TableHead>{t('invitations.table.email')}</TableHead>
                     <TableHead>{t('invitations.table.role')}</TableHead>

@@ -250,7 +250,7 @@ export function ReplenishmentNeeds({ storeId }: Props) {
       <Card className="border-2 shadow-xl overflow-hidden">
         <CardContent className="p-0">
           <Table>
-            <TableHeader className="bg-card border-b-2">
+            <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-10">
                   <Checkbox 

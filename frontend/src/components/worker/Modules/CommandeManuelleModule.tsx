@@ -350,7 +350,7 @@ export function CommandeManuelleModule({ storeId }: CommandeManuelleModuleProps)
         <CardContent className="p-0 h-full">
           <div className="h-full overflow-auto">
             <Table>
-              <TableHeader className="sticky top-0 bg-background">
+              <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                 <TableRow>
                   <TableHead className="text-xs">{t('inventory.table.name')}</TableHead>
                   <TableHead className="text-xs w-24">{t('menu.program.unit')}</TableHead>

@@ -120,9 +120,9 @@ export default function DeliverersPage() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[60vh]">
               <Table>
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                   <TableRow>
                     <TableHead>{t('deliverers.table.name')}</TableHead>
                     <TableHead>{t('deliverers.table.email')}</TableHead>
