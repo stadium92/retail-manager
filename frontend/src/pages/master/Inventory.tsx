@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useMasterDataStore } from '@/stores/useMasterDataStore';
 import { useMasterDashboardStore } from '@/stores/useMasterDashboardStore';
 import { FichiersProduitsModule } from '@/components/worker/Modules/FichiersProduitsModule';
+import { FichiersFamillesModule } from '@/components/worker/Modules/FichiersFamillesModule';
 import { ValorisationStock } from '@/components/worker/Modules/Stock/ValorisationStock';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Package, ShieldCheck, Plus, X } from 'lucide-react';
@@ -81,6 +82,9 @@ export default function InventoryPage() {
                     <ShieldCheck className="h-3.5 w-3.5 mr-2" />
                     {t('inventory.valuation')}
                 </TabsTrigger>
+                <TabsTrigger value="families" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-bold uppercase tracking-widest text-[10px] rounded-lg transition-all px-6">
+                    Familles
+                </TabsTrigger>
             </TabsList>
         </div>
 
@@ -112,6 +116,22 @@ export default function InventoryPage() {
                   {stores.find(s => s.id === sid)?.name || t('common.unknown')}
                 </h2>
                 <ValorisationStock storeId={sid} />
+              </div>
+            ))
+          ) : (
+            <div className="p-8 text-center text-muted-foreground font-black uppercase tracking-widest text-xs">{t('common.selectStore')}</div>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="families" className="mt-0">
+          {activeStoreIds.length > 0 ? (
+            activeStoreIds.map(sid => (
+              <div key={`fam-store-${sid}`} className="space-y-3 mb-10">
+                <h2 className="text-sm font-black uppercase tracking-[0.3em] text-primary flex items-center gap-2 px-2">
+                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                  {stores.find(s => s.id === sid)?.name || t('common.unknown')}
+                </h2>
+                <FichiersFamillesModule storeId={sid} />
               </div>
             ))
           ) : (

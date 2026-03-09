@@ -8,6 +8,7 @@ import { NumericInput } from '@/components/ui/numeric-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ProductLookupDialog } from '../Sales/ProductLookupDialog';
 import { toast } from 'sonner';
 import { FileText, Plus, Trash2, Save, Send } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -34,6 +35,8 @@ export function CommandeManuelleModule({ storeId }: CommandeManuelleModuleProps)
   const [items, setItems] = useState<OrderItem[]>([]);
   const [products, setProducts] = useState<{ id: string; name: string; cost_price: number | null; packaging: string | null; wholesale_price_ttc: number | null; wholesale_price_ht: number | null; selling_price_4: number | null; selling_price_2: number | null }[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isProductLookupOpen, setIsProductLookupOpen] = useState(false);
+  const [initialSearchQuery, setInitialSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
@@ -187,15 +190,17 @@ export function CommandeManuelleModule({ storeId }: CommandeManuelleModuleProps)
       if (item.product_id !== productId) return item;
       
       // If switching unit type, convert quantity but KEEP the piece price
-      if (field === 'unit_type' && item.unit_type !== value) {
-        let newQty = item.quantity;
-        if (value === 'Carton') {
-          newQty = item.quantity / item.pack_size;
-        } else {
-          newQty = item.quantity * item.pack_size;
+        if (field === 'unit_type' && item.unit_type !== value) {
+          // Simply change the visual type. The unit_cost is ALWAYS the piece cost.
+          // Total will dynamically calculate as: Qty * PieceCost * (isBox ? packSize : 1)
+          let newQty = item.quantity;
+          if (value === 'Carton') {
+            newQty = Math.max(1, item.quantity / item.pack_size);
+          } else {
+            newQty = item.quantity * item.pack_size;
+          }
+          return { ...item, unit_type: value as 'Pièce' | 'Carton', quantity: newQty };
         }
-        return { ...item, unit_type: value as 'Pièce' | 'Carton', quantity: newQty };
-      }
       
       return { ...item, [field]: value };
     }));
@@ -319,31 +324,30 @@ export function CommandeManuelleModule({ storeId }: CommandeManuelleModuleProps)
           </div>
 
           <div className="relative">
-            <label className="text-xs font-medium mb-1 block">{t('menu.program.searchProductToAdd')} (F2)</label>
-            <Input
-              ref={searchRef}
-              type="text"
-              placeholder={t('common.search')}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-8"
-            />
-            {searchTerm && filteredProducts.length > 0 && (
-              <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg max-h-48 overflow-auto">
-                {filteredProducts.slice(0, 10).map(product => (
-                  <button
-                    key={product.id}
-                    onClick={() => addProduct(product)}
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex justify-between items-center"
-                  >
-                    <span>{product.name}</span>
-                    <span className="text-muted-foreground">{formatCurrency(product.cost_price || 0)}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </CardContent>
+              <label className="text-xs font-medium mb-1 block">{t('menu.program.searchProductToAdd')} (F2)</label>
+              <Button 
+                variant="outline" 
+                className="w-full justify-start text-muted-foreground h-8"
+                onClick={() => setIsProductLookupOpen(true)}
+              >
+                <Search className="mr-2 h-4 w-4" />
+                {t('common.search')}...
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <ProductLookupDialog
+            initialSearch={initialSearchQuery}
+            open={isProductLookupOpen}
+            onOpenChange={setIsProductLookupOpen}
+            storeId={storeId}
+            mode="retail"
+            onSelect={(product) => {
+                addProduct(product as any);
+                setInitialSearchQuery('');
+            }}
+        />
       </Card>
 
       <Card className="flex-1 overflow-hidden">

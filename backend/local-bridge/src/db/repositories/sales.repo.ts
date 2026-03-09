@@ -187,12 +187,38 @@ export const createSalesRepo = (db: Database.Database) => {
   },
 
   deleteSale(saleId: string) {
-    const transaction = db.transaction((id: string) => {
-      db.prepare('DELETE FROM sale_items WHERE sale_id = ?').run(id);
-      db.prepare('DELETE FROM sales WHERE id = ?').run(id);
-    });
-    transaction(saleId);
-  },
+      const sale = stmts.getSale.get(saleId) as LocalSale | undefined;
+      if (!sale) return;
+
+      const items = stmts.listItems.all(saleId) as LocalSaleItem[];
+
+      const transaction = db.transaction(() => {
+        // Revert stock for each item if it was a real sale (not proforma)
+        if (sale.sale_type !== 'proforma') {
+          for (const item of items) {
+            if (item.product_id) {
+              // Add stock back
+              db.prepare('UPDATE products SET quantity = quantity + ? WHERE id = ?').run(item.quantity, item.product_id);
+            }
+          }
+        }
+        
+        // Revert client balance if it was a credit sale
+        if (sale.payment_method === 'credit' && (sale as any).client_id) {
+          db.prepare('UPDATE clients SET current_balance = current_balance - ? WHERE id = ?').run(sale.total_price, (sale as any).client_id);
+        }
+
+        db.prepare('DELETE FROM sale_items WHERE sale_id = ?').run(saleId);
+        db.prepare('DELETE FROM sales WHERE id = ?').run(saleId);
+      });
+      transaction();
+
+      // Emit outbox events
+      for (const item of items) {
+        emitOutbox(db, sale.store_id, 'sale_item', item.id, 'delete', { id: item.id } as any);
+      }
+      emitOutbox(db, sale.store_id, 'sale', sale.id, 'delete', { id: sale.id } as any);
+    },
 
   listSaleItems(saleId: string): LocalSaleItem[] {
     return stmts.listItems.all(saleId) as LocalSaleItem[];

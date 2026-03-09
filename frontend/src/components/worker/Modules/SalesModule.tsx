@@ -497,12 +497,6 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     if (product) {
         // Add it directly (consumption logic is inside addProduct)
         addProduct(product);
-        
-        // SPEED FEATURE: Jump to the NEXT empty row immediately after scanning
-        setTimeout(() => {
-            const store = useNavigationStore.getState();
-            store.jumpToLastEmptyRow();
-        }, 100);
     } else {
         // If not found, maybe it's just a barcode they are typing manually?
         // We'll leave it in the designation field (captured via handleCaptureKeystroke)
@@ -928,8 +922,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
 
       if (colIndex === 0) {
         // Col 0: Designation. Append the character.
-        const currentVal = lineItems[rowIndex].designation || '';
-        handleDesignationChange(rowIndex, currentVal + key);
+        handleDesignationChange(rowIndex, key); // Clean overwrite
       } else if (colIndex === 5) {
         // Col 5: Quantity. OVERWRITE with the key if it's a number.
         if (/[0-9]/.test(key)) {
