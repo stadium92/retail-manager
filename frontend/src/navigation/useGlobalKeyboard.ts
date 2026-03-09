@@ -88,7 +88,7 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
       // ---------------------------------------------------------------
       // Global Modifiers / Bypasses
       // ---------------------------------------------------------------
-      if (e.key === 'Tab') {
+      if (e.key === 'Tab' || e.key === 'Shift') {
         e.preventDefault();
         store.getState().jumpToLastEmptyRow();
         return;

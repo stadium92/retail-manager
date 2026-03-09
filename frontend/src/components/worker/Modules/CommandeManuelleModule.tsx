@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ProductLookupDialog } from '../Sales/ProductLookupDialog';
 import { toast } from 'sonner';
-import { FileText, Plus, Trash2, Save, Send } from 'lucide-react';
+import { FileText, Plus, Trash2, Save, Send, Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useFormatters } from '@/utils/formatting';
 
