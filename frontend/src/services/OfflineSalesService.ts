@@ -55,6 +55,27 @@ export const OfflineSalesService = {
         }
     },
 
+    
+    async deleteSale(saleId: string): Promise<{ success: boolean; error?: any }> {
+        try {
+            const { isLocalFirst } = getDataClient();
+            if (isLocalFirst) {
+                const response = await OfflineAuthService.localBridgeRequest(`/rest/v1/sales/${saleId}`, {
+                    method: 'DELETE'
+                });
+                
+                // Centralized event dispatch to ensure UI reactivity
+                window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'sale' } }));
+                window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
+                return { success: true };
+            }
+            return { success: false, error: 'Cannot delete offline.' };
+        } catch (error) {
+            console.error('deleteSale error:', error);
+            return { success: false, error };
+        }
+    },
+    
     async getSales(storeId: string): Promise<any[]> {
       const { isLocalFirst } = getDataClient();
       if (isLocalFirst) {

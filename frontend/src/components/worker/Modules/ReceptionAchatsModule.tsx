@@ -101,7 +101,7 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
           product_name: item.product?.name || '',
           quantity_ordered: isBox ? (item.quantity_ordered / packSize) : item.quantity_ordered,
           quantity_received: isBox ? (item.quantity_ordered / packSize) : item.quantity_ordered,
-          unit_cost: isBox ? (item.unit_cost * packSize) : item.unit_cost, 
+          unit_cost: item.unit_cost, // Always piece cost 
           unit_type: item.product?.unit_type,
           isBox,
           packSize
@@ -133,14 +133,14 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
 
         const formatValue = (num: number) => Number(Number(num).toFixed(4));
 
+        // PIECE-CENTRIC MODEL: unit_cost is ALWAYS the cost of 1 piece.
+        // We only scale the displayed quantity.
         if (newIsBox) {
             newQtyOrdered = formatValue(newQtyOrdered / item.packSize);
             newQtyReceived = formatValue(newQtyReceived / item.packSize);
-            newCost = formatValue(newCost * item.packSize);
         } else {
             newQtyOrdered = formatValue(newQtyOrdered * item.packSize);
             newQtyReceived = formatValue(newQtyReceived * item.packSize);
-            newCost = formatValue(newCost / item.packSize);
         }
 
         return { ...item, isBox: newIsBox, quantity_ordered: newQtyOrdered, quantity_received: newQtyReceived, unit_cost: newCost };
@@ -174,7 +174,7 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
       const normalizedItems = receiptItems.map(item => ({
         ...item,
         quantity_received: item.isBox ? (Number(item.quantity_received) * (item.packSize || 1)) : Number(item.quantity_received),
-        unit_cost: item.isBox ? (Number(item.unit_cost) / (item.packSize || 1)) : Number(item.unit_cost)
+        unit_cost: Number(item.unit_cost) // Always piece cost
       }));
 
       if (!isAdHoc) {
@@ -187,8 +187,33 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
         const totalAmountOnReceipt = normalizedItems.reduce((sum, item) => sum + (item.quantity_received * item.unit_cost), 0);
         if (!selectedSupplierId) return toast.error(t('invitations.form.selectStore')); 
         
-        // Handle ad-hoc direct purchase implementation...
-        // For brevity using purchasing store or offline service
+        // Send direct purchase order to backend
+        const payload = {
+          store_id: storeId,
+          supplier_id: selectedSupplierId,
+          status: 'received',
+          total_amount: totalAmountOnReceipt,
+          notes: 'Direct Purchase / Ad-Hoc Reception',
+          items: normalizedItems.map(item => ({
+            product_id: item.product_id || item.product?.id,
+            product_name: item.product_name || item.product?.name,
+            quantity_ordered: item.quantity_received,
+            quantity_received: item.quantity_received,
+            unit_cost: item.unit_cost
+          }))
+        };
+        
+        const res = await fetch(`${getDataClient().localBridgeBaseUrl}/rest/v1/purchase_orders`, {
+          method: 'POST',
+          headers: {
+             'Content-Type': 'application/json',
+             ...(await OfflineAuthService.getAuthHeaders() || {})
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        if (!res.ok) throw new Error('Failed to save direct purchase');
+        
         toast.success(t('common.success'));
       }
 
@@ -341,7 +366,7 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
                         <NumericInput value={displayCost} onValueChange={(v) => handleCostChange(item.id, v)} className="h-9 text-right font-mono text-xs" />
                       </TableCell>
                       <TableCell className="text-right font-black text-primary">
-                        {formatCurrency(item.quantity_received * item.unit_cost)}
+                        {formatCurrency(item.quantity_received * item.unit_cost * (item.isBox ? item.packSize : 1))}
                       </TableCell>
                     </TableRow>
                   );

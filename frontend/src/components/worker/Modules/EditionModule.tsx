@@ -509,6 +509,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                     <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                       <TableRow>
                         <TableHead className="text-xs">{t('menu.program.time')}</TableHead>
+                        <TableHead className="text-xs">{t('sales.invoice_number', 'N° Facture')}</TableHead>
                         <TableHead className="text-xs">{t('edition.orderRef')}</TableHead>
                         <TableHead className="text-xs">{t('common.type')}</TableHead>
                         <TableHead className="text-xs">{t('common.status')}</TableHead>
@@ -526,6 +527,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                             <TableCell className="text-xs">
                               {sale.created_at ? format(new Date(sale.created_at), 'HH:mm', { locale: getLocale() }) : '—'}
                             </TableCell>
+                            <TableCell className="text-xs font-black font-mono">{sale.invoice_number || sale.id.slice(0, 8)}</TableCell>
                             <TableCell className="text-xs font-mono">{sale.order_ref || '—'}</TableCell>
                             <TableCell>
                               <Badge variant={sale.sale_type === 'proforma' ? 'secondary' : 'default'} className="text-[9px] uppercase font-bold px-1">
@@ -547,7 +549,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                       )}
                       {filteredSales.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={9} className="text-center text-muted-foreground py-8 uppercase font-mono opacity-50">
+                          <TableCell colSpan={10} className="text-center text-muted-foreground py-8 uppercase font-mono opacity-50">
                             {t('common.noData')}
                           </TableCell>
                         </TableRow>
@@ -556,7 +558,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                     {filteredSales.length > 0 && (
                       <tfoot className="sticky bottom-0 bg-muted/50 font-bold border-t-2">
                         <TableRow>
-                          <TableCell colSpan={7} className="text-right uppercase text-[10px]">{t('common.totalPage') || 'TOTAL PAGE'}</TableCell>
+                          <TableCell colSpan={8} className="text-right uppercase text-[10px]">{t('common.totalPage') || 'TOTAL PAGE'}</TableCell>
                           <TableCell className="text-right text-sm font-black text-primary font-mono">{formatCurrency(totalSales)}</TableCell>
                           <TableCell></TableCell>
                         </TableRow>
