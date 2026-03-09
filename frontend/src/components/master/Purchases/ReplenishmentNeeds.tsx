@@ -135,9 +135,10 @@ export function ReplenishmentNeeds({ storeId }: Props) {
         let qty = item.suggested_qty;
         let cost = item.cost_price || item.cost || item.unit_price || item.price || 0;
 
-        if (isBox && packSize > 1) {
-            qty = qty / packSize;
-        }
+          // PIECE-CENTRIC: Always keep cost as Piece Cost. Only scale quantity visually.
+          if (isBox && packSize > 1) {
+              qty = qty / packSize;
+          }
 
         return {
           ...item,
@@ -168,13 +169,12 @@ export function ReplenishmentNeeds({ storeId }: Props) {
 
       const formatValue = (num: number) => Number(Number(num).toFixed(4));
 
-      if (newIsBox) {
-        newQty = formatValue(newQty / item.packSize);
-        newCost = formatValue(newCost * item.packSize);
-      } else {
-        newQty = formatValue(newQty * item.packSize);
-        newCost = formatValue(newCost / item.packSize);
-      }
+      // PIECE-CENTRIC: Do not scale the cost. Only scale the quantity.
+        if (newIsBox) {
+          newQty = formatValue(newQty / item.packSize);
+        } else {
+          newQty = formatValue(newQty * item.packSize);
+        }
       
       return { ...item, isBox: newIsBox, order_qty: newQty, unit_cost: newCost };
     }));
@@ -189,7 +189,7 @@ export function ReplenishmentNeeds({ storeId }: Props) {
     setLoading(true);
     try {
       const totalAmount = orderItems.reduce((sum, item) => {
-        const lineTotal = (item.order_qty || 0) * (item.unit_cost || 0);
+        const lineTotal = (item.order_qty || 0) * (item.unit_cost || 0) * (item.isBox ? (item.packSize || 1) : 1);
         return sum + lineTotal;
       }, 0);
 
@@ -200,7 +200,7 @@ export function ReplenishmentNeeds({ storeId }: Props) {
         total_amount: totalAmount
       }, orderItems.map(i => {
         const qtyInPieces = (i.order_qty || 0) * (i.isBox ? (i.packSize || 1) : 1);
-        const costInPieces = (i.unit_cost || 0) / (i.isBox ? (i.packSize || 1) : 1);
+          const costInPieces = i.unit_cost || 0; // Already in pieces
         return {
           product_id: i.product_id,
           quantity_ordered: qtyInPieces,
