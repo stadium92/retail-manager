@@ -335,20 +335,18 @@ export function CommandeManuelleModule({ storeId }: CommandeManuelleModuleProps)
               </Button>
             </div>
           </CardContent>
-        </Card>
-        
-        <ProductLookupDialog
-            initialSearch={initialSearchQuery}
-            open={isProductLookupOpen}
-            onOpenChange={setIsProductLookupOpen}
-            storeId={storeId}
-            mode="retail"
-            onSelect={(product) => {
-                addProduct(product as any);
-                setInitialSearchQuery('');
-            }}
-        />
-      </Card>
+          </Card>
+
+          <ProductLookupDialog          initialSearch={initialSearchQuery}
+          open={isProductLookupOpen}
+          onOpenChange={setIsProductLookupOpen}
+          storeId={storeId}
+          mode="retail"
+          onSelect={(product) => {
+              addProduct(product as any);
+              setInitialSearchQuery('');
+          }}
+      />
 
       <Card className="flex-1 overflow-hidden">
         <CardContent className="p-0 h-full">
