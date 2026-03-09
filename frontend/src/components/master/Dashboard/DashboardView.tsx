@@ -28,12 +28,13 @@ export function DashboardView() {
     monthSales: 0,
     totalStores: 0,
     lowStockItems: 0,
+    stockValuation: 0,
   });
   const [salesStatus, setSalesStatus] = useState<SalesStatus>('good');
 
   useEffect(() => {
     loadDashboardData();
-  }, [version]);
+  }, [version, selectedStoreIds, isAllStoresSelected]);
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -53,16 +54,19 @@ export function DashboardView() {
       let combinedWeek = 0;
       let combinedMonth = 0;
       let combinedLowStock = 0;
+      let combinedValuation = 0;
 
       await Promise.all(activeStoreIds.map(async (sid) => {
-        const [salesRes, stockRes] = await Promise.all([
-          OfflineSalesService.getSalesMetrics(sid),
-          OfflineInventoryService.getLowStockItems(10, sid) // Modified to take storeId
+        const [salesRes, stockRes, valRes] = await Promise.all([
+          OfflineSalesService.getSaleMetrics(sid),
+          OfflineInventoryService.getLowStockItems(10, sid),
+          OfflineInventoryService.getStockValuation(sid)
         ]);
         combinedToday += salesRes.todaySales || 0;
         combinedWeek += salesRes.weekSales || 0;
         combinedMonth += salesRes.monthSales || 0;
         combinedLowStock += stockRes.data?.length || 0;
+        combinedValuation += valRes.total_retail || 0;
       }));
 
       // Calculate sales status based on aggregate
@@ -79,6 +83,7 @@ export function DashboardView() {
         monthSales: combinedMonth,
         totalStores: activeStoreIds.length,
         lowStockItems: combinedLowStock,
+        stockValuation: combinedValuation,
       });
       setSalesStatus(status);
     } catch (error) {
@@ -148,18 +153,23 @@ export function DashboardView() {
 
         <TabsContent value="overview" className="space-y-6">
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <MetricCard
           title={t('dashboard.todaySales')}
           value={formatCurrency(metrics.todaySales)}
           icon={Coins}
           trend={salesStatus === 'good' ? 'up' : salesStatus === 'bad' ? 'down' : 'stable'}
-          trendValue={t('dashboard.trendValue', { percent: ((metrics.todaySales / metrics.weekSales) * 100).toFixed(1) })}
+          trendValue={t('dashboard.trendValue', { percent: metrics.weekSales > 0 ? ((metrics.todaySales / metrics.weekSales) * 100).toFixed(1) : '0' })}
         />
         <MetricCard
           title={t('dashboard.weekSales')}
           value={formatCurrency(metrics.weekSales)}
           icon={TrendingUp}
+        />
+        <MetricCard
+          title={t('dashboard.metrics.inventoryValue')}
+          value={formatCurrency(metrics.stockValuation)}
+          icon={Package}
         />
         <MetricCard
           title={t('dashboard.totalStores')}
@@ -173,7 +183,6 @@ export function DashboardView() {
           className={metrics.lowStockItems > 0 ? 'border-warning' : ''}
         />
       </div>
-
       <Card>
         <CardHeader>
           <CardTitle>{t('dashboard.welcome.title')}</CardTitle>
