@@ -168,62 +168,54 @@ fn decrypt_data(data: &[u8]) -> Result<Vec<u8>, String> {
 // -----------------------------------------------------------------------------
 
 pub fn verify_signature(key: &str, device_id: &str) -> Result<bool, String> {
-    println!("[LICENSE DEBUG] Verifying Key: {}", key);
-    println!("[LICENSE DEBUG] With Device ID: {}", device_id);
-    // Expected Format: RM-YYYY-DEVICEID-<SIGNATURE_BASE32>
-    // Example: RM-2026-KV7M9X2P-KB2...
+    let clean_device_id = device_id.replace("-", "").to_uppercase();
     
-    let clean_device_id = device_id.replace("-", "");
-    
-    let parts: Vec<&str> = key.split('-').collect();
+    // We expect at least 4 parts: RM, YEAR, DEVICEID, SIGNATURE
+    // The signature itself might contain dashes in some encodings, so we split into 4 parts max
+    let parts: Vec<&str> = key.splitn(4, '-').collect();
     if parts.len() < 4 {
-        return Err("Invalid key format.".to_string());
+        return Err("Invalid key format (needs 4 parts).".to_string());
     }
 
     let prefix = parts[0];
     let year = parts[1];
-    let key_device_id = parts[2];
-    let signature_encoded = parts[3];
+    let key_device_id = parts[2].to_uppercase();
+    let signature_encoded = parts[3].to_uppercase();
 
     if prefix != "RM" {
         return Err("Invalid license prefix.".to_string());
     }
 
     if key_device_id != clean_device_id {
-        return Err(format!("Key is for device {}, but this is {}.", key_device_id, clean_device_id));
+        return Err(format!("Device Mismatch: Key is for {}, but this machine is {}.", key_device_id, clean_device_id));
     }
 
-    // Reconstruct Payload: RM-YYYY-DEVICEID
+    // Reconstruct EXACT payload used during signing: RM-YYYY-DEVICEID (no dashes in device id)
     let payload = format!("{}-{}-{}", prefix, year, key_device_id);
     let payload_bytes = payload.as_bytes();
 
     // Decode Signature
-    let signature_bytes = base32::decode(base32::Alphabet::Crockford, signature_encoded)
-        .ok_or_else(|| {
-            println!("[LICENSE DEBUG] Failed to decode base32");
-            "Invalid signature encoding (Base32).".to_string()
-        })?;
+    // base32 Crockford is case-insensitive and ignores some chars, but our crate might be strict
+    let signature_bytes = base32::decode(base32::Alphabet::Crockford, &signature_encoded)
+        .ok_or_else(|| "Signature decoding failed (Base32).".to_string())?;
 
     if signature_bytes.len() != 64 {
-        return Err("Invalid signature length.".to_string());
+        return Err(format!("Invalid signature length: {} bytes (expected 64).", signature_bytes.len()));
     }
 
-    let signature = Signature::from_slice(&signature_bytes).map_err(|_| "Invalid signature bytes.".to_string())?;
+    let signature = Signature::from_slice(&signature_bytes)
+        .map_err(|_| "Invalid signature format.".to_string())?;
     
-    // Verify
     // Handle all-zero placeholder key
     if PUBLIC_KEY_BYTES == [0u8; 32] {
         return Err("Dev Error: PUBLIC_KEY_BYTES not set in license.rs".to_string());
     }
 
     let verifying_key = VerifyingKey::from_bytes(&PUBLIC_KEY_BYTES)
-        .map_err(|_| "Invalid public key".to_string())?;
+        .map_err(|_| "Invalid public key structure.".to_string())?;
 
     verifying_key.verify(payload_bytes, &signature)
-        .map_err(|e| {
-            println!("[LICENSE DEBUG] Signature verification failed: {:?}", e);
-            "Invalid signature. Key has been tampered with.".to_string()
-        })?;
+        .map_err(|_| "Cryptographic Verification Failed: The key is invalid for this payload.".to_string())?;
 
     Ok(true)
 }
@@ -413,7 +405,7 @@ pub fn activate_license_command(app_handle: AppHandle, key: String, store_name: 
     }
     
     // 2. Prepare Data
-    let parts: Vec<&str> = key.split('-').collect();
+    let parts: Vec<&str> = key.splitn(4, '-').collect();
     let year = parts[1].to_string();
     let now = chrono::Utc::now().to_rfc3339();
     
