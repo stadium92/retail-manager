@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { LicenseBanner } from '@/components/shared/LicenseBanner';
 import { ActivationGate } from '@/components/license/ActivationGate';
+import { LicenseService } from '@/services/LicenseService';
 
 export interface LicenseStore {
   store_id: string;
@@ -53,7 +54,7 @@ export function LicenseProvider({ children }: { children: React.ReactNode }) {
         setShowGate(!isActivated && !isSessionSkipped);
         return;
       }
-      const status = await invoke<LicenseStatus>('get_license_status_command');
+      const status = await LicenseService.getStatus();
       setLicense(status);
       
       // If active, save to local storage to hide gate forever
@@ -86,10 +87,13 @@ export function LicenseProvider({ children }: { children: React.ReactNode }) {
   const activate = async (key: string, storeName: string) => {
     setLoading(true);
     try {
-      await invoke('activate_license_command', { key, storeName });
+      console.log('[LicenseContext] Attempting activation for store:', storeName);
+      await LicenseService.activate(key, storeName);
+      console.log('[LicenseContext] Activation successful!');
       localStorage.setItem('rm_activated', 'true');
       await refreshStatus();
     } catch (error) {
+      console.error('[LicenseContext] Activation failed:', error);
       setLoading(false);
       throw error;
     }
