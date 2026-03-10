@@ -85,7 +85,7 @@ export function LicenseProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const activate = async (key: string, storeName: string) => {
-    setLoading(true);
+    // We DON'T set loading(true) here because it unmounts the UI and prevents error messages from showing
     try {
       console.log('[LicenseContext] Attempting activation for store:', storeName);
       await LicenseService.activate(key, storeName);
@@ -94,7 +94,7 @@ export function LicenseProvider({ children }: { children: React.ReactNode }) {
       await refreshStatus();
     } catch (error) {
       console.error('[LicenseContext] Activation failed:', error);
-      setLoading(false);
+      // We don't set loading(false) because we never set it to true
       throw error;
     }
   };
