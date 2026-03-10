@@ -1,58 +1,44 @@
-
 import Database from 'better-sqlite3';
 
-const DB_PATH = '/Users/mohamedcoulibaly/Library/Application Support/Retail Manager/data/localbridge.sqlite';
+const DB_PATH = process.platform === 'darwin' 
+    ? `/Users/${process.env.USER}/Library/Application Support/Retail Manager/data/localbridge.sqlite`
+    : `${process.env.APPDATA}/Retail Manager/data/localbridge.sqlite`;
+
 const db = new Database(DB_PATH);
 
-console.log('--- STARTING CLEAN SLATE OPERATION ---');
-console.log('Preserving: Users, Roles, Stores, and Sessions.');
-console.log('Wiping: Products, Families, Clients, Suppliers, Sales, and Logs...');
+console.log('--- STARTING AGGRESSIVE SYSTEM RESET ---');
+db.exec('PRAGMA foreign_keys = OFF');
 
-const tablesToWipe = [
-    'products',
-    'product_families',
-    'clients',
-    'client_services',
-    'suppliers',
-    'sales',
-    'sale_items',
-    'purchase_orders',
-    'purchase_items',
-    'supplier_payments',
-    'inventory_movements',
-    'product_batches',
-    'cash_transactions',
-    'cash_closings',
-    'sync_outbox',
-    'sync_state',
-    'audit_logs',
-    'pending_mutations',
-    'replenishment_requests',
-    'scheduled_orders',
-    'scheduled_order_items',
-    'deliveries',
-    'worker_invitations'
-];
+// Essential tables to PRESERVE
+const PROTECTED_TABLES = ['users', 'user_roles', 'stores', 'sessions', 'sqlite_sequence'];
+
+// Get all tables currently in the DB
+const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(row => row.name);
 
 db.transaction(() => {
-    for (const table of tablesToWipe) {
+    for (const table of tables) {
+        // Skip virtual tables (FTS5) and protected tables
+        if (table.startsWith('products_fts') || PROTECTED_TABLES.includes(table)) {
+            console.log(`- Preserved: ${table}`);
+            continue;
+        }
+
         try {
             db.prepare(`DELETE FROM ${table}`).run();
-            console.log(`- Cleared: ${table}`);
+            console.log(`- Wiped: ${table}`);
         } catch (e) {
-            console.log(`- Skipped: ${table} (Not found or error)`);
+            console.log(`- Error wiping ${table}: ${e.message}`);
         }
     }
 
-    // Rebuild FTS5 Virtual Table for products to clear search index
+    // Force rebuild of search index to clear results
     try {
-        db.prepare(`INSERT INTO products_fts(products_fts) VALUES('rebuild')`).run();
-        console.log('- Rebuilt: products_fts index');
-    } catch (e) {
-        console.log('- Skipped: products_fts (Not found)');
-    }
+        db.prepare("INSERT INTO products_fts(products_fts) VALUES('rebuild')").run();
+        console.log('- Rebuilt: products_fts index (Empty)');
+    } catch (e) {}
 })();
 
-console.log('--- CLEAN SLATE COMPLETE ---');
-console.log('Ready for fresh migration.');
+db.exec('PRAGMA foreign_keys = ON');
+console.log('--- SYSTEM RESET COMPLETE ---');
+console.log('Credential accounts are preserved. All business data is gone.');
 db.close();
