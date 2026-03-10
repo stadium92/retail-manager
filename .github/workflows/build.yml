@@ -34,7 +34,7 @@ jobs:
       - name: Install Root Dependencies
         run: npm install
 
-- name: Build Backend (local-bridge)
+      - name: Build Backend (local-bridge)
         working-directory: backend/local-bridge
         run: |
           npm install
