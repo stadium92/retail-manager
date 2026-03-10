@@ -89,6 +89,7 @@ export interface LocalInventory {
   store_id: string;
   product_name: string;
   sku?: string;
+  barcode?: string;
   quantity: number;
   unit_price: number;
   wholesale_price?: number;
