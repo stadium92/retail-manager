@@ -168,6 +168,8 @@ fn decrypt_data(data: &[u8]) -> Result<Vec<u8>, String> {
 // -----------------------------------------------------------------------------
 
 pub fn verify_signature(key: &str, device_id: &str) -> Result<bool, String> {
+    println!("[LICENSE DEBUG] Verifying Key: {}", key);
+    println!("[LICENSE DEBUG] With Device ID: {}", device_id);
     // Expected Format: RM-YYYY-DEVICEID-<SIGNATURE_BASE32>
     // Example: RM-2026-KV7M9X2P-KB2...
     
@@ -197,7 +199,10 @@ pub fn verify_signature(key: &str, device_id: &str) -> Result<bool, String> {
 
     // Decode Signature
     let signature_bytes = base32::decode(base32::Alphabet::Crockford, signature_encoded)
-        .ok_or("Invalid signature encoding (Base32).")?;
+        .ok_or_else(|| {
+            println!("[LICENSE DEBUG] Failed to decode base32");
+            "Invalid signature encoding (Base32).".to_string()
+        })?;
 
     if signature_bytes.len() != 64 {
         return Err("Invalid signature length.".to_string());
@@ -215,7 +220,10 @@ pub fn verify_signature(key: &str, device_id: &str) -> Result<bool, String> {
         .map_err(|_| "Invalid public key".to_string())?;
 
     verifying_key.verify(payload_bytes, &signature)
-        .map_err(|_| "Invalid signature. Key has been tampered with.".to_string())?;
+        .map_err(|e| {
+            println!("[LICENSE DEBUG] Signature verification failed: {:?}", e);
+            "Invalid signature. Key has been tampered with.".to_string()
+        })?;
 
     Ok(true)
 }
@@ -392,10 +400,17 @@ pub fn check_license_gate(app_handle: &AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 pub fn activate_license_command(app_handle: AppHandle, key: String, store_name: String) -> Result<(), String> {
+    println!("[LICENSE DEBUG] Starting activation command for key: {}", key);
     let device_hash = get_device_hash();
     
     // 1. Verify Cryptography
-    verify_signature(&key, &device_hash)?;
+    match verify_signature(&key, &device_hash) {
+        Ok(_) => println!("[LICENSE DEBUG] Signature verified successfully."),
+        Err(e) => {
+            println!("[LICENSE DEBUG] Verification failed: {}", e);
+            return Err(format!("VERIFICATION_FAILED: {}", e));
+        }
+    }
     
     // 2. Prepare Data
     let parts: Vec<&str> = key.split('-').collect();
