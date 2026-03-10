@@ -7,7 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Plus, Edit2, Trash2, Package, Barcode, Minus, ChevronDown, ChevronRight, RefreshCw, X } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ExportService } from '@/services/ExportService';
+import { Search, Plus, Edit2, Trash2, Package, Barcode, Minus, ChevronDown, ChevronRight, RefreshCw, X, Download } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { getDataClient } from '@/lib/dataClient';
 import { useMasterDataStore, ProductMaster } from '@/stores/useMasterDataStore';
@@ -382,6 +384,43 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     setIsLookupOpen(false);
   };
 
+  
+  const handleExport = (type: 'soft' | 'full') => {
+    if (localProducts.length === 0) {
+      toast.error(t('common.noData'));
+      return;
+    }
+
+    let dataToExport = [];
+    if (type === 'soft') {
+      dataToExport = localProducts.map(p => ({
+        Name: p.name,
+        SKU: p.sku || '',
+        Barcode: p.barcode || '',
+        Packaging: p.packaging || '',
+        UnitType: p.unit_type || ''
+      }));
+    } else {
+      dataToExport = localProducts.map(p => ({
+        Name: p.name,
+        SKU: p.sku || '',
+        Barcode: p.barcode || '',
+        Category: p.category_name || '',
+        Quantity: p.quantity,
+        MinQuantity: p.min_quantity,
+        CostPrice: p.cost_price,
+        RetailPrice: p.unit_price,
+        WholesalePrice: p.wholesale_price,
+        SellingPrice2: p.selling_price_2,
+        SellingPrice3: p.selling_price_3,
+        SellingPrice4: p.selling_price_4,
+        Packaging: p.packaging,
+        UnitType: p.unit_type
+      }));
+    }
+    ExportService.exportToCSV(dataToExport, `inventory_export_${type}_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
   const filteredProducts = useMemo(() => {
     return localProducts.filter(p => {
       const mSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -511,6 +550,24 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
         <div className="relative flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder={t('common.search')} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 h-10 border-none bg-muted/30 font-black uppercase tracking-tighter" /></div>
         <div className="flex items-center gap-2">
             <Select value={selectedFamily} onValueChange={setSelectedFamily}><SelectTrigger className="w-48 h-10 bg-muted/30 border-none font-black uppercase text-[10px] tracking-widest"><SelectValue placeholder={t('inventory.fields.family')} /></SelectTrigger><SelectContent><SelectItem value="all">{t('inventory.allFamilies')}</SelectItem>{families.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent></Select>
+            
+            {isMasterView && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="h-10 border-2 gap-2">
+                    <Download className="h-4 w-4" /> Export
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleExport('soft')}>
+                    Soft Export (No Prices)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport('full')}>
+                    Full Export
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             <Button variant="outline" size="icon" onClick={fetchData} className="h-10 w-10 border-2"><RefreshCw className="h-4 w-4" /></Button>
             <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="h-10 px-6 font-black uppercase tracking-[0.2em] text-[10px] shadow-lg shadow-primary/20"><Plus className="h-4 w-4 mr-2" />{t('inventory.addItem')}</Button>
         </div>

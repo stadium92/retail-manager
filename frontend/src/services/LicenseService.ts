@@ -60,9 +60,10 @@ export class LicenseService {
 
     static async activate(key: string, storeName: string): Promise<void> {
         try {
-            await invoke('activate_license_command', { key, storeName });
+            await invoke('activate_license_command', { key, store_name: storeName });
         } catch (error: any) {
-            throw new Error(error || 'Activation failed');
+            console.error('Activation Error Details:', error);
+            throw new Error(`IPC Error: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
         }
     }
 

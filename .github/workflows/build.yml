@@ -34,30 +34,7 @@ jobs:
       - name: Install Root Dependencies
         run: npm install
 
-      - name: Auto Increment Version
-        shell: bash
-        run: |
-          # Use GitHub Run Number as the patch version to ensure uniqueness
-          # This transforms 0.3.0 into 0.3.<run_number>
-          node -e "
-            const fs = require('fs');
-            const runNumber = process.env.GITHUB_RUN_NUMBER;
-            
-            // Update root package.json
-            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-            const baseVersion = pkg.version.split('.').slice(0, 2).join('.');
-            pkg.version = \`\${baseVersion}.\${runNumber}\`;
-            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 4));
-            console.log('Updated package.json version to: ' + pkg.version);
-            
-            // Update tauri.conf.json
-            const tauri = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
-            tauri.version = pkg.version;
-            fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(tauri, null, 4));
-            console.log('Updated tauri.conf.json version to: ' + tauri.version);
-          "
-
-      - name: Build Backend (local-bridge)
+- name: Build Backend (local-bridge)
         working-directory: backend/local-bridge
         run: |
           npm install

@@ -103,7 +103,7 @@ export function ActivationGate({ status, onActivated, onSkip }: ActivationGatePr
             }
 
             toast.error(t('common.error'), { 
-                description: error.message || t('license.invalidActivationKey') 
+                description: `[DEBUG] ${error.message || error || t('license.invalidActivationKey')}` 
             });
         } finally {
             setIsSubmitting(false);

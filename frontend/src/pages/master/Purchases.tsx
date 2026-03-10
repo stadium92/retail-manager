@@ -291,7 +291,8 @@ export default function PurchasesPage() {
                                     {orderItems.map(item => {
                                       const packSize = parseInt(item.product?.packaging?.match(/\d+/)?.[0] || '1') || 1;
                                       // If the stored cost is a box cost, we show the piece cost for clarity
-                                      const pieceCost = item.unit_cost / packSize;
+                                      // Since we transitioned to a Piece-Centric model, unit_cost IS the piece cost.
+                                        const pieceCost = item.unit_cost;
                                       return (
                                         <TableRow key={item.id} className="h-8">
                                           <TableCell className="text-xs font-medium">
