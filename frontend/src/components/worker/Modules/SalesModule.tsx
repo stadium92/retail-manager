@@ -459,6 +459,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
 
       // CONSUMPTION LOGIC: Fill the first empty row instead of appending a new one
       const firstEmptyIndex = lineItems.findIndex(li => !li.productId);
+      let targetRow = -1;
       
       if (firstEmptyIndex >= 0) {
         const newItems = [...lineItems];
@@ -468,19 +469,30 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         };
         updateSession(mode, { lineItems: newItems });
         setSelectedIndex(firstEmptyIndex);
+        targetRow = firstEmptyIndex;
       } else {
         updateSession(mode, { lineItems: [...lineItems, newItem] });
         setSelectedIndex(lineItems.length);
-        }
+        targetRow = lineItems.length;
       }
       
       // Ensure focus jumps to Quantity column (index 5)
       setTimeout(() => {
           const store = useNavigationStore.getState();
-          const targetRow = firstEmptyIndex !== -1 ? firstEmptyIndex : lineItems.length;
-          store.setActiveCell({ row: targetRow, col: 5 });
-          store.setMode('hover');
-      }, 150);
+          if (targetRow !== -1) {
+            store.setActiveCell({ row: targetRow, col: 5 });
+            store.setMode('edit');
+            
+            // Give NavigableCell a moment to render and focus, then select the text
+            setTimeout(() => {
+               const el = document.getElementById(`quantity-input-${targetRow}`) as HTMLInputElement;
+               if (el) {
+                   el.focus();
+                   el.select();
+               }
+            }, 50);
+          }
+      }, 50);
       
       toast.success(t('worker.sales.itemFound', { name: product.name }));
   }, [lineItems, mode, updateSession, t, activeTier, currentSession.clientDiscount]);
@@ -492,7 +504,37 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     
     console.log('[Scanner] High speed input detected:', code);
     
-    // Find the product
+    // 1. Clean up "Scanner Corruption" in the currently active cell
+    const store = useNavigationStore.getState();
+    const activeCell = store.activeCell;
+    
+    if (activeCell && activeCell.row >= 0 && activeCell.row < lineItems.length) {
+        const row = activeCell.row;
+        const item = lineItems[row];
+        
+        // Only clean up if the row already has a product (empty rows are safely overwritten by addProduct)
+        if (item && item.productId) {
+            if (activeCell.col === 5) { // Quantity
+                const qStr = String(item.quantity);
+                if (qStr.includes(code)) {
+                    const fixed = qStr.replace(code, '');
+                    handleQuantityChange(row, fixed === '' ? 1 : parseInt(fixed));
+                }
+            } else if (activeCell.col === 0) { // Designation
+                const dStr = String(item.designation);
+                if (dStr.includes(code)) {
+                    handleDesignationChange(row, dStr.replace(code, ''));
+                }
+            } else if (activeCell.col === 4) { // Price
+                const pStr = String(item.unitPrice);
+                if (pStr.includes(code)) {
+                    handlePriceChange(row, pStr.replace(code, ''));
+                }
+            }
+        }
+    }
+    
+    // 2. Find and add the product
     const product = await scanProduct(code);
     if (product) {
         // Add it directly (consumption logic is inside addProduct)
@@ -502,7 +544,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         // We'll leave it in the designation field (captured via handleCaptureKeystroke)
         toast.error(t('worker.sales.itemNotFound') + ': ' + code);
     }
-  }, [scanProduct, addProduct, t]);
+  }, [scanProduct, addProduct, t, lineItems, handleQuantityChange, handleDesignationChange, handlePriceChange]);
 
   const handlePriceChange = useCallback((index: number, unitPrice: any) => {
     const newItems = [...lineItems];
