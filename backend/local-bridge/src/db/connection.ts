@@ -13,20 +13,17 @@ const dbPath = path.join(env.dataDir, 'localbridge.sqlite');
 let options: Database.Options = {};
 const execDir = path.dirname(process.execPath);
 const adjacentPath = path.join(execDir, 'better_sqlite3.node');
-const nodeModulesPath = path.resolve(execDir, 'node_modules/better-sqlite3/build/Release/better_sqlite3.node');
+const localModulePath = path.join(process.cwd(), 'node_modules/better-sqlite3/build/Release/better_sqlite3.node');
 
 if (fs.existsSync(adjacentPath)) {
-    console.log('[DB] Using native module from:', adjacentPath);
+    console.log('[DB] Using native module from packaged path:', adjacentPath);
     options.nativeBinding = adjacentPath;
-} else if (fs.existsSync(nodeModulesPath)) {
-    console.log('[DB] Using native module from:', nodeModulesPath);
-    options.nativeBinding = nodeModulesPath;
-} else {
-    console.error('[DB] ERROR: Could not find better_sqlite3.node in:', adjacentPath, 'or', nodeModulesPath);
-    try {
-      console.error('[DB] Contents of execDir:', fs.readdirSync(execDir));
-    } catch (e) {
-      console.error('[DB] Error listing execDir:', e);
+} else if (!fs.existsSync(localModulePath)) {
+    // If we're not in dev and adjacent doesn't exist, we might be in a weird prod setup
+    const nodeModulesPath = path.resolve(execDir, 'node_modules/better-sqlite3/build/Release/better_sqlite3.node');
+    if (fs.existsSync(nodeModulesPath)) {
+        console.log('[DB] Using native module from Node path:', nodeModulesPath);
+        options.nativeBinding = nodeModulesPath;
     }
 }
 

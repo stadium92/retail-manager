@@ -1698,6 +1698,8 @@
     "retail": "Retail",
     "paid": "Paid",
     "pending": "Pending",
-    "totalRevenue": "Total Revenue"
+    "totalRevenue": "Total Revenue",
+    "wholesaleValue": "Wholesale Value",
+    "resaleValue": "Resale Value"
   }
 }

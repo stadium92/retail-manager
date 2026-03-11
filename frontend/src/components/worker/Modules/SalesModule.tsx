@@ -713,7 +713,9 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         
         total_price: netTotal,
         payment_method: paymentMethod as 'cash' | 'card' | 'credit',
+        payment_status: paymentMethod === 'credit' ? 'pending' : 'paid',
         sale_type: saleType,
+        paymentMethod: paymentMethod,
         customer_name: customerName || undefined,
         customer_phone: matchedClient?.phone || undefined,
         customer_address: customerAddress || undefined,

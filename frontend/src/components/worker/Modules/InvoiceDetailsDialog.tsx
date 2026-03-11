@@ -59,9 +59,19 @@ export function InvoiceDetailsDialog({ sale, onClose }: InvoiceDetailsDialogProp
               {sale.customer_phone && <p className="text-sm">{sale.customer_phone}</p>}
               {sale.customer_address && <p className="text-sm italic text-muted-foreground">{sale.customer_address}</p>}
             </div>
-            <div className="text-right">
-              <p className="text-sm font-medium text-muted-foreground">{t('common.total')}</p>
-              <p className="text-2xl font-bold text-primary">{formatCurrency(sale.total_price)}</p>
+            <div className="text-right flex flex-col gap-2">
+              <div>
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('common.total')}</p>
+                <p className="text-2xl font-black text-primary font-mono">{formatCurrency(sale.total_price)}</p>
+              </div>
+              
+              {sale.payment_method === 'credit' && (
+                <div className="bg-danger/10 p-2 rounded border border-danger/20">
+                  <p className="text-[9px] font-black uppercase text-danger tracking-widest">{t('common.dueAmount', 'Montant Dû')}</p>
+                  <p className="text-lg font-black text-danger font-mono">{formatCurrency(sale.total_price)}</p>
+                </div>
+              )}
+
               <div className="flex flex-col items-end">
                 <Badge variant={sale.payment_method === 'credit' ? 'destructive' : 'success'} className="uppercase text-[10px] mb-1">
                   {sale.payment_method === 'credit' ? t('common.credit') : t('common.cash')}

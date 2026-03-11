@@ -148,7 +148,13 @@ class OfflineDataServiceClass {
         }
     }
 
-    async getStockValuation(storeId: string): Promise<{ total_cost: number; total_retail: number; item_count: number }> {
+    async getStockValuation(storeId: string): Promise<{ 
+        total_cost: number; 
+        total_retail: number; 
+        total_wholesale: number;
+        total_resale: number;
+        item_count: number 
+    }> {
         try {
             const { isLocalFirst } = getDataClient();
             if (isLocalFirst) {
@@ -157,20 +163,31 @@ class OfflineDataServiceClass {
             }
             
             // Fallback to manual calculation if bridge fails
-            const payload = await OfflineAuthService.localBridgeRequest<any>(`/rest/v1/products?store_id=${storeId}&limit=1000`, { method: 'GET' });
+            const payload = await OfflineAuthService.localBridgeRequest<any>(`/rest/v1/products?store_id=${storeId}&limit=5000`, { method: 'GET' });
             const products = Array.isArray(payload) ? payload : (payload.data || []);
             
             return products.reduce((acc, p) => {
-                const qty = Number(p.quantity ?? p.stock ?? 0);
+                const qty = Math.max(0, Number(p.quantity ?? p.stock ?? 0) || 0);
+                const cost = Number(p.cost_price ?? p.cost ?? 0) || 0;
+                const retail = Number(p.unit_price ?? p.price ?? 0) || 0;
+                // Smart Fallbacks: If a specific tier is 0, fallback to the base retail price
+                const wholesaleRaw = Number(p.wholesale_price_ttc ?? p.wholesale_price ?? 0) || 0;
+                const wholesale = wholesaleRaw > 0 ? wholesaleRaw : retail;
+                
+                const resaleRaw = Number(p.selling_price_4 ?? 0) || 0;
+                const resale = resaleRaw > 0 ? resaleRaw : retail;
+
                 return {
-                    total_cost: acc.total_cost + (qty * Number(p.cost_price ?? p.cost ?? 0)),
-                    total_retail: acc.total_retail + (qty * Number(p.unit_price ?? p.price ?? 0)),
+                    total_cost: acc.total_cost + (qty * cost),
+                    total_retail: acc.total_retail + (qty * retail),
+                    total_wholesale: acc.total_wholesale + (qty * wholesale),
+                    total_resale: acc.total_resale + (qty * resale),
                     item_count: acc.item_count + 1
                 };
-            }, { total_cost: 0, total_retail: 0, item_count: 0 });
+            }, { total_cost: 0, total_retail: 0, total_wholesale: 0, total_resale: 0, item_count: 0 });
         } catch (error) {
             console.error('getStockValuation error:', error);
-            return { total_cost: 0, total_retail: 0, item_count: 0 };
+            return { total_cost: 0, total_retail: 0, total_wholesale: 0, total_resale: 0, item_count: 0 };
         }
     }
 

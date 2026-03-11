@@ -286,7 +286,12 @@ export default function SalesPage() {
                         <TableCell>
                             <div className="flex flex-col gap-1">
                                 <span className="font-black text-xs tabular-nums">{formatCurrency(total)}</span>
-                                <Badge variant="outline" className={cn("text-[8px] h-4 py-0 font-black uppercase border-2", sale.payment_method === 'credit' ? "text-danger border-danger/20" : "text-success border-success/20")}>{sale.payment_method}</Badge>
+                                <div className="flex gap-1">
+                                  <Badge variant="outline" className={cn("text-[8px] h-4 py-0 font-black uppercase border-2", sale.payment_method === 'credit' ? "text-danger border-danger/20" : "text-success border-success/20")}>{sale.payment_method}</Badge>
+                                  <Badge variant={sale.payment_status === 'paid' ? 'success' : 'warning'} className="text-[8px] h-4 py-0 font-black uppercase">
+                                    {sale.payment_status}
+                                  </Badge>
+                                </div>
                             </div>
                         </TableCell>
                         <TableCell className="text-[10px] font-black uppercase opacity-60">{workerMap[sale.worker_id || ''] || '-'}</TableCell>

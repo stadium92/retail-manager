@@ -5,6 +5,7 @@ import { OfflineDataService } from '@/services/OfflineDataService';
 import { useTranslation } from 'react-i18next';
 import { useFormatters } from '@/utils/formatting';
 import { Badge } from '@/components/ui/badge';
+import { MasterPasswordGate } from '@/components/shared/MasterPasswordGate';
 
 interface ValorisationStockProps {
   storeId: string;
@@ -13,20 +14,27 @@ interface ValorisationStockProps {
 export function ValorisationStock({ storeId }: ValorisationStockProps) {
   const { t } = useTranslation();
   const { formatCurrency } = useFormatters();
-  const [valuation, setValuation] = useState<{ total_cost: number; total_retail: number; item_count: number } | null>(null);
+  const [valuation, setValuation] = useState<{ 
+    total_cost: number; 
+    total_retail: number; 
+    total_wholesale: number;
+    total_resale: number;
+    item_count: number 
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   const fetchData = useCallback(async () => {
     if (!storeId) return;
     setLoading(true);
-    console.log('[ValorisationStock] Fetching stock valuation...');
+    console.log('[ValorisationStock] Fetching stock valuation for store:', storeId);
     try {
       const data = await OfflineDataService.getStockValuation(storeId);
-      setValuation(data || { total_cost: 0, total_retail: 0, item_count: 0 });
+      console.log('[ValorisationStock] Received data:', data);
+      setValuation(data || { total_cost: 0, total_retail: 0, total_wholesale: 0, total_resale: 0, item_count: 0 });
     } catch (err) {
       console.error('[ValorisationStock] Fetch error:', err);
-      setValuation({ total_cost: 0, total_retail: 0, item_count: 0 });
+      setValuation({ total_cost: 0, total_retail: 0, total_wholesale: 0, total_resale: 0, item_count: 0 });
     } finally {
       setLoading(false);
     }
@@ -59,60 +67,81 @@ export function ValorisationStock({ storeId }: ValorisationStockProps) {
   const marginPercent = valuation.total_cost > 0 ? (margin / valuation.total_cost) * 100 : 0;
 
   return (
-    <div className="space-y-6 p-2">
-       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="border-l-4 border-l-blue-500">
+    <MasterPasswordGate moduleName={t('menu.program.stockValuation', 'Valorisation du Stock')}>
+      <div className="space-y-6 p-2">
+       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="border-l-4 border-l-blue-500 shadow-md">
              <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-muted-foreground">{t('menu.program.purchaseValue')}</p>
-                  <Package className="h-4 w-4 text-blue-500" />
+                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('menu.program.purchaseValue')}</p>
+                  <Package className="h-4 w-4 text-blue-500 opacity-50" />
                 </div>
-                <p className="text-2xl font-bold">{formatCurrency(valuation.total_cost)}</p>
+                <p className="text-xl font-black font-mono">{formatCurrency(valuation.total_cost)}</p>
              </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-primary">
+          <Card className="border-l-4 border-l-primary shadow-md">
              <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-muted-foreground">{t('menu.program.sellingValue')}</p>
-                  <TrendingUp className="h-4 w-4 text-primary" />
+                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('menu.program.sellingValue')}</p>
+                  <TrendingUp className="h-4 w-4 text-primary opacity-50" />
                 </div>
-                <p className="text-2xl font-bold text-primary">{formatCurrency(valuation.total_retail)}</p>
+                <p className="text-xl font-black font-mono text-primary">{formatCurrency(valuation.total_retail)}</p>
              </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-success bg-success/5">
+          <Card className="border-l-4 border-l-amber-500 shadow-md">
              <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-muted-foreground">{t('menu.program.potentialMargin')}</p>
-                  <Calculator className="h-4 w-4 text-success" />
+                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('edition.wholesaleValue')}</p>
+                  <Package className="h-4 w-4 text-amber-500 opacity-50" />
                 </div>
-                <p className="text-2xl font-bold text-success">
+                <p className="text-xl font-black font-mono text-amber-600">{formatCurrency(valuation.total_wholesale)}</p>
+             </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-success bg-success/5 shadow-md">
+             <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('menu.program.potentialMargin')}</p>
+                  <Calculator className="h-4 w-4 text-success opacity-50" />
+                </div>
+                <p className="text-xl font-black font-mono text-success">
                    {formatCurrency(margin)}
                 </p>
-                <div className="flex items-center gap-1 mt-1">
-                  <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/20">
+                <Badge variant="outline" className="text-[9px] font-black bg-success/10 text-success border-success/20 mt-1">
                     +{marginPercent.toFixed(1)}%
-                  </Badge>
-                </div>
+                </Badge>
              </CardContent>
           </Card>
        </div>
 
-       <Card>
-          <CardHeader className="pb-2">
-             <CardTitle className="text-sm font-medium flex items-center gap-2">
-               <Package className="h-4 w-4" />
-               {t('menu.program.itemRefCount')}
-             </CardTitle>
-          </CardHeader>
-          <CardContent>
-             <div className="text-3xl font-bold">{valuation.item_count}</div>
-             <p className="text-xs text-muted-foreground mt-1">
-               {storeId ? t('inventory.manageInventory') : t('inventory.allStores')}
-             </p>
-          </CardContent>
-       </Card>
-    </div>
+       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card className="shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                  <Package className="h-3 w-3" />
+                  {t('menu.program.itemRefCount')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-black font-mono">{valuation.item_count}</div>
+              </CardContent>
+          </Card>
+
+          <Card className="shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                  <TrendingUp className="h-3 w-3" />
+                  {t('edition.resaleValue')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-black font-mono text-muted-foreground">{formatCurrency(valuation.total_resale)}</div>
+              </CardContent>
+          </Card>
+       </div>
+      </div>
+    </MasterPasswordGate>
   );
 }

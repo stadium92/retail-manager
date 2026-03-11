@@ -1699,6 +1699,8 @@
     "retail": "Détail",
     "paid": "Payé",
     "pending": "En attente",
-    "totalRevenue": "Total CA"
+    "totalRevenue": "Total CA",
+    "wholesaleValue": "Valeur Gros",
+    "resaleValue": "Valeur Revendeur"
   }
 }

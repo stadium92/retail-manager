@@ -32,7 +32,7 @@ const workerProvisionSchema = z.object({
   store_name: z.string().min(1).optional(),
 });
 
-const ACCESS_TOKEN_TTL_SECONDS = 86400; // 24 Hours // 1 Hour
+const ACCESS_TOKEN_TTL_SECONDS = 2592000; // 30 Days (1 Month)
 const REFRESH_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 const issueAccessToken = (userId: string, email: string, role: string, storeId: string | null) =>
@@ -251,6 +251,32 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     db.updateSessionTokens(session.id, accessToken, newRefreshToken, newExpiry);
 
     return reply.send(buildLoginResponse(user, primaryRole, storeId, accessToken, newRefreshToken));
+  });
+
+  app.post('/rest/v1/auth/verify-master', async (request, reply) => {
+    console.log('[Auth] Master verification attempt started');
+    const verifySchema = z.object({ password: z.string() });
+    const parsed = verifySchema.safeParse(request.body);
+    if (!parsed.success) {
+      console.error('[Auth] Validation failed for master verification');
+      return reply.status(400).send({ error: 'ValidationFailed' });
+    }
+
+    const masterUser = db.getMasterUser();
+    if (!masterUser) {
+      console.error('[Auth] No master user found in database');
+      return reply.status(404).send({ error: 'NoMasterFound' });
+    }
+
+    console.log('[Auth] Verifying password for master:', masterUser.email);
+    const isValid = bcrypt.compareSync(parsed.data.password, masterUser.password_hash);
+    if (!isValid) {
+      console.warn('[Auth] Master password verification failed');
+      return reply.status(401).send({ error: 'InvalidPassword' });
+    }
+
+    console.log('[Auth] Master password verified successfully');
+    return reply.send({ success: true });
   });
 
   app.post('/auth/logout', async (request, reply) => {

@@ -97,23 +97,41 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
     return rows;
   },
 
-  getStockValuation(storeId: string): { total_cost: number; total_retail: number; item_count: number } {
-    console.log('[DB] Calculating Stock Valuation for store:', storeId || 'ALL');
+  getStockValuation(storeId: string): { 
+    total_cost: number; 
+    total_retail: number; 
+    total_wholesale: number;
+    total_resale: number;
+    item_count: number 
+  } {
+    console.log('[DB] Calculating Accurate Stock Valuation for store:', storeId || 'ALL');
     const sql = `
         SELECT 
-          SUM(CAST(COALESCE(quantity, 0) AS REAL) * CAST(COALESCE(cost_price, 0) AS REAL)) as total_cost,
-          SUM(CAST(COALESCE(quantity, 0) AS REAL) * CAST(COALESCE(unit_price, 0) AS REAL)) as total_retail,
+          SUM(
+            CASE WHEN quantity > 0 THEN CAST(quantity AS REAL) * CAST(COALESCE(NULLIF(cost_price, ''), 0) AS REAL) ELSE 0 END
+          ) as total_cost,
+          SUM(
+            CASE WHEN quantity > 0 THEN CAST(quantity AS REAL) * CAST(COALESCE(NULLIF(unit_price, ''), 0) AS REAL) ELSE 0 END
+          ) as total_retail,
+          SUM(
+            CASE WHEN quantity > 0 THEN CAST(quantity AS REAL) * CAST(COALESCE(NULLIF(wholesale_price_ttc, ''), NULLIF(wholesale_price, ''), NULLIF(unit_price, ''), 0) AS REAL) ELSE 0 END
+          ) as total_wholesale,
+          SUM(
+            CASE WHEN quantity > 0 THEN CAST(quantity AS REAL) * CAST(COALESCE(NULLIF(selling_price_4, ''), NULLIF(unit_price, ''), 0) AS REAL) ELSE 0 END
+          ) as total_resale,
           COUNT(*) as item_count
         FROM products
-        WHERE (? = '' OR store_id = ?) AND quantity > 0
+        WHERE (? = '' OR store_id = ?) AND deleted_at IS NULL
     `;
     
     const row = db.prepare(sql).get(storeId || '', storeId || '') as any;
-    console.log('[DB] Valuation Result:', row);
+    console.log('[DB] Accurate Valuation Result:', row);
     
     return {
       total_cost: row?.total_cost || 0,
       total_retail: row?.total_retail || 0,
+      total_wholesale: row?.total_wholesale || 0,
+      total_resale: row?.total_resale || 0,
       item_count: row?.item_count || 0,
     };
   },

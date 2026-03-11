@@ -374,6 +374,23 @@ export class OfflineAuthService {
     }
   }
   
+  static async verifyMasterPassword(password: string): Promise<boolean> {
+    if (!this.isLocalBridgeMode()) {
+      return false; // Not supported in legacy offline mode for now
+    }
+    try {
+      const res = await fetch(`${this.getLocalBridgeBaseUrl()}/rest/v1/auth/verify-master`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      return res.ok;
+    } catch (e) {
+      console.error('[OfflineAuth] verifyMasterPassword error:', e);
+      return false;
+    }
+  }
+
   static async signIn(email: string, password: string): Promise<OfflineAuthResult> {
     if (this.isLocalBridgeMode()) {
       return this.localBridgeSignIn(email, password);

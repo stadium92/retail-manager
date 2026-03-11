@@ -17,6 +17,7 @@ export interface InvoiceData {
     items: CartItem[];
     total_price: number;
     type: 'detail' | 'gros' | 'proforma';
+    paymentMethod?: string;
 }
 
 export const InvoiceTemplate = forwardRef<HTMLDivElement, { data: InvoiceData }>(({ data }, ref) => {
@@ -34,7 +35,7 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, { data: InvoiceData }>
                 </div>
                 <div className="text-right">
                     <h2 className="text-xl font-bold text-gray-800 uppercase">
-                        {isProforma ? t('invoice.proforma') : t('invoice.cashReceipt')}
+                        {isProforma ? t('invoice.proforma') : (data.paymentMethod === 'credit' ? 'FACTURE À CRÉDIT' : t('invoice.cashReceipt'))}
                     </h2>
                     <p className="text-sm text-gray-500 font-mono">
                         {t('menu.program.invoice')}: {data.invoice_number || data.id.slice(0, 8)}

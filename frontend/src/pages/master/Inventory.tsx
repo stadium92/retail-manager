@@ -9,7 +9,7 @@ import { FichiersProduitsModule } from '@/components/worker/Modules/FichiersProd
 import { FichiersFamillesModule } from '@/components/worker/Modules/FichiersFamillesModule';
 import { ValorisationStock } from '@/components/worker/Modules/Stock/ValorisationStock';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Package, ShieldCheck, Plus, X } from 'lucide-react';
+import { Package, ShieldCheck, Plus, X, RefreshCw } from 'lucide-react';
 
 export default function InventoryPage() {
   const { t } = useTranslation();
@@ -108,6 +108,17 @@ export default function InventoryPage() {
         </TabsContent>
 
         <TabsContent value="valuation" className="mt-0">
+          <div className="flex justify-end mb-4">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => useMasterDashboardStore.getState().setSelectedStoreIds([...selectedStoreIds])}
+              className="h-8 gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              {t('common.refresh')}
+            </Button>
+          </div>
           {activeStoreIds.length > 0 ? (
             activeStoreIds.map(sid => (
               <div key={`val-store-${sid}`} className="space-y-3 mb-10">

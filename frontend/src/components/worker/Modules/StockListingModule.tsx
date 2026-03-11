@@ -19,6 +19,8 @@ import { toast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
 import { useFormatters } from '@/utils/formatting';
 
+import { MasterPasswordGate } from '@/components/shared/MasterPasswordGate';
+
 interface StockListingModuleProps {
   storeId: string;
 }
@@ -145,7 +147,8 @@ export function StockListingModule({ storeId }: StockListingModuleProps) {
   }
 
   return (
-    <div className="h-full flex flex-col p-4 bg-[hsl(60,80%,85%)] dark:bg-transparent">
+    <MasterPasswordGate moduleName={t('menu.program.stockListing')}>
+      <div className="h-full flex flex-col p-4 bg-[hsl(60,80%,85%)] dark:bg-transparent">
       {/* Header with stats */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-4">
@@ -329,5 +332,6 @@ export function StockListingModule({ storeId }: StockListingModuleProps) {
         </Button>
       </div>
     </div>
+    </MasterPasswordGate>
   );
 }
