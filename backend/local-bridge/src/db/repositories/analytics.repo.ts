@@ -108,16 +108,16 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
     const sql = `
         SELECT 
           SUM(
-            CASE WHEN quantity > 0 THEN CAST(quantity AS REAL) * CAST(COALESCE(NULLIF(cost_price, ''), 0) AS REAL) ELSE 0 END
+            CASE WHEN quantity > 0 THEN CAST(quantity AS REAL) * CAST(COALESCE(NULLIF(CAST(cost_price AS REAL), 0), 0) AS REAL) ELSE 0 END
           ) as total_cost,
           SUM(
-            CASE WHEN quantity > 0 THEN CAST(quantity AS REAL) * CAST(COALESCE(NULLIF(unit_price, ''), 0) AS REAL) ELSE 0 END
+            CASE WHEN quantity > 0 THEN CAST(quantity AS REAL) * CAST(COALESCE(NULLIF(CAST(unit_price AS REAL), 0), 0) AS REAL) ELSE 0 END
           ) as total_retail,
           SUM(
-            CASE WHEN quantity > 0 THEN CAST(quantity AS REAL) * CAST(COALESCE(NULLIF(wholesale_price_ttc, ''), NULLIF(wholesale_price, ''), NULLIF(unit_price, ''), 0) AS REAL) ELSE 0 END
+            CASE WHEN quantity > 0 THEN CAST(quantity AS REAL) * CAST(COALESCE(NULLIF(CAST(wholesale_price_ttc AS REAL), 0), NULLIF(CAST(wholesale_price AS REAL), 0), NULLIF(CAST(unit_price AS REAL), 0), 0) AS REAL) ELSE 0 END
           ) as total_wholesale,
           SUM(
-            CASE WHEN quantity > 0 THEN CAST(quantity AS REAL) * CAST(COALESCE(NULLIF(selling_price_4, ''), NULLIF(unit_price, ''), 0) AS REAL) ELSE 0 END
+            CASE WHEN quantity > 0 THEN CAST(quantity AS REAL) * CAST(COALESCE(NULLIF(CAST(selling_price_4 AS REAL), 0), NULLIF(CAST(unit_price AS REAL), 0), 0) AS REAL) ELSE 0 END
           ) as total_resale,
           COUNT(*) as item_count
         FROM products
