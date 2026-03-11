@@ -170,12 +170,12 @@ class OfflineDataServiceClass {
                 const qty = Math.max(0, Number(p.quantity ?? p.stock ?? 0) || 0);
                 const cost = Number(p.cost_price ?? p.cost ?? 0) || 0;
                 const retail = Number(p.unit_price ?? p.price ?? 0) || 0;
-                // Smart Fallbacks: Check selling_price_3 first (Sannifere mapping), then wholesale fields, then fallback to retail
+                // Smart Fallbacks: Check specific tiers, fallback to retail if 0, then clamp to retail
                 const wholesaleRaw = Number(p.selling_price_3 ?? p.wholesale_price_ttc ?? p.wholesale_price ?? 0) || 0;
-                const wholesale = wholesaleRaw > 0 ? wholesaleRaw : retail;
+                const wholesale = Math.min(wholesaleRaw > 0 ? wholesaleRaw : retail, retail);
                 
                 const resaleRaw = Number(p.selling_price_4 ?? 0) || 0;
-                const resale = resaleRaw > 0 ? resaleRaw : retail;
+                const resale = Math.min(resaleRaw > 0 ? resaleRaw : retail, retail);
 
                 return {
                     total_cost: acc.total_cost + (qty * cost),
