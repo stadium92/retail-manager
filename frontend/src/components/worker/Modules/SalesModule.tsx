@@ -475,6 +475,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         setSelectedIndex(lineItems.length);
         targetRow = lineItems.length;
       }
+    }
       
       // Ensure focus jumps to Quantity column (index 5)
       setTimeout(() => {
