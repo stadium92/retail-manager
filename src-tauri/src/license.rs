@@ -423,10 +423,13 @@ pub fn activate_license_command(app_handle: AppHandle, key: String, store_name: 
 
     // 3. Encrypt & Save
     let path = get_license_path(&app_handle);
+    if let Some(parent) = path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
     let json_content = serde_json::to_string(&data).map_err(|e| e.to_string())?;
     
     let encrypted_bytes = encrypt_data(json_content.as_bytes())?;
-    fs::write(path, encrypted_bytes).map_err(|e| e.to_string())?;
+    fs::write(&path, encrypted_bytes).map_err(|e| format!("FS_WRITE_ERROR: {}", e.to_string()))?;
     
     Ok(())
 }
