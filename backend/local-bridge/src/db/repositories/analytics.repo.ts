@@ -114,7 +114,7 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
             CASE WHEN quantity > 0 THEN CAST(quantity AS REAL) * CAST(COALESCE(NULLIF(CAST(unit_price AS REAL), 0), 0) AS REAL) ELSE 0 END
           ) as total_retail,
           SUM(
-            CASE WHEN quantity > 0 THEN CAST(quantity AS REAL) * CAST(COALESCE(NULLIF(CAST(wholesale_price_ttc AS REAL), 0), NULLIF(CAST(wholesale_price AS REAL), 0), NULLIF(CAST(unit_price AS REAL), 0), 0) AS REAL) ELSE 0 END
+            CASE WHEN quantity > 0 THEN CAST(quantity AS REAL) * CAST(COALESCE(NULLIF(CAST(selling_price_3 AS REAL), 0), NULLIF(CAST(wholesale_price_ttc AS REAL), 0), NULLIF(CAST(wholesale_price AS REAL), 0), NULLIF(CAST(unit_price AS REAL), 0), 0) AS REAL) ELSE 0 END
           ) as total_wholesale,
           SUM(
             CASE WHEN quantity > 0 THEN CAST(quantity AS REAL) * CAST(COALESCE(NULLIF(CAST(selling_price_4 AS REAL), 0), NULLIF(CAST(unit_price AS REAL), 0), 0) AS REAL) ELSE 0 END
