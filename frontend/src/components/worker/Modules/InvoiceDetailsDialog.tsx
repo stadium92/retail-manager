@@ -6,6 +6,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SaleWithItems } from '@/services/OfflineDataService';
@@ -61,7 +62,12 @@ export function InvoiceDetailsDialog({ sale, onClose }: InvoiceDetailsDialogProp
             <div className="text-right">
               <p className="text-sm font-medium text-muted-foreground">{t('common.total')}</p>
               <p className="text-2xl font-bold text-primary">{formatCurrency(sale.total_price)}</p>
-              <p className="text-sm text-muted-foreground capitalize">{sale.payment_status}</p>
+              <div className="flex flex-col items-end">
+                <Badge variant={sale.payment_method === 'credit' ? 'destructive' : 'success'} className="uppercase text-[10px] mb-1">
+                  {sale.payment_method === 'credit' ? t('common.credit') : t('common.cash')}
+                </Badge>
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter opacity-60">{sale.payment_status}</p>
+              </div>
             </div>
           </div>
 
@@ -77,7 +83,7 @@ export function InvoiceDetailsDialog({ sale, onClose }: InvoiceDetailsDialogProp
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sale.sale_items?.map((item) => (
+                  {(sale.items?.length ? sale.items : sale.sale_items)?.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.product_name}</TableCell>
                       <TableCell className="text-center">{item.quantity}</TableCell>
