@@ -498,6 +498,52 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       toast.success(t('worker.sales.itemFound', { name: product.name }));
   }, [lineItems, mode, updateSession, t, activeTier, currentSession.clientDiscount]);
 
+  const handlePriceChange = useCallback((index: number, unitPrice: any) => {
+    const newItems = [...lineItems];
+    const item = newItems[index];
+    if (!item) return;
+    const numPrice = unitPrice === '' ? 0 : Number(unitPrice);
+
+    newItems[index] = {
+      ...item,
+      unitPrice,
+      lineTotal: calculateLineTotal(numPrice, Number(item.quantity) || 0, Number(item.discountPercent) || 0, item.isBox, item.conditionnement),
+    };
+    updateSession(mode, { lineItems: newItems });
+  }, [lineItems, mode, updateSession]);
+
+  const handleQuantityChange = useCallback((index: number, quantity: any) => {
+    const newItems = [...lineItems];
+    const item = newItems[index];
+    const numQty = quantity === '' ? 0 : Number(quantity);
+
+    newItems[index] = {
+      ...item,
+      quantity,
+      lineTotal: calculateLineTotal(Number(item.unitPrice) || 0, numQty, Number(item.discountPercent) || 0, item.isBox, item.conditionnement),
+    };
+    updateSession(mode, { lineItems: newItems });
+  }, [lineItems, mode, updateSession, handleDeleteLine, t]);
+
+  const handleDiscountChange = useCallback((index: number, discount: any) => {
+    const newItems = [...lineItems];
+    const item = newItems[index];
+    const numDisc = discount === '' ? 0 : Number(discount);
+    newItems[index] = {
+      ...item,
+      discountPercent: discount,
+      lineTotal: calculateLineTotal(Number(item.unitPrice) || 0, Number(item.quantity) || 0, numDisc, item.isBox, item.conditionnement),
+    };
+    updateSession(mode, { lineItems: newItems });
+  }, [lineItems, mode, updateSession]);
+
+  const handleDesignationChange = useCallback((index: number, value: string) => {
+    setInitialSearchQuery(value);
+    const newItems = [...lineItems];
+    newItems[index] = { ...newItems[index], designation: value };
+    updateSession(mode, { lineItems: newItems });
+  }, [lineItems, mode, updateSession]);
+
     // Handle Hardware Scanner Input (Fast Scan)
   const handleHardwareScan = useCallback(async (e: any) => {
     const code = e.detail?.code;
@@ -546,54 +592,6 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         toast.error(t('worker.sales.itemNotFound') + ': ' + code);
     }
   }, [scanProduct, addProduct, t, lineItems, handleQuantityChange, handleDesignationChange, handlePriceChange]);
-
-  const handlePriceChange = useCallback((index: number, unitPrice: any) => {
-    const newItems = [...lineItems];
-    const item = newItems[index];
-    if (!item) return;
-    const numPrice = unitPrice === '' ? 0 : Number(unitPrice);
-
-    newItems[index] = {
-      ...item,
-      unitPrice,
-      lineTotal: calculateLineTotal(numPrice, Number(item.quantity) || 0, Number(item.discountPercent) || 0, item.isBox, item.conditionnement),
-    };
-    updateSession(mode, { lineItems: newItems });
-  }, [lineItems, mode, updateSession]);
-
-  const handleQuantityChange = useCallback((index: number, quantity: any) => {
-    const newItems = [...lineItems];
-    const item = newItems[index];
-    const numQty = quantity === '' ? 0 : Number(quantity);
-
-    newItems[index] = {
-      ...item,
-      quantity,
-      lineTotal: calculateLineTotal(Number(item.unitPrice) || 0, numQty, Number(item.discountPercent) || 0, item.isBox, item.conditionnement),
-    };
-    updateSession(mode, { lineItems: newItems });
-  }, [lineItems, mode, updateSession, handleDeleteLine, t]);
-
-  const handleDiscountChange = useCallback((index: number, discount: any) => {
-    const newItems = [...lineItems];
-    const item = newItems[index];
-    const numDisc = discount === '' ? 0 : Number(discount);
-    newItems[index] = {
-      ...item,
-      discountPercent: discount,
-      lineTotal: calculateLineTotal(Number(item.unitPrice) || 0, Number(item.quantity) || 0, numDisc, item.isBox, item.conditionnement),
-    };
-    updateSession(mode, { lineItems: newItems });
-  }, [lineItems, mode, updateSession]);
-
-  
-
-  const handleDesignationChange = useCallback((index: number, value: string) => {
-    setInitialSearchQuery(value);
-    const newItems = [...lineItems];
-    newItems[index] = { ...newItems[index], designation: value };
-    updateSession(mode, { lineItems: newItems });
-  }, [lineItems, mode, updateSession]);
 
   
   const handleToggleUnit = useCallback((index: number) => {
