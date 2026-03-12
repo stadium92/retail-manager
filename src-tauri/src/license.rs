@@ -391,7 +391,9 @@ pub fn check_license_gate(app_handle: &AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn activate_license_command(app_handle: AppHandle, key: String, store_name: String) -> Result<(), String> {
+pub fn activate_license_command(app_handle: AppHandle, mut key: String, mut store_name: String) -> Result<(), String> {
+    key = key.trim().to_string();
+    store_name = store_name.trim().to_string();
     println!("[LICENSE DEBUG] Starting activation command for key: {}", key);
     let device_hash = get_device_hash();
     
@@ -400,7 +402,7 @@ pub fn activate_license_command(app_handle: AppHandle, key: String, store_name: 
         Ok(_) => println!("[LICENSE DEBUG] Signature verified successfully."),
         Err(e) => {
             println!("[LICENSE DEBUG] Verification failed: {}", e);
-            return Err(format!("VERIFICATION_FAILED: {}", e));
+            return Err(format!("CRYPTO_ERR: {}", e));
         }
     }
     
@@ -429,7 +431,7 @@ pub fn activate_license_command(app_handle: AppHandle, key: String, store_name: 
     let json_content = serde_json::to_string(&data).map_err(|e| e.to_string())?;
     
     let encrypted_bytes = encrypt_data(json_content.as_bytes())?;
-    fs::write(&path, encrypted_bytes).map_err(|e| format!("FS_WRITE_ERROR: {}", e.to_string()))?;
+    fs::write(&path, encrypted_bytes).map_err(|e| format!("IO_ERR ({}): {}", path.display(), e.to_string()))?;
     
     Ok(())
 }
