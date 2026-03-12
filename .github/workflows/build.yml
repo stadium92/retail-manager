@@ -2,9 +2,6 @@ name: "CI/CD Pipeline: Build Windows Application"
 
 on:
   push:
-    branches:
-      - main
-      - main-cloud-build
     tags:
       - 'v*'
   pull_request:
