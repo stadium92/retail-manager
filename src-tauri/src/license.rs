@@ -168,28 +168,35 @@ fn decrypt_data(data: &[u8]) -> Result<Vec<u8>, String> {
 // -----------------------------------------------------------------------------
 
 pub fn verify_signature(key: &str, device_id: &str) -> Result<bool, String> {
-    // 1. Normalize IDs: Remove all dashes and make uppercase
+    // 1. Normalize actual machine ID: Remove all dashes and make uppercase
     let clean_device_id = device_id.replace("-", "").to_uppercase();
     
-    // 2. Split Key: RM-YEAR-DEVICEID-SIGNATURE
-    // The signature is the last part and may contain dashes in some encodings, 
-    // but splitn(4) ensures we get the signature as the 4th chunk.
-    let parts: Vec<&str> = key.splitn(4, '-').collect();
-    if parts.len() < 4 {
-        return Err("FORMAT_ERR: Key must have 4 parts (RM-YYYY-ID-SIG)".to_string());
+    // 2. Parse Key: We expect RM-YYYY-DEVICE_ID-SIGNATURE
+    // Because DEVICE_ID might contain dashes (e.g. 0WAS-ETXT), we split by the LAST dash to get the signature.
+    let last_dash_idx = key.rfind('-').ok_or_else(|| "FORMAT_ERR: Missing signature separator".to_string())?;
+    
+    let (prefix_year_id, signature_encoded) = key.split_at(last_dash_idx);
+    let signature_encoded = &signature_encoded[1..]; // Remove the leading dash
+
+    // Now split the prefix_year_id (RM-YYYY-DEVICE_ID) by the first two dashes
+    let parts: Vec<&str> = prefix_year_id.splitn(3, '-').collect();
+    if parts.len() < 3 {
+        return Err("FORMAT_ERR: Invalid prefix/year format".to_string());
     }
 
     let prefix = parts[0];
     let year = parts[1];
-    let key_device_id = parts[2].replace("-", "").to_uppercase();
-    let signature_encoded = parts[3];
+    let key_device_id_raw = parts[2];
+    
+    // Clean the device ID found in the key string for comparison and payload generation
+    let key_device_id = key_device_id_raw.replace("-", "").to_uppercase();
 
     if prefix != "RM" {
         return Err("PREFIX_ERR: Invalid prefix".to_string());
     }
 
     if key_device_id != clean_device_id {
-        return Err(format!("DEVICE_MISMATCH: Key is for {}, but this machine is {}.", key_device_id, clean_device_id));
+        return Err(format!("DEVICE_MISMATCH: Key expects {}, got {}", key_device_id, clean_device_id));
     }
 
     // 3. Reconstruct EXACT payload: RM-YYYY-CLEANID
