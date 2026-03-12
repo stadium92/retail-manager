@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ShieldAlert, Lock, Loader2, KeyRound, CheckCircle2 } from "lucide-react";
+import { ShieldAlert, Lock, Loader2, KeyRound, CheckCircle2, RefreshCw } from "lucide-react";
 import { useLicense, LicenseStatus } from "@/contexts/LicenseContext";
+import { LicenseService } from "@/services/LicenseService";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Logger } from '@/utils/Logger';
@@ -55,6 +56,15 @@ export function ActivationGate({ status, onActivated, onSkip }: ActivationGatePr
     }, []);
 
     const isTimeBlocked = status.status === 'blocked';
+
+    const handleReset = async () => {
+        await LicenseService.resetAttempts();
+        setAttemptsToday(0);
+        setTotalMisses(0);
+        setIsLocked(false);
+        setStatusType('idle');
+        toast.info("Tentatives réinitialisées");
+    };
 
     const handleActivate = async () => {
         if (isLocked) {
@@ -214,6 +224,18 @@ export function ActivationGate({ status, onActivated, onSkip }: ActivationGatePr
                             t('license.success')
                         ) : t('license.unlockPro')}
                     </Button>
+                    
+                    {attemptsToday > 0 && (
+                        <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={handleReset} 
+                            className="w-full text-primary text-[10px] uppercase font-bold tracking-widest opacity-50 hover:opacity-100"
+                        >
+                            <RefreshCw className="w-3 h-3 mr-2" />
+                            Réinitialiser les tentatives
+                        </Button>
+                    )}
                     
                     {(status.status === 'trial' || status.status === 'active') && !isLocked && status_type !== 'success' && (
                         <Button 

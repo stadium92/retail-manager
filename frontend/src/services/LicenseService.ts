@@ -67,6 +67,13 @@ export class LicenseService {
         }
     }
 
+    static async resetAttempts(): Promise<void> {
+        localStorage.removeItem('rm_attempts_today');
+        localStorage.removeItem('rm_total_misses');
+        localStorage.removeItem('rm_last_attempt_date');
+        console.log('[License] Activation attempts reset manually.');
+    }
+
     static async getDeviceHash(): Promise<string> {
         try {
             if (!(window as any).__TAURI_INTERNALS__) return 'DEV-HASH';
