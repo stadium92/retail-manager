@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - main-cloud-build
+    tags:
+      - 'v*'
   pull_request:
     branches:
       - main
