@@ -63,7 +63,8 @@ export class LicenseService {
             await invoke('activate_license_command', { key, store_name: storeName });
         } catch (error: any) {
             console.error('Activation Error Details:', error);
-            throw new Error(`IPC Error: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
+            // Throw exactly what Rust gave us so we can read it
+            throw new Error(typeof error === 'string' ? error : JSON.stringify(error));
         }
     }
 

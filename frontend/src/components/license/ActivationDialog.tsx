@@ -34,6 +34,7 @@ export function ActivationDialog() {
 
   const handleActivate = async () => {
     if (!key || !storeName) {
+      alert("Missing Information: Please provide both an Activation Key and a Store Name.");
       toast.error(t('license.fillAllFields'));
       return;
     }
@@ -44,7 +45,9 @@ export function ActivationDialog() {
       toast.success(t('license.activatedSuccess'));
       setOpen(false);
     } catch (error) {
-      toast.error((error as Error).message || t('license.invalidKey'));
+      const msg = (error as Error).message || "Unknown Error";
+      alert("ACTIVATION FAILED: \n" + msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
