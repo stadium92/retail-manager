@@ -416,12 +416,14 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     const existingIndex = lineItems.findIndex(li => li.productId === product.id);
     const clientDiscount = currentSession.clientDiscount || 0;
     
+    let targetRow = -1;
+
     if (existingIndex >= 0) {
       const newItems = [...lineItems];
       const item = newItems[existingIndex];
       
 
-      const newQty = item.quantity + 1;
+      const newQty = Number(item.quantity) + 1;
       newItems[existingIndex] = {
         ...item,
         quantity: newQty,
@@ -429,6 +431,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       };
       updateSession(mode, { lineItems: newItems });
       setSelectedIndex(existingIndex);
+      targetRow = existingIndex;
     } else {
       const price = getProductPrice(product, mode, activeTier);
       const packSize = parseInt(product.packaging?.match(/\d+/)?.[0] || '1') || 1;
@@ -459,7 +462,6 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
 
       // CONSUMPTION LOGIC: Fill the first empty row instead of appending a new one
       const firstEmptyIndex = lineItems.findIndex(li => !li.productId);
-      let targetRow = -1;
       
       if (firstEmptyIndex >= 0) {
         const newItems = [...lineItems];
@@ -476,6 +478,11 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         targetRow = lineItems.length;
       }
     }
+
+      // Force blur the current active element (likely the designation input)
+      if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+      }
       
       // Ensure focus jumps to Quantity column (index 5)
       setTimeout(() => {
