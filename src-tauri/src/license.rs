@@ -104,8 +104,8 @@ pub fn get_device_hash() -> String {
     // Take first 5 bytes
     let first_5 = &result[..5];
     
-    // Encode to Base32 (RFC4648, without padding)
-    let b32_str = base32::encode(base32::Alphabet::RFC4648 { padding: false }, first_5);
+    // Encode to Base32 (Crockford, without padding) for readability and consistency
+    let b32_str = base32::encode(base32::Alphabet::Crockford, first_5);
     
     // Truncate to 8 characters just in case
     let b32_str: String = b32_str.chars().take(8).collect();
