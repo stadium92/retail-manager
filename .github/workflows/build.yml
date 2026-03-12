@@ -52,22 +52,9 @@ jobs:
           # Align payload path for Tauri
           Copy-Item "backend/sidecar-wrapper/payload-x86_64-pc-windows-msvc.zip" -Destination "backend/local-bridge/payload.zip" -Force
 
-      - name: Get Version
-        id: get_version
-        shell: bash
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-
       - name: Build Tauri Application
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v${{ env.APP_VERSION }}
-          releaseName: "App v${{ env.APP_VERSION }}"
-          releaseBody: "Automated release by CI/CD Pipeline."
-          releaseDraft: false
-          prerelease: false
           args: --target x86_64-pc-windows-msvc
