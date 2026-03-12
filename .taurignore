@@ -1,0 +1,12 @@
+node_modules
+.git
+.github
+backend/local-bridge/node_modules
+backend/local-bridge/dist
+backend/sidecar-wrapper/target
+tools
+scripts
+memory-bank
+notes
+docs
+frontend/node_modules
