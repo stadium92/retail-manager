@@ -1,0 +1,66 @@
+{
+  "project": "retail-manager",
+  "migration_date": "2026-02-14",
+  "source_environment": "Windows ARM64 VM (Parallels)",
+  "target_environment": "Tiny11 ARM64",
+  "dependencies": {
+    "npm": {
+      "root": {
+        "@tauri-apps/cli": "^2.2.0",
+        "@tauri-apps/cli-win32-arm64-msvc": "2.10.0",
+        "minimist": "^1.2.8",
+        "puppeteer": "^24.36.1"
+      },
+      "frontend": {
+        "@tauri-apps/api": "^2.10.1",
+        "react": "^18.3.1",
+        "vite": "^5.4.19",
+        "tailwindcss": "^3.4.17",
+        "typescript": "^5.8.3"
+      },
+      "backend_local_bridge": {
+        "fastify": "^4.29.1",
+        "better-sqlite3": "9.4.3",
+        "drizzle-orm": "^0.45.1",
+        "@yao-pkg/pkg": "^6.12.0"
+      }
+    },
+    "cargo": {
+      "rust_version": "1.77.2",
+      "targets": ["i686-pc-windows-msvc", "aarch64-pc-windows-msvc"],
+      "crates": {
+        "tauri": "2.9.5",
+        "tokio": "1",
+        "winreg": "0.52",
+        "machine-uid": "0.3",
+        "aes-gcm": "0.10"
+      }
+    },
+    "visual_studio_2022": {
+      "workloads": [
+        "Microsoft.VisualStudio.Workload.NativeDesktop"
+      ],
+      "components": [
+        "Microsoft.VisualStudio.Component.VC.Tools.ARM64",
+        "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+        "Microsoft.VisualStudio.Component.Windows11SDK.22621",
+        "Microsoft.VisualStudio.Component.VC.CMake.Project",
+        "Microsoft.Net.Component.4.8.SDK"
+      ]
+    }
+  },
+  "portability_plan": {
+    "npm_cache": {
+      "source": "C:\\Users\\mohamedcoulibaly\\AppData\\Local\\npm-cache",
+      "destination": "Y:\\npm-cache"
+    },
+    "cargo_home": {
+      "source": "C:\\Users\\mohamedcoulibaly\\.cargo",
+      "destination": "Y:\\cargo-cache"
+    },
+    "project_files": {
+      "source": "C:\\Users\\mohamedcoulibaly\\MVP\\Pro\\retail-manager",
+      "destination": "Y:\\MVP\\Pro\\retail-manager"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "storeName": "Magasin Demo",
+  "storeAddress": "123 Rue Principale, Bamako",
+  "storePhone": "+223 20 00 00 00",
+  "invoiceNumber": "INV-20260204-001",
+  "date": "2026-02-04 14:33",
+  "cashier": "Oumar",
+  "items": [
+    { "name": "Sucre 5kg", "quantity": 2, "lineTotal": "10,000" },
+    { "name": "Riz 10kg", "quantity": 1, "lineTotal": "6,500" }
+  ],
+  "subtotal": "16,500",
+  "discount": "0",
+  "total": "16,500"
+}

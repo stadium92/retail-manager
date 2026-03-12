@@ -1,0 +1,449 @@
+<context>
+# Overview  
+Retail Manager is a comprehensive digital logistics and retail management platform designed to help small retail store owners (including pharmacies and small retail stores) digitize and optimize their operations. The platform provides AI-powered insights, sales analytics, and multi-store management capabilities, enabling store owners to monitor and improve their business performance remotely from anywhere (including from home) while empowering workers with dedicated tools for daily operations.
+
+The platform solves the problem of manual inventory tracking, lack of sales visibility, and difficulty in managing multiple interconnected store locations. It transforms traditional retail operations into data-driven businesses with intelligent suggestions powered by edge AI that analyzes both sales patterns and inventory items.
+
+**Key Value Proposition**: A "ChatGPT for retail managers" - an intelligent, conversational AI-powered assistant that helps retail store owners make data-driven decisions, optimize sales, and manage multiple stores efficiently without being physically present at each location.
+
+# Core Features  
+
+## 1. Store & Inventory Management
+- **Digital Item Catalog**: Store owners and workers can record and manage all items in the store digitally through the web app
+- **Direct Item Updates**: Update store items directly through the web interface, accessible from anywhere
+- **Multi-Store Support**: Store owners can connect and manage multiple store locations from a single dashboard
+- **Interconnected Stores**: Multiple stores are interconnected, allowing cross-store analytics and comparisons
+- **Real-time Inventory Updates**: Items can be updated across all connected stores instantly
+- **Item Tracking**: Track item availability, sales history, and stock levels
+- **Store Interconnection**: Stores can share data and insights, enabling cross-store learning and optimization
+
+## 2. Sales Recording & Tracking
+- **Sales Entry**: Workers can record sales transactions through their dedicated app interface (separate app experience for workers)
+- **Sales History**: All sales are recorded and stored with timestamps, items sold, and detailed worker identification
+- **Worker Attribution**: Track "who is selling what" - every sale is attributed to the specific worker who made it
+- **Sales Patterns**: System collects sales data for exactly one month (minimum threshold) to build sufficient dataset for AI analysis. AI features activate after one month of data collection.
+- **Transaction Logging**: Complete audit trail of all sales activities with worker, item, and timestamp details
+- **Sales Status Monitoring**: Real-time tracking of sales performance indicating if sales are going well, poorly, or worse
+
+## 3. User Management & Access Control
+- **Master/Owner Account**: Store owners have full access to all stores, analytics, and management features
+- **Master Mobile Access**: Store owners can monitor sales, worker activity, and store performance through their phone/tablet
+- **Worker/User Accounts**: Workers have access to sales recording and basic inventory management within their assigned store(s)
+- **Separate Worker App**: Workers have their own dedicated app interface, separate from the master interface
+- **Worker Performance Tracking**: Store owners can see which worker made which sale, with detailed attribution
+- **Weighted Average Performance**: Analytics showing weighted average sales performance across all workers (not just simple average)
+- **Two-Sided System**: Clear separation between "user side" (workers) and "master side" (store owners) with distinct interfaces
+
+### Privilege System
+- **Master Privileges**: Full system access including store management, worker management, all sales viewing/editing, complete analytics, AI features, inventory management, and reports
+- **Worker Privileges**: Limited to assigned store(s) only, can create sales (not edit/delete), view inventory (limited), check own daily sales summary, no analytics, no AI access, no management features
+- **Access Control**: Role-based access control (RBAC) with strict data isolation - workers cannot see master features or other workers' data
+- **Design Differences**: Master interface is information-dense with analytics and multi-store navigation; Worker interface is task-focused, minimal, mobile-first with only essential actions
+- **Security**: Backend API protection, database Row-Level Security (RLS), and frontend route protection ensure privilege enforcement
+- **Detailed Privilege Documentation**: See `interface_architecture_privileges.md` for complete privilege matrix and implementation details
+
+## 4. AI-Powered Sales Analytics & Suggestions
+
+### 4.1 Conversational AI Assistant
+- **Chat Interface**: ChatGPT-like conversational interface for querying business data
+- **Natural Language Queries**: Ask questions in natural language:
+  - "How are my sales today?"
+  - "Which worker is performing best?"
+  - "What items should I restock?"
+  - "Show me sales trends for this week"
+  - "What are my top-selling products?"
+- **Context-Aware Responses**: AI understands business context and provides relevant answers
+- **Conversation History**: Maintains conversation history for context continuity
+- **Multi-Language Support**: Supports multiple languages (French, English, local languages)
+- **Real-time Data Analysis**: AI analyzes current sales data to answer questions
+- **Business Advice**: Provides actionable business advice based on patterns
+
+### 4.2 AI-Powered Suggestions
+- **Intelligent Recommendations**: AI generates actionable recommendations based on:
+  - Sales patterns and trends
+  - Inventory levels and turnover
+  - Worker performance metrics
+  - Historical data analysis
+  - Seasonal patterns
+- **Suggestion Categories**:
+  - Inventory optimization (what to stock, when to restock)
+  - Sales strategies (promotions, pricing)
+  - Worker performance improvements
+  - Store operations optimization
+  - Multi-store coordination
+- **Confidence Scoring**: Each suggestion includes confidence score
+- **Priority Ranking**: Suggestions ranked by potential impact
+- **Actionable Insights**: Clear, actionable recommendations with expected outcomes
+
+### 4.3 Predictive Analytics
+- **Sales Forecasting**: Predict future sales based on historical patterns
+- **Price Predictions**: Predict optimal pricing for items
+- **Demand Forecasting**: Predict demand for specific items
+- **Trend Analysis**: Identify emerging trends and patterns
+- **Seasonal Predictions**: Predict seasonal variations
+- **Confidence Intervals**: Show prediction ranges and confidence levels
+
+### 4.4 Automated Alerts & Notifications
+- **Smart Alerts**: AI-generated alerts for:
+  - Low stock items
+  - Sales anomalies
+  - Worker performance issues
+  - Profit margin warnings
+  - Sales trend changes
+  - Inventory optimization opportunities
+- **Threshold-Based Alerts**: Configurable thresholds for automated alerts
+- **Anomaly Detection**: Detect unusual patterns or outliers
+- **Proactive Notifications**: Alert before problems occur (predictive alerts)
+
+### 4.5 Pattern Analysis & Insights
+- **Sales Pattern Recognition**: Identify recurring sales patterns
+- **Customer Behavior Analysis**: Analyze buying patterns (if customer data available)
+- **Worker Performance Patterns**: Identify worker performance trends
+- **Inventory Turnover Analysis**: Analyze which items sell fastest
+- **Profit Margin Analysis**: Identify most/least profitable items
+- **Time-Based Insights**: Day-of-week, time-of-day patterns
+
+### 4.6 Technical AI Implementation
+- **Edge AI Technology**: Uses edge AI (not cloud-based) for fast, local processing of sales data and patterns
+- **Dual Analysis**: AI analyzes both sales patterns AND inventory items to provide comprehensive insights
+- **One Month Data Requirement**: AI features require exactly one month (30 days) of sales data collection before activation to ensure sufficient dataset
+- **ML Models Used**:
+  - **NLP Models**: For conversational AI (DistilBERT, GPT-2, or similar)
+  - **Time Series Models**: For forecasting (LSTM, ARIMA, Prophet)
+  - **Classification Models**: For pattern recognition (Random Forest, XGBoost)
+  - **Clustering Models**: For anomaly detection (Isolation Forest, DBSCAN)
+- **Real-time Processing**: AI processes data in real-time for immediate insights
+- **Batch Processing**: Periodic batch processing for deeper analysis
+
+### 4.7 Cross-Store Intelligence
+- **Multi-Store Analysis**: For multi-store owners, AI compares performance across interconnected stores
+- **Cross-Store Suggestions**: AI suggests "further things" when analyzing multiple stores together
+- **Best Practice Sharing**: Identify best practices from top-performing stores
+- **Inventory Redistribution**: Suggest inventory movement between stores
+- **Performance Benchmarking**: Compare stores and identify opportunities
+
+### 4.8 AI Integration Points
+- **Backend AI Services**: 
+  - `/api/ai/chat` - Conversational AI endpoint
+  - `/api/ai/suggestions` - Get AI suggestions
+  - `/api/ai/predict` - Price/sales predictions
+  - `/api/ai/alerts` - AI-generated alerts
+  - `/api/ai/analyze` - Pattern analysis
+- **Frontend AI Components**:
+  - Chat interface component
+  - AI suggestions panel
+  - Alert notifications
+  - Prediction displays
+  - Insight cards
+
+## 5. Real-time Monitoring & Dashboard
+- **Owner Dashboard**: Store owners can monitor sales, worker activity, and store performance in real-time from their phone or computer
+- **Mobile-First Master Access**: Store owners can access all monitoring features through their phone, enabling remote management from anywhere (including home)
+- **Sales Status Indicators**: Three-tier visual indicators showing if sales are going:
+  - **Good**: Sales performing well
+  - **Bad**: Sales performing poorly
+  - **Worse**: Sales performing worse than expected
+- **Worker Activity Tracking**: See who is selling what and when, with detailed worker attribution per sale
+- **Multi-Store Overview**: Consolidated view of all interconnected stores with comparative analytics
+- **Home-Based Management**: Store owners can manage stores remotely without being physically present
+
+## 6. Remote Management & Logistics
+- **Cloud-Based Access**: Store owners can manage stores remotely without being physically present
+- **Home-Based Operations**: Store owners can operate from home, monitoring multiple stores simultaneously
+- **Digital Logistics**: Complete digitalization of store logistics - inventory, sales, workers, and operations
+- **Mobile & Web Access**: Accessible through both mobile apps and web interface
+- **Real-time Synchronization**: All data syncs in real-time across devices and interconnected stores
+- **Store Interconnection**: Multiple stores are interconnected, allowing unified management and cross-store insights
+
+# User Experience  
+
+## User Personas
+
+### Store Owner (Master)
+- **Demographics**: Small retail store owner, pharmacy owner, or multi-store operator
+- **Goals**: Monitor business performance from anywhere (including home), optimize sales, manage multiple interconnected locations, make data-driven decisions with AI assistance
+- **Pain Points**: Lack of visibility into daily operations, difficulty tracking worker performance, manual inventory management, need to be physically present at stores
+- **Needs**: Real-time insights accessible via phone, AI-powered recommendations, remote monitoring capabilities, weighted average worker performance metrics, sales status indicators (good/bad/worse)
+- **Use Case**: "Can be at home and have multiple stores being interconnected to each other and knows how sales are going"
+
+### Worker (User)
+- **Demographics**: Store employees, cashiers, sales associates
+- **Goals**: Easily record sales, update inventory, perform daily tasks efficiently through their dedicated app
+- **Pain Points**: Complex systems, time-consuming data entry, lack of understanding of business impact, need for separate worker-focused tools
+- **Needs**: Separate app experience (not just a view), simple intuitive interface, quick sales entry, clear task guidance, ability to record items and sales
+- **Use Case**: Workers have "an app for themselves" - a dedicated interface separate from the master side
+
+## Key User Flows
+
+### Store Owner Flow
+1. **Onboarding**: Register account, create store profile(s), set up initial inventory
+2. **Worker Management**: Add workers, assign to stores, set permissions
+3. **Daily Monitoring**: Check dashboard from phone/computer for sales updates, worker activity, store performance (can be done from home)
+4. **Sales Status Check**: Review sales status indicators (good/bad/worse) for each store
+5. **Worker Performance Review**: View weighted average performance metrics across all workers, see who sold what
+6. **Multi-Store Management**: Switch between interconnected stores, compare performance
+7. **Analytics Review**: Review AI suggestions (after one month of data), sales patterns, and performance metrics
+8. **AI Consultation**: Query AI assistant for insights and recommendations (ChatGPT-like interface)
+9. **Decision Making**: Act on AI recommendations, adjust inventory, optimize operations remotely
+
+### Worker Flow
+1. **Login**: Access dedicated worker app with credentials (separate from master interface)
+2. **Item Recording**: Record/store items in the digital catalog if needed
+3. **Sales Recording**: Enter sales transactions (items, quantities, prices) - each sale is automatically attributed to the worker
+4. **Inventory Updates**: Update item availability, mark items as sold, check stock levels
+5. **Daily Tasks**: Complete assigned tasks, view store-specific information
+6. **Sales History**: View own sales history and transactions for the day
+
+## UI/UX Considerations
+- **Master Interface**: Comprehensive dashboard with charts, analytics, and multi-store views, optimized for phone access
+- **Worker Interface**: Separate app experience - simplified, task-focused interface optimized for quick data entry and daily operations
+- **Two-Sided Design**: Clear visual and functional separation between "user side" (workers) and "master side" (store owners)
+- **Mobile-First Design**: Master interface optimized for phone access (store owners monitor via phone), worker interface mobile-friendly
+- **Intuitive Navigation**: Clear separation between master and worker experiences - workers don't see master features
+- **Real-time Feedback**: Immediate confirmation of actions and data updates
+- **Visual Analytics**: Charts, graphs, and visual indicators for easy understanding
+- **Sales Status Visualization**: Clear visual indicators for sales status (good/bad/worse) using color coding or icons
+- **Weighted Average Display**: Visual representation of weighted average worker performance metrics
+</context>
+<PRD>
+# Technical Architecture  
+
+## System Components
+
+### Frontend
+- **Master Web Application**: React-based dashboard for store owners
+- **Worker Mobile/Web App**: Simplified interface for workers (mobile-optimized)
+- **Responsive Design**: Works across desktop, tablet, and mobile devices
+- **State Management**: Context API or Redux for managing application state
+- **Real-time Updates**: WebSocket or polling for live data synchronization
+
+### Backend
+- **API Server**: Node.js/Express or Python/FastAPI backend
+- **Authentication Service**: JWT-based auth with role-based access control (Master/Worker)
+- **Data Processing Engine**: Service for processing sales data and preparing for AI analysis
+- **AI Service**: Edge AI integration for sales pattern analysis and suggestions
+- **Real-time Sync Service**: WebSocket server for live updates
+
+### Database (Supabase)
+- **User Management**: Authentication and user profiles (masters and workers)
+- **Store Management**: Store profiles, multi-store relationships
+- **Inventory Tables**: Items, stock levels, categories
+- **Sales Tables**: Transactions, sales history, worker assignments
+- **Analytics Tables**: Processed sales patterns, AI suggestions, performance metrics
+- **Relationships**: Proper foreign keys and relationships between stores, users, items, and sales
+
+### Data Models
+
+#### Users
+- id, email, password_hash, role (master/worker), created_at, updated_at
+- profile: name, phone, profile_image
+
+#### Stores
+- id, owner_id (master), name, address, type (pharmacy/retail), created_at, status
+
+#### Store_Workers (Many-to-Many)
+- store_id, worker_id, assigned_at, permissions
+
+#### Items
+- id, store_id, name, description, category, current_stock, price, sku, created_at, updated_at
+
+#### Sales
+- id, store_id, worker_id, item_id, quantity, price, total_amount, transaction_date, created_at
+
+#### Sales_Patterns (AI Processed)
+- id, store_id, pattern_type, insights, suggestions, generated_at, confidence_score
+
+#### Worker_Performance
+- id, worker_id, store_id, period, total_sales, average_transaction, items_sold, weighted_average, sales_count
+
+#### Store_Interconnections
+- id, store_id_1, store_id_2, connection_type, shared_insights_enabled, created_at
+
+#### Sales_Status
+- id, store_id, date, status (good/bad/worse), sales_count, revenue, comparison_period, calculated_at
+
+### APIs and Integrations
+- **Supabase API**: Database operations, authentication, real-time subscriptions
+- **AI/ML Services**: 
+  - **Conversational AI**: NLP models for chat interface (Transformers, DistilBERT, GPT-2)
+  - **Time Series Models**: For forecasting (LSTM, ARIMA, Prophet)
+  - **ML Models**: For pattern analysis (Random Forest, XGBoost, Scikit-learn)
+  - **Edge AI Processing**: Local/fast processing of sales data and patterns
+  - Integration with edge AI services or local ML models
+- **AI Endpoints**:
+  - Chat/conversation endpoints
+  - Suggestions generation
+  - Prediction endpoints
+  - Alert generation
+  - Pattern analysis
+- **Storage**: Supabase Storage for images (item images, profile pictures)
+
+### Infrastructure Requirements
+- **Frontend Hosting**: Vercel, Netlify, or similar
+- **Backend Hosting**: Local development initially, deployable to cloud (Railway, Render, etc.)
+- **Database**: Supabase (PostgreSQL)
+- **Real-time**: Supabase Realtime subscriptions
+- **File Storage**: Supabase Storage
+- **AI Processing**: Edge AI service (local or cloud-based)
+
+# Development Roadmap  
+
+## Phase 1: MVP Foundation
+- **Authentication System**: User registration, login, role-based access (Master/Worker)
+- **Store Management**: Create stores, basic store profile management
+- **User Management**: Master can add workers, assign to stores
+- **Basic Inventory**: Create items, update stock levels, simple item catalog
+- **Sales Recording**: Workers can record sales (item, quantity, price)
+- **Basic Dashboard**: Master can view sales list, worker activity
+- **Database Schema**: Complete Supabase schema with all tables and relationships
+
+## Phase 2: Core Features Enhancement
+- **Sales History & Filtering**: View sales by date, worker, item, store
+- **Worker Performance Tracking**: Basic metrics showing worker sales activity
+- **Multi-Store Support**: Master can manage multiple stores, switch between stores
+- **Real-time Updates**: Live synchronization of sales and inventory updates
+- **Sales Analytics**: Basic charts and graphs (daily/weekly/monthly sales)
+- **Inventory Management**: Advanced inventory features (categories, low stock alerts)
+
+## Phase 3: AI Integration
+- **Data Collection**: Ensure exactly one month (30 days) of sales data collection before AI activation
+- **Edge AI Setup**: Implement edge AI infrastructure for local/fast processing
+- **Dual Analysis Engine**: AI analyzes both sales patterns AND inventory items
+- **Sales Pattern Analysis**: Edge AI processing of sales data and patterns
+- **AI Suggestions Engine**: Generate recommendations based on patterns and item performance
+- **AI Dashboard**: Display AI insights and suggestions to masters
+- **Conversational AI Interface**: ChatGPT-like interface for querying AI about sales, inventory, and operations
+- **Multi-Store AI Analysis**: Cross-store AI analysis and suggestions for multi-store owners
+- **Predictive Analytics**: Sales forecasting, trend analysis based on one month+ of data
+
+## Phase 4: Advanced Features
+- **Weighted Average Calculations**: Advanced weighted average worker performance metrics (not simple average)
+- **Sales Status System**: Three-tier status indicators (good/bad/worse) with automated calculation
+- **Store Interconnection Features**: Deep integration between interconnected stores, shared insights
+- **Cross-Store Analytics**: Compare performance across multiple interconnected stores
+- **Advanced AI Features**: Cross-store suggestions, inventory optimization recommendations, multi-store AI insights
+- **Conversational AI**: Full ChatGPT-like interface for retail managers to query AI about business insights
+- **Reporting**: Export sales reports, performance reports
+- **Notifications**: Alerts for low stock, significant sales events, AI suggestions, sales status changes
+- **Home-Based Management Tools**: Enhanced features for remote store management from home
+
+## Phase 5: Polish & Optimization
+- **UI/UX Refinement**: Polish interfaces, improve user experience
+- **Performance Optimization**: Fast loading, efficient queries
+- **Mobile App**: Native or PWA for workers
+- **Additional Analytics**: More detailed insights, custom date ranges
+- **Bulk Operations**: Bulk inventory updates, bulk sales entry
+
+# Logical Dependency Chain
+
+## Foundation Layer (Must Build First)
+1. **Database Schema**: Set up all Supabase tables, relationships, and RLS policies
+2. **Authentication**: User registration/login, role differentiation
+3. **Basic Store CRUD**: Create, read, update stores
+4. **Basic User Management**: Master can create worker accounts
+
+## Core Functionality Layer (Build Upon Foundation)
+5. **Item Management**: CRUD operations for inventory items
+6. **Sales Recording**: Basic sales entry by workers
+7. **Sales Viewing**: Masters can view sales transactions
+8. **Worker-Store Assignment**: Link workers to stores
+
+## Data Collection Layer (Enable Analytics)
+9. **Sales History**: Store and retrieve historical sales data
+10. **Worker Performance Data**: Track which worker made which sale
+11. **Time-based Filtering**: Filter sales by date ranges
+12. **Data Aggregation**: Calculate totals, averages, counts
+
+## Analytics & Intelligence Layer (Requires Data)
+13. **Basic Analytics Dashboard**: Charts showing sales trends
+14. **Worker Performance Metrics**: Display worker statistics
+15. **AI Data Processing**: Collect and process sales patterns
+16. **AI Suggestions**: Generate and display recommendations
+
+## Advanced Features Layer (Build Upon Analytics)
+17. **Multi-Store Management**: Full multi-store support
+18. **Cross-Store Analytics**: Compare stores
+19. **Advanced AI Features**: Cross-store intelligence
+20. **Real-time Features**: Live updates and synchronization
+
+## UI/UX Polish Layer (Final Layer)
+21. **Mobile Optimization**: Ensure mobile-friendly interfaces
+22. **Visual Refinement**: Improve charts, dashboards, visualizations
+23. **User Experience Enhancements**: Better navigation, feedback, guidance
+
+# Risks and Mitigations  
+
+## Technical Challenges
+- **Risk**: AI accuracy with limited data (need one month minimum)
+  - **Mitigation**: Start with rule-based suggestions, gradually introduce AI as data accumulates. Use statistical analysis before full AI integration.
+
+- **Risk**: Real-time synchronization complexity
+  - **Mitigation**: Use Supabase Realtime subscriptions. Start with polling, upgrade to WebSockets when stable.
+
+- **Risk**: Multi-store data complexity
+  - **Mitigation**: Proper database design with clear store isolation. Use Row Level Security (RLS) in Supabase.
+
+## MVP Scope Management
+- **Risk**: Feature creep, trying to build everything at once
+  - **Mitigation**: Strictly follow phase-by-phase approach. MVP should be usable with basic sales recording and viewing. AI can come later.
+
+- **Risk**: Over-engineering the solution
+  - **Mitigation**: Start simple. Basic CRUD operations first, then add complexity. Use Supabase for quick database setup.
+
+## Resource Constraints
+- **Risk**: AI integration complexity
+  - **Mitigation**: Use existing AI services or simple statistical analysis initially. Edge AI can be integrated incrementally.
+
+- **Risk**: Frontend complexity with multiple user types
+  - **Mitigation**: Clear separation of Master and Worker interfaces. Build Worker interface first (simpler), then Master dashboard.
+
+## Data Quality
+- **Risk**: Incomplete or inaccurate sales data entry
+  - **Mitigation**: Validation on frontend and backend. Simple, guided forms for workers. Error handling and data validation.
+
+- **Risk**: Need for historical data before AI works well
+  - **Mitigation**: Plan for data collection period. Use demo/sample data for development. Set expectations that AI features require data accumulation.
+
+# Appendix  
+
+## Research Findings
+- Target market: Small retail stores, pharmacies, independent retailers
+- Key pain point: Lack of digital tools and visibility into operations
+- Competitive advantage: AI-powered insights, multi-store management, worker performance tracking
+
+## Technical Specifications
+- **Frontend Framework**: React (recommended for Lovable.dev compatibility)
+- **Backend**: Node.js/Express or Python/FastAPI (local development)
+- **Database**: Supabase (PostgreSQL)
+- **Authentication**: Supabase Auth with JWT
+- **Real-time**: Supabase Realtime
+- **Storage**: Supabase Storage
+- **AI**: Edge AI service (to be determined - can start with statistical analysis)
+
+## Key Requirements Summary
+- **Four-Sided Architecture**: Distinct interfaces for Master (store owners), Worker (employees), Deliverer (delivery personnel), and Customer (end users)
+- **Sales Recording**: Detailed sales tracking with worker attribution ("who is selling what")
+- **Multi-Store Support**: Interconnected stores allowing unified management and cross-store analytics
+- **Edge AI Integration**: Edge AI (not cloud) analyzes both sales patterns AND inventory items
+- **One Month Data Requirement**: Exactly one month (30 days) of data collection required before AI activation
+- **Weighted Average Metrics**: Worker performance shown as weighted average (not simple average)
+- **Sales Status Indicators**: Three-tier system (good/bad/worse) for sales performance
+- **Remote Management**: Store owners can manage from home via phone/computer
+- **Mobile-First Master Access**: Master dashboard optimized for phone access
+- **Separate Worker App**: Workers have dedicated app interface separate from master
+- **Deliverer Interface**: Mobile-first delivery management with GPS tracking
+- **Customer Interface**: Public-facing product browsing and ordering (if enabled)
+- **Store Interconnection**: Multiple stores interconnected for shared insights and comparisons
+- **Conversational AI**: ChatGPT-like interface for retail managers ("ChatGPT for retail managers")
+- **Real-time Monitoring**: Live updates accessible remotely
+- **Digital Logistics**: Complete digitalization of store logistics and operations
+- **Delivery Logistics**: Complete delivery flow from customer order to delivery completion
+
+## Feature Brainstorming Reference
+For comprehensive feature analysis and brainstorming framework for each user type, see `feature_brainstorming.md`. This document provides:
+- Deep analysis of features needed for each user type
+- Context analysis and user needs
+- Feature prioritization framework
+- Cross-cutting considerations (performance, offline, notifications, etc.)
+</PRD>
+

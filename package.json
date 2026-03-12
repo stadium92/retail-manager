@@ -1,0 +1,25 @@
+{
+    "name":  "retail-manager-root",
+    "private":  true,
+    "version": "0.5.5",
+    "type":  "module",
+    "scripts":  {
+                    "dev":  "tauri dev",
+                    "build":  "tauri build",
+                    "tauri": "tauri",
+                    "install:all":  "npm install \u0026\u0026 cd frontend \u0026\u0026 npm install \u0026\u0026 cd ../backend/local-bridge \u0026\u0026 npm install",
+                    "clean:dist":  "rm -rf frontend/dist",
+                    "build:backend":  "./scripts/build-sidecar.sh",
+                    "tauri:build":  "npm run clean:dist \u0026\u0026 npm run build:backend \u0026\u0026 npm run build --prefix frontend \u0026\u0026 tauri build \u0026\u0026 mkdir -p release \u0026\u0026 cp -R src-tauri/target/release/bundle/macos/*.app release/ \u0026\u0026 cp -R src-tauri/target/release/bundle/dmg/*.dmg release/"
+                },
+    "devDependencies":  {
+                            "@tauri-apps/cli":  "^2.2.0"
+                        },
+    "optionalDependencies":  {
+                                 "@tauri-apps/cli-win32-arm64-msvc":  "2.10.0"
+                             },
+    "dependencies":  {
+                         "minimist":  "^1.2.8",
+                         "puppeteer":  "^24.36.1"
+                     }
+}
