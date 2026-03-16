@@ -10,9 +10,10 @@ interface SanifereHeaderProps {
   invoiceNumber?: string;
   customerCode?: string;
   customerName?: string;
+  customerPhone?: string;
   customerAddress?: string;
   orderRef?: string;
-  onCustomerChange?: (code: string, name: string, address: string) => void;
+  onCustomerChange?: (code: string, name: string, phone: string, address: string) => void;
   onOrderRefChange?: (ref: string) => void;
   onOrderRefLoad?: (ref: string) => void;
   onInvoiceNumberChange?: (invoice: string) => void;
@@ -30,6 +31,7 @@ export function SanifereHeader({
   invoiceNumber,
   customerCode = '',
   customerName = '',
+  customerPhone = '',
   customerAddress = '',
   orderRef = '',
   onCustomerChange,
@@ -170,7 +172,7 @@ export function SanifereHeader({
           <input
             type="text"
             value={customerCode}
-            onChange={(e) => onCustomerChange?.(e.target.value, customerName, customerAddress)}
+            onChange={(e) => onCustomerChange?.(e.target.value, customerName, customerPhone, customerAddress)}
             className="bg-[hsl(120,100%,35%)] border-b border-black/50 px-2 py-0.5 w-24 text-black focus:outline-none focus:border-[hsl(60,100%,50%)]"
           />
         </div>
@@ -179,8 +181,17 @@ export function SanifereHeader({
           <input
             type="text"
             value={customerName}
-            onChange={(e) => onCustomerChange?.(customerCode, e.target.value, customerAddress)}
+            onChange={(e) => onCustomerChange?.(customerCode, e.target.value, customerPhone, customerAddress)}
             className="bg-[hsl(120,100%,35%)] border-b border-black/50 px-2 py-0.5 w-48 text-black focus:outline-none focus:border-[hsl(60,100%,50%)]"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="uppercase">{t('stores.fields.phone')}</span>
+          <input
+            type="text"
+            value={customerPhone}
+            onChange={(e) => onCustomerChange?.(customerCode, customerName, e.target.value, customerAddress)}
+            className="bg-[hsl(120,100%,35%)] border-b border-black/50 px-2 py-0.5 w-32 text-black focus:outline-none focus:border-[hsl(60,100%,50%)]"
           />
         </div>
       </div>
@@ -189,7 +200,7 @@ export function SanifereHeader({
         <input
           type="text"
           value={customerAddress}
-          onChange={(e) => onCustomerChange?.(customerCode, customerName, e.target.value)}
+          onChange={(e) => onCustomerChange?.(customerCode, customerName, customerPhone, e.target.value)}
           className="bg-[hsl(120,100%,35%)] border-b border-black/50 px-2 py-0.5 flex-1 text-black focus:outline-none focus:border-[hsl(60,100%,50%)]"
         />
       </div>

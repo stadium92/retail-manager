@@ -90,6 +90,9 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
       // ---------------------------------------------------------------
       if (e.key === 'Tab' || e.key === 'Shift') {
         e.preventDefault();
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
         store.getState().jumpToLastEmptyRow();
         return;
       }

@@ -242,22 +242,23 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     }, 100);
   }, [lineItems, invoiceNumber, orderRef, user, customerName, currentSession, customerAddress, netTotal, mode, handlePrintTrigger, storeId]);
 
-  const handleClientChange = useCallback((field: 'code' | 'name', value: string) => {
+  const handleClientChange = useCallback((field: 'code' | 'name', value: string, phone?: string, address?: string) => {
     let updates: any = {};
     let matchedClient: import('@/stores/useMasterDataStore').Client | undefined;
     
     if (field === 'code') {
-      updates = { customerCode: value };
+      updates = { customerCode: value, customerPhone: phone, customerAddress: address };
       matchedClient = clients.find(c => c.code?.toLowerCase() === value.toLowerCase());
     } else if (field === 'name') {
-      updates = { customerName: value };
+      updates = { customerName: value, customerPhone: phone, customerAddress: address };
       matchedClient = clients.find(c => c.name.toLowerCase() === value.toLowerCase());
     }
 
     if (matchedClient) {
       updates.customerCode = matchedClient.code || updates.customerCode || '';
       updates.customerName = matchedClient.name || updates.customerName || '';
-      updates.customerAddress = matchedClient.address || '';
+      updates.customerPhone = matchedClient.phone || updates.customerPhone || '';
+      updates.customerAddress = matchedClient.address || updates.customerAddress || '';
       updates.clientId = matchedClient.id;
 
       // AUTO-APPLY DISCOUNT from client's service group
@@ -719,12 +720,12 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         client_id: currentSession.clientId || undefined,
         
         total_price: netTotal,
+        amount_paid: amountPaid,
         payment_method: paymentMethod as 'cash' | 'card' | 'credit',
         payment_status: paymentMethod === 'credit' ? 'pending' : 'paid',
         sale_type: saleType,
-        paymentMethod: paymentMethod,
         customer_name: customerName || undefined,
-        customer_phone: matchedClient?.phone || undefined,
+        customer_phone: currentSession.customerPhone || matchedClient?.phone || undefined,
         customer_address: customerAddress || undefined,
         invoice_number: invoiceNumber,
         order_ref: orderRef,
@@ -786,11 +787,12 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         client_id: currentSession.clientId || undefined,
         
         total_price: netTotal,
+        amount_paid: 0,
         payment_method: 'credit', // Using credit/pending so it goes to receivables/invoices rather than cash
         payment_status: 'pending',
         sale_type: 'proforma',
         customer_name: customerName || undefined,
-        customer_phone: matchedClient?.phone || undefined,
+        customer_phone: currentSession.customerPhone || matchedClient?.phone || undefined,
         customer_address: customerAddress || undefined,
         invoice_number: invoiceNumber,
         order_ref: orderRef,
@@ -1065,12 +1067,13 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         invoiceNumber={invoiceNumber}
         customerCode={customerCode}
         customerName={customerName}
+        customerPhone={currentSession.customerPhone || ''}
         customerAddress={customerAddress}
         orderRef={orderRef}
-        onCustomerChange={(code, name, address) => {
-          if (code !== customerCode) handleClientChange('code', code);
-          else if (name !== customerName) handleClientChange('name', name);
-          else updateSession(mode, { customerAddress: address });
+        onCustomerChange={(code, name, phone, address) => {
+          if (code !== customerCode) handleClientChange('code', code, phone, address);
+          else if (name !== customerName) handleClientChange('name', name, phone, address);
+          else updateSession(mode, { customerAddress: address, customerPhone: phone });
         }}
         onOrderRefChange={(ref) => updateSession(mode, { orderRef: ref })}
         onOrderRefLoad={handleOrderRefLoad}

@@ -119,7 +119,7 @@ export function ReglementsBonsModule({ storeId }: ReglementsBonsModuleProps) {
             invoice_number: sale.invoice_number ?? null,
             total_price: Number(sale.total_price) || 0,
             payment_status: (sale.payment_status as 'pending' | 'partial' | 'paid') || 'pending',
-            amount_paid: 0,
+            amount_paid: Number((sale as any).amount_paid) || 0,
           }));
           setCreditSales(salesWithPaid);
         } catch (error) {
@@ -140,7 +140,7 @@ export function ReglementsBonsModule({ storeId }: ReglementsBonsModuleProps) {
         const salesWithPaid: CreditSale[] = (data || []).map(sale => ({
           ...sale,
           payment_status: sale.payment_status as 'pending' | 'partial' | 'paid',
-          amount_paid: 0,
+          amount_paid: Number(sale.amount_paid) || 0,
         }));
         setCreditSales(salesWithPaid);
       }
@@ -190,7 +190,7 @@ export function ReglementsBonsModule({ storeId }: ReglementsBonsModuleProps) {
         await localBridgeRequest(`/rest/v1/sales/${selectedSale.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ payment_status: newStatus }),
+          body: JSON.stringify({ payment_status: newStatus, amount_paid: newAmountPaid }),
         });
       } else {
         // No remote client available; settlement requires local bridge
