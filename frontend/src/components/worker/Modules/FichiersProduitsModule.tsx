@@ -254,6 +254,35 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
         
         for (const item of itemsToSave) {
             console.log('[FichiersProduits] Processing item:', item.name);
+
+            let finalFamilyId = item.family_id;
+            // Only try to create if it's not empty and we can't find an existing ID or exact name match
+            if (item.family_id) {
+                const existing = families.find(f => f.id === item.family_id || f.name.toLowerCase() === item.family_id.toLowerCase());
+                if (existing) {
+                    finalFamilyId = existing.id;
+                } else {
+                    console.log('[FichiersProduits] Creating new family on the fly:', item.family_id);
+                    try {
+                        const dc = getDataClient();
+                        const headers = await OfflineAuthService.getAuthHeaders() || {};
+                        const famRes = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/product_families`, {
+                            method: 'POST',
+                            headers: { ...headers, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: item.family_id, store_id: storeId })
+                        });
+                        if (famRes.ok) {
+                            const newFam = await famRes.json();
+                            finalFamilyId = newFam.id;
+                            // Optimistically add to state so subsequent items find it
+                            families.push(newFam);
+                        }
+                    } catch(e) {
+                        console.error("Failed to create family", e);
+                    }
+                }
+            }
+
             const packSize = getPackSize(item.packaging);
             const isBox = isBoxUnit(item.unit_type);
             
@@ -284,7 +313,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                 min_quantity: Number(item.min_stock_alert) || 0,
                 unit_type: item.unit_type,
                 packaging: item.packaging,
-                category: item.family_id || undefined,
+                category: finalFamilyId || undefined,
                 brand: item.brand || undefined,
                 aisle: item.aisle || undefined,
                 image_url: item.image_url || undefined,
@@ -477,7 +506,19 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                     </div>
                     <div className="space-y-2">
                         <Label className="text-xs font-bold uppercase text-primary">{t('inventory.fields.family')}</Label>
-                        <Select value={data.family_id} onValueChange={v => update('family_id', v)}><SelectTrigger className="h-10 bg-primary/5 border-primary/20"><SelectValue placeholder={t('inventory.fields.selectFamily')} /></SelectTrigger><SelectContent>{families.map(fam => <SelectItem key={fam.id} value={fam.id}>{fam.name}</SelectItem>)}</SelectContent></Select>
+                        <div className="relative">
+                          <Input 
+                              list={`families-list-${index ?? 'single'}`}
+                              value={data.family_id} 
+                              onChange={e => update('family_id', e.target.value, index)} 
+                              placeholder={t('inventory.fields.selectFamily')}
+                              className="h-10 bg-primary/5 border-primary/20 pr-8"
+                          />
+                          <datalist id={`families-list-${index ?? 'single'}`}>
+                              {families.map(fam => <option key={fam.id} value={fam.name} />)}
+                          </datalist>
+                          <ChevronDown className="absolute right-2 top-3 h-4 w-4 text-primary/40 pointer-events-none" />
+                        </div>
                     </div>
                     <div className="space-y-2"><Label className="text-xs font-bold uppercase">{t('inventory.fields.brand')}</Label><Input value={data.brand} onChange={e => update('brand', e.target.value)} className="h-10" /></div>
                 </div>
@@ -532,7 +573,10 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2"><Label className="text-xs font-black uppercase text-primary">{registrationMode === 'single' ? t('inventory.fields.initialQuantity') : t('inventory.fields.quantity')}</Label><Input type="number" value={registrationMode === 'single' ? data.reorder_quantity : data.quantity} onChange={handleNumChange(registrationMode === 'single' ? 'reorder_quantity' : 'quantity', index)} className="h-10 font-black bg-primary/5 border-primary/20" /></div>
-                        <div className="space-y-2"><Label className="text-xs font-bold uppercase">{t('inventory.fields.minStock')}</Label><Input type="number" value={data.min_stock_alert} onChange={handleNumChange('min_stock_alert', index)} onBlur={handleNumBlur('min_stock_alert', index)} className="h-10" /></div>
+                        <div className="space-y-2"><Label className="text-xs font-bold uppercase">{t('inventory.fields.minStock')}</Label><Input type="number" step="1" value={data.min_stock_alert} onChange={(e) => {
+                          const val = e.target.value === '' ? '' : parseInt(e.target.value);
+                          update('min_stock_alert', val, index);
+                        }} className="h-10 border-primary/20" /></div>
                     </div>
                     <div className="space-y-2">
                         <Label className="text-xs font-bold uppercase">{t('inventory.fields.image')}</Label>

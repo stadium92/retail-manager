@@ -90,7 +90,14 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
       // ---------------------------------------------------------------
       if (e.key === 'Tab' || e.key === 'Shift') {
         e.preventDefault();
-        store.getState().jumpToLastEmptyRow();
+        // FORCE BLUR FIRST
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+        // Then wait a tiny bit for the browser to catch up, then jump
+        setTimeout(() => {
+          store.getState().jumpToLastEmptyRow();
+        }, 10);
         return;
       }
 
