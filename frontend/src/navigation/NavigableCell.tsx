@@ -44,6 +44,34 @@ export function NavigableCell({
   const isEditing = isFocused && mode === 'edit';
 
   // -----------------------------------------------------------------------
+  // Type-to-Edit: Capture the first keystroke from hover mode
+  // -----------------------------------------------------------------------
+  useEffect(() => {
+    const handleCapture = (e: any) => {
+      const { row: targetRow, col: targetCol } = e.detail;
+      const myCol = GRID_COLUMNS.indexOf(column);
+      
+      if (isFocused && row === targetRow && myCol === targetCol) {
+        // We are the target!
+        const focusable = cellRef.current?.querySelector('input, button') as HTMLElement;
+        if (focusable) {
+          // If it's the designation column, we don't want to focus the background input 
+          // because SalesModule is going to open the ProductLookupDialog which takes focus.
+          if (column === 'designation') {
+              return;
+          }
+          // Simply focus for other columns (Quantity, Price). 
+          // The SalesModule state update will handle the value.
+          focusable.focus();
+        }
+      }
+    };
+
+    window.addEventListener('nav-capture-keystroke', handleCapture);
+    return () => window.removeEventListener('nav-capture-keystroke', handleCapture);
+  }, [isFocused, row, column]);
+
+  // -----------------------------------------------------------------------
   // Auto-scroll logic when focused via keyboard
   // -----------------------------------------------------------------------
   useEffect(() => {

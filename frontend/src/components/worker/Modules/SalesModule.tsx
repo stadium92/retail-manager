@@ -242,22 +242,23 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     }, 100);
   }, [lineItems, invoiceNumber, orderRef, user, customerName, currentSession, customerAddress, netTotal, mode, handlePrintTrigger, storeId]);
 
-  const handleClientChange = useCallback((field: 'code' | 'name', value: string) => {
+  const handleClientChange = useCallback((field: 'code' | 'name', value: string, phone?: string, address?: string) => {
     let updates: any = {};
     let matchedClient: import('@/stores/useMasterDataStore').Client | undefined;
     
     if (field === 'code') {
-      updates = { customerCode: value };
+      updates = { customerCode: value, customerPhone: phone, customerAddress: address };
       matchedClient = clients.find(c => c.code?.toLowerCase() === value.toLowerCase());
     } else if (field === 'name') {
-      updates = { customerName: value };
+      updates = { customerName: value, customerPhone: phone, customerAddress: address };
       matchedClient = clients.find(c => c.name.toLowerCase() === value.toLowerCase());
     }
 
     if (matchedClient) {
       updates.customerCode = matchedClient.code || updates.customerCode || '';
       updates.customerName = matchedClient.name || updates.customerName || '';
-      updates.customerAddress = matchedClient.address || '';
+      updates.customerPhone = matchedClient.phone || updates.customerPhone || '';
+      updates.customerAddress = matchedClient.address || updates.customerAddress || '';
       updates.clientId = matchedClient.id;
 
       // AUTO-APPLY DISCOUNT from client's service group
@@ -416,12 +417,14 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     const existingIndex = lineItems.findIndex(li => li.productId === product.id);
     const clientDiscount = currentSession.clientDiscount || 0;
     
+    let targetRow = -1;
+
     if (existingIndex >= 0) {
       const newItems = [...lineItems];
       const item = newItems[existingIndex];
       
 
-      const newQty = item.quantity + 1;
+      const newQty = Number(item.quantity) + 1;
       newItems[existingIndex] = {
         ...item,
         quantity: newQty,
@@ -429,6 +432,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       };
       updateSession(mode, { lineItems: newItems });
       setSelectedIndex(existingIndex);
+      targetRow = existingIndex;
     } else {
       const price = getProductPrice(product, mode, activeTier);
       const packSize = parseInt(product.packaging?.match(/\d+/)?.[0] || '1') || 1;
@@ -459,7 +463,6 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
 
       // CONSUMPTION LOGIC: Fill the first empty row instead of appending a new one
       const firstEmptyIndex = lineItems.findIndex(li => !li.productId);
-      let targetRow = -1;
       
       if (firstEmptyIndex >= 0) {
         const newItems = [...lineItems];
@@ -476,6 +479,11 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         targetRow = lineItems.length;
       }
     }
+
+      // Force blur the current active element (likely the designation input)
+      if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+      }
       
       // Ensure focus jumps to Quantity column (index 5)
       setTimeout(() => {
@@ -712,12 +720,12 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         client_id: currentSession.clientId || undefined,
         
         total_price: netTotal,
+        amount_paid: amountPaid,
         payment_method: paymentMethod as 'cash' | 'card' | 'credit',
         payment_status: paymentMethod === 'credit' ? 'pending' : 'paid',
         sale_type: saleType,
-        paymentMethod: paymentMethod,
         customer_name: customerName || undefined,
-        customer_phone: matchedClient?.phone || undefined,
+        customer_phone: currentSession.customerPhone || matchedClient?.phone || undefined,
         customer_address: customerAddress || undefined,
         invoice_number: invoiceNumber,
         order_ref: orderRef,
@@ -779,11 +787,12 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         client_id: currentSession.clientId || undefined,
         
         total_price: netTotal,
+        amount_paid: 0,
         payment_method: 'credit', // Using credit/pending so it goes to receivables/invoices rather than cash
         payment_status: 'pending',
         sale_type: 'proforma',
         customer_name: customerName || undefined,
-        customer_phone: matchedClient?.phone || undefined,
+        customer_phone: currentSession.customerPhone || matchedClient?.phone || undefined,
         customer_address: customerAddress || undefined,
         invoice_number: invoiceNumber,
         order_ref: orderRef,
@@ -964,8 +973,11 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       if (typeof rowIndex !== 'number' || !lineItems[rowIndex]) return;
 
       if (colIndex === 0) {
-        // Col 0: Designation. Append the character.
-        handleDesignationChange(rowIndex, key); // Clean overwrite
+        // Col 0: Designation. 
+        // 1. Update query
+        setInitialSearchQuery(key);
+        // 2. Open Search Dialog immediately
+        setIsProductLookupOpen(true);
       } else if (colIndex === 5) {
         // Col 5: Quantity. OVERWRITE with the key if it's a number.
         if (/[0-9]/.test(key)) {
@@ -1058,12 +1070,13 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         invoiceNumber={invoiceNumber}
         customerCode={customerCode}
         customerName={customerName}
+        customerPhone={currentSession.customerPhone || ''}
         customerAddress={customerAddress}
         orderRef={orderRef}
-        onCustomerChange={(code, name, address) => {
-          if (code !== customerCode) handleClientChange('code', code);
-          else if (name !== customerName) handleClientChange('name', name);
-          else updateSession(mode, { customerAddress: address });
+        onCustomerChange={(code, name, phone, address) => {
+          if (code !== customerCode) handleClientChange('code', code, phone, address);
+          else if (name !== customerName) handleClientChange('name', name, phone, address);
+          else updateSession(mode, { customerAddress: address, customerPhone: phone });
         }}
         onOrderRefChange={(ref) => updateSession(mode, { orderRef: ref })}
         onOrderRefLoad={handleOrderRefLoad}
