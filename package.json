@@ -1,10 +1,12 @@
 {
     "name":  "retail-manager-root",
     "private":  true,
-    "version": "0.5.11",
+    "version": "0.5.13",
     "type":  "module",
     "scripts":  {
-                    "dev":  "tauri dev",
+                    "dev":  "npm --prefix frontend run dev",
+                    "dev:backend": "npm --prefix backend/local-bridge run dev",
+                    "dev:tauri": "tauri dev",
                     "build":  "tauri build",
                     "tauri": "tauri",
                     "install:all":  "npm install \u0026\u0026 cd frontend \u0026\u0026 npm install \u0026\u0026 cd ../backend/local-bridge \u0026\u0026 npm install",
