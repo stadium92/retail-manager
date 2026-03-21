@@ -14,6 +14,7 @@ import { OfflineInventoryService } from '@/services/OfflineInventoryService';
 import { useMasterDataStore, ProductFamily } from '@/stores/useMasterDataStore';
 import { toast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
+import { MasterPasswordGate } from '@/components/shared/MasterPasswordGate';
 
 interface FichiersFamillesModuleProps {
   storeId: string;
@@ -264,6 +265,7 @@ export function FichiersFamillesModule({ storeId }: FichiersFamillesModuleProps)
   };
 
   return (
+    <MasterPasswordGate moduleName={t('menu.files.families')}>
     <div className="h-full flex flex-col p-4 gap-4">
       {/* Header */}
       <div className="flex items-center gap-4">
@@ -376,6 +378,7 @@ export function FichiersFamillesModule({ storeId }: FichiersFamillesModuleProps)
         </DialogContent>
       </Dialog>
     </div>
+    </MasterPasswordGate>
   );
 }
 import React from 'react';

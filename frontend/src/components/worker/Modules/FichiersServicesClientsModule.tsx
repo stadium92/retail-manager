@@ -13,6 +13,7 @@ import { toast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
 import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
+import { MasterPasswordGate } from '@/components/shared/MasterPasswordGate';
 
 interface FichiersServicesClientsModuleProps {
   storeId: string;
@@ -157,6 +158,7 @@ export function FichiersServicesClientsModule({ storeId }: FichiersServicesClien
   };
 
   return (
+    <MasterPasswordGate moduleName={t('menu.files.clientGroups')}>
     <div className="h-full flex flex-col p-4 gap-4">
       {/* Header */}
       <div className="flex items-center gap-4">
@@ -286,5 +288,6 @@ export function FichiersServicesClientsModule({ storeId }: FichiersServicesClien
         </DialogContent>
       </Dialog>
     </div>
+    </MasterPasswordGate>
   );
 }

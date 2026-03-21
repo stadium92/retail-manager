@@ -19,6 +19,7 @@ import { toast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { MasterPasswordGate } from '@/components/shared/MasterPasswordGate';
 
 interface FichiersFournisseursModuleProps {
   storeId: string;
@@ -261,6 +262,7 @@ export function FichiersFournisseursModule({ storeId }: FichiersFournisseursModu
   };
 
   return (
+    <MasterPasswordGate moduleName={t('menu.files.suppliers')}>
     <div className="h-full flex flex-col p-4 gap-4">
       {/* Header */}
       <div className="flex items-center gap-4">
@@ -550,5 +552,6 @@ export function FichiersFournisseursModule({ storeId }: FichiersFournisseursModu
         </DialogContent>
       </Dialog>
     </div>
+    </MasterPasswordGate>
   );
 }

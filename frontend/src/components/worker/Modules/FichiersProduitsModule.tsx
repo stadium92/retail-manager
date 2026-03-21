@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { ImageUpload } from '@/components/shared/ImageUpload';
 import { cn } from '@/lib/utils';
 import { ProductLookupDialog } from '../Sales/ProductLookupDialog';
+import { MasterPasswordGate } from '@/components/shared/MasterPasswordGate';
 
 interface FichiersProduitsModuleProps {
   storeId: string;
@@ -311,6 +312,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                 wholesale_price: item.selling_price_ttc ? Number(item.selling_price_ttc) / (isBox ? packSize : 1) : undefined,
                 quantity: finalQty,
                 min_quantity: Number(item.min_stock_alert) || 0,
+                low_stock_threshold: Number(item.min_stock_alert) || 0,
                 unit_type: item.unit_type,
                 packaging: item.packaging,
                 category: finalFamilyId || undefined,
@@ -506,16 +508,19 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                     </div>
                     <div className="space-y-2">
                         <Label className="text-xs font-bold uppercase text-primary">{t('inventory.fields.family')}</Label>
-                        <Input 
-                            list={`families-list-${index ?? 'single'}`}
-                            value={data.family_id} 
-                            onChange={e => update('family_id', e.target.value, index)} 
-                            placeholder={t('inventory.fields.selectFamily')}
-                            className="h-10 bg-primary/5 border-primary/20"
-                        />
-                        <datalist id={`families-list-${index ?? 'single'}`}>
-                            {families.map(fam => <option key={fam.id} value={fam.name} />)}
-                        </datalist>
+                        <div className="relative">
+                          <Input 
+                              list={`families-list-${index ?? 'single'}`}
+                              value={data.family_id} 
+                              onChange={e => update('family_id', e.target.value, index)} 
+                              placeholder={t('inventory.fields.selectFamily')}
+                              className="h-10 bg-primary/5 border-primary/20 pr-8 font-bold"
+                          />
+                          <datalist id={`families-list-${index ?? 'single'}`}>
+                              {families.map(fam => <option key={fam.id} value={fam.name} />)}
+                          </datalist>
+                          <ChevronDown className="absolute right-2 top-3 h-4 w-4 text-primary/40 pointer-events-none" />
+                        </div>
                     </div>
                     <div className="space-y-2"><Label className="text-xs font-bold uppercase">{t('inventory.fields.brand')}</Label><Input value={data.brand} onChange={e => update('brand', e.target.value)} className="h-10" /></div>
                 </div>
@@ -570,7 +575,18 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2"><Label className="text-xs font-black uppercase text-primary">{registrationMode === 'single' ? t('inventory.fields.initialQuantity') : t('inventory.fields.quantity')}</Label><Input type="number" value={registrationMode === 'single' ? data.reorder_quantity : data.quantity} onChange={handleNumChange(registrationMode === 'single' ? 'reorder_quantity' : 'quantity', index)} className="h-10 font-black bg-primary/5 border-primary/20" /></div>
-                        <div className="space-y-2"><Label className="text-xs font-bold uppercase">{t('inventory.fields.minStock')}</Label><Input type="number" value={data.min_stock_alert} onChange={(e) => update('min_stock_alert', e.target.value === '' ? '' : Number(e.target.value), index)} className="h-10" /></div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold uppercase">{t('inventory.fields.minStock')}</Label>
+                          <Input 
+                            type="number" 
+                            value={data.min_stock_alert} 
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              update('min_stock_alert', v === '' ? '' : Number(v), index);
+                            }} 
+                            className="h-10 border-primary/20 font-bold" 
+                          />
+                        </div>
                     </div>
                     <div className="space-y-2">
                         <Label className="text-xs font-bold uppercase">{t('inventory.fields.image')}</Label>
@@ -583,6 +599,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
   };
 
   return (
+    <MasterPasswordGate moduleName={t('menu.files.products')}>
     <div className={cn("h-full flex flex-col p-4 gap-4 transition-colors", !isMasterView && "bg-[hsl(60,80%,85%)]", "dark:bg-transparent")}>
       <div className="flex items-center gap-4 bg-card p-3 rounded-xl border-2 border-border/50 shadow-lg">
         <div className="relative flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder={t('common.search')} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 h-10 border-none bg-muted/30 font-black uppercase tracking-tighter" /></div>
@@ -732,5 +749,6 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
 
       <ProductLookupDialog open={isLookupOpen} onOpenChange={setIsLookupOpen} storeId={storeId} title={t('purchases.productSearch')} standalone mode="wholesale" onSelect={handleProductSelected} />
     </div>
+    </MasterPasswordGate>
   );
 }
