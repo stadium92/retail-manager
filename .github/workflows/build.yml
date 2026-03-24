@@ -58,3 +58,9 @@ jobs:
         with:
           args: --target x86_64-pc-windows-msvc
 
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+
