@@ -414,7 +414,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
 
   const addProduct = useCallback((product: Product) => {
 
-    const existingIndex = lineItems.findIndex(li => li.productId === product.id);
+    const existingIndex = -1; // FORCE NEW LINE: lineItems.findIndex(li => li.productId === product.id);
     const clientDiscount = currentSession.clientDiscount || 0;
     
     let targetRow = -1;
@@ -523,11 +523,18 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   const handleQuantityChange = useCallback((index: number, quantity: any) => {
     const newItems = [...lineItems];
     const item = newItems[index];
-    const numQty = quantity === '' ? 0 : Number(quantity);
+    let numQty = quantity === '' ? 0 : Number(quantity);
+    
+    // ANTI-SCANNER PROTECTION: If a cashier accidentally scans a barcode into the quantity field,
+    // it will type a massive 10-13 digit number. We intercept it here and cap/reset it.
+    if (numQty > 9999) {
+      toast.warning(t('worker.sales.quantityTooHigh') || 'Quantity capped. Scanner error detected.');
+      numQty = 1;
+    }
 
     newItems[index] = {
       ...item,
-      quantity,
+      quantity: numQty,
       lineTotal: calculateLineTotal(Number(item.unitPrice) || 0, numQty, Number(item.discountPercent) || 0, item.isBox, item.conditionnement),
     };
     updateSession(mode, { lineItems: newItems });
@@ -674,7 +681,14 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       if (mode === 'facturation-gros') saleType = 'gros';
       if (mode === 'proforma') saleType = 'proforma';
 
-      const cartItems = lineItems.filter(item => !!item.productId).map(item => {
+      // 1. FILTER: Must have a product, must have > 0 quantity
+      const validItems = lineItems.filter(item => !!item.productId && item.quantity > 0);
+      if (validItems.length === 0) {
+        toast.error('Aucun article valide à facturer.');
+        return;
+      }
+
+      const cartItems = validItems.map(item => {
         const packSize = item.conditionnement || 1;
         
         let totalUnitsForDb: number;
@@ -756,7 +770,14 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     if (lineItems.length === 0) return;
 
     try {
-      const cartItems = lineItems.filter(item => !!item.productId).map(item => {
+      // 1. FILTER: Must have a product, must have > 0 quantity
+      const validItems = lineItems.filter(item => !!item.productId && item.quantity > 0);
+      if (validItems.length === 0) {
+        toast.error('Aucun article valide à sauvegarder.');
+        return;
+      }
+
+      const cartItems = validItems.map(item => {
         const packSize = item.conditionnement || 1;
         let totalUnitsForDb = item.isBox ? item.quantity * packSize : item.quantity;
         return {
@@ -966,26 +987,10 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       }
     };
     const handleCaptureKeystroke = (e: any) => {
-      const rowIndex = e.detail?.row;
-      const colIndex = e.detail?.col;
-      const key = e.detail?.key;
-      
-      if (typeof rowIndex !== 'number' || !lineItems[rowIndex]) return;
-
-      if (colIndex === 0) {
-        // Col 0: Designation. Append the character.
-        handleDesignationChange(rowIndex, key); // Clean overwrite
-      } else if (colIndex === 5) {
-        // Col 5: Quantity. OVERWRITE with the key if it's a number.
-        if (/[0-9]/.test(key)) {
-            handleQuantityChange(rowIndex, key);
-        }
-      } else if (colIndex === 4) {
-        // Col 4: Price. OVERWRITE with the key if it's a number.
-        if (/[0-9]/.test(key)) {
-            handlePriceChange(rowIndex, key);
-        }
-      }
+      // Intentionally left blank. 
+      // NavigableCell.tsx now manually injects the keystroke into the DOM input,
+      // which triggers a natural synthetic React onChange event. 
+      // Manually overwriting state here causes cursor focus issues.
     };
 
     window.addEventListener('nav-delete-row', handleDeleteEvent);
