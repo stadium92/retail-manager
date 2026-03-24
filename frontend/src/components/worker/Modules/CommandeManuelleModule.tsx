@@ -185,9 +185,9 @@ export function CommandeManuelleModule({ storeId }: CommandeManuelleModuleProps)
     searchRef.current?.focus();
   };
 
-  const updateItem = (productId: string, field: keyof OrderItem, value: any) => {
-    setItems(items.map(item => {
-      if (item.product_id !== productId) return item;
+  const updateItem = (index: number, field: keyof OrderItem, value: any) => {
+    setItems(items.map((item, i) => {
+      if (i !== index) return item;
       
       // If switching unit type, convert quantity but KEEP the piece price
         if (field === 'unit_type' && item.unit_type !== value) {
@@ -206,8 +206,8 @@ export function CommandeManuelleModule({ storeId }: CommandeManuelleModuleProps)
     }));
   };
 
-  const removeItem = (productId: string) => {
-    setItems(items.filter(item => item.product_id !== productId));
+  const removeItem = (index: number) => {
+    setItems(items.filter((_, i) => i !== index));
   };
 
   const calculateLineTotal = (item: OrderItem) => {
@@ -363,8 +363,8 @@ export function CommandeManuelleModule({ storeId }: CommandeManuelleModuleProps)
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map(item => (
-                  <TableRow key={item.product_id} className="h-10">
+                {items.map((item, index) => (
+                  <TableRow key={`${item.product_id}-${index}`} className="h-10">
                     <TableCell className="text-sm font-medium">
                       {item.product_name}
                       {item.packaging && <span className="ml-2 text-xs text-muted-foreground">({item.packaging})</span>}
@@ -372,7 +372,7 @@ export function CommandeManuelleModule({ storeId }: CommandeManuelleModuleProps)
                     <TableCell className="p-1">
                       <Select 
                         value={item.unit_type} 
-                        onValueChange={(val: 'Pièce' | 'Carton') => updateItem(item.product_id, 'unit_type', val)}
+                        onValueChange={(val: 'Pièce' | 'Carton') => updateItem(index, 'unit_type', val)}
                       >
                         <SelectTrigger className="h-8 text-xs">
                           <SelectValue />
@@ -388,7 +388,7 @@ export function CommandeManuelleModule({ storeId }: CommandeManuelleModuleProps)
                         type="number"
                         min={1}
                         value={item.quantity}
-                        onChange={(e) => updateItem(item.product_id, 'quantity', parseInt(e.target.value) || 1)}
+                        onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
                         className="h-8 text-center"
                       />
                     </TableCell>
@@ -397,7 +397,7 @@ export function CommandeManuelleModule({ storeId }: CommandeManuelleModuleProps)
                         min={0}
                         step={0.01}
                         value={item.unit_cost}
-                        onValueChange={(v) => updateItem(item.product_id, 'unit_cost', v)}
+                        onValueChange={(v) => updateItem(index, 'unit_cost', v)}
                         className="h-8 text-right"
                       />
                     </TableCell>
@@ -409,7 +409,7 @@ export function CommandeManuelleModule({ storeId }: CommandeManuelleModuleProps)
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-destructive"
-                        onClick={() => removeItem(item.product_id)}
+                        onClick={() => removeItem(index)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
