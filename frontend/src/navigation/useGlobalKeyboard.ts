@@ -57,16 +57,16 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
       }
 
       // ---------------------------------------------------------------
-      // Scanner Detection Logic
+      // Scanner Detection Logic (Global Interceptor)
       // ---------------------------------------------------------------
       const now = Date.now();
       const timeSinceLastKey = now - lastKeyTimeRef.current;
 
-      if (timeSinceLastKey > SCANNER_TIMING_THRESHOLD_MS) {
-        scanBufferRef.current = '';
-      }
+      // If a key arrives extremely fast (less than 30ms), we assume it's a scanner.
+      const isRapidFire = timeSinceLastKey < 30;
 
       if (e.key === 'Enter') {
+        // If we have accumulated enough characters quickly, it's definitely a barcode scan
         if (scanBufferRef.current.length >= SCANNER_CHAR_THRESHOLD) {
           e.preventDefault();
           e.stopPropagation();
@@ -78,9 +78,25 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
           window.dispatchEvent(new CustomEvent('scanner-input', { detail: { code } }));
           return;
         }
+        // Not a scan, just a normal enter press
         scanBufferRef.current = '';
       } else if (e.key.length === 1) {
-        scanBufferRef.current += e.key;
+        if (timeSinceLastKey > SCANNER_TIMING_THRESHOLD_MS) {
+          // This is a slow, human keystroke. Start a new buffer.
+          scanBufferRef.current = e.key;
+        } else {
+          // This is a rapid-fire keystroke (scanner). Append it.
+          scanBufferRef.current += e.key;
+          
+          // SMART INTERCEPTOR:
+          // We know humans can't type 3 characters in 50ms. 
+          // If the buffer gets beyond 2 or 3 characters at superhuman speed, 
+          // we forcefully block the keystrokes from reaching the input fields below.
+          if (scanBufferRef.current.length > 2) {
+             e.preventDefault();
+             e.stopPropagation();
+          }
+        }
       }
       
       lastKeyTimeRef.current = now;
@@ -90,10 +106,14 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
       // ---------------------------------------------------------------
       if (e.key === 'Tab' || e.key === 'Shift') {
         e.preventDefault();
+        // FORCE BLUR FIRST
         if (document.activeElement instanceof HTMLElement) {
           document.activeElement.blur();
         }
-        store.getState().jumpToLastEmptyRow();
+        // Then wait a tiny bit for the browser to catch up, then jump
+        setTimeout(() => {
+          store.getState().jumpToLastEmptyRow();
+        }, 10);
         return;
       }
 
@@ -134,6 +154,18 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
       // While in HOVER mode (navigation between cells)
       // ---------------------------------------------------------------
       if (state.mode === 'hover' && !isInput && state.activeCell) {
+        // --- Type-to-Edit Capture ---
+        // If it's a single character (letter/number), enter edit mode and capture it
+        if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault();
+          store.getState().setMode('edit');
+          
+          window.dispatchEvent(new CustomEvent('nav-capture-keystroke', { 
+              detail: { row: state.activeCell.row, col: state.activeCell.col, key: e.key } 
+          }));
+          return;
+        }
+
         switch (e.key) {
           case 'ArrowRight':
             e.preventDefault();
@@ -205,21 +237,6 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
             store.getState().setActiveCell(null);
             return;
         }
-      }
-
-      // If we are navigating via grid but try to type, auto-enter edit AND capture the character
-      if (state.mode === 'hover' && state.activeCell && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        // IMPORTANT: Prevent default browser behavior so it doesn't append to the existing value
-        // Our nav-capture-keystroke event will handle setting the initial value (overwrite or append as needed)
-        e.preventDefault();
-        
-        store.getState().setMode('edit');
-        store.getState().setMode('edit');
-        
-        // Dispatch an event to capture the first keystroke so it isn't lost
-        window.dispatchEvent(new CustomEvent('nav-capture-keystroke', { 
-            detail: { row: state.activeCell.row, col: state.activeCell.col, key: e.key } 
-        }));
       }
     }
 

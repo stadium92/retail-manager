@@ -576,21 +576,38 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         
         // Only clean up if the row already has a product (empty rows are safely overwritten by addProduct)
         if (item && item.productId) {
+            // Because the global interceptor blocks superhuman typing, only the first 1 or 2 characters 
+            // of the barcode might have "leaked" into the input field before the shield activated.
+            // We need to check if the end of the cell's current value matches the start of our barcode, and slice it off.
+            
+            const cleanupValue = (currentVal: string) => {
+                const str = String(currentVal);
+                // Check if the string ends with the first 1, 2, or 3 characters of the barcode
+                for (let i = Math.min(str.length, 3); i > 0; i--) {
+                    if (str.endsWith(code.substring(0, i))) {
+                        return str.slice(0, -i);
+                    }
+                }
+                return str;
+            };
+
             if (activeCell.col === 5) { // Quantity
                 const qStr = String(item.quantity);
-                if (qStr.includes(code)) {
-                    const fixed = qStr.replace(code, '');
+                const fixed = cleanupValue(qStr);
+                if (fixed !== qStr) {
                     handleQuantityChange(row, fixed === '' ? 1 : parseInt(fixed));
                 }
             } else if (activeCell.col === 0) { // Designation
                 const dStr = String(item.designation);
-                if (dStr.includes(code)) {
-                    handleDesignationChange(row, dStr.replace(code, ''));
+                const fixed = cleanupValue(dStr);
+                if (fixed !== dStr) {
+                    handleDesignationChange(row, fixed);
                 }
             } else if (activeCell.col === 4) { // Price
                 const pStr = String(item.unitPrice);
-                if (pStr.includes(code)) {
-                    handlePriceChange(row, pStr.replace(code, ''));
+                const fixed = cleanupValue(pStr);
+                if (fixed !== pStr) {
+                    handlePriceChange(row, fixed);
                 }
             }
         }
