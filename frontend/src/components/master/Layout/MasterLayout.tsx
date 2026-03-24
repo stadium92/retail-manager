@@ -112,11 +112,16 @@ export function MasterLayout() {
 
   const Sidebar = ({ mobile = false }) => (
     <div className={`flex h-full flex-col ${mobile ? 'py-4' : ''}`}>
-      <div className="px-4 py-6 border-b border-sidebar-border">
-        <h2 className="text-lg font-semibold text-sidebar-foreground">
-          Retail Manager
-        </h2>
-        <p className="text-sm text-sidebar-foreground/60">{t('sidebar.dashboard')} (Master)</p>
+      <div className="px-4 py-6 border-b border-sidebar-border flex items-center gap-3">
+        <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg">
+          <img src="/logo.png" alt="Djati" className="h-full w-full object-contain" />
+        </div>
+        <div>
+          <h2 className="text-lg font-bold text-sidebar-foreground leading-tight uppercase tracking-tighter">
+            Djati
+          </h2>
+          <p className="text-[10px] text-sidebar-foreground/60 uppercase tracking-widest">{t('sidebar.dashboard')}</p>
+        </div>
       </div>
 
       <nav className="flex-1 space-y-1 p-4">

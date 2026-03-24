@@ -3,7 +3,7 @@ import App from "./App.tsx";
 import "./index.css";
 import "./i18n/config";
 
-console.log('ðŸš€ Bootstrapping Retail Manager...');
+console.log('ðŸš€ Bootstrapping Djati...');
 
 // Emergency: Wipe browser storage once to clear corrupt data
 if (!localStorage.getItem('system_reset_v2')) {

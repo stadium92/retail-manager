@@ -50,7 +50,7 @@ export function TermsOfServiceGate({ children }: TermsOfServiceGateProps) {
         <DialogHeader className="p-6 bg-primary text-primary-foreground shrink-0">
           <DialogTitle className="flex items-center gap-3 text-2xl font-black uppercase tracking-tighter">
             <ShieldCheck className="h-8 w-8" />
-            Jati Technologies SARL
+            Djati Technologies SARL
           </DialogTitle>
           <DialogDescription className="text-primary-foreground/80 font-bold">
             Contrat de Licence & Protection des Données
@@ -63,14 +63,14 @@ export function TermsOfServiceGate({ children }: TermsOfServiceGateProps) {
               <h3 className="font-black flex items-center gap-2 text-primary mb-2">
                 <Lock className="h-4 w-4" /> 1. PROPRIÉTÉ INTELLECTUELLE
               </h3>
-              <p>Ce logiciel est la propriété exclusive de <strong>Jati Technologies SARL</strong>. Toute tentative de copie, modification ou revente est strictement interdite et passible de poursuites judiciaires.</p>
+              <p>Ce logiciel est la propriété exclusive de <strong>Djati Technologies SARL</strong>. Toute tentative de copie, modification ou revente est strictement interdite et passible de poursuites judiciaires.</p>
             </section>
 
             <section>
               <h3 className="font-black flex items-center gap-2 text-primary mb-2">
                 <ShieldCheck className="h-4 w-4" /> 2. PROTECTION DE VOTRE VIE PRIVÉE
               </h3>
-              <p>Nous respectons votre secret commercial. Jati Technologies <strong>ne collecte JAMAIS</strong> vos prix d'achat, vos prix de vente, vos bénéfices ou vos chiffres d'affaires détaillés.</p>
+              <p>Nous respectons votre secret commercial. Djati Technologies <strong>ne collecte JAMAIS</strong> vos prix d'achat, vos prix de vente, vos bénéfices ou vos chiffres d'affaires détaillés.</p>
               <p className="mt-2 text-xs italic">Seules les désignations de produits et noms de catégories sont synchronisées pour améliorer les performances de votre assistant intelligent.</p>
             </section>
 
@@ -79,7 +79,7 @@ export function TermsOfServiceGate({ children }: TermsOfServiceGateProps) {
                 <Scale className="h-4 w-4" /> 3. RESPONSABILITÉ LIMITÉE
               </h3>
               <p>L'Intelligence Artificielle est une aide à la décision. L'utilisateur est seul responsable de vérifier l'exactitude des stocks et des calculs avant toute validation finale.</p>
-              <p className="mt-2 font-bold text-destructive">La responsabilité de Jati Technologies est limitée au montant payé pour la licence.</p>
+              <p className="mt-2 font-bold text-destructive">La responsabilité de Djati Technologies est limitée au montant payé pour la licence.</p>
             </section>
           </div>
         </ScrollArea>
@@ -96,7 +96,7 @@ export function TermsOfServiceGate({ children }: TermsOfServiceGateProps) {
               htmlFor="terms"
               className="text-xs font-black uppercase leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
             >
-              J'accepte les conditions de licence Jati
+              J'accepte les conditions de licence Djati
             </label>
           </div>
           <Button 

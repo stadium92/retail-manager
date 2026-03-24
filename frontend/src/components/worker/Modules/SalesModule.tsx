@@ -620,11 +620,48 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         // Add it directly (consumption logic is inside addProduct)
         addProduct(product);
     } else {
-        // If not found, maybe it's just a barcode they are typing manually?
-        // We'll leave it in the designation field (captured via handleCaptureKeystroke)
+        // IMPROVEMENT: Even if not found, create a new row and put the barcode in Designation
+        // This lets the cashier see what they scanned and manually fix/add it.
+        const newItem: SanifereLineItem = {
+            id: crypto.randomUUID(),
+            lineNumber: lineItems.length + 1,
+            productId: '', // Empty ID means it's a manual entry
+            designation: code, // Put the barcode here
+            code: code,
+            conditionnement: 1,
+            isBox: false,
+            unit_type: 'Pièce',
+            stock: 0,
+            basePrice: 0,
+            unitPrice: 0,
+            quantity: 1,
+            discountPercent: 0,
+            lineTotal: 0,
+            priceTiers: { 1: 0, 2: 0, 3: 0, 4: 0 }
+        };
+
+        const firstEmptyIndex = lineItems.findIndex(li => !li.productId);
+        let targetRow = firstEmptyIndex >= 0 ? firstEmptyIndex : lineItems.length;
+        
+        const newItems = [...lineItems];
+        if (firstEmptyIndex >= 0) {
+            newItems[firstEmptyIndex] = { ...newItem, lineNumber: firstEmptyIndex + 1 };
+        } else {
+            newItems.push(newItem);
+        }
+        
+        updateSession(mode, { lineItems: newItems });
+        
+        // Jump focus to the designation box so they can fix the name
+        setTimeout(() => {
+            const store = useNavigationStore.getState();
+            store.setActiveCell({ row: targetRow, col: 0 });
+            store.setMode('edit');
+        }, 50);
+
         toast.error(t('worker.sales.itemNotFound') + ': ' + code);
     }
-  }, [scanProduct, addProduct, t, lineItems, handleQuantityChange, handleDesignationChange, handlePriceChange]);
+  }, [scanProduct, addProduct, t, lineItems, handleQuantityChange, handleDesignationChange, handlePriceChange, mode, updateSession]);
 
   
   const handleToggleUnit = useCallback((index: number) => {

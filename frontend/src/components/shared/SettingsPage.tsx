@@ -85,7 +85,7 @@ export default function SettingsPage() {
             <CardContent className="space-y-4">
               <div>
                 <p className="text-sm text-slate-500">{t('settings.appName')}</p>
-                <p className="text-lg font-semibold">Retail Manager</p>
+                <p className="text-lg font-semibold">Djati</p>
               </div>
               <div>
                 <p className="text-sm text-slate-500">{t('settings.version')}</p>

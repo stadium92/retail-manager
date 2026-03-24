@@ -57,13 +57,13 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
       }
 
       // ---------------------------------------------------------------
-      // Scanner Detection Logic (Global Interceptor)
+      // Scanner Detection Logic (Instant Iron Shield)
       // ---------------------------------------------------------------
       const now = Date.now();
       const timeSinceLastKey = now - lastKeyTimeRef.current;
-
-      // If a key arrives extremely fast (less than 30ms), we assume it's a scanner.
-      const isRapidFire = timeSinceLastKey < 30;
+      
+      // Update timing ref for next key
+      lastKeyTimeRef.current = now;
 
       if (e.key === 'Enter') {
         // If we have accumulated enough characters quickly, it's definitely a barcode scan
@@ -73,33 +73,31 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
 
           const code = scanBufferRef.current;
           scanBufferRef.current = '';
-          lastKeyTimeRef.current = now;
-
           window.dispatchEvent(new CustomEvent('scanner-input', { detail: { code } }));
           return;
         }
         // Not a scan, just a normal enter press
         scanBufferRef.current = '';
       } else if (e.key.length === 1) {
-        if (timeSinceLastKey > SCANNER_TIMING_THRESHOLD_MS) {
+        // TIGHTER THRESHOLD: 35ms is the max speed for human fingers. 
+        // Most scanners type at 5ms-10ms.
+        const isSuperHumanSpeed = timeSinceLastKey < 35;
+
+        if (!isSuperHumanSpeed) {
           // This is a slow, human keystroke. Start a new buffer.
           scanBufferRef.current = e.key;
         } else {
           // This is a rapid-fire keystroke (scanner). Append it.
           scanBufferRef.current += e.key;
           
-          // SMART INTERCEPTOR:
-          // We know humans can't type 3 characters in 50ms. 
-          // If the buffer gets beyond 2 or 3 characters at superhuman speed, 
-          // we forcefully block the keystrokes from reaching the input fields below.
-          if (scanBufferRef.current.length > 2) {
+          // IRON SHIELD: If we have at least 2 characters at superhuman speed, 
+          // we physically BLOCK the browser from putting them in the box.
+          if (scanBufferRef.current.length >= 2) {
              e.preventDefault();
              e.stopPropagation();
           }
         }
       }
-      
-      lastKeyTimeRef.current = now;
 
       // ---------------------------------------------------------------
       // Global Modifiers / Bypasses

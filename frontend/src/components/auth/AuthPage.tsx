@@ -197,10 +197,10 @@ export default function AuthPage() {
       </div>
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-3 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary">
-            <Store className="h-8 w-8 text-primary-foreground" />
+          <div className="mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-xl">
+            <img src="/logo.png" alt="Djati Logo" className="h-full w-full object-contain" />
           </div>
-          <CardTitle className="text-3xl">Retail Manager</CardTitle>
+          <CardTitle className="text-3xl font-black uppercase tracking-tighter">Djati</CardTitle>
           <CardDescription>
             {t('auth.description')}
           </CardDescription>
