@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useReactToPrint } from 'react-to-print';
 import { InvoiceTemplate, InvoiceData } from '@/components/printing/InvoiceTemplate';
+import { usePrinter } from '@/contexts/PrinterContext';
 import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { OfflineDataService } from '@/services/OfflineDataService';
@@ -69,6 +70,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   const { sessions, updateSession } = useSalesStore();
   const { clients, setClients, services } = useMasterDataStore();
   const { scanProduct } = useProductScanner(storeId);
+  const { printReceipt } = usePrinter();
 
 
 
@@ -197,50 +199,49 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     setIsPaymentOpen(true);
   }, [lineItems, setIsPaymentOpen]);
 
-  const handlePrint = useCallback(() => {
+  const handlePrint = useCallback(async () => {
     if (lineItems.length === 0) return;
     
-    const cartItems = lineItems.filter(item => !!item.productId).map(item => {
+    // Calculate totals
+    const validItems = lineItems.filter(item => !!item.productId && item.quantity > 0);
+    const subtotal = validItems.reduce((sum, item) => {
         const packSize = item.conditionnement || 1;
-        let totalUnitsForDb = item.isBox ? item.quantity * packSize : item.quantity;
+        const multiplier = item.isBox ? packSize : 1;
+        return sum + (item.quantity * item.unitPrice * multiplier);
+    }, 0);
+    const totalDiscount = subtotal - netTotal;
+
+    const receiptItems = validItems.map(item => {
+        const packSize = item.conditionnement || 1;
+        let displayQty = item.isBox ? item.quantity * packSize : item.quantity;
         return {
-          product: {
-            id: item.productId || '',
-            store_id: storeId,
-            name: item.designation,
-            unit_price: item.unitPrice,
-            quantity: item.stock,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-          quantity: totalUnitsForDb,
-          discount: item.discountPercent,
-          unit_price: item.unitPrice,
-          lineTotal: item.lineTotal,
+          name: item.designation,
+          qty: displayQty,
+          price: item.unitPrice,
           total: item.lineTotal,
         };
     });
 
-    const invoiceData: InvoiceData = {
-        id: invoiceNumber,
-        invoice_number: invoiceNumber,
-        order_ref: orderRef,
-        storeName: "Magasin", 
-        workerName: user?.full_name || t('edition.seller'),
-        customerName: customerName,
-        customerPhone: (currentSession as any).customerPhone,
-        customerAddress: customerAddress,
-        created_at: new Date().toISOString(),
-        items: cartItems as any,
-        total_price: netTotal,
-        type: mode === 'proforma' ? 'proforma' : 'detail'
+    const receiptData = {
+        invoice: invoiceNumber,
+        storeName: store?.name || "Magasin", 
+        storeAddress: store?.address || "",
+        phone: store?.phone || "",
+        items: receiptItems,
+        subtotal: subtotal,
+        discount: totalDiscount,
+        total: netTotal,
+        date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString(),
+        cashier: user?.full_name || t('edition.seller')
     };
 
-    setSelectedInvoice(invoiceData);
-    setTimeout(() => {
-        handlePrintTrigger();
-    }, 100);
-  }, [lineItems, invoiceNumber, orderRef, user, customerName, currentSession, customerAddress, netTotal, mode, handlePrintTrigger, storeId]);
+    // Use silent printing via Tauri backend
+    try {
+        await printReceipt(receiptData);
+    } catch (e) {
+        console.error("Print failed", e);
+    }
+  }, [lineItems, invoiceNumber, user, netTotal, printReceipt, store, t]);
 
   const handleClientChange = useCallback((field: 'code' | 'name', value: string, phone?: string, address?: string) => {
     let updates: any = {};
