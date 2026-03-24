@@ -40,7 +40,7 @@ export const createProductsRepo = (db: Database.Database) => {
     let filterClause = '';
     if (filter === 'in_stock') filterClause = 'AND p.quantity > 0';
     else if (filter === 'out_of_stock') filterClause = 'AND p.quantity <= 0';
-    else if (filter === 'low_stock') filterClause = 'AND p.quantity > 0 AND p.quantity <= COALESCE(p.min_quantity, 10)';
+    else if (filter === 'low_stock') filterClause = 'AND p.quantity > 0 AND p.quantity <= COALESCE(p.min_quantity, 0)';
 
     // 1. FAST PATH: If query is empty, return latest products
     if (!searchQuery) {

@@ -44,6 +44,42 @@ export function NavigableCell({
   const isEditing = isFocused && mode === 'edit';
 
   // -----------------------------------------------------------------------
+  // Type-to-Edit: Capture the first keystroke from hover mode
+  // -----------------------------------------------------------------------
+  useEffect(() => {
+    const handleCapture = (e: any) => {
+      const { row: targetRow, col: targetCol } = e.detail;
+      const myCol = GRID_COLUMNS.indexOf(column);
+      
+      if (isFocused && row === targetRow && myCol === targetCol) {
+        // We are the target!
+        const focusable = cellRef.current?.querySelector('input, button') as HTMLElement;
+        if (focusable) {
+          focusable.focus();
+          
+          // If it's an input, we need to inject the key manually because the 
+          // global listener called e.preventDefault()
+          if (focusable instanceof HTMLInputElement && focusable.type !== 'button' && focusable.type !== 'submit') {
+            // Use a slight timeout to ensure the focus state is fully processed
+            setTimeout(() => {
+              // The user specifically requested that typing while hovering OVERWRITES the existing value
+              focusable.value = e.detail.key;
+              focusable.selectionStart = focusable.selectionEnd = 1;
+              
+              // Trigger a synthetic change event so React state updates
+              const event = new Event('input', { bubbles: true });
+              focusable.dispatchEvent(event);
+            }, 10);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('nav-capture-keystroke', handleCapture);
+    return () => window.removeEventListener('nav-capture-keystroke', handleCapture);
+  }, [isFocused, row, column]);
+
+  // -----------------------------------------------------------------------
   // Auto-scroll logic when focused via keyboard
   // -----------------------------------------------------------------------
   useEffect(() => {

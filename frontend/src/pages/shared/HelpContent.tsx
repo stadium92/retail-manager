@@ -37,7 +37,59 @@ L'interface de vente est optimisée pour une saisie ultra-rapide sans souris :
 En cas de comportement inhabituel :
 1. Vérifiez que l'icône Wifi n'est pas barrée.
 2. Utilisez le bouton **"Signaler un Bug"** pour nous transmettre vos journaux techniques.
-3. Allez dans **Programme > Synchronisation** pour forcer une mise à jour manuelle des données.`,
+3. Allez dans **Programme > Synchronisation** pour forcer une mise à jour manuelle des données.
+
+## ⚖️ CONTRAT DE LICENCE ET DE PRESTATION DE SERVICES
+*(Réf: JATI-SRL-2026-001)*
+
+---
+
+### 📌 ARTICLE 1 : DÉFINITIONS PRÉALABLES
+> * **Logiciel** : L'ensemble de la solution « Jati Retail Manager », incluant le moteur de base de données local, l'interface utilisateur, et les modules de synchronisation cloud.
+> * **Services Cloud** : Services d'hébergement et de sauvegarde distante permettant la pérennité des données en cas de panne matérielle.
+> * **Intelligence Artificielle (IA)** : Algorithmes de traitement du langage naturel et d'analyse prédictive intégrés au Logiciel pour assister la gestion.
+> * **Anomalie** : Tout bug reproductible empêchant l'utilisation normale d'une fonctionnalité majeure du Logiciel.
+
+### 📜 ARTICLE 2 : CONCESSION DE LICENCE
+> Jati Tech concède au Client un droit d'utilisation personnel, non-exclusif et non-transférable du Logiciel. Cette licence est limitée à l'usage interne du Client pour son propre commerce. Le Client s'interdit formellement de sous-licencier, déléguer ou céder ce droit à un tiers.
+
+### 🛡️ ARTICLE 3 : PROPRIÉTÉ INTELLECTUELLE ET RESTRICTIONS
+> Le Logiciel, son code source, son design graphique et sa documentation sont protégés par les lois sur le droit d'auteur. Le Client s'engage expressément à :
+> * Ne pas tenter de copier, modifier, adapter, ou créer des œuvres dérivées.
+> * Ne pas effectuer d'ingénierie inverse (Reverse Engineering).
+> * Ne pas contourner les mesures techniques de protection (clés d'activation, DRM).
+
+### 💰 ARTICLE 4 : CONDITIONS FINANCIÈRES ET SUSPENSION
+> Tout défaut de paiement à l'échéance convenue entraîne de plein droit, après une mise en demeure restée infructueuse pendant 10 jours, la suspension de l'accès aux mises à jour et aux services de synchronisation cloud.
+
+### 🤝 ARTICLE 5 : ACCOMPAGNEMENT, FORMATION ET SUPPORT
+> Jati Tech assure la formation initiale et s'efforce de corriger les Anomalies bloquantes dans un délai raisonnable. Le support ne couvre pas les problèmes liés à des logiciels tiers (Système d'exploitation Windows, antivirus) ou à une mauvaise manipulation des données par le Client.
+
+### 💻 ARTICLE 6 : ENVIRONNEMENT TECHNIQUE ET PRÉREQUIS
+> Le Client est responsable de la conformité de son matériel informatique. Jati Tech ne peut être tenu responsable d'une lenteur ou d'un dysfonctionnement dû à un matériel obsolète, une infection virale ou une instabilité électrique majeure sans protection (onduleur).
+
+### 🤖 ARTICLE 7 : CLAUSE DE NON-RESPONSABILITÉ RELATIVE À L'IA
+> **AVERTISSEMENT** : L'IA peut parfois produire des résultats erronés ou imprévisibles. **Jati Tech ne pourra être tenu responsable des conséquences de décisions commerciales prises uniquement sur la base des suggestions de l'IA.** Le Client conserve la responsabilité finale de valider chaque inventaire, chaque commande fournisseur et chaque prix de vente.
+
+### 🔒 ARTICLE 8 : PROTECTION DES DONNÉES ET CONFIDENTIALITÉ
+> * **Propriété des Données** : Le Client reste propriétaire exclusif de ses données commerciales. Jati Tech s'engage à ne pas consulter les listes de prix ou les profits du Client sans son accord explicite.
+> * **Données Techniques** : Le Client autorise Jati Tech à collecter des métadonnées anonymisées (désignations produits sans prix, noms de catégories) pour enrichir la base de connaissances globale.
+> * **Sécurité** : Jati Tech déploie des protocoles de chiffrement, mais le Client reconnaît qu'aucun système n'est inviolable et accepte les risques liés à l'usage d'internet.
+
+### ⚖️ ARTICLE 9 : LIMITATION DE RESPONSABILITÉ GÉNÉRALE
+> En aucun cas Jati Tech ne sera responsable des dommages indirects (perte de revenus, interruption d'activité, perte de données matérielle). **PLAFOND DE DÉDOMMAGEMENT** : La responsabilité totale de Jati Tech ne pourra excéder le montant net payé par le Client au titre de la licence pour l'année en cours.
+
+### ⏱️ ARTICLE 10 : DURÉE ET RÉSILIATION
+> Le Contrat est conclu pour 12 mois, renouvelable par tacite reconduction. Résiliation possible avec préavis de 30 jours. En cas de résiliation pour faute du Client, aucun remboursement ne sera effectué.
+
+### 🤫 ARTICLE 11 : CONFIDENTIALITÉ RÉCIPROQUE
+> Le Client s'interdit de divulguer à des tiers les méthodes de travail, l'interface d'administration ou les tarifs préférentiels accordés par Jati Tech.
+
+### ⚡ ARTICLE 12 : FORCE MAJEURE
+> Jati Tech ne pourra être tenu responsable des retards ou inexécutions résultant de cas de force majeure (coupures d'électricité, de réseau internet national ou troubles civils).
+
+### 🇲🇱 ARTICLE 13 : DROIT APPLICABLE ET LITIGES
+> Le présent contrat est régi par le droit de la République du Mali. En cas de contestation, compétence exclusive est attribuée aux tribunaux de Bamako.`,
 
   en: `# Retail Manager Complete Guide
 
@@ -77,7 +129,21 @@ The sales interface is optimized for ultra-fast entry without a mouse:
 In case of unusual behavior:
 1. Check that the Wifi icon is not crossed out.
 2. Use the **"Report a Bug"** button to send us your technical logs.
-3. Go to **Program > Synchronization** to force a manual data update.`,
+3. Go to **Program > Synchronization** to force a manual data update.
+
+---
+
+## ⚖️ License Terms & Agreement
+*(Version Jati-SRL-2026-001)*
+
+### 🛡️ Ownership
+> The software remains the exclusive property of **Jati Technologies SARL**. Any copying, reverse engineering, or resale is strictly prohibited.
+
+### ⚖️ Liability & AI
+> Jati Technologies is not responsible for lost revenue or calculation errors made by the AI. You must verify all outputs. Total liability is limited to the amount you paid for the license.
+
+### 🔒 Privacy Guarantee
+> We **never** collect your purchase prices, selling prices, profits, or sales figures. Only product names and categories are synced to optimize the system's global intelligence.`,
 
   bm: `# Retail Manager Baara Gafɛ
 

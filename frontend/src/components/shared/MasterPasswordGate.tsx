@@ -13,11 +13,23 @@ interface MasterPasswordGateProps {
   moduleName?: string;
 }
 
+// Session-based cache to keep modules unlocked until navigation resets them
+const unlockedModules = new Set<string>();
+
+/**
+ * Reset all unlocked gates (used during navigation)
+ */
+export const resetMasterPasswordGates = () => {
+  unlockedModules.clear();
+};
+
 export function MasterPasswordGate({ children, moduleName }: MasterPasswordGateProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { hasRole, loading: authLoading } = useAuth();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  
+  // Use the global cache as the initial state
+  const [isAuthenticated, setIsAuthenticated] = useState(moduleName ? unlockedModules.has(moduleName) : false);
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -31,6 +43,9 @@ export function MasterPasswordGate({ children, moduleName }: MasterPasswordGateP
     try {
       const isValid = await OfflineAuthService.verifyMasterPassword(password);
       if (isValid) {
+        if (moduleName) {
+          unlockedModules.add(moduleName);
+        }
         setIsAuthenticated(true);
         toast({
           title: t('common.success'),
@@ -75,6 +90,9 @@ export function MasterPasswordGate({ children, moduleName }: MasterPasswordGateP
               variant="outline" 
               size="sm" 
               onClick={() => {
+                if (moduleName) {
+                  unlockedModules.delete(moduleName);
+                }
                 setIsAuthenticated(false);
                 setPassword('');
               }}

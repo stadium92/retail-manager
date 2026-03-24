@@ -29,6 +29,7 @@ import { StockModule } from '../Modules/StockModule';
 import { SettingsModule } from '../Modules/SettingsModule';
 import { useGlobalKeyboard, useNavigationStore } from '@/navigation';
 import { ReglementsBonsModule } from '../Modules/ReglementsBonsModule';
+import { resetMasterPasswordGates } from '@/components/shared/MasterPasswordGate';
 
 interface WorkerLayoutProps {
   className?: string;
@@ -56,6 +57,7 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
 
   useEffect(() => {
     localStorage.setItem('worker_active_module', activeModule);
+    resetMasterPasswordGates(); // Reset all locked modules on navigation
     Logger.info('MODULE_ENTER', { 
       entity_affected: activeModule,
       store_id: storeId || undefined 

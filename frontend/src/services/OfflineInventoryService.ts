@@ -34,7 +34,7 @@ function mapDbToInventoryItem(product: any): InventoryItem {
     packaging: product.packaging,
     expiry_date: product.expiry_date,
     reorder_quantity: Number(product.reorder_quantity) || 0,
-    low_stock_threshold: Number(product.low_stock_threshold ?? product.min_quantity) || 10,
+    low_stock_threshold: Number(product.low_stock_threshold ?? product.min_quantity ?? 0),
     image_url: product.image_url,
     created_at: product.created_at,
     updated_at: product.updated_at,
@@ -64,7 +64,7 @@ function mapLocalInventoryToItem(local: LocalInventory): InventoryItem {
     packaging: local.packaging,
     expiry_date: local.expiry_date,
     reorder_quantity: local.reorder_quantity || 0,
-    low_stock_threshold: local.low_stock_threshold || 10,
+    low_stock_threshold: local.low_stock_threshold ?? 0,
     updated_at: local.updated_at,
     created_at: (local as any).created_at || local.updated_at,
   };
@@ -93,7 +93,7 @@ function mapToLocalInventory(item: InventoryItem | any, synced: boolean = true):
     packaging: item.packaging,
     expiry_date: item.expiry_date,
     reorder_quantity: Number(item.reorder_quantity) || 0,
-    low_stock_threshold: Number(item.low_stock_threshold || item.min_quantity) || 10,
+    low_stock_threshold: Number(item.low_stock_threshold ?? item.min_quantity ?? 0),
     updated_at: item.updated_at || new Date().toISOString(),
     synced,
   };

@@ -65,43 +65,6 @@ export function SanifereHeader({
 
   const displayInvoiceNumber = invoiceNumber || format(currentTime, 'yyMMdd') + '0001';
 
-  if (isSimpleSale) {
-    return (
-      <div className={`${modeBgColors[mode]} text-black font-mono`}>
-        <div className="px-3 py-1">
-          <div className="text-lg font-bold tracking-wide text-[hsl(60,100%,50%)] uppercase">
-            {modeLabels[mode]}
-          </div>
-          <div className="text-sm capitalize">{dateStr}</div>
-        </div>
-        <div className="px-3 pb-1 flex items-center gap-6 text-sm">
-          <span className="bg-white/90 px-2 py-0.5 text-black font-bold">
-            {timeStr}
-          </span>
-          <div className="flex items-center gap-2">
-            <span>N° {t('menu.program.orderRef')}:</span>
-            {onInvoiceNumberChange ? (
-              <input
-              type="text"
-              value={invoiceNumber || ''}
-              onChange={(e) => onInvoiceNumberChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  onOrderRefLoad?.(invoiceNumber || '');
-                }
-              }}
-              className="bg-[hsl(180,100%,40%)] px-2 py-0.5 text-black font-bold w-32 border-none focus:outline-none focus:ring-1 focus:ring-yellow-400"
-            />
-            ) : (
-              <span className="bg-white/90 px-2 py-0.5 text-black font-bold">{displayInvoiceNumber}</span>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={`${modeBgColors[mode]} text-black font-mono`}>
       <div className="px-3 py-1 flex items-center justify-between">

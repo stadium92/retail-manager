@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CONTRAT DE LICENCE ET DE SERVICES - JATI TECHNOLOGIES SARL</title>
+    <style>
+        @page { size: A4; margin: 2.5cm; }
+        body { font-family: 'Times New Roman', Times, serif; line-height: 1.6; color: #1a1a1a; margin: 0; padding: 0; background: #eee; }
+        .document { background: white; width: 21cm; margin: 20px auto; padding: 2.5cm; box-shadow: 0 0 20px rgba(0,0,0,0.2); position: relative; }
+        .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 8em; color: rgba(0,0,0,0.03); z-index: 0; pointer-events: none; white-space: nowrap; }
+        header { border-bottom: 3px solid #000; margin-bottom: 40px; padding-bottom: 10px; position: relative; z-index: 1; }
+        h1 { text-align: center; text-transform: uppercase; font-size: 1.8em; margin: 0; }
+        h2 { text-transform: uppercase; font-size: 1.2em; border-bottom: 1px solid #333; margin-top: 35px; margin-bottom: 15px; color: #000; font-weight: bold; }
+        .parties-grid { display: grid; grid-template-cols: 1fr 1fr; gap: 20px; margin-bottom: 30px; border: 1px solid #ddd; padding: 20px; background: #fcfcfc; }
+        .clause { text-align: justify; margin-bottom: 15px; position: relative; z-index: 1; }
+        .article-title { font-weight: bold; }
+        .important-red { color: #b30000; font-weight: bold; }
+        .footer { margin-top: 50px; font-size: 0.85em; text-align: center; color: #777; border-top: 1px solid #eee; padding-top: 20px; }
+        .signatures-container { margin-top: 80px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+        .sig-box { width: 45%; border: 1px solid #000; padding: 15px; height: 180px; }
+        .page-break { page-break-after: always; }
+        ul { margin-bottom: 15px; }
+        li { margin-bottom: 8px; text-align: justify; }
+        @media print {
+            body { background: white; }
+            .document { box-shadow: none; margin: 0; width: 100%; padding: 0; }
+            .watermark { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="document">
+    <div class="watermark">JATI TECH</div>
+    
+    <header>
+        <h1>CONTRAT DE LICENCE LOGICIELLE ET DE PRESTATION DE SERVICES</h1>
+        <p style="text-align: center; font-weight: bold; margin-top: 10px;">Référence : JATI-SRL-2026-001</p>
+    </header>
+
+    <div class="clause">
+        Le présent Contrat est conclu entre les parties soussignées, agissant de bonne foi pour établir un partenariat technologique durable et sécurisé.
+    </div>
+
+    <div class="parties-grid">
+        <div>
+            <strong>LE PRESTATAIRE :</strong><br><br>
+            <strong>JATI TECHNOLOGIES SARL</strong><br>
+            Société à Responsabilité Limitée<br>
+            Représentée par : <strong>M. Mohamed N’gouro Coulibaly</strong><br>
+            Siège Social : Bamako, République du Mali<br>
+            Contact : support@jati-tech.ml
+        </div>
+        <div>
+            <strong>LE CLIENT :</strong><br><br>
+            Nom / Raison Sociale : ______________________<br>
+            Représenté par : ____________________________<br>
+            Adresse d'exploitation : ______________________<br>
+            NIF / RCCM : ______________________________<br>
+            Téléphone : _______________________________
+        </div>
+    </div>
+
+    <h2>ARTICLE 1 : DÉFINITIONS PRÉALABLES</h2>
+    <div class="clause">
+        Aux fins du présent contrat, les termes suivants sont définis comme suit :
+        <ul>
+            <li><strong>Logiciel :</strong> L'ensemble de la solution « Jati Retail Manager », incluant le moteur de base de données local, l'interface utilisateur, et les modules de synchronisation cloud.</li>
+            <li><strong>Services Cloud :</strong> Services d'hébergement et de sauvegarde distante permettant la pérennité des données en cas de panne matérielle.</li>
+            <li><strong>Intelligence Artificielle (IA) :</strong> Algorithmes de traitement du langage naturel et d'analyse prédictive intégrés au Logiciel pour assister la gestion.</li>
+            <li><strong>Anomalie :</strong> Tout bug reproductible empêchant l'utilisation normale d'une fonctionnalité majeure du Logiciel.</li>
+        </ul>
+    </div>
+
+    <h2>ARTICLE 2 : CONCESSION DE LICENCE</h2>
+    <div class="clause">
+        Jati Tech concède au Client, qui l'accepte, un droit d'utilisation personnel, non-exclusif et non-transférable du Logiciel. Cette licence est limitée à l'usage interne du Client pour son propre commerce et pour le nombre de postes de travail convenu lors de la commande. 
+        <br><br>
+        Le Client s'interdit formellement de sous-licencier, déléguer ou céder ce droit à un tiers sans l'accord écrit préalable de Jati Tech.
+    </div>
+
+    <h2>ARTICLE 3 : PROPRIÉTÉ INTELLECTUELLE ET RESTRICTIONS</h2>
+    <div class="clause">
+        Le Logiciel, sa structure, son code source (Rust/TypeScript), son design graphique et sa documentation sont protégés par les lois nationales et internationales sur le droit d'auteur.
+        <br><br>
+        Le Client s'engage expressément à :
+        <ul>
+            <li>Ne pas tenter de copier, modifier, adapter, traduire ou créer des œuvres dérivées du Logiciel.</li>
+            <li>Ne pas effectuer d'ingénierie inverse (Reverse Engineering) pour découvrir les algorithmes propriétaires.</li>
+            <li>Ne pas contourner les mesures techniques de protection (clés d'activation, DRM).</li>
+        </ul>
+    </div>
+
+    <div class="page-break"></div> <!-- PAGE 2 -->
+
+    <h2>ARTICLE 4 : CONDITIONS FINANCIÈRES ET SUSPENSION</h2>
+    <div class="clause">
+        <span class="article-title">4.1 Modalités :</span> Les tarifs sont fixés selon le barème en vigueur au jour de la signature. Ils peuvent inclure des frais d'acquisition initiaux et des frais de maintenance récurrents.
+        <br><br>
+        <span class="article-title">4.2 Retards :</span> Tout défaut de paiement à l'échéance convenue entraîne de plein droit, après une mise en demeure restée infructueuse pendant 10 jours, la suspension de l'accès aux mises à jour et aux services de synchronisation cloud.
+    </div>
+
+    <h2>ARTICLE 5 : ACCOMPAGNEMENT, FORMATION ET SUPPORT</h2>
+    <div class="clause">
+        <span class="article-title">5.1 Formation Initiale :</span> Jati Tech s'engage à fournir une formation initiale au personnel du Client pour assurer une prise en main optimale de l'outil.
+        <br><br>
+        <span class="article-title">5.2 Support Technique :</span> Le support est assuré par ticket ou téléphone durant les jours ouvrables. Jati Tech s'efforce de corriger les Anomalies bloquantes dans un délai raisonnable.
+        <br><br>
+        <span class="article-title">5.3 Limites du Support :</span> Le support ne couvre pas les problèmes liés à des logiciels tiers (Système d'exploitation Windows, antivirus) ou à une mauvaise manipulation des données par le Client.
+    </div>
+
+    <h2>ARTICLE 6 : ENVIRONNEMENT TECHNIQUE ET PRÉREQUIS</h2>
+    <div class="clause">
+        Le Client est responsable de la conformité de son matériel informatique (PC, imprimante thermique, scanner). Jati Tech ne peut être tenu responsable d'une lenteur ou d'un dysfonctionnement dû à un matériel obsolète, une infection virale sur le poste du Client ou une instabilité électrique majeure sans protection (onduleur).
+    </div>
+
+    <h2>ARTICLE 7 : CLAUSE DE NON-RESPONSABILITÉ RELATIVE À L'IA</h2>
+    <div class="clause">
+        Le Logiciel intègre des technologies d'IA expérimentales pour aider à la décision (analyse de stock, suggestions). 
+        <br><br>
+        <span class="important-red">AVERTISSEMENT :</span> L'IA peut parfois produire des résultats erronés ou imprévisibles. 
+        <strong>Jati Tech ne pourra être tenu responsable des conséquences de décisions commerciales prises uniquement sur la base des suggestions de l'IA.</strong> 
+        Le Client conserve la responsabilité finale de valider chaque inventaire, chaque commande fournisseur et chaque prix de vente.
+    </div>
+
+    <h2>ARTICLE 8 : PROTECTION DES DONNÉES ET CONFIDENTIALITÉ</h2>
+    <div class="clause">
+        <span class="article-title">8.1 Propriété des Données :</span> Le Client reste propriétaire exclusif de ses données commerciales. Jati Tech s'engage à ne pas consulter les listes de prix ou les profits du Client sans son accord explicite.
+        <br><br>
+        <span class="article-title">8.2 Données Techniques :</span> Le Client autorise Jati Tech à collecter des métadonnées anonymisées (désignations produits sans prix, noms de catégories) pour enrichir la base de connaissances globale et améliorer la précision des scanners de code-barres.
+        <br><br>
+        <span class="article-title">8.3 Sécurité :</span> Jati Tech déploie des protocoles de chiffrement pour sécuriser les échanges. Toutefois, le Client reconnaît qu'aucun système informatique n'est inviolable et accepte les risques résiduels liés à l'usage d'internet.
+    </div>
+
+    <div class="page-break"></div> <!-- PAGE 3 -->
+
+    <h2>ARTICLE 9 : LIMITATION DE RESPONSABILITÉ GÉNÉRALE</h2>
+    <div class="clause">
+        La responsabilité de Jati Tech est limitée à une obligation de moyens. 
+        <br><br>
+        En aucun cas Jati Tech ne sera responsable des dommages indirects, tels que :
+        <ul>
+            <li>La perte de revenus ou de bénéfices.</li>
+            <li>L'interruption d'activité commerciale.</li>
+            <li>La perte ou la corruption de données suite à une défaillance matérielle.</li>
+        </ul>
+        <span class="important-red">PLAFOND DE DÉDOMMAGEMENT :</span> Si la responsabilité de Jati Tech devait être engagée, le montant total des indemnités ne pourra excéder le montant net payé par le Client au titre de la licence pour l'année en cours.
+    </div>
+
+    <h2>ARTICLE 10 : DURÉE ET RÉSILIATION</h2>
+    <div class="clause">
+        Le Contrat entre en vigueur à la date de signature pour une durée de 12 mois, renouvelable par tacite reconduction. 
+        Chaque partie peut résilier le contrat avec un préavis de 30 jours. En cas de résiliation pour faute du Client, aucun remboursement ne sera effectué. Le Client aura 30 jours pour exporter ses données avant la clôture définitive de son compte cloud.
+    </div>
+
+    <h2>ARTICLE 11 : CONFIDENTIALITÉ RÉCIPROQUE</h2>
+    <div class="clause">
+        Les parties s'engagent à garder strictement confidentielles les informations échangées durant l'exécution du contrat. Le Client s'interdit notamment de divulguer à des tiers les méthodes de travail, l'interface d'administration ou les tarifs préférentiels accordés par Jati Tech.
+    </div>
+
+    <h2>ARTICLE 12 : FORCE MAJEURE</h2>
+    <div class="clause">
+        Jati Tech ne pourra être tenu responsable des retards ou inexécutions résultant de cas de force majeure tels que définis par la jurisprudence malienne, incluant notamment les coupures généralisées d'électricité, de réseau internet national ou les troubles civils.
+    </div>
+
+    <h2>ARTICLE 13 : DROIT APPLICABLE ET LITIGES</h2>
+    <div class="clause">
+        Le présent contrat est régi par le droit de la République du Mali. En cas de contestation, les parties s'engagent à tenter une médiation. En cas d'échec, compétence exclusive est attribuée aux tribunaux compétents de Bamako.
+    </div>
+
+    <div class="signatures-container">
+        <div class="sig-box">
+            <strong>POUR LE PRESTATAIRE</strong><br>
+            <strong>JATI TECHNOLOGIES SARL</strong><br>
+            M. Mohamed N. Coulibaly<br><br><br>
+            Signature et Cachet :
+        </div>
+        <div class="sig-box">
+            <strong>POUR LE CLIENT</strong><br>
+            Nom : ____________________<br>
+            (Précédé de la mention "Lu et Approuvé")<br><br><br>
+            Signature et Cachet :
+        </div>
+    </div>
+
+    <div class="footer">
+        Jati Technologies SARL - Solutions de Gestion pour l'Économie Émergente<br>
+        Propriété Intellectuelle de M. Mohamed N’gouro Coulibaly - v0.5.14
+    </div>
+</div>
+
+</body>
+</html>

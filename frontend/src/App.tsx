@@ -35,6 +35,8 @@ import DelivererDashboard from "./pages/deliverer/Dashboard";
 import CustomerBrowse from "./pages/customer/Browse";
 import NotFound from "./pages/NotFound";
 
+import { TermsOfServiceGate } from "@/components/license/TermsOfServiceGate";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -49,95 +51,97 @@ const App = () => (
                 <Toaster />
                 <Sonner />
                 <ShortcutsHelpOverlay />
-                <HashRouter>
-                  <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/auth" element={<AuthPage />} />
+                <TermsOfServiceGate>
+                  <HashRouter>
+                    <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/auth" element={<AuthPage />} />
 
-                  {/* Master routes with layout */}
-                  <Route path="/master" element={
-                    <ProtectedRoute role="master">
-                      <MasterLayout />
-                    </ProtectedRoute>
-                  }>
-                    <Route path="dashboard" element={<MasterDashboard />} />
-                    <Route path="stores" element={<StoresPage />} />
-                    <Route path="stores/:id" element={<StoreDetailsPage />} />
-                    <Route path="inventory" element={<InventoryPage />} />
-                    <Route path="sales" element={<SalesPage />} />
-                    <Route path="purchases" element={<PurchasesPage />} />
-                    <Route path="deliverers" element={<DeliverersPage />} />
-                    <Route path="deliveries" element={<DeliveriesPage />} />
-                    <Route path="analytics" element={<AnalyticsPage />} />
-                    <Route path="files" element={<FilesPage />} />
-                    <Route path="invitations" element={<InvitationsPage />} />
-                    <Route path="team" element={<TeamPage />} />
-                    <Route path="audit-logs" element={<AuditLogsPage />} />
-                    <Route path="help" element={<HelpPage />} />
-                  </Route>
-                  <Route path="/worker" element={<Navigate to="/worker/dashboard" replace />} />
-                  <Route
-                    path="/worker/dashboard"
-                    element={
-                      <ErrorBoundary>
-                        <ProtectedRoute role="worker">
+                    {/* Master routes with layout */}
+                    <Route path="/master" element={
+                      <ProtectedRoute role="master">
+                        <MasterLayout />
+                      </ProtectedRoute>
+                    }>
+                      <Route path="dashboard" element={<MasterDashboard />} />
+                      <Route path="stores" element={<StoresPage />} />
+                      <Route path="stores/:id" element={<StoreDetailsPage />} />
+                      <Route path="inventory" element={<InventoryPage />} />
+                      <Route path="sales" element={<SalesPage />} />
+                      <Route path="purchases" element={<PurchasesPage />} />
+                      <Route path="deliverers" element={<DeliverersPage />} />
+                      <Route path="deliveries" element={<DeliveriesPage />} />
+                      <Route path="analytics" element={<AnalyticsPage />} />
+                      <Route path="files" element={<FilesPage />} />
+                      <Route path="invitations" element={<InvitationsPage />} />
+                      <Route path="team" element={<TeamPage />} />
+                      <Route path="audit-logs" element={<AuditLogsPage />} />
+                      <Route path="help" element={<HelpPage />} />
+                    </Route>
+                    <Route path="/worker" element={<Navigate to="/worker/dashboard" replace />} />
+                    <Route
+                      path="/worker/dashboard"
+                      element={
+                        <ErrorBoundary>
+                          <ProtectedRoute role="worker">
+                            <WorkerDashboard />
+                          </ProtectedRoute>
+                        </ErrorBoundary>
+                      }
+                    />
+                    {/* Temporary route for testing - remove after debugging */}
+                    <Route
+                      path="/worker/test"
+                      element={
+                        <ErrorBoundary>
                           <WorkerDashboard />
-                        </ProtectedRoute>
-                      </ErrorBoundary>
-                    }
-                  />
-                  {/* Temporary route for testing - remove after debugging */}
-                  <Route
-                    path="/worker/test"
-                    element={
-                      <ErrorBoundary>
-                        <WorkerDashboard />
-                      </ErrorBoundary>
-                    }
-                  />
-                  {/* Deliverer routes - accessible by master, worker, and deliverer */}
-                  <Route path="/deliverer" element={<Navigate to="/deliverer/dashboard" replace />} />
-                  <Route
-                    path="/deliverer/dashboard"
-                    element={
-                      <ErrorBoundary>
-                        <ProtectedRoute role="deliverer">
+                        </ErrorBoundary>
+                      }
+                    />
+                    {/* Deliverer routes - accessible by master, worker, and deliverer */}
+                    <Route path="/deliverer" element={<Navigate to="/deliverer/dashboard" replace />} />
+                    <Route
+                      path="/deliverer/dashboard"
+                      element={
+                        <ErrorBoundary>
+                          <ProtectedRoute role="deliverer">
+                            <DelivererDashboard />
+                          </ProtectedRoute>
+                        </ErrorBoundary>
+                      }
+                    />
+                    {/* Temporary route for testing - remove after debugging */}
+                    <Route
+                      path="/deliverer/test"
+                      element={
+                        <ErrorBoundary>
                           <DelivererDashboard />
-                        </ProtectedRoute>
-                      </ErrorBoundary>
-                    }
-                  />
-                  {/* Temporary route for testing - remove after debugging */}
-                  <Route
-                    path="/deliverer/test"
-                    element={
-                      <ErrorBoundary>
-                        <DelivererDashboard />
-                      </ErrorBoundary>
-                    }
-                  />
-                  {/* Customer/Merchant routes - public access, accessible by all authenticated users */}
-                  <Route path="/customer" element={<Navigate to="/customer/browse" replace />} />
-                  <Route
-                    path="/customer/browse"
-                    element={
-                      <ErrorBoundary>
-                        <CustomerBrowse />
-                      </ErrorBoundary>
-                    }
-                  />
-                  {/* Temporary route for testing - remove after debugging */}
-                  <Route
-                    path="/customer/test"
-                    element={
-                      <ErrorBoundary>
-                        <CustomerBrowse />
-                      </ErrorBoundary>
-                    }
-                  />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-                </HashRouter>
+                        </ErrorBoundary>
+                      }
+                    />
+                    {/* Customer/Merchant routes - public access, accessible by all authenticated users */}
+                    <Route path="/customer" element={<Navigate to="/customer/browse" replace />} />
+                    <Route
+                      path="/customer/browse"
+                      element={
+                        <ErrorBoundary>
+                          <CustomerBrowse />
+                        </ErrorBoundary>
+                      }
+                    />
+                    {/* Temporary route for testing - remove after debugging */}
+                    <Route
+                      path="/customer/test"
+                      element={
+                        <ErrorBoundary>
+                          <CustomerBrowse />
+                        </ErrorBoundary>
+                      }
+                    />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                  </HashRouter>
+                </TermsOfServiceGate>
                 </TooltipProvider>
               </AuthProvider>
             </ScannerProvider>

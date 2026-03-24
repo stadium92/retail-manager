@@ -110,18 +110,25 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
       if (code && isDialogOpen) {
         if (registrationMode === 'single') {
           setFormData(prev => ({ ...prev, barcode: code }));
+          setTimeout(() => document.getElementById('product-name-single')?.focus(), 50);
         } else {
           // If in multi-mode, update the currently open item or the last item
+          let targetIdx = -1;
           setMultiItems(prev => {
             const newItems = [...prev];
             const openIndex = newItems.findIndex(i => i.isOpen);
             if (openIndex >= 0) {
               newItems[openIndex] = { ...newItems[openIndex], barcode: code };
+              targetIdx = openIndex;
             } else if (newItems.length > 0) {
               newItems[newItems.length - 1] = { ...newItems[newItems.length - 1], barcode: code };
+              targetIdx = newItems.length - 1;
             }
             return newItems;
           });
+          if (targetIdx !== -1) {
+            setTimeout(() => document.getElementById(`product-name-${targetIdx}`)?.focus(), 50);
+          }
         }
         toast.success(t('scanner.codeScanned') || 'Code scanned');
       }
@@ -195,25 +202,57 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
         return { ...item, [field]: val };
     };
 
+    const applyPricingIntel = (item: any) => {
+        let next = { ...item, [field]: val };
+        
+        // --- PRICING INTELLIGENCE (Based on Client Data Analysis) ---
+        if (field === 'purchase_price' && val !== '' && val !== 0) {
+            const cost = Number(val);
+            const retail = Math.round(cost * 1.15); // +15% Retail Margin
+            
+            next.selling_price_detail = retail;
+            next.selling_price_2 = Math.round(retail * 0.98); // -2% Loyalty
+            next.selling_price_3 = Math.round(retail * 0.95); // -5% Bulk
+            next.selling_price_4 = Math.round(retail * 0.90); // -10% Resale
+            next.selling_price_ht = Math.round(cost * 1.08);  // +8% Wholesale HT
+            next.selling_price_ttc = Math.round(cost * 1.10); // +10% Wholesale TTC
+        }
+        return next;
+    };
+
     if (index !== undefined) {
         setMultiItems(prev => prev.map((item, i) => {
             if (i !== index) return item;
             if (field === 'unit_type') return scaleFields(item, val);
-            return { ...item, [field]: val };
+            return applyPricingIntel(item);
         }));
     } else {
         setFormData(f => {
             if (field === 'unit_type') return scaleFields(f, val) as typeof f;
-            return { ...f, [field]: val };
+            return applyPricingIntel(f);
         });
     }
   };
 
   const addMultiItemRow = () => {
-    setMultiItems(prev => [
-        ...prev.map(item => ({ ...item, isOpen: false })),
-        { ...initialFormState, id: crypto.randomUUID(), isOpen: false }
-    ]);
+    setMultiItems(prev => {
+        // FIELD INHERITANCE: New rows copy Family, Brand, and Unit from the previous row
+        const lastItem = prev.length > 0 ? prev[prev.length - 1] : formData;
+        
+        return [
+            ...prev.map(item => ({ ...item, isOpen: false })),
+            { 
+                ...initialFormState, 
+                id: crypto.randomUUID(), 
+                isOpen: true,
+                family_id: lastItem.family_id,
+                brand: lastItem.brand,
+                unit_type: lastItem.unit_type,
+                packaging: lastItem.packaging,
+                aisle: lastItem.aisle
+            }
+        ];
+    });
   };
 
   const removeMultiItemRow = (id: string) => {
@@ -250,7 +289,19 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     console.log('[FichiersProduits] handleSave triggered. Mode:', registrationMode);
     setIsSaving(true);
     try {
-        const itemsToSave = registrationMode === 'single' ? [formData] : multiItems;
+        // GHOST ROW PROTECTION: Filter out rows with no name or zero pricing/stock
+        const itemsToSave = (registrationMode === 'single' ? [formData] : multiItems).filter(item => {
+            const hasName = !!item.name && item.name.trim().length > 0;
+            const hasData = Number(item.purchase_price) > 0 || Number(item.quantity) > 0 || !!item.sku;
+            return hasName && hasData;
+        });
+
+        if (itemsToSave.length === 0 && registrationMode === 'multi') {
+            toast({ title: "Aucun article valide", description: "Veuillez saisir au moins un nom de produit.", variant: "destructive" });
+            setIsSaving(false);
+            return;
+        }
+
         console.log('[FichiersProduits] Items to save:', itemsToSave.length);
         
         for (const item of itemsToSave) {
@@ -480,7 +531,22 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                     <div className="w-1.5 h-1.5 rounded-full bg-primary" />{t('inventory.sectionIdentification')}
                 </h3>
                 <div className="space-y-4">
-                    <div className="space-y-2"><Label className="font-bold">{t('inventory.fields.name')} *</Label><Input value={data.name} onChange={e => update('name', e.target.value)} required className="h-12 text-lg font-semibold bg-muted/20" /></div>
+                    <div className="space-y-2">
+                        <Label className="font-bold">{t('inventory.fields.name')} *</Label>
+                        <Input 
+                            id={`product-name-${index ?? 'single'}`}
+                            value={data.name} 
+                            onChange={e => update('name', e.target.value)} 
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    document.getElementById(`product-purchase-price-${index ?? 'single'}`)?.focus();
+                                }
+                            }}
+                            required 
+                            className="h-12 text-lg font-semibold bg-muted/20" 
+                        />
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label className="text-xs font-bold uppercase">{t('inventory.fields.sku')}</Label>
@@ -542,7 +608,18 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                     </div>
                     <div className="space-y-2 pt-2">
                         <Label className="text-xs font-bold uppercase">{t('inventory.fields.purchasePrice')}</Label>
-                        <div className="relative"><Input type="number" value={data.purchase_price} onChange={handleNumChange('purchase_price', index)} onBlur={handleNumBlur('purchase_price', index)} className="h-10 font-bold bg-muted/30" /><span className="absolute right-3 top-2.5 text-muted-foreground text-xs font-bold">F</span></div></div>
+                        <div className="relative">
+                            <Input 
+                                id={`product-purchase-price-${index ?? 'single'}`}
+                                type="number" 
+                                value={data.purchase_price} 
+                                onChange={handleNumChange('purchase_price', index)} 
+                                onBlur={handleNumBlur('purchase_price', index)} 
+                                className="h-10 font-bold bg-muted/30" 
+                            />
+                            <span className="absolute right-3 top-2.5 text-muted-foreground text-xs font-bold">F</span>
+                        </div>
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2"><Label className="text-xs font-black uppercase text-danger">{t('inventory.fields.wholesalePriceHT')}</Label><Input type="number" value={data.selling_price_ht} onChange={handleNumChange('selling_price_ht', index)} onBlur={handleNumBlur('selling_price_ht', index)} className="h-10 border-danger/20" /></div>
                         <div className="space-y-2"><Label className="text-xs font-black uppercase text-danger">{t('inventory.fields.wholesalePriceTTC')}</Label><Input type="number" value={data.selling_price_ttc} onChange={handleNumChange('selling_price_ttc', index)} onBlur={handleNumBlur('selling_price_ttc', index)} className="h-10 border-danger/20 font-bold" /></div>
