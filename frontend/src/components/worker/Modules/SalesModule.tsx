@@ -118,6 +118,9 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   const [initialSearchQuery, setInitialSearchQuery] = useState('');
   const [store, setStore] = useState<any>(null);
 
+  // IRON REVERT: Track the last stable value of the active cell to prevent scanner leaks
+  const stableValueRef = useRef<{row: number, col: number, value: any} | null>(null);
+
   const fetchStoreSettings = useCallback(async () => {
     if (!storeId) return;
     try {
@@ -511,6 +514,10 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     const newItems = [...lineItems];
     const item = newItems[index];
     if (!item) return;
+
+    // Update stable value for revert logic
+    stableValueRef.current = { row: index, col: 4, value: unitPrice };
+
     const numPrice = unitPrice === '' ? 0 : Number(unitPrice);
 
     newItems[index] = {
@@ -524,6 +531,11 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   const handleQuantityChange = useCallback((index: number, quantity: any) => {
     const newItems = [...lineItems];
     const item = newItems[index];
+    if (!item) return;
+
+    // Update stable value for revert logic
+    stableValueRef.current = { row: index, col: 5, value: quantity };
+
     let numQty = quantity === '' ? 0 : Number(quantity);
     
     // ANTI-SCANNER PROTECTION: If a cashier accidentally scans a barcode into the quantity field,
@@ -567,45 +579,41 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     
     console.log('[Scanner] High speed input detected:', code);
     
-    // 1. Clean up "Scanner Corruption" in the currently active cell
-    const store = useNavigationStore.getState();
-    const activeCell = store.activeCell;
-    
-    if (activeCell && activeCell.row >= 0 && activeCell.row < lineItems.length) {
-        const row = activeCell.row;
-        const item = lineItems[row];
+    // 1. IRON REVERT: Immediately restore the last stable value if a scan leaked into a box
+    if (stableValueRef.current) {
+        const { row, col, value } = stableValueRef.current;
+        if (col === 5) { // Quantity
+            handleQuantityChange(row, value);
+        } else if (col === 4) { // Price
+            handlePriceChange(row, value);
+        }
+        stableValueRef.current = null;
+    } else {
+        // Fallback cleanup if ref wasn't set
+        const store = useNavigationStore.getState();
+        const activeCell = store.activeCell;
         
-        // Only clean up if the row already has a product (empty rows are safely overwritten by addProduct)
-        if (item && item.productId) {
-            // Because the global interceptor blocks superhuman typing, only the first 1 or 2 characters 
-            // of the barcode might have "leaked" into the input field before the shield activated.
-            // We need to check if the end of the cell's current value matches the start of our barcode, and slice it off.
-            
-            const cleanupValue = (currentVal: string) => {
-                const str = String(currentVal);
-                // Check if the string ends with the first 1, 2, or 3 characters of the barcode
-                for (let i = Math.min(str.length, 3); i > 0; i--) {
-                    if (str.endsWith(code.substring(0, i))) {
-                        return str.slice(0, -i);
+        if (activeCell && activeCell.row >= 0 && activeCell.row < lineItems.length) {
+            const row = activeCell.row;
+            const item = lineItems[row];
+            if (item && item.productId) {
+                const cleanupValue = (currentVal: string) => {
+                    const str = String(currentVal);
+                    for (let i = Math.min(str.length, 3); i > 0; i--) {
+                        if (str.endsWith(code.substring(0, i))) return str.slice(0, -i);
                     }
+                    return str;
+                };
+                if (activeCell.col === 5) {
+                    const fixed = cleanupValue(String(item.quantity));
+                    if (fixed !== String(item.quantity)) handleQuantityChange(row, fixed === '' ? 1 : parseInt(fixed));
+                } else if (activeCell.col === 4) {
+                    const fixed = cleanupValue(String(item.unitPrice));
+                    if (fixed !== String(item.unitPrice)) handlePriceChange(row, fixed);
                 }
-                return str;
-            };
-
-            if (activeCell.col === 5) { // Quantity
-                const qStr = String(item.quantity);
-                const fixed = cleanupValue(qStr);
-                if (fixed !== qStr) {
-                    handleQuantityChange(row, fixed === '' ? 1 : parseInt(fixed));
-                }
-            } else if (activeCell.col === 0) { // Designation
-                const dStr = String(item.designation);
-                const fixed = cleanupValue(dStr);
-                if (fixed !== dStr) {
-                    handleDesignationChange(row, fixed);
-                }
-            } else if (activeCell.col === 4) { // Price
-                const pStr = String(item.unitPrice);
+            }
+        }
+    }
                 const fixed = cleanupValue(pStr);
                 if (fixed !== pStr) {
                     handlePriceChange(row, fixed);
