@@ -73,7 +73,7 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
 
           const code = scanBufferRef.current;
           scanBufferRef.current = '';
-          (window as any).lastScannerEventTime = Date.now(); // GLOBAL SCAN TIMESTAMP
+          (window as any).isScannerTyping = false; // Scan finished
           window.dispatchEvent(new CustomEvent('scanner-input', { detail: { code } }));
           return;
         }
@@ -81,18 +81,15 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
         scanBufferRef.current = '';
       } else if (e.key.length === 1) {
         // TIGHTER THRESHOLD: 35ms is the max speed for human fingers. 
-        // Most scanners type at 5ms-10ms.
         const isSuperHumanSpeed = timeSinceLastKey < 35;
 
         if (!isSuperHumanSpeed) {
-          // This is a slow, human keystroke. Start a new buffer.
           scanBufferRef.current = e.key;
+          (window as any).isScannerTyping = false;
         } else {
-          // This is a rapid-fire keystroke (scanner). Append it.
           scanBufferRef.current += e.key;
+          (window as any).isScannerTyping = true; // SCANNER DETECTED
           
-          // IRON SHIELD: If we have at least 2 characters at superhuman speed, 
-          // we physically BLOCK the browser from putting them in the box.
           if (scanBufferRef.current.length >= 2) {
              e.preventDefault();
              e.stopPropagation();
