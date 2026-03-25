@@ -614,13 +614,6 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
             }
         }
     }
-                const fixed = cleanupValue(pStr);
-                if (fixed !== pStr) {
-                    handlePriceChange(row, fixed);
-                }
-            }
-        }
-    }
     
     // 2. Find and add the product
     const product = await scanProduct(code);
