@@ -267,8 +267,8 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
   return (
     <div className={cn('h-full flex flex-col bg-background', className)}>
       <header className="h-10 bg-[hsl(160,70%,35%)] flex items-center shrink-0 px-2">
-        <div className="h-7 w-7 shrink-0 overflow-hidden rounded bg-white/20 p-0.5 mr-2">
-          <img src="/logo.png" alt="Djati" className="h-full w-full object-contain filter brightness-0 invert" />
+        <div className="h-7 w-7 shrink-0 overflow-hidden rounded bg-white/10 p-0.5 mr-2">
+          <img src="logo.png" alt="Djati" className="h-full w-full object-contain" />
         </div>
         <div className="text-white font-black text-xs uppercase tracking-tighter mr-4 border-r border-white/20 pr-4">
           Djati

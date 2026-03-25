@@ -73,6 +73,7 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
 
           const code = scanBufferRef.current;
           scanBufferRef.current = '';
+          (window as any).lastScannerEventTime = Date.now(); // GLOBAL SCAN TIMESTAMP
           window.dispatchEvent(new CustomEvent('scanner-input', { detail: { code } }));
           return;
         }

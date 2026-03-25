@@ -500,10 +500,14 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
             setTimeout(() => {
                const el = document.getElementById(`quantity-input-${targetRow}`) as HTMLInputElement;
                if (el) {
-                   el.focus();
-                   el.select();
+                   // Ensure we aren't in the middle of another scan before highlighting
+                   const isScannerTyping = (Date.now() - (window as any).lastScannerEventTime) < 500;
+                   if (!isScannerTyping) {
+                       el.focus();
+                       el.select();
+                   }
                }
-            }, 50);
+            }, 100);
           }
       }, 50);
       
