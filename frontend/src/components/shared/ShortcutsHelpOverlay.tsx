@@ -69,7 +69,7 @@ export function ShortcutsHelpOverlay() {
 
           {/* Footer */}
           <div className="mt-8 pt-4 border-t-2 border-dashed border-white/50 text-center text-sm opacity-60">
-            <p>RETAIL MANAGER v1.0 • DOS MODE OVERLAY</p>
+            <p>DJATI v1.0 • DOS MODE OVERLAY</p>
           </div>
         </div>
       </div>
