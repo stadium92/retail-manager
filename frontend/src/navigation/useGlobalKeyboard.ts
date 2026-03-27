@@ -80,20 +80,32 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
         // Not a scan, just a normal enter press
         scanBufferRef.current = '';
       } else if (e.key.length === 1) {
-        // TIGHTER THRESHOLD: 35ms is the max speed for human fingers. 
         const isSuperHumanSpeed = timeSinceLastKey < 35;
 
-        if (!isSuperHumanSpeed) {
-          scanBufferRef.current = e.key;
-          (window as any).isScannerTyping = false;
-        } else {
+        if (isSuperHumanSpeed) {
+          // SCANNER MODE: We are in a burst of speed.
           scanBufferRef.current += e.key;
-          (window as any).isScannerTyping = true; // SCANNER DETECTED
+          (window as any).isScannerTyping = true;
           
+          // Block the browser from putting these into the input box
           if (scanBufferRef.current.length >= 2) {
              e.preventDefault();
              e.stopPropagation();
           }
+        } else {
+          // HUMAN MODE: Key arrived slowly.
+          // 1. Wipe the buffer - human keys are not barcodes
+          scanBufferRef.current = e.key; 
+          (window as any).isScannerTyping = false;
+          
+          // 2. Clear buffer after a tiny delay if no other key follows
+          // This ensures that the next scan starts fresh.
+          if (scanTimerRef.current) clearTimeout(scanTimerRef.current);
+          scanTimerRef.current = setTimeout(() => {
+            if (!(window as any).isScannerTyping) {
+              scanBufferRef.current = '';
+            }
+          }, 100);
         }
       }
 
