@@ -159,11 +159,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
   const handleNumChange = (field: keyof typeof initialFormState, index?: number) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     const finalVal = val === '' ? '' : Number(val);
-    if (index !== undefined) {
-        setMultiItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: finalVal } : item));
-    } else {
-        setFormData(f => ({ ...f, [field]: finalVal }));
-    }
+    updateField(field, finalVal, index);
   };
 
   const handleNumBlur = (field: keyof typeof initialFormState, index?: number) => () => {
@@ -204,19 +200,35 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
 
     const applyPricingIntel = (item: any) => {
         let next = { ...item, [field]: val };
-        
-        // --- PRICING INTELLIGENCE (Based on Client Data Analysis) ---
-        if (field === 'purchase_price' && val !== '' && val !== 0) {
-            const cost = Number(val);
-            const retail = Math.round(cost * 1.15); // +15% Retail Margin
-            
-            next.selling_price_detail = retail;
-            next.selling_price_2 = Math.round(retail * 0.98); // -2% Loyalty
-            next.selling_price_3 = Math.round(retail * 0.95); // -5% Bulk
-            next.selling_price_4 = Math.round(retail * 0.90); // -10% Resale
-            next.selling_price_ht = Math.round(cost * 1.08);  // +8% Wholesale HT
-            next.selling_price_ttc = Math.round(cost * 1.10); // +10% Wholesale TTC
+        const numVal = Number(val);
+        if (isNaN(numVal) || val === '') return next;
+
+        // --- UNIVERSAL PRICING ENGINE (Multi-Way) ---
+        let cost = 0;
+
+        if (field === 'purchase_price') {
+            cost = numVal;
+        } else if (field === 'selling_price_detail') {
+            cost = Math.round(numVal / 1.15);
+        } else if (field === 'selling_price_ttc') {
+            cost = Math.round(numVal / 1.10);
+        } else if (field === 'selling_price_2') {
+            cost = Math.round((numVal / 0.98) / 1.15);
+        } else {
+            // For other fields, just keep existing logic or ignore auto-trigger
+            return next;
         }
+
+        // Apply derived cost to all tiers
+        const retail = Math.round(cost * 1.15);
+        next.purchase_price = cost;
+        next.selling_price_detail = retail;
+        next.selling_price_2 = Math.round(retail * 0.98);
+        next.selling_price_3 = Math.round(retail * 0.95);
+        next.selling_price_4 = Math.round(retail * 0.90);
+        next.selling_price_ht = Math.round(cost * 1.08);
+        next.selling_price_ttc = Math.round(cost * 1.10);
+
         return next;
     };
 
