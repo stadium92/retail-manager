@@ -1,6 +1,6 @@
 [package]
 name = "Djati"
-version = "0.5.27"
+version = "0.5.28"
 description = "A Tauri App"
 authors = ["you"]
 license = ""

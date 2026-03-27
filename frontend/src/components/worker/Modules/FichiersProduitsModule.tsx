@@ -170,64 +170,54 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     }
   };
 
+  // Simple 'Neural' cache to remember margins per category
+  const categoryMarginCache = useRef<Record<string, number>>({});
+
   const updateField = (field: keyof typeof initialFormState, val: any, index?: number) => {
-    const scaleFields = (item: any, newUnit: string) => {
-        const packSize = getPackSize(item.packaging);
-        const isNewUnitBox = isBoxUnit(newUnit);
-        const isOldUnitBox = isBoxUnit(item.unit_type);
-
-        const formatValue = (num: number) => Number(Number(num).toFixed(4));
-
-        if (isNewUnitBox !== isOldUnitBox && packSize > 1) {
-            const multiplier = isNewUnitBox ? packSize : (1 / packSize);
-            return {
-                ...item,
-                unit_type: newUnit,
-                purchase_price: formatValue(Number(item.purchase_price || 0) * multiplier),
-                selling_price_detail: formatValue(Number(item.selling_price_detail || 0) * multiplier),
-                selling_price_2: formatValue(Number(item.selling_price_2 || 0) * multiplier),
-                selling_price_3: formatValue(Number(item.selling_price_3 || 0) * multiplier),
-                selling_price_4: formatValue(Number(item.selling_price_4 || 0) * multiplier),
-                selling_price_ht: formatValue(Number(item.selling_price_ht || 0) * multiplier),
-                selling_price_ttc: formatValue(Number(item.selling_price_ttc || 0) * multiplier),
-                quantity: formatValue(Number(item.quantity || 0) / multiplier),
-                reorder_quantity: formatValue(Number(item.reorder_quantity || 0) / multiplier),
-                min_stock_alert: formatValue(Number(item.min_stock_alert || 0) / multiplier),
-            };
-        }
-        return { ...item, [field]: val };
-    };
+    const roundToNearest = (num: number, nearest: number = 50) => Math.round(num / nearest) * nearest;
 
     const applyPricingIntel = (item: any) => {
         let next = { ...item, [field]: val };
         const numVal = Number(val);
         if (isNaN(numVal) || val === '') return next;
 
-        // --- UNIVERSAL PRICING ENGINE (Multi-Way) ---
-        let cost = 0;
+        // --- DJATI NEURAL PRICING ENGINE ---
+        let cost = Number(next.purchase_price) || 0;
+        
+        // 1. Determine Margin (Learn from Cache or use 12% baseline)
+        const category = next.family_id || 'default';
+        const marginMultiplier = categoryMarginCache.current[category] || 1.12;
 
         if (field === 'purchase_price') {
             cost = numVal;
         } else if (field === 'selling_price_detail') {
-            cost = Math.round(numVal / 1.15);
+            cost = numVal / marginMultiplier;
+            // Update the 'Neural' cache if the user manually changes retail price
+            categoryMarginCache.current[category] = numVal / Number(next.purchase_price || 1);
         } else if (field === 'selling_price_ttc') {
-            cost = Math.round(numVal / 1.10);
-        } else if (field === 'selling_price_2') {
-            cost = Math.round((numVal / 0.98) / 1.15);
+            cost = numVal / 1.10;
         } else {
-            // For other fields, just keep existing logic or ignore auto-trigger
             return next;
         }
 
-        // Apply derived cost to all tiers
-        const retail = Math.round(cost * 1.15);
-        next.purchase_price = cost;
+        // 2. Generate Tiers with "Psychological Rounding" (Nearest 50/100)
+        const retail = roundToNearest(cost * marginMultiplier, 50);
+        
+        next.purchase_price = Math.round(cost);
         next.selling_price_detail = retail;
-        next.selling_price_2 = Math.round(retail * 0.98);
-        next.selling_price_3 = Math.round(retail * 0.95);
-        next.selling_price_4 = Math.round(retail * 0.90);
-        next.selling_price_ht = Math.round(cost * 1.08);
-        next.selling_price_ttc = Math.round(cost * 1.10);
+        
+        // Tier 2 (Loyalty): Retail minus a small fixed offset
+        next.selling_price_2 = roundToNearest(retail * 0.98, 50); 
+        
+        // Tier 3 (Bulk): Significant discount
+        next.selling_price_3 = roundToNearest(retail * 0.95, 100);
+        
+        // Tier 4 (Resale): Aggressive discount
+        next.selling_price_4 = roundToNearest(retail * 0.90, 100);
+        
+        // Wholesale: Standard 7-8% markup
+        next.selling_price_ht = roundToNearest(cost * 1.07, 50);
+        next.selling_price_ttc = roundToNearest(cost * 1.10, 50);
 
         return next;
     };
