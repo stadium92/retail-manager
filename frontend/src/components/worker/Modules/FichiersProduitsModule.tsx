@@ -181,43 +181,26 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
         const numVal = Number(val);
         if (isNaN(numVal) || val === '') return next;
 
-        // --- DJATI NEURAL PRICING ENGINE ---
-        let cost = Number(next.purchase_price) || 0;
-        
-        // 1. Determine Margin (Learn from Cache or use 12% baseline)
-        const category = next.family_id || 'default';
-        const marginMultiplier = categoryMarginCache.current[category] || 1.12;
-
+        // --- ONE-WAY ANCHOR PRICING ---
+        // Only 'purchase_price' triggers a mass recalculation.
+        // Other fields update themselves individually without touching siblings.
         if (field === 'purchase_price') {
-            cost = numVal;
-        } else if (field === 'selling_price_detail') {
-            cost = numVal / marginMultiplier;
-            // Update the 'Neural' cache if the user manually changes retail price
-            categoryMarginCache.current[category] = numVal / Number(next.purchase_price || 1);
-        } else if (field === 'selling_price_ttc') {
-            cost = numVal / 1.10;
-        } else {
-            return next;
-        }
+            const cost = numVal;
+            const category = next.family_id || 'default';
+            const marginMultiplier = categoryMarginCache.current[category] || 1.12;
+            const retail = roundToNearest(cost * marginMultiplier, 50);
 
-        // 2. Generate Tiers with "Psychological Rounding" (Nearest 50/100)
-        const retail = roundToNearest(cost * marginMultiplier, 50);
-        
-        next.purchase_price = Math.round(cost);
-        next.selling_price_detail = retail;
-        
-        // Tier 2 (Loyalty): Retail minus a small fixed offset
-        next.selling_price_2 = roundToNearest(retail * 0.98, 50); 
-        
-        // Tier 3 (Bulk): Significant discount
-        next.selling_price_3 = roundToNearest(retail * 0.95, 100);
-        
-        // Tier 4 (Resale): Aggressive discount
-        next.selling_price_4 = roundToNearest(retail * 0.90, 100);
-        
-        // Wholesale: Standard 7-8% markup
-        next.selling_price_ht = roundToNearest(cost * 1.07, 50);
-        next.selling_price_ttc = roundToNearest(cost * 1.10, 50);
+            next.selling_price_detail = retail;
+            next.selling_price_2 = roundToNearest(retail * 0.98, 50); 
+            next.selling_price_3 = roundToNearest(retail * 0.95, 100);
+            next.selling_price_4 = roundToNearest(retail * 0.90, 100);
+            next.selling_price_ht = roundToNearest(cost * 1.07, 50);
+            next.selling_price_ttc = roundToNearest(cost * 1.10, 50);
+        } else if (field === 'selling_price_detail') {
+            // Update learning cache but don't force-change other boxes
+            const category = next.family_id || 'default';
+            categoryMarginCache.current[category] = numVal / Number(next.purchase_price || 1);
+        }
 
         return next;
     };
