@@ -170,51 +170,44 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     }
   };
 
-  // Simple 'Neural' cache to remember margins per category
-  const categoryMarginCache = useRef<Record<string, number>>({});
-
   const updateField = (field: keyof typeof initialFormState, val: any, index?: number) => {
-    const roundToNearest = (num: number, nearest: number = 50) => Math.round(num / nearest) * nearest;
+    const scaleFields = (item: any, newUnit: string) => {
+        const packSize = getPackSize(item.packaging);
+        const isNewUnitBox = isBoxUnit(newUnit);
+        const isOldUnitBox = isBoxUnit(item.unit_type);
 
-    const applyPricingIntel = (item: any) => {
-        let next = { ...item, [field]: val };
-        const numVal = Number(val);
-        if (isNaN(numVal) || val === '') return next;
+        const formatValue = (num: number) => Number(Number(num).toFixed(4));
 
-        // --- ONE-WAY ANCHOR PRICING ---
-        // Only 'purchase_price' triggers a mass recalculation.
-        // Other fields update themselves individually without touching siblings.
-        if (field === 'purchase_price') {
-            const cost = numVal;
-            const category = next.family_id || 'default';
-            const marginMultiplier = categoryMarginCache.current[category] || 1.12;
-            const retail = roundToNearest(cost * marginMultiplier, 50);
-
-            next.selling_price_detail = retail;
-            next.selling_price_2 = roundToNearest(retail * 0.98, 50); 
-            next.selling_price_3 = roundToNearest(retail * 0.95, 100);
-            next.selling_price_4 = roundToNearest(retail * 0.90, 100);
-            next.selling_price_ht = roundToNearest(cost * 1.07, 50);
-            next.selling_price_ttc = roundToNearest(cost * 1.10, 50);
-        } else if (field === 'selling_price_detail') {
-            // Update learning cache but don't force-change other boxes
-            const category = next.family_id || 'default';
-            categoryMarginCache.current[category] = numVal / Number(next.purchase_price || 1);
+        if (isNewUnitBox !== isOldUnitBox && packSize > 1) {
+            const multiplier = isNewUnitBox ? packSize : (1 / packSize);
+            return {
+                ...item,
+                unit_type: newUnit,
+                purchase_price: formatValue(Number(item.purchase_price || 0) * multiplier),
+                selling_price_detail: formatValue(Number(item.selling_price_detail || 0) * multiplier),
+                selling_price_2: formatValue(Number(item.selling_price_2 || 0) * multiplier),
+                selling_price_3: formatValue(Number(item.selling_price_3 || 0) * multiplier),
+                selling_price_4: formatValue(Number(item.selling_price_4 || 0) * multiplier),
+                selling_price_ht: formatValue(Number(item.selling_price_ht || 0) * multiplier),
+                selling_price_ttc: formatValue(Number(item.selling_price_ttc || 0) * multiplier),
+                quantity: formatValue(Number(item.quantity || 0) / multiplier),
+                reorder_quantity: formatValue(Number(item.reorder_quantity || 0) / multiplier),
+                min_stock_alert: formatValue(Number(item.min_stock_alert || 0) / multiplier),
+            };
         }
-
-        return next;
+        return { ...item, [field]: val };
     };
 
     if (index !== undefined) {
         setMultiItems(prev => prev.map((item, i) => {
             if (i !== index) return item;
             if (field === 'unit_type') return scaleFields(item, val);
-            return applyPricingIntel(item);
+            return { ...item, [field]: val };
         }));
     } else {
         setFormData(f => {
             if (field === 'unit_type') return scaleFields(f, val) as typeof f;
-            return applyPricingIntel(f);
+            return { ...f, [field]: val };
         });
     }
   };
