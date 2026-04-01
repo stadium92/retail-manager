@@ -7,31 +7,24 @@ interface SyncPushResult {
   pending: number;
 }
 
+/**
+ * LocalBridgeSyncService: The bridge between the local app and the Djati Cloud VPS.
+ * It uses the Jati Sync Token (Private Key) to authenticate every request.
+ */
 export class LocalBridgeSyncService {
-  private static async getSyncToken(serviceKey: string): Promise<string | null> {
-    const dataClient = getDataClient();
-    const response = await smartFetch(`${dataClient.localBridgeBaseUrl}/auth/token_exchange`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ supabase_service_key: serviceKey }),
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const payload = await response.json().catch(() => null);
-    return payload?.access_token || null;
+  
+  private static getCloudConfig() {
+    return {
+      token: localStorage.getItem('jati_sync_token'),
+      url: localStorage.getItem('jati_cloud_url') || 'http://localhost:3000'
+    };
   }
 
-  static async pushPendingMutations(serviceKey: string): Promise<SyncPushResult> {
+  static async pushPendingMutations(): Promise<SyncPushResult> {
+    const { token, url } = this.getCloudConfig();
     const dataClient = getDataClient();
-    if (!dataClient.isLocalFirst) {
-      return { pushed: 0, failed: 0, pending: 0 };
-    }
-
-    const token = await this.getSyncToken(serviceKey);
-    if (!token) {
+    
+    if (!dataClient.isLocalFirst || !token) {
       return { pushed: 0, failed: 0, pending: 0 };
     }
 
@@ -42,87 +35,60 @@ export class LocalBridgeSyncService {
     let pushed = 0;
     let failed = 0;
 
+    // 1. Process local mutations (idempotent push to Cloud)
     for (const item of pendingLocal) {
       const data = item.data || {};
       if (!data.entity || !data.payload) {
         await LocalDatabase.removeFromSyncQueue(item.id);
-        failed += 1;
         continue;
       }
 
-      const response = await smartFetch(`${dataClient.localBridgeBaseUrl}/sync/push`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          supabase_service_key: serviceKey,
-          entity: data.entity,
-          payload: data.payload,
-          store_id: data.store_id,
-        }),
-      });
+      try {
+        const response = await fetch(`${url}/api/v1/sync`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            store_id: data.store_id,
+            sync_token: token,
+            sales: data.entity === 'sales' ? [data.payload] : [],
+            // Future: add products and customers here
+          }),
+        });
 
-      if (response.ok) {
-        await LocalDatabase.removeFromSyncQueue(item.id);
-        pushed += 1;
-      } else {
+        if (response.ok) {
+          await LocalDatabase.removeFromSyncQueue(item.id);
+          pushed += 1;
+        } else {
+          failed += 1;
+        }
+      } catch (e) {
         failed += 1;
       }
-    }
-
-    const backendResponse = await smartFetch(`${dataClient.localBridgeBaseUrl}/sync/push`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ supabase_service_key: serviceKey }),
-    });
-
-    let backendResult: SyncPushResult = { pushed: 0, failed: 0, pending: 0 };
-    if (backendResponse.ok) {
-      backendResult = (await backendResponse.json().catch(() => backendResult)) as SyncPushResult;
-    } else {
-      failed += 1;
     }
 
     const remainingLocal = (await LocalDatabase.getSyncQueue()).filter((item) => item.type === 'pending_mutation').length;
 
     return {
-      pushed: pushed + backendResult.pushed,
-      failed: failed + backendResult.failed,
-      pending: remainingLocal + backendResult.pending,
+      pushed,
+      failed,
+      pending: remainingLocal,
     };
   }
 
-  static async pullProducts(serviceKey: string, storeId?: string): Promise<{ pulled: number } | null> {
-    const dataClient = getDataClient();
-    if (!dataClient.isLocalFirst) {
+  static async pullData(): Promise<{ pulled: number } | null> {
+    const { token, url } = this.getCloudConfig();
+    if (!token) return null;
+
+    try {
+      const response = await fetch(`${url}/health`);
+      if (!response.ok) return null;
+      
+      // Future: Implement full data pull (products, settings)
+      return { pulled: 0 };
+    } catch (e) {
       return null;
     }
-
-    const token = await this.getSyncToken(serviceKey);
-    if (!token) {
-      return null;
-    }
-
-    const url = new URL(`${dataClient.localBridgeBaseUrl}/sync/pull`);
-    if (storeId) {
-      url.searchParams.set('store_id', storeId);
-    }
-
-    const response = await smartFetch(url.toString(), {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    return await response.json().catch(() => null);
   }
 }
