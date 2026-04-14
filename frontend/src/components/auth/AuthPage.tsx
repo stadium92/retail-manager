@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import logoUrl from '@/assets/logo.png';
 import { useAuth } from '@/contexts/AuthContext';
 import { getDefaultDashboardRoute } from '@/utils/accessControl';
 import { Button } from '@/components/ui/button';
@@ -198,7 +199,7 @@ export default function AuthPage() {
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-3 text-center">
           <div className="mx-auto flex h-24 w-24 items-center justify-center overflow-hidden rounded-xl">
-            <img src="/logo.png" alt="Djati Logo" className="h-full w-full object-contain" />
+            <img src={logoUrl} alt="Djati Logo" className="h-full w-full object-contain" />
           </div>
           <CardTitle className="text-3xl font-black uppercase tracking-tighter">Djati</CardTitle>
           <CardDescription>
