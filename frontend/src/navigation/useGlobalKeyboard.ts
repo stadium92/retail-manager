@@ -57,33 +57,57 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
       }
 
       // ---------------------------------------------------------------
-      // Scanner Detection Logic
+      // Scanner Detection Logic (Instant Iron Shield)
       // ---------------------------------------------------------------
       const now = Date.now();
       const timeSinceLastKey = now - lastKeyTimeRef.current;
-
-      if (timeSinceLastKey > SCANNER_TIMING_THRESHOLD_MS) {
-        scanBufferRef.current = '';
-      }
+      
+      // Update timing ref for next key
+      lastKeyTimeRef.current = now;
 
       if (e.key === 'Enter') {
+        // If we have accumulated enough characters quickly, it's definitely a barcode scan
         if (scanBufferRef.current.length >= SCANNER_CHAR_THRESHOLD) {
           e.preventDefault();
           e.stopPropagation();
 
           const code = scanBufferRef.current;
           scanBufferRef.current = '';
-          lastKeyTimeRef.current = now;
-
+          (window as any).isScannerTyping = false; // Scan finished
           window.dispatchEvent(new CustomEvent('scanner-input', { detail: { code } }));
           return;
         }
+        // Not a scan, just a normal enter press
         scanBufferRef.current = '';
       } else if (e.key.length === 1) {
-        scanBufferRef.current += e.key;
+        const isSuperHumanSpeed = timeSinceLastKey < 35;
+
+        if (isSuperHumanSpeed) {
+          // SCANNER MODE: We are in a burst of speed.
+          scanBufferRef.current += e.key;
+          (window as any).isScannerTyping = true;
+          
+          // Block the browser from putting these into the input box
+          if (scanBufferRef.current.length >= 2) {
+             e.preventDefault();
+             e.stopPropagation();
+          }
+        } else {
+          // HUMAN MODE: Key arrived slowly.
+          // 1. Wipe the buffer - human keys are not barcodes
+          scanBufferRef.current = e.key; 
+          (window as any).isScannerTyping = false;
+          
+          // 2. Clear buffer after a tiny delay if no other key follows
+          // This ensures that the next scan starts fresh.
+          if (scanTimerRef.current) clearTimeout(scanTimerRef.current);
+          scanTimerRef.current = setTimeout(() => {
+            if (!(window as any).isScannerTyping) {
+              scanBufferRef.current = '';
+            }
+          }, 100);
+        }
       }
-      
-      lastKeyTimeRef.current = now;
 
       // ---------------------------------------------------------------
       // Global Modifiers / Bypasses

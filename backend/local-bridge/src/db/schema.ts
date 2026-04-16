@@ -464,6 +464,7 @@ export const initializeSchema = (db: Database.Database) => {
   ensureColumn('sales', 'updated_at', `ALTER TABLE sales ADD COLUMN updated_at TEXT`);
   ensureColumn('sales', 'sale_type', `ALTER TABLE sales ADD COLUMN sale_type TEXT NOT NULL DEFAULT 'detail'`);
   ensureColumn('sales', 'total_price', `ALTER TABLE sales ADD COLUMN total_price REAL NOT NULL DEFAULT 0`);
+  ensureColumn('sales', 'amount_paid', `ALTER TABLE sales ADD COLUMN amount_paid REAL NOT NULL DEFAULT 0`);
   ensureColumn('sales', 'payment_method', `ALTER TABLE sales ADD COLUMN payment_method TEXT DEFAULT 'cash'`);
   ensureColumn('sales', 'payment_status', `ALTER TABLE sales ADD COLUMN payment_status TEXT DEFAULT 'paid'`);
   ensureColumn('sales', 'customer_name', `ALTER TABLE sales ADD COLUMN customer_name TEXT`);

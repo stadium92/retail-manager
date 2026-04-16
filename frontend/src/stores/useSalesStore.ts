@@ -6,6 +6,7 @@ export interface SalesSessionState {
   lineItems: SanifereLineItem[];
   customerCode: string;
   customerName: string;
+  customerPhone?: string;
   customerAddress: string;
   orderRef: string;
   invoiceNumber: string; // Persisted invoice number

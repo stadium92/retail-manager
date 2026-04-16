@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt Previews</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            body { background: white; padding: 0; }
+            .shadow-lg { box-shadow: none; border: none; margin-bottom: 2rem !important; }
+            h2.preview-title { display: none; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-10 font-sans">
+    
+    <h2 class="text-2xl font-bold mt-4 mb-4 preview-title">1. STIHL Product Present (Orange Theme)</h2>
+    <!-- STIHL Mock -->
+    <div class="p-8 max-w-[800px] mx-auto bg-white text-black mb-12 shadow-lg border">
+        <!-- Header -->
+        <div class="flex justify-between items-start border-b pb-4 mb-4 border-[#f04e23] border-b-4">
+            <div class="flex items-center gap-4">
+                <div class="flex items-center justify-center self-start shrink-0 mr-4">
+                    <img src="./frontend/public/stihl-logo.jpg" alt="STIHL Logo" class="h-[105px] object-contain" />
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold uppercase tracking-wider text-[#f04e23]">Revendeur Agréé STIHL</h1>
+                    <p class="text-sm text-gray-700 font-bold mb-1">ETS Madjou Sylla - QUINCAILLERIE DE LA PAIX</p>
+                    <p class="text-sm text-gray-600 leading-tight">Face centre Djoliba BP 2844</p>
+                    <p class="text-sm text-gray-600 leading-tight">Tel: +223 20 22 26 45 / +223 77 77 90 60</p>
+                </div>
+            </div>
+            <div class="text-right flex flex-col justify-end">
+                <h2 class="text-xl font-bold uppercase text-[#f04e23]">FACTURE</h2>
+                <p class="text-sm text-gray-500 font-mono mt-2">N° Facture: INV-92834</p>
+                <p class="text-sm mt-1 text-gray-500">16/04/2026 14:30</p>
+            </div>
+        </div>
+
+        <!-- Items Mock -->
+        <table class="w-full text-sm mb-6">
+            <thead>
+                <tr class="border-b-2 border-black">
+                    <th class="text-left py-2">Désignation</th>
+                    <th class="text-right py-2">Prix U.</th>
+                    <th class="text-center py-2">Qté</th>
+                    <th class="text-right py-2">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="border-b border-gray-100">
+                    <td class="py-2"><span class="font-medium block">Tronçonneuse STIHL MS 382</span></td>
+                    <td class="text-right py-2">350,000</td>
+                    <td class="text-center py-2">1</td>
+                    <td class="text-right py-2">350,000</td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="flex justify-end mb-8">
+            <div class="w-48 flex justify-between py-1 border-t border-black mt-2 font-bold text-lg">
+                <span>Total</span>
+                <span>350,000 FCFA</span>
+            </div>
+        </div>
+        <!-- Footer / Disclaimer -->
+        <div class="text-center text-xs text-gray-500 mt-12 border-t pt-4">
+            <p>Merci pour votre confiance.</p>
+        </div>
+    </div>
+
+
+    <h2 class="text-2xl font-bold mb-4 preview-title">2. Regular Sale (Standard Theme)</h2>
+    <!-- Regular Mock -->
+    <div class="p-8 max-w-[800px] mx-auto bg-white text-black shadow-lg border">
+        <!-- Header -->
+        <div class="flex justify-between items-start border-b pb-4 mb-4 border-black border-b-2">
+            <div class="flex items-center gap-4">
+                <div class="flex items-center justify-center self-start shrink-0 mr-4">
+                    <img src="./frontend/public/quincaillerie-logo.jpg" alt="Quincaillerie Logo" class="h-[121px] w-[121px] object-contain rounded-md" />
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold uppercase tracking-wider text-gray-900">MAGASIN RETAIL</h1>
+                    <p class="text-sm text-gray-700 font-bold mb-1">ETS Madjou Sylla - QUINCAILLERIE DE LA PAIX</p>
+                    <p class="text-sm text-gray-600 leading-tight">Face centre Djoliba BP 2844</p>
+                    <p class="text-sm text-gray-600 leading-tight">Tel: +223 20 22 26 45 / +223 77 77 90 60</p>
+                </div>
+            </div>
+            <div class="text-right flex flex-col justify-end">
+                <h2 class="text-xl font-bold uppercase text-gray-800">FACTURE</h2>
+                <p class="text-sm text-gray-500 font-mono mt-2">N° Facture: INV-92835</p>
+                <p class="text-sm mt-1 text-gray-500">16/04/2026 14:35</p>
+            </div>
+        </div>
+
+        <!-- Items Mock -->
+        <table class="w-full text-sm mb-6">
+            <thead>
+                <tr class="border-b-2 border-black">
+                    <th class="text-left py-2">Désignation</th>
+                    <th class="text-right py-2">Prix U.</th>
+                    <th class="text-center py-2">Qté</th>
+                    <th class="text-right py-2">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="border-b border-gray-100">
+                    <td class="py-2"><span class="font-medium block">Disque à tronçonner Bosch</span></td>
+                    <td class="text-right py-2">5,000</td>
+                    <td class="text-center py-2">2</td>
+                    <td class="text-right py-2">10,000</td>
+                </tr>
+                <tr class="border-b border-gray-100">
+                    <td class="py-2"><span class="font-medium block">Perceuse Electrique</span></td>
+                    <td class="text-right py-2">45,000</td>
+                    <td class="text-center py-2">1</td>
+                    <td class="text-right py-2">45,000</td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="flex justify-end mb-8">
+            <div class="w-48 flex justify-between py-1 border-t border-black mt-2 font-bold text-lg">
+                <span>Total</span>
+                <span>55,000 FCFA</span>
+            </div>
+        </div>
+        <!-- Footer / Disclaimer -->
+        <div class="text-center text-xs text-gray-500 mt-12 border-t pt-4">
+            <p>Merci pour votre confiance.</p>
+        </div>
+    </div>
+</body>
+</html>

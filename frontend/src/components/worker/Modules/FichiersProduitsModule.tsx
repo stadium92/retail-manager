@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { ImageUpload } from '@/components/shared/ImageUpload';
 import { cn } from '@/lib/utils';
 import { ProductLookupDialog } from '../Sales/ProductLookupDialog';
+import { MasterPasswordGate } from '@/components/shared/MasterPasswordGate';
 
 interface FichiersProduitsModuleProps {
   storeId: string;
@@ -109,18 +110,25 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
       if (code && isDialogOpen) {
         if (registrationMode === 'single') {
           setFormData(prev => ({ ...prev, barcode: code }));
+          setTimeout(() => document.getElementById('product-name-single')?.focus(), 50);
         } else {
           // If in multi-mode, update the currently open item or the last item
+          let targetIdx = -1;
           setMultiItems(prev => {
             const newItems = [...prev];
             const openIndex = newItems.findIndex(i => i.isOpen);
             if (openIndex >= 0) {
               newItems[openIndex] = { ...newItems[openIndex], barcode: code };
+              targetIdx = openIndex;
             } else if (newItems.length > 0) {
               newItems[newItems.length - 1] = { ...newItems[newItems.length - 1], barcode: code };
+              targetIdx = newItems.length - 1;
             }
             return newItems;
           });
+          if (targetIdx !== -1) {
+            setTimeout(() => document.getElementById(`product-name-${targetIdx}`)?.focus(), 50);
+          }
         }
         toast.success(t('scanner.codeScanned') || 'Code scanned');
       }
@@ -151,11 +159,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
   const handleNumChange = (field: keyof typeof initialFormState, index?: number) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     const finalVal = val === '' ? '' : Number(val);
-    if (index !== undefined) {
-        setMultiItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: finalVal } : item));
-    } else {
-        setFormData(f => ({ ...f, [field]: finalVal }));
-    }
+    updateField(field, finalVal, index);
   };
 
   const handleNumBlur = (field: keyof typeof initialFormState, index?: number) => () => {
@@ -209,10 +213,24 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
   };
 
   const addMultiItemRow = () => {
-    setMultiItems(prev => [
-        ...prev.map(item => ({ ...item, isOpen: false })),
-        { ...initialFormState, id: crypto.randomUUID(), isOpen: false }
-    ]);
+    setMultiItems(prev => {
+        // FIELD INHERITANCE: New rows copy Family, Brand, and Unit from the previous row
+        const lastItem = prev.length > 0 ? prev[prev.length - 1] : formData;
+        
+        return [
+            ...prev.map(item => ({ ...item, isOpen: false })),
+            { 
+                ...initialFormState, 
+                id: crypto.randomUUID(), 
+                isOpen: true,
+                family_id: lastItem.family_id,
+                brand: lastItem.brand,
+                unit_type: lastItem.unit_type,
+                packaging: lastItem.packaging,
+                aisle: lastItem.aisle
+            }
+        ];
+    });
   };
 
   const removeMultiItemRow = (id: string) => {
@@ -249,7 +267,19 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     console.log('[FichiersProduits] handleSave triggered. Mode:', registrationMode);
     setIsSaving(true);
     try {
-        const itemsToSave = registrationMode === 'single' ? [formData] : multiItems;
+        // GHOST ROW PROTECTION: Filter out rows with no name or zero pricing/stock
+        const itemsToSave = (registrationMode === 'single' ? [formData] : multiItems).filter(item => {
+            const hasName = !!item.name && item.name.trim().length > 0;
+            const hasData = Number(item.purchase_price) > 0 || Number(item.quantity) > 0 || !!item.sku;
+            return hasName && hasData;
+        });
+
+        if (itemsToSave.length === 0 && registrationMode === 'multi') {
+            toast({ title: "Aucun article valide", description: "Veuillez saisir au moins un nom de produit.", variant: "destructive" });
+            setIsSaving(false);
+            return;
+        }
+
         console.log('[FichiersProduits] Items to save:', itemsToSave.length);
         
         for (const item of itemsToSave) {
@@ -311,6 +341,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                 wholesale_price: item.selling_price_ttc ? Number(item.selling_price_ttc) / (isBox ? packSize : 1) : undefined,
                 quantity: finalQty,
                 min_quantity: Number(item.min_stock_alert) || 0,
+                low_stock_threshold: Number(item.min_stock_alert) || 0,
                 unit_type: item.unit_type,
                 packaging: item.packaging,
                 category: finalFamilyId || undefined,
@@ -478,7 +509,22 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                     <div className="w-1.5 h-1.5 rounded-full bg-primary" />{t('inventory.sectionIdentification')}
                 </h3>
                 <div className="space-y-4">
-                    <div className="space-y-2"><Label className="font-bold">{t('inventory.fields.name')} *</Label><Input value={data.name} onChange={e => update('name', e.target.value)} required className="h-12 text-lg font-semibold bg-muted/20" /></div>
+                    <div className="space-y-2">
+                        <Label className="font-bold">{t('inventory.fields.name')} *</Label>
+                        <Input 
+                            id={`product-name-${index ?? 'single'}`}
+                            value={data.name} 
+                            onChange={e => update('name', e.target.value)} 
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    document.getElementById(`product-purchase-price-${index ?? 'single'}`)?.focus();
+                                }
+                            }}
+                            required 
+                            className="h-12 text-lg font-semibold bg-muted/20" 
+                        />
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label className="text-xs font-bold uppercase">{t('inventory.fields.sku')}</Label>
@@ -512,7 +558,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                               value={data.family_id} 
                               onChange={e => update('family_id', e.target.value, index)} 
                               placeholder={t('inventory.fields.selectFamily')}
-                              className="h-10 bg-primary/5 border-primary/20 pr-8"
+                              className="h-10 bg-primary/5 border-primary/20 pr-8 font-bold"
                           />
                           <datalist id={`families-list-${index ?? 'single'}`}>
                               {families.map(fam => <option key={fam.id} value={fam.name} />)}
@@ -540,7 +586,18 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                     </div>
                     <div className="space-y-2 pt-2">
                         <Label className="text-xs font-bold uppercase">{t('inventory.fields.purchasePrice')}</Label>
-                        <div className="relative"><Input type="number" value={data.purchase_price} onChange={handleNumChange('purchase_price', index)} onBlur={handleNumBlur('purchase_price', index)} className="h-10 font-bold bg-muted/30" /><span className="absolute right-3 top-2.5 text-muted-foreground text-xs font-bold">F</span></div></div>
+                        <div className="relative">
+                            <Input 
+                                id={`product-purchase-price-${index ?? 'single'}`}
+                                type="number" 
+                                value={data.purchase_price} 
+                                onChange={handleNumChange('purchase_price', index)} 
+                                onBlur={handleNumBlur('purchase_price', index)} 
+                                className="h-10 font-bold bg-muted/30" 
+                            />
+                            <span className="absolute right-3 top-2.5 text-muted-foreground text-xs font-bold">F</span>
+                        </div>
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2"><Label className="text-xs font-black uppercase text-danger">{t('inventory.fields.wholesalePriceHT')}</Label><Input type="number" value={data.selling_price_ht} onChange={handleNumChange('selling_price_ht', index)} onBlur={handleNumBlur('selling_price_ht', index)} className="h-10 border-danger/20" /></div>
                         <div className="space-y-2"><Label className="text-xs font-black uppercase text-danger">{t('inventory.fields.wholesalePriceTTC')}</Label><Input type="number" value={data.selling_price_ttc} onChange={handleNumChange('selling_price_ttc', index)} onBlur={handleNumBlur('selling_price_ttc', index)} className="h-10 border-danger/20 font-bold" /></div>
@@ -573,10 +630,18 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2"><Label className="text-xs font-black uppercase text-primary">{registrationMode === 'single' ? t('inventory.fields.initialQuantity') : t('inventory.fields.quantity')}</Label><Input type="number" value={registrationMode === 'single' ? data.reorder_quantity : data.quantity} onChange={handleNumChange(registrationMode === 'single' ? 'reorder_quantity' : 'quantity', index)} className="h-10 font-black bg-primary/5 border-primary/20" /></div>
-                        <div className="space-y-2"><Label className="text-xs font-bold uppercase">{t('inventory.fields.minStock')}</Label><Input type="number" step="1" value={data.min_stock_alert} onChange={(e) => {
-                          const val = e.target.value === '' ? '' : parseInt(e.target.value);
-                          update('min_stock_alert', val, index);
-                        }} className="h-10 border-primary/20" /></div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold uppercase">{t('inventory.fields.minStock')}</Label>
+                          <Input 
+                            type="number" 
+                            value={data.min_stock_alert} 
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              update('min_stock_alert', v === '' ? '' : Number(v), index);
+                            }} 
+                            className="h-10 border-primary/20 font-bold" 
+                          />
+                        </div>
                     </div>
                     <div className="space-y-2">
                         <Label className="text-xs font-bold uppercase">{t('inventory.fields.image')}</Label>
@@ -589,6 +654,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
   };
 
   return (
+    <MasterPasswordGate moduleName={t('menu.files.products')}>
     <div className={cn("h-full flex flex-col p-4 gap-4 transition-colors", !isMasterView && "bg-[hsl(60,80%,85%)]", "dark:bg-transparent")}>
       <div className="flex items-center gap-4 bg-card p-3 rounded-xl border-2 border-border/50 shadow-lg">
         <div className="relative flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder={t('common.search')} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 h-10 border-none bg-muted/30 font-black uppercase tracking-tighter" /></div>
@@ -738,5 +804,6 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
 
       <ProductLookupDialog open={isLookupOpen} onOpenChange={setIsLookupOpen} storeId={storeId} title={t('purchases.productSearch')} standalone mode="wholesale" onSelect={handleProductSelected} />
     </div>
+    </MasterPasswordGate>
   );
 }

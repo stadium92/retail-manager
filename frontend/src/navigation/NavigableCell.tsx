@@ -55,13 +55,7 @@ export function NavigableCell({
         // We are the target!
         const focusable = cellRef.current?.querySelector('input, button') as HTMLElement;
         if (focusable) {
-          // If it's the designation column, we don't want to focus the background input 
-          // because SalesModule is going to open the ProductLookupDialog which takes focus.
-          if (column === 'designation') {
-              return;
-          }
-          // Simply focus for other columns (Quantity, Price). 
-          // The SalesModule state update will handle the value.
+          // Simply focus. The SalesModule state update will handle the value.
           focusable.focus();
         }
       }

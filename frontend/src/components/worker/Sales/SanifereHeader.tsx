@@ -65,50 +65,6 @@ export function SanifereHeader({
 
   const displayInvoiceNumber = invoiceNumber || format(currentTime, 'yyMMdd') + '0001';
 
-  if (isSimpleSale) {
-    return (
-      <div className={`${modeBgColors[mode]} text-black font-mono`}>
-        <div className="px-3 py-1 flex items-center justify-between">
-          <div>
-            <div className="text-lg font-bold tracking-wide text-[hsl(60,100%,50%)] uppercase">
-              {modeLabels[mode]}
-            </div>
-            <div className="text-sm capitalize">{dateStr}</div>
-          </div>
-          <div className="flex flex-col items-end gap-1">
-            <span className="bg-white/90 px-2 py-0.5 text-black font-bold">
-              {timeStr}
-            </span>
-            <div className="flex items-center gap-2 text-xs">
-              <span>N° {t('menu.program.orderRef')}:</span>
-              <span className="bg-white/90 px-2 py-0.5 text-black font-bold">{displayInvoiceNumber}</span>
-            </div>
-          </div>
-        </div>
-        <div className="px-3 pb-2 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="uppercase">{t('pos.totals.name')}</span>
-            <input
-              type="text"
-              value={customerName}
-              onChange={(e) => onCustomerChange?.(customerCode, e.target.value, customerPhone, customerAddress)}
-              className="bg-[hsl(120,100%,35%)] border-b border-black/50 px-2 py-0.5 w-48 text-black focus:outline-none focus:border-[hsl(60,100%,50%)]"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="uppercase">{t('stores.fields.phone')}</span>
-            <input
-              type="text"
-              value={customerPhone}
-              onChange={(e) => onCustomerChange?.(customerCode, customerName, e.target.value, customerAddress)}
-              className="bg-[hsl(120,100%,35%)] border-b border-black/50 px-2 py-0.5 w-32 text-black focus:outline-none focus:border-[hsl(60,100%,50%)]"
-            />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={`${modeBgColors[mode]} text-black font-mono`}>
       <div className="px-3 py-1 flex items-center justify-between">

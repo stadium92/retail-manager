@@ -144,6 +144,13 @@ export function SanifereRow({
                   onPriceChange?.(index, baseVal);
                 }}
                 onBlur={() => { if (item.unitPrice === '') onPriceChange?.(index, 0); }}
+                onKeyDown={(e) => {
+                  // SELECTION GUARD: If a scanner is typing AND the text is highlighted, 
+                  // block the key so the highlight isn't deleted.
+                  if ((window as any).isScannerTyping && window.getSelection()?.toString().length) {
+                    e.preventDefault();
+                  }
+                }}
                 onClick={(e) => {
                   e.stopPropagation();
                   const store = useNavigationStore.getState();
@@ -169,6 +176,13 @@ export function SanifereRow({
           value={item.quantity === 0 ? '' : item.quantity}
           onChange={(e) => onQuantityChange(index, e.target.value === '' ? '' : parseInt(e.target.value))}
           onBlur={() => { if (item.quantity === '') onQuantityChange(index, 1); }}
+          onKeyDown={(e) => {
+            // SELECTION GUARD: If a scanner is typing AND the text is highlighted, 
+            // block the key so the highlight (e.g., '1') isn't deleted.
+            if ((window as any).isScannerTyping && window.getSelection()?.toString().length) {
+              e.preventDefault();
+            }
+          }}
           onClick={(e) => {
             e.stopPropagation();
             const store = useNavigationStore.getState();

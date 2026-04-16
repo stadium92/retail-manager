@@ -8,11 +8,11 @@ export const createSalesRepo = (db: Database.Database) => {
     insertSale: db.prepare(`
       INSERT INTO sales (
         id, store_id, worker_id, client_id, customer_name, customer_phone,
-        sale_type, total_price, discount, tax, payment_method,
+        sale_type, total_price, amount_paid, discount, tax, payment_method,
         payment_status, notes, invoice_number, created_at, updated_at
       ) VALUES (
         @id, @store_id, @worker_id, @client_id, @customer_name, @customer_phone,
-        @sale_type, @total_price, @discount, @tax, @payment_method,
+        @sale_type, @total_price, @amount_paid, @discount, @tax, @payment_method,
         @payment_status, @notes, @invoice_number, @created_at, @updated_at
       )
       ON CONFLICT(id) DO NOTHING
@@ -91,6 +91,7 @@ export const createSalesRepo = (db: Database.Database) => {
       client_id: (sale as any).client_id ?? null,
       customer_name: sale.customer_name ?? null,
       customer_phone: sale.customer_phone ?? null,
+      amount_paid: (sale as any).amount_paid ?? sale.total_price ?? 0,
       discount: sale.discount ?? 0,
       tax: sale.tax ?? 0,
       payment_method: sale.payment_method ?? 'cash',
@@ -120,6 +121,7 @@ export const createSalesRepo = (db: Database.Database) => {
         client_id: (saleData as any).client_id ?? null,
         customer_name: saleData.customer_name ?? null,
         customer_phone: saleData.customer_phone ?? null,
+        amount_paid: (saleData as any).amount_paid ?? saleData.total_price ?? 0,
         discount: saleData.discount ?? 0,
         tax: saleData.tax ?? 0,
         payment_method: saleData.payment_method ?? 'cash',

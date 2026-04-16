@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useReactToPrint } from 'react-to-print';
 import { InvoiceTemplate, InvoiceData } from '@/components/printing/InvoiceTemplate';
+import { usePrinter } from '@/contexts/PrinterContext';
 import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { OfflineDataService } from '@/services/OfflineDataService';
@@ -69,6 +70,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   const { sessions, updateSession } = useSalesStore();
   const { clients, setClients, services } = useMasterDataStore();
   const { scanProduct } = useProductScanner(storeId);
+  const { printReceipt } = usePrinter();
 
 
 
@@ -115,6 +117,9 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   const [activeTier, setActiveTier] = useState<number>(1);
   const [initialSearchQuery, setInitialSearchQuery] = useState('');
   const [store, setStore] = useState<any>(null);
+
+  // IRON REVERT: Track the last stable value of the active cell to prevent scanner leaks
+  const stableValueRef = useRef<{row: number, col: number, value: any} | null>(null);
 
   const fetchStoreSettings = useCallback(async () => {
     if (!storeId) return;
@@ -197,50 +202,49 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     setIsPaymentOpen(true);
   }, [lineItems, setIsPaymentOpen]);
 
-  const handlePrint = useCallback(() => {
+  const handlePrint = useCallback(async () => {
     if (lineItems.length === 0) return;
     
-    const cartItems = lineItems.filter(item => !!item.productId).map(item => {
+    // Calculate totals
+    const validItems = lineItems.filter(item => !!item.productId && item.quantity > 0);
+    const subtotal = validItems.reduce((sum, item) => {
         const packSize = item.conditionnement || 1;
-        let totalUnitsForDb = item.isBox ? item.quantity * packSize : item.quantity;
+        const multiplier = item.isBox ? packSize : 1;
+        return sum + (item.quantity * item.unitPrice * multiplier);
+    }, 0);
+    const totalDiscount = subtotal - netTotal;
+
+    const receiptItems = validItems.map(item => {
+        const packSize = item.conditionnement || 1;
+        let displayQty = item.isBox ? item.quantity * packSize : item.quantity;
         return {
-          product: {
-            id: item.productId || '',
-            store_id: storeId,
-            name: item.designation,
-            unit_price: item.unitPrice,
-            quantity: item.stock,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-          quantity: totalUnitsForDb,
-          discount: item.discountPercent,
-          unit_price: item.unitPrice,
-          lineTotal: item.lineTotal,
+          name: item.designation,
+          qty: displayQty,
+          price: item.unitPrice,
           total: item.lineTotal,
         };
     });
 
-    const invoiceData: InvoiceData = {
-        id: invoiceNumber,
-        invoice_number: invoiceNumber,
-        order_ref: orderRef,
-        storeName: "Magasin", 
-        workerName: user?.full_name || t('edition.seller'),
-        customerName: customerName,
-        customerPhone: (currentSession as any).customerPhone,
-        customerAddress: customerAddress,
-        created_at: new Date().toISOString(),
-        items: cartItems as any,
-        total_price: netTotal,
-        type: mode === 'proforma' ? 'proforma' : 'detail'
+    const receiptData = {
+        invoice: invoiceNumber,
+        storeName: store?.name || "Magasin", 
+        storeAddress: store?.address || "",
+        phone: store?.phone || "",
+        items: receiptItems,
+        subtotal: subtotal,
+        discount: totalDiscount,
+        total: netTotal,
+        date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString(),
+        cashier: user?.full_name || t('edition.seller')
     };
 
-    setSelectedInvoice(invoiceData);
-    setTimeout(() => {
-        handlePrintTrigger();
-    }, 100);
-  }, [lineItems, invoiceNumber, orderRef, user, customerName, currentSession, customerAddress, netTotal, mode, handlePrintTrigger, storeId]);
+    // Use silent printing via Tauri backend
+    try {
+        await printReceipt(receiptData);
+    } catch (e) {
+        console.error("Print failed", e);
+    }
+  }, [lineItems, invoiceNumber, user, netTotal, printReceipt, store, t]);
 
   const handleClientChange = useCallback((field: 'code' | 'name', value: string, phone?: string, address?: string) => {
     let updates: any = {};
@@ -414,7 +418,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
 
   const addProduct = useCallback((product: Product) => {
 
-    const existingIndex = lineItems.findIndex(li => li.productId === product.id);
+    const existingIndex = -1; // FORCE NEW LINE: lineItems.findIndex(li => li.productId === product.id);
     const clientDiscount = currentSession.clientDiscount || 0;
     
     let targetRow = -1;
@@ -510,6 +514,10 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     const newItems = [...lineItems];
     const item = newItems[index];
     if (!item) return;
+
+    // Update stable value for revert logic
+    stableValueRef.current = { row: index, col: 4, value: unitPrice };
+
     const numPrice = unitPrice === '' ? 0 : Number(unitPrice);
 
     newItems[index] = {
@@ -523,11 +531,23 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   const handleQuantityChange = useCallback((index: number, quantity: any) => {
     const newItems = [...lineItems];
     const item = newItems[index];
-    const numQty = quantity === '' ? 0 : Number(quantity);
+    if (!item) return;
+
+    // Update stable value for revert logic
+    stableValueRef.current = { row: index, col: 5, value: quantity };
+
+    let numQty = quantity === '' ? 0 : Number(quantity);
+    
+    // ANTI-SCANNER PROTECTION: If a cashier accidentally scans a barcode into the quantity field,
+    // it will type a massive 10-13 digit number. We intercept it here and cap/reset it.
+    if (numQty > 9999) {
+      toast.warning(t('worker.sales.quantityTooHigh') || 'Quantity capped. Scanner error detected.');
+      numQty = 1;
+    }
 
     newItems[index] = {
       ...item,
-      quantity,
+      quantity: numQty,
       lineTotal: calculateLineTotal(Number(item.unitPrice) || 0, numQty, Number(item.discountPercent) || 0, item.isBox, item.conditionnement),
     };
     updateSession(mode, { lineItems: newItems });
@@ -559,31 +579,37 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     
     console.log('[Scanner] High speed input detected:', code);
     
-    // 1. Clean up "Scanner Corruption" in the currently active cell
-    const store = useNavigationStore.getState();
-    const activeCell = store.activeCell;
-    
-    if (activeCell && activeCell.row >= 0 && activeCell.row < lineItems.length) {
-        const row = activeCell.row;
-        const item = lineItems[row];
+    // 1. IRON REVERT: Immediately restore the last stable value if a scan leaked into a box
+    if (stableValueRef.current) {
+        const { row, col, value } = stableValueRef.current;
+        if (col === 5) { // Quantity
+            handleQuantityChange(row, value);
+        } else if (col === 4) { // Price
+            handlePriceChange(row, value);
+        }
+        stableValueRef.current = null;
+    } else {
+        // Fallback cleanup if ref wasn't set
+        const store = useNavigationStore.getState();
+        const activeCell = store.activeCell;
         
-        // Only clean up if the row already has a product (empty rows are safely overwritten by addProduct)
-        if (item && item.productId) {
-            if (activeCell.col === 5) { // Quantity
-                const qStr = String(item.quantity);
-                if (qStr.includes(code)) {
-                    const fixed = qStr.replace(code, '');
-                    handleQuantityChange(row, fixed === '' ? 1 : parseInt(fixed));
-                }
-            } else if (activeCell.col === 0) { // Designation
-                const dStr = String(item.designation);
-                if (dStr.includes(code)) {
-                    handleDesignationChange(row, dStr.replace(code, ''));
-                }
-            } else if (activeCell.col === 4) { // Price
-                const pStr = String(item.unitPrice);
-                if (pStr.includes(code)) {
-                    handlePriceChange(row, pStr.replace(code, ''));
+        if (activeCell && activeCell.row >= 0 && activeCell.row < lineItems.length) {
+            const row = activeCell.row;
+            const item = lineItems[row];
+            if (item && item.productId) {
+                const cleanupValue = (currentVal: string) => {
+                    const str = String(currentVal);
+                    for (let i = Math.min(str.length, 3); i > 0; i--) {
+                        if (str.endsWith(code.substring(0, i))) return str.slice(0, -i);
+                    }
+                    return str;
+                };
+                if (activeCell.col === 5) {
+                    const fixed = cleanupValue(String(item.quantity));
+                    if (fixed !== String(item.quantity)) handleQuantityChange(row, fixed === '' ? 1 : parseInt(fixed));
+                } else if (activeCell.col === 4) {
+                    const fixed = cleanupValue(String(item.unitPrice));
+                    if (fixed !== String(item.unitPrice)) handlePriceChange(row, fixed);
                 }
             }
         }
@@ -595,11 +621,48 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         // Add it directly (consumption logic is inside addProduct)
         addProduct(product);
     } else {
-        // If not found, maybe it's just a barcode they are typing manually?
-        // We'll leave it in the designation field (captured via handleCaptureKeystroke)
+        // IMPROVEMENT: Even if not found, create a new row and put the barcode in Designation
+        // This lets the cashier see what they scanned and manually fix/add it.
+        const newItem: SanifereLineItem = {
+            id: crypto.randomUUID(),
+            lineNumber: lineItems.length + 1,
+            productId: '', // Empty ID means it's a manual entry
+            designation: code, // Put the barcode here
+            code: code,
+            conditionnement: 1,
+            isBox: false,
+            unit_type: 'Pièce',
+            stock: 0,
+            basePrice: 0,
+            unitPrice: 0,
+            quantity: 1,
+            discountPercent: 0,
+            lineTotal: 0,
+            priceTiers: { 1: 0, 2: 0, 3: 0, 4: 0 }
+        };
+
+        const firstEmptyIndex = lineItems.findIndex(li => !li.productId);
+        let targetRow = firstEmptyIndex >= 0 ? firstEmptyIndex : lineItems.length;
+        
+        const newItems = [...lineItems];
+        if (firstEmptyIndex >= 0) {
+            newItems[firstEmptyIndex] = { ...newItem, lineNumber: firstEmptyIndex + 1 };
+        } else {
+            newItems.push(newItem);
+        }
+        
+        updateSession(mode, { lineItems: newItems });
+        
+        // Jump focus to the designation box so they can fix the name
+        setTimeout(() => {
+            const store = useNavigationStore.getState();
+            store.setActiveCell({ row: targetRow, col: 0 });
+            store.setMode('edit');
+        }, 50);
+
         toast.error(t('worker.sales.itemNotFound') + ': ' + code);
     }
-  }, [scanProduct, addProduct, t, lineItems, handleQuantityChange, handleDesignationChange, handlePriceChange]);
+  }, [scanProduct, addProduct, t, lineItems, handleQuantityChange, handleDesignationChange, handlePriceChange, mode, updateSession]);
 
   
   const handleToggleUnit = useCallback((index: number) => {
@@ -674,7 +737,14 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       if (mode === 'facturation-gros') saleType = 'gros';
       if (mode === 'proforma') saleType = 'proforma';
 
-      const cartItems = lineItems.filter(item => !!item.productId).map(item => {
+      // 1. FILTER: Must have a product, must have > 0 quantity
+      const validItems = lineItems.filter(item => !!item.productId && item.quantity > 0);
+      if (validItems.length === 0) {
+        toast.error('Aucun article valide à facturer.');
+        return;
+      }
+
+      const cartItems = validItems.map(item => {
         const packSize = item.conditionnement || 1;
         
         let totalUnitsForDb: number;
@@ -756,7 +826,14 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     if (lineItems.length === 0) return;
 
     try {
-      const cartItems = lineItems.filter(item => !!item.productId).map(item => {
+      // 1. FILTER: Must have a product, must have > 0 quantity
+      const validItems = lineItems.filter(item => !!item.productId && item.quantity > 0);
+      if (validItems.length === 0) {
+        toast.error('Aucun article valide à sauvegarder.');
+        return;
+      }
+
+      const cartItems = validItems.map(item => {
         const packSize = item.conditionnement || 1;
         let totalUnitsForDb = item.isBox ? item.quantity * packSize : item.quantity;
         return {
@@ -966,29 +1043,10 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       }
     };
     const handleCaptureKeystroke = (e: any) => {
-      const rowIndex = e.detail?.row;
-      const colIndex = e.detail?.col;
-      const key = e.detail?.key;
-      
-      if (typeof rowIndex !== 'number' || !lineItems[rowIndex]) return;
-
-      if (colIndex === 0) {
-        // Col 0: Designation. 
-        // 1. Update query
-        setInitialSearchQuery(key);
-        // 2. Open Search Dialog immediately
-        setIsProductLookupOpen(true);
-      } else if (colIndex === 5) {
-        // Col 5: Quantity. OVERWRITE with the key if it's a number.
-        if (/[0-9]/.test(key)) {
-            handleQuantityChange(rowIndex, key);
-        }
-      } else if (colIndex === 4) {
-        // Col 4: Price. OVERWRITE with the key if it's a number.
-        if (/[0-9]/.test(key)) {
-            handlePriceChange(rowIndex, key);
-        }
-      }
+      // Intentionally left blank. 
+      // NavigableCell.tsx now manually injects the keystroke into the DOM input,
+      // which triggers a natural synthetic React onChange event. 
+      // Manually overwriting state here causes cursor focus issues.
     };
 
     window.addEventListener('nav-delete-row', handleDeleteEvent);
