@@ -1043,10 +1043,9 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       }
     };
     const handleCaptureKeystroke = (e: any) => {
-      // Intentionally left blank. 
-      // NavigableCell.tsx now manually injects the keystroke into the DOM input,
-      // which triggers a natural synthetic React onChange event. 
-      // Manually overwriting state here causes cursor focus issues.
+      // Re-entering Edit mode when a key is captured from hover
+      const store = useNavigationStore.getState();
+      store.setMode('edit');
     };
 
     window.addEventListener('nav-delete-row', handleDeleteEvent);
@@ -1101,12 +1100,12 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
           // Jump to the newly created row's Designation column (index 0)
           setTimeout(() => {
               store.setActiveCell({ row: lineItems.length, col: 0 });
-              store.setMode('edit');
+              store.setMode('hover');
           }, 50);
       } else {
           // Normal advance
           store.advanceToNextRow();
-          store.setMode('edit');
+          store.setMode('hover');
       }
     };
 
@@ -1157,7 +1156,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         
         const store = useNavigationStore.getState();
         store.setActiveCell({ row: targetRow, col: 0 });
-        store.setMode('edit');
+        store.setMode('hover');
       }
     };
     
