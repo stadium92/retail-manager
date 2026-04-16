@@ -177,7 +177,7 @@ pub async fn print_receipt(app_handle: AppHandle, data: ReceiptData) -> Result<b
     raw.extend_from_slice(&[GS, 0x21, 0x00]); // Reset size
 
     // 4. Address & Phone
-    raw.extend(data.store_address.as_bytes());
+    raw.extend("Niamakoro près de SONEF".as_bytes());
     raw.push(LF);
     raw.extend(format!("Tel: {}", data.phone).as_bytes());
     raw.push(LF);
