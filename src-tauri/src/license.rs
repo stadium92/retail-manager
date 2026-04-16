@@ -1,9 +1,7 @@
 use serde::{Serialize, Deserialize};
 use machine_uid;
 use sha2::{Sha256, Digest};
-use hex;
 use std::fs;
-use std::path::PathBuf;
 use tauri::AppHandle;
 use tauri::Manager;
 use ed25519_dalek::{Verifier, VerifyingKey, Signature};
@@ -244,7 +242,7 @@ pub fn get_device_hash_command() -> Result<String, String> {
 }
 
 #[tauri::command]
-pub fn get_license_status_command(app_handle: AppHandle) -> Result<LicenseStatus, String> {
+pub fn get_license_status_command(_app_handle: AppHandle) -> Result<LicenseStatus, String> {
     let device_hash = get_device_hash();
     
     // BYPASS: Always return active
@@ -258,7 +256,7 @@ pub fn get_license_status_command(app_handle: AppHandle) -> Result<LicenseStatus
 
 /// Gatekeeper: Check if the license is valid (Active or Trial)
 /// Returns Error if license is expired or tampered.
-pub fn check_license_gate(app_handle: &AppHandle) -> Result<(), String> {
+pub fn check_license_gate(_app_handle: &AppHandle) -> Result<(), String> {
     // BYPASS: Always allow
     Ok(())
 }

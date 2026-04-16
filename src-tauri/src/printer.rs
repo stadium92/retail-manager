@@ -1,10 +1,7 @@
 use serde::{Deserialize, Serialize};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use crate::license::check_license_gate;
-use std::fs;
-use std::path::PathBuf;
-use std::process::Command;
-use image::{DynamicImage, GenericImageView};
+use image::GenericImageView;
 
 #[cfg(windows)]
 use std::ptr;
@@ -74,12 +71,11 @@ pub async fn discover_printers(app_handle: AppHandle) -> Result<Vec<Printer>, St
                 for i in 0..count {
                     let info = *prn_info.add(i as usize);
                     let name_raw = info.pPrinterName;
-                    let mut name = String::new();
                     let mut len = 0;
                     while *name_raw.add(len) != 0 {
                         len += 1;
                     }
-                    name = String::from_utf16_lossy(std::slice::from_raw_parts(name_raw, len));
+                    let name = String::from_utf16_lossy(std::slice::from_raw_parts(name_raw, len));
                     
                     printers.push(Printer {
                         id: name.clone(),
@@ -235,8 +231,8 @@ pub async fn print_receipt(app_handle: AppHandle, data: ReceiptData) -> Result<b
             
             // LOGIC: First try to find a printer named "POS-80", 
             // if not found, use the SYSTEM DEFAULT PRINTER.
-            let mut target_printer_name = OsString::from("POS-80");
-            let mut name_u16: Vec<u16> = target_printer_name.encode_wide().chain(Some(0)).collect();
+            let target_printer_name = OsString::from("POS-80");
+            let name_u16: Vec<u16> = target_printer_name.encode_wide().chain(Some(0)).collect();
             
             if OpenPrinterW(name_u16.as_ptr() as *mut _, &mut h_printer, ptr::null_mut()) == 0 {
                 // POS-80 not found, let's get the default one
