@@ -74,8 +74,11 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
         e.preventDefault();
         e.stopPropagation();
         
-        // We don't blur here anymore because SalesModule will handle the transition.
-        // Blurring manually can cause the window to lose focus if timed poorly.
+        // Release focus from any input so arrows can navigate the grid
+        if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+        }
+
         window.dispatchEvent(new CustomEvent('nav-next-row', { 
             detail: { row: getState().activeCell?.row ?? -1 } 
         }));
@@ -123,11 +126,7 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
         // If it's a single character (letter/number), enter edit mode and capture it
         if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
           e.preventDefault();
-          store.getState().setMode('edit');
-          
-          window.dispatchEvent(new CustomEvent('nav-capture-keystroke', { 
-              detail: { row: state.activeCell.row, col: state.activeCell.col, key: e.key } 
-          }));
+          store.getState().startEditWithKey(e.key);
           return;
         }
 
