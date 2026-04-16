@@ -67,7 +67,7 @@
   },
   "helpCenter": {
     "title": "Centre d'Aide",
-    "subtitle": "Trouvez des réponses à vos questions et apprenez à utiliser Retail Manager.",
+    "subtitle": "Trouvez des réponses à vos questions et apprenez à utiliser Djati.",
     "searchPlaceholder": "Rechercher dans l'aide...",
     "categories": {
       "keyboard": {
@@ -100,7 +100,7 @@
       },
       "devices": {
         "q": "Puis-je utiliser plusieurs appareils ?",
-        "a": "Oui, vous pouvez installer Retail Manager sur plusieurs appareils. Les données se synchroniseront automatiquement entre eux."
+        "a": "Oui, vous pouvez installer Djati sur plusieurs appareils. Les données se synchroniseront automatiquement entre eux."
       }
     },
     "reportBug": "Signaler un Bug",
@@ -1495,7 +1495,7 @@
     "productActivation": "Activation du Produit",
     "lockedDescription": "Vous avez atteint la limite de tentatives d'activation pour aujourd'hui. Veuillez contacter le support ou réessayer demain.",
     "successDescription": "Votre licence est valide. Préparation de votre espace de travail...",
-    "welcomeDescription": "Bienvenue sur Retail Manager. Veuillez entrer votre clé d'activation pour débloquer toutes les fonctionnalités.",
+    "welcomeDescription": "Bienvenue sur Djati. Veuillez entrer votre clé d'activation pour débloquer toutes les fonctionnalités.",
     "hardwareId": "ID Matériel",
     "copy": "Copier",
     "attemptsInfo": "Tentatives aujourd'hui : {{today}}/3 | Échecs totaux : {{total}}/15",
@@ -1522,7 +1522,7 @@
     "appName": "Nom de l'Application",
     "version": "Version",
     "copyright": "Droits d'auteur",
-    "copyrightText": "© 2026 Retail Manager. Tous droits réservés."
+    "copyrightText": "© 2026 Djati. Tous droits réservés."
   },
   "error": {
     "occurred": "Une erreur est survenue",

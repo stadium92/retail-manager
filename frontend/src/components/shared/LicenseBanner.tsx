@@ -23,7 +23,7 @@ export function LicenseBanner({ status }: LicenseBannerProps) {
             {isExpired ? (
                 <>
                     <ShieldAlert className="h-3.5 w-3.5" />
-                    <span>Trial Expired. Please activate Retail Manager.</span>
+                    <span>Trial Expired. Please activate Djati.</span>
                 </>
             ) : (
                 <>

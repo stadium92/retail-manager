@@ -73,7 +73,77 @@ export function SettingsModule({ storeId, mode }: SettingsModuleProps) {
   const [syncProgress, setSyncProgress] = useState(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingQueueSize, setPendingQueueSize] = useState(0);
-  const [serviceKey, setServiceKey] = useState('');
+  // Djati Cloud Handshake state
+  const [syncToken, setSyncToken] = useState(localStorage.getItem('jati_sync_token') || '');
+  const [cloudUrl, setCloudUrl] = useState(localStorage.getItem('jati_cloud_url') || 'http://localhost:3000');
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+
+  const handleTestConnection = async () => {
+    if (!syncToken || !cloudUrl) {
+      toast.error("Please enter both Cloud URL and Sync Token");
+      return;
+    }
+    setConnectionStatus('testing');
+    try {
+      // Pinging the Djati Cloud Health Endpoint
+      const res = await fetch(`${cloudUrl}/health`);
+      if (res.ok) {
+        localStorage.setItem('jati_sync_token', syncToken);
+        localStorage.setItem('jati_cloud_url', cloudUrl);
+        setConnectionStatus('success');
+        toast.success("Connection to Djati Cloud established!");
+      } else {
+        throw new Error("Cloud refused connection");
+      }
+    } catch (e) {
+      setConnectionStatus('error');
+      toast.error("Cloud Connection Failed. Check your URL and Internet.");
+    }
+  };
+
+  const handleSyncPush = async () => {
+    if (!syncToken) {
+      toast.error("Please configure the Djati Cloud Handshake first");
+      return;
+    }
+    setIsSyncing(true);
+    try {
+      const result = await LocalBridgeSyncService.pushPendingMutations();
+      if (result.failed > 0) {
+        toast.warning(`${result.pushed} items synced, ${result.failed} failed`);
+      } else if (result.pushed > 0) {
+        toast.success(`Successfully synced ${result.pushed} items`);
+      } else {
+        toast.info("No local changes to sync");
+      }
+      setPendingQueueSize(result.pending);
+    } catch (e) {
+      toast.error("Sync failed");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleInitialSync = async () => {
+    if (!syncToken) {
+      toast.error("Please configure the Djati Cloud Handshake first");
+      return;
+    }
+    setIsSyncing(true);
+    try {
+      const result = await LocalBridgeSyncService.pullData();
+      if (result) {
+        toast.success("Cloud data synchronization complete");
+      } else {
+        toast.error("Failed to pull data from cloud");
+      }
+    } catch (e) {
+      toast.error("Sync failed");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const lastSync = useMasterDataStore(state => state.lastSync);
   
   const { total: productsCount } = useStockSearch(storeId, mode === 'synchronisation');
@@ -486,24 +556,66 @@ export function SettingsModule({ storeId, mode }: SettingsModuleProps) {
             <Card>
               <CardHeader className="py-4">
                 <CardTitle className="text-sm flex items-center gap-2">
+                  <Cloud className="h-4 w-4" />
+                  Djati Cloud Handshake
+                </CardTitle>
+                <CardDescription>
+                  Enter your store's Private Key to enable global synchronization.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-xs">Cloud VPS URL</Label>
+                  <Input
+                    placeholder="https://api.djati.com"
+                    value={cloudUrl}
+                    onChange={(e) => setCloudUrl(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs">Jati Sync Token (Private Key)</Label>
+                  <div className="relative">
+                    <Input
+                      type="password"
+                      placeholder="dj_live_..."
+                      value={syncToken}
+                      onChange={(e) => setSyncToken(e.target.value)}
+                    />
+                    {connectionStatus === 'success' && (
+                      <Check className="absolute right-3 top-2.5 h-4 w-4 text-success" />
+                    )}
+                  </div>
+                </div>
+                
+                <Button
+                  variant={connectionStatus === 'success' ? 'outline' : 'default'}
+                  onClick={handleTestConnection}
+                  disabled={connectionStatus === 'testing' || !isOnline}
+                  className="w-full"
+                >
+                  {connectionStatus === 'testing' ? (
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Cloud className="h-4 w-4 mr-2" />
+                  )}
+                  {connectionStatus === 'success' ? "Connection Verified" : "Verify Cloud Handshake"}
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="py-4">
+                <CardTitle className="text-sm flex items-center gap-2">
                   <RefreshCw className="h-4 w-4" />
                   {t('menu.program.fullSync')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-xs">{t('menu.program.supabaseKey')}</Label>
-                  <Input
-                    type="password"
-                    value={serviceKey}
-                    onChange={(e) => setServiceKey(e.target.value)}
-                  />
-                </div>
-                
                 <Button
                   variant="secondary"
                   onClick={handleSyncPush}
-                  disabled={isSyncing || !isOnline || !serviceKey}
+                  disabled={isSyncing || !isOnline || connectionStatus !== 'success'}
                   className="w-full"
                 >
                   <RefreshCw className={cn("h-4 w-4 mr-2", isSyncing && "animate-spin")} />
@@ -512,7 +624,7 @@ export function SettingsModule({ storeId, mode }: SettingsModuleProps) {
 
                 <Button 
                   onClick={handleInitialSync} 
-                  disabled={isSyncing || !isOnline}
+                  disabled={isSyncing || !isOnline || connectionStatus !== 'success'}
                   className="w-full"
                 >
                   <RefreshCw className={cn("h-4 w-4 mr-2", isSyncing && "animate-spin")} />

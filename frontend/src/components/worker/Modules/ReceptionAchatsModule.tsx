@@ -110,17 +110,17 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
     }
   }, [orderItems]);
 
-  const handleQuantityChange = (id: string, value: number) => {
-    setReceiptItems(items => items.map(item => item.id === id ? { ...item, quantity_received: value } : item));
+  const handleQuantityChange = (index: number, value: number) => {
+    setReceiptItems(items => items.map((item, i) => i === index ? { ...item, quantity_received: value } : item));
   };
 
-  const handleCostChange = (id: string, value: number) => {
-    setReceiptItems(items => items.map(item => item.id === id ? { ...item, unit_cost: value } : item));
+  const handleCostChange = (index: number, value: number) => {
+    setReceiptItems(items => items.map((item, i) => i === index ? { ...item, unit_cost: value } : item));
   };
 
-  const handleToggleUnit = (id: string) => {
-    setReceiptItems(items => items.map(item => {
-        if (item.id !== id) return item;
+  const handleToggleUnit = (index: number) => {
+    setReceiptItems(items => items.map((item, i) => {
+        if (i !== index) return item;
         if (!item.packSize || item.packSize <= 1) {
           toast.warning(t('inventory.packaging') + ': 1');
           return item;
@@ -148,9 +148,6 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
   };
 
   const addAdHocItem = (product: Product) => {
-    const existingItem = receiptItems.find(i => i.product_id === product.id);
-    if (existingItem) return toast.error(t('worker.sales.itemAlreadyAdded'));
-
     const packSize = parseInt(product.packaging?.match(/(\d+)/)?.[1] || '1', 10);
     const isBox = isGroupingUnit(product.unit_type) || packSize > 1;
 
@@ -332,19 +329,19 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {receiptItems.map(item => {
+                {receiptItems.map((item, index) => {
                   const isDiscrepancy = !isAdHoc && item.quantity_received !== item.quantity_ordered;
                   const packSize = item.packSize || 1;
                   const displayCost = item.unit_cost;
 
                   return (
-                    <TableRow key={item.id} className={cn("h-12 border-b", isDiscrepancy && "bg-warning/10")}>                      <TableCell className="font-bold">
+                    <TableRow key={`${item.id}-${index}`} className={cn("h-12 border-b", isDiscrepancy && "bg-warning/10")}>                      <TableCell className="font-bold">
                         <div className="flex items-center gap-2">
                           <Button 
                                                       variant="outline" 
                                                       size="sm" 
                                                       className={cn("h-7 px-2 font-black text-[10px]", item.isBox && "bg-primary text-white border-primary")}
-                                                      onClick={() => handleToggleUnit(item.id)}
+                                                      onClick={() => handleToggleUnit(index)}
                                                     >
                                                       {item.isBox ? item.unit_type?.toUpperCase() || 'BOX' : t('inventory.unitPiece')}
                                                     </Button>
@@ -360,10 +357,10 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
                       </TableCell>
                       <TableCell className="text-center font-mono text-xs">{item.quantity_ordered}</TableCell>
                       <TableCell className="p-1">
-                        <NumericInput value={item.quantity_received} onValueChange={(v) => handleQuantityChange(item.id, v)} integer className="h-9 text-center font-bold" />
+                        <NumericInput value={item.quantity_received} onValueChange={(v) => handleQuantityChange(index, v)} integer className="h-9 text-center font-bold" />
                       </TableCell>
                       <TableCell className="p-1">
-                        <NumericInput value={displayCost} onValueChange={(v) => handleCostChange(item.id, v)} className="h-9 text-right font-mono text-xs" />
+                        <NumericInput value={displayCost} onValueChange={(v) => handleCostChange(index, v)} className="h-9 text-right font-mono text-xs" />
                       </TableCell>
                       <TableCell className="text-right font-black text-primary">
                         {formatCurrency(item.quantity_received * item.unit_cost * (item.isBox ? item.packSize : 1))}

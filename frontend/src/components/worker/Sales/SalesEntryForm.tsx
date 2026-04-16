@@ -159,16 +159,6 @@ export function SalesEntryForm() {
     const product = products.find(p => p.id === productId);
     if (!product) return;
 
-    const existing = selectedItems.find(si => si.product.id === productId);
-    if (existing) {
-      toast({
-        title: t('worker.sales.itemAlreadyAdded'),
-        description: t('worker.sales.adjustQuantity'),
-        variant: 'destructive',
-      });
-      return;
-    }
-
     setSelectedItems([...selectedItems, {
       product,
       quantity: 1,
@@ -176,14 +166,14 @@ export function SalesEntryForm() {
     }]);
   };
 
-  const updateQuantity = (productId: string, quantity: number) => {
-    setSelectedItems(selectedItems.map(si =>
-      si.product.id === productId ? { ...si, quantity } : si
+  const updateQuantity = (index: number, quantity: number) => {
+    setSelectedItems(selectedItems.map((si, i) =>
+      i === index ? { ...si, quantity } : si
     ));
   };
 
-  const removeItem = (productId: string) => {
-    setSelectedItems(selectedItems.filter(si => si.product.id !== productId));
+  const removeItem = (index: number) => {
+    setSelectedItems(selectedItems.filter((_, i) => i !== index));
   };
 
   const calculateTotal = () => {
@@ -339,8 +329,8 @@ export function SalesEntryForm() {
         {selectedItems.length > 0 && (
           <div className="space-y-3">
             <Label>{t('worker.sales.items', { count: selectedItems.length })}</Label>
-            {selectedItems.map(si => (
-              <div key={si.product.id} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+            {selectedItems.map((si, index) => (
+              <div key={`${si.product.id}-${index}`} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                 <div className="flex-1">
                   <p className="font-medium">{si.product.name}</p>
                   <p className="text-sm text-muted-foreground">
@@ -352,7 +342,7 @@ export function SalesEntryForm() {
                   min="1"
                   max={si.product.quantity}
                   value={si.quantity}
-                  onChange={(e) => updateQuantity(si.product.id, parseInt(e.target.value) || 1)}
+                  onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)}
                   className="w-20"
                 />
                 <p className="font-medium w-32 text-right">
@@ -361,7 +351,7 @@ export function SalesEntryForm() {
                 <Button
                   size="icon"
                   variant="ghost"
-                  onClick={() => removeItem(si.product.id)}
+                  onClick={() => removeItem(index)}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

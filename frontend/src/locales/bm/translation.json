@@ -67,7 +67,7 @@
   },
   "helpCenter": {
     "title": "Dɛmɛ Yɔrɔ",
-    "subtitle": "I ka ɲininka sɔrɔ ani ka Retail Manager kɛcogo kalan.",
+    "subtitle": "I ka ɲininka sɔrɔ ani ka Djati kɛcogo kalan.",
     "searchPlaceholder": "Dɛmɛ ɲini...",
     "categories": {
       "keyboard": {
@@ -119,7 +119,7 @@
       },
       "devices": {
         "q": "N bɛ se ka computer caaman baara?",
-        "a": "Ayi, i bɛ se ka Retail Manager sigi computer caaman kan. Kunnafoni bɛ yɛlɛma u bɛɛ kan."
+        "a": "Ayi, i bɛ se ka Djati sigi computer caaman kan. Kunnafoni bɛ yɛlɛma u bɛɛ kan."
       }
     }
   },
@@ -255,7 +255,7 @@
     },
     "trendValue": "Dɔgɔkun cɛma {{percent}}%",
     "welcome": {
-      "title": "I bisimila Retail Manager la",
+      "title": "I bisimila Djati la",
       "description": "I ka retail ɲɛnabɔli siraw bɛɛ: sɔrɔ, bɛnɛ, baarakɛlaw, ani di.",
       "quickActions": "Ka kɛ teliya la",
       "action1": "I ka sɔrɔ lajɛ ani ɲɛnabɔ",
@@ -736,7 +736,7 @@
     "failedToDeleteSale": "Sɔrɔ bɔli tɛ ɲɛ",
     "saleDeletedSuccessfully": "Sɔrɔ bɔra ka ɲɛ",
     "failedToDeleteSales": "Sɔrɔ {{count}} bɔli tɛ ɲɛ",
-    "deletedSales": "Sɔrɔ {{count}} bɔra",
+    "deletedSales": "Sɔrɔ {{count}} bora",
     "deleteConfirm": "I b'a fɛ ka sɔrɔ in bɔ?",
     "deleteConfirmDescription": "Baara in tɛ se ka segin.",
     "exportSheetName": "Sɔrɔ",
@@ -1272,7 +1272,7 @@
       "newGroup": "Kulu kura",
       "newPassword": "Gafɛ kura",
       "newSupplier": "Fournisseur kura",
-      "noNeedsIdentified": "Bɛnɛ si tɛ sisan.",
+      "noNeedsIdentified": "Bɛnɛ si t tisan.",
       "notes": "Nɔta",
       "orderRef": "Commande nimɔrɔ",
       "ordersCreated": "commandew kɛra",
@@ -1404,7 +1404,7 @@
     "counterClient": "Jatigɛ Comptoir"
   },
   "index": {
-    "title": "Retail Manager",
+    "title": "Djati",
     "description": "I ka retail ɲɛnabɔli siraw bɛɛ: sɔrɔ, bɛnɛ, baarakɛlaw, ani di.",
     "features": {
       "sales": {
@@ -1500,7 +1500,7 @@
     "productActivation": "Ka App Bila",
     "lockedDescription": "I ka kɔwuli jɛlen banna bi. Ka cɛ sɛgɛsɛgɛ wala ka don kura sɔn.",
     "successDescription": "I ka cle ka ɲɛ. Ka baara yɔrɔ labɛn...",
-    "welcomeDescription": "Aw sɔrɔra Retail Manager. Ka cle sɛbɛn ka app baara kɛ.",
+    "welcomeDescription": "Aw sɔrɔra Djati. Ka cle sɛbɛn ka app baara kɛ.",
     "hardwareId": "Mobili ID",
     "copy": "Kopiye",
     "attemptsInfo": "Kɔwuliw bi: {{today}}/3 | Juguman bɛɛ: {{total}}/15",
@@ -1527,7 +1527,7 @@
     "appName": "App Tɔgɔ",
     "version": "Version",
     "copyright": "Droit",
-    "copyrightText": "© 2026 Retail Manager. Hak bɛɛ mara."
+    "copyrightText": "© 2026 Djati. Hak bɛɛ mara."
   },
   "error": {
     "occurred": "Juguman sɔrɔlen",
@@ -1600,7 +1600,7 @@
     "defaultStore": "Magasin",
     "proformaNote": "** Document in ye Facture Proforma ye, fiscal reçu tɛ. Waati : Don 10 **",
     "thankYou": "Aw ni ce aw ka ko!",
-    "generatedBy": "RetailManager System ka kɛ"
+    "generatedBy": "Djati System ka kɛ"
   },
   "hardware": {
     "printerOnline": "Imprimante : Ka baara kɛ",

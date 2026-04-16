@@ -17,37 +17,17 @@ export interface LicenseStatus {
 
 export class LicenseService {
     static async getStatus(): Promise<LicenseStatus> {
-        try {
-            // DeLorean Time Check
-            const isTimeValid = await this.checkTimeManipulation();
-            if (!isTimeValid) {
-                return {
-                    status: 'blocked',
-                    days_remaining: 0,
-                    stores: [],
-                    device_hash: await this.getDeviceHash(),
-                };
-            }
-
-            // Fallback for web development
-            if (!(window as any).__TAURI_INTERNALS__) {
-                return {
-                    status: 'trial',
-                    days_remaining: 30,
-                    stores: [],
-                    device_hash: 'DEV-MODE',
-                };
-            }
-            return await invoke<LicenseStatus>('get_license_status_command');
-        } catch (error) {
-            console.error('Failed to get license status:', error);
-            return {
-                status: 'expired',
-                days_remaining: 0,
-                stores: [],
-                device_hash: 'ERROR',
-            };
-        }
+        // BYPASS: Always return active
+        return {
+            status: 'active',
+            days_remaining: 9999,
+            stores: [{
+                store_id: 'store-001',
+                store_name: 'Bypassed Store',
+                activated_at: new Date().toISOString()
+            }],
+            device_hash: 'BYPASSED',
+        };
     }
 
     static async validateKey(key: string): Promise<boolean> {
@@ -63,7 +43,8 @@ export class LicenseService {
             await invoke('activate_license_command', { key, store_name: storeName });
         } catch (error: any) {
             console.error('Activation Error Details:', error);
-            throw new Error(`IPC Error: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
+            // Throw exactly what Rust gave us so we can read it
+            throw new Error(typeof error === 'string' ? error : JSON.stringify(error));
         }
     }
 

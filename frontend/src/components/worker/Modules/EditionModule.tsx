@@ -73,10 +73,25 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
   const { t, i18n } = useTranslation();
   const { formatCurrency } = useFormatters();
   const [searchQuery, setSearchQuery] = useState('');
-  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
-    from: subDays(new Date(), 30), // Default to last 30 days
-    to: endOfDay(new Date()),
+  
+  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>(() => {
+    if (mode.endsWith('-jour')) {
+      return { from: startOfDay(new Date()), to: endOfDay(new Date()) };
+    }
+    return {
+      from: subDays(new Date(), 30),
+      to: endOfDay(new Date()),
+    };
   });
+
+  useEffect(() => {
+    if (mode.endsWith('-jour')) {
+      setDateRange({ from: startOfDay(new Date()), to: endOfDay(new Date()) });
+    } else {
+      setDateRange({ from: subDays(new Date(), 30), to: endOfDay(new Date()) });
+    }
+  }, [mode]);
+
   const [sales, setSales] = useState<SaleWithItems[]>([]);
   const [selectedSale, setSelectedSale] = useState<SaleWithItems | null>(null);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);

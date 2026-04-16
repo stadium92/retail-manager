@@ -115,7 +115,7 @@ export const useNavigationStore = create<NavigationStore>()((set, get) => ({
     // Since we ensure an empty row always exists, target the very last row index.
     set({
       activeCell: { row: Math.max(rowCount - 1, 0), col: 0 },
-      mode: 'edit', // AUTO-ENTER EDIT MODE
+      mode: 'hover',
     });
   },
 
@@ -124,7 +124,7 @@ export const useNavigationStore = create<NavigationStore>()((set, get) => ({
     const nextRow = activeCell ? activeCell.row + 1 : rowCount;
     set({
       activeCell: { row: Math.max(nextRow, 0), col: 0 },
-      mode: 'edit', // AUTO-ENTER EDIT MODE
+      mode: 'hover',
     });
   },
 

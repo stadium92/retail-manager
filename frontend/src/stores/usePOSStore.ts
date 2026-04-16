@@ -188,8 +188,8 @@ export const usePOSStore = create<POSState>()(
           const totalDiscount = newCart.reduce((sum, i) => sum + (i.unitPrice * i.quantity * i.discount / 100), 0);
           set({
             cart: newCart,
-            activeRow: Math.min(index, newCart.length - 1),
-            selectedRowIndex: Math.min(index, newCart.length - 1),
+            activeRow: Math.min(index, Math.max(0, newCart.length - 1)),
+            selectedRowIndex: Math.min(index, Math.max(0, newCart.length - 1)),
             subtotal,
             totalDiscount,
             grandTotal: subtotal - totalDiscount,

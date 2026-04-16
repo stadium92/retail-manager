@@ -44,6 +44,10 @@ async fn main() {
         .await
         .expect("Failed to connect to Postgres");
 
+    // Run migrations automatically
+    println!("📦 Running database migrations...");
+    sqlx::migrate!("./migrations").run(&pool).await.expect("Failed to run migrations");
+
     let state = AppState { db: pool };
 
     let app = Router::new()
@@ -62,7 +66,8 @@ async fn handle_sync(
     State(state): State<AppState>,
     Json(payload): Json<SyncPayload>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    // 1. Verify Store and Token
+    // 1. SECURITY GATE: Verify that the Sync Token belongs to this EXACT store.
+    // This prevents Store A from ever accidentally (or maliciously) touching Store B's data.
     let store = sqlx::query!(
         "SELECT id, tenant_id FROM stores WHERE id = $1 AND sync_token = $2",
         payload.store_id,
@@ -74,10 +79,10 @@ async fn handle_sync(
 
     let store = match store {
         Some(s) => s,
-        None => return Err((StatusCode::UNAUTHORIZED, "Invalid store ID or sync token".into())),
+        None => return Err((StatusCode::UNAUTHORIZED, "Security Violation: Invalid Store ID or Sync Token combination".into())),
     };
 
-    // 2. Insert Sales (Idempotent using ON CONFLICT)
+    // 2. DATA ISOLATION: Insert Sales tied to BOTH Tenant and Store
     for sale in payload.sales {
         sqlx::query!(
             r#"
@@ -86,8 +91,8 @@ async fn handle_sync(
             ON CONFLICT (id) DO NOTHING
             "#,
             sale.id,
-            store.id,
-            store.tenant_id,
+            store.id,        // Strictly isolated to this store
+            store.tenant_id, // Strictly isolated to this owner
             sale.worker_name,
             sale.total_price as f64,
             sale.payment_method,
@@ -100,5 +105,8 @@ async fn handle_sync(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     }
 
-    Ok(Json(serde_json::json!({"status": "success"})))
+    Ok(Json(serde_json::json!({
+        "status": "success",
+        "message": format!("Synced {} sales for store {}", payload.sales.length, store.id)
+    })))
 }

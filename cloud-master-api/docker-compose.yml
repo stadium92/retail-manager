@@ -4,7 +4,7 @@ services:
   # 1. The Cloud Database (PostgreSQL)
   cloud-db:
     image: postgres:15-alpine
-    container_name: retail-manager-cloud-db
+    container_name: djati-cloud-db
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: password123
@@ -13,15 +13,24 @@ services:
       - "5432:5432"
     volumes:
       - cloud_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d master_cloud"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  # 2. The Rust Master API (We will run this locally for now for easier debugging)
-  # But we define it here so you see the structure.
-  # master-api:
-  #   build: .
-  #   ports:
-  #     - "3000:3000"
-  #   depends_on:
-  #     - cloud-db
+  # 2. The Rust Master API (The "Brain")
+  master-api:
+    build: .
+    container_name: djati-master-api
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://admin:password123@cloud-db:5432/master_cloud
+      RUST_LOG: debug
+    depends_on:
+      cloud-db:
+        condition: service_healthy
 
 volumes:
   cloud_db_data:

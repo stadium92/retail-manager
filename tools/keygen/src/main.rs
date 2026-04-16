@@ -29,6 +29,7 @@ fn main() -> Result<()> {
 
     // 2. Prepare Payload
     // Format: RM-YYYY-DEVICEID
+    // CRITICAL: We must use the CLEAN ID (no dashes) for the signature payload
     let clean_device_id = args.device_id.replace("-", "").to_uppercase();
     let payload_str = format!("RM-{}-{}", args.year, clean_device_id);
     let payload_bytes = payload_str.as_bytes();
@@ -41,8 +42,9 @@ fn main() -> Result<()> {
     // We append the signature to the payload
     let signature_encoded = base32::encode(base32::Alphabet::Crockford, &signature_bytes);
     
-    // Final License Key
-    let license_key = format!("{}-{}", payload_str, signature_encoded);
+    // Final License Key (We use the original device ID with dashes for the key string itself if preferred, 
+    // but the payload part must match clean_device_id)
+    let license_key = format!("RM-{}-{}-{}", args.year, clean_device_id, signature_encoded);
 
     println!("
 ✅ License Key Generated Successfully!");

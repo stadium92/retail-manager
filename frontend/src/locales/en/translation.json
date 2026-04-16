@@ -67,7 +67,7 @@
   },
   "helpCenter": {
     "title": "Help Center",
-    "subtitle": "Find answers to your questions and learn how to use Retail Manager.",
+    "subtitle": "Find answers to your questions and learn how to use Djati.",
     "searchPlaceholder": "Search help...",
     "categories": {
       "keyboard": {
@@ -100,7 +100,7 @@
       },
       "devices": {
         "q": "Can I use multiple devices?",
-        "a": "Yes, you can install Retail Manager on multiple devices. Data will sync across all of them automatically."
+        "a": "Yes, you can install Djati on multiple devices. Data will sync across all of them automatically."
       }
     },
     "reportBug": "Report a Bug",
@@ -171,7 +171,7 @@
     },
     "trendValue": "{{percent}}% of week avg",
     "welcome": {
-      "title": "Welcome to Your Retail Manager",
+      "title": "Welcome to Your Djati",
       "description": "Your complete retail management platform for monitoring sales, inventory, workers, and deliveries.",
       "quickActions": "Quick Actions",
       "action1": "View and manage your sales",
@@ -1324,7 +1324,7 @@
     "counterClient": "Walk-in Customer"
   },
   "index": {
-    "title": "Retail Manager",
+    "title": "Djati",
     "description": "Your intelligent retail management platform for complete business oversight",
     "features": {
       "sales": {
@@ -1494,7 +1494,7 @@
     "productActivation": "Product Activation",
     "lockedDescription": "You have reached the limit of activation attempts for today. Please contact support or try again tomorrow.",
     "successDescription": "Your license is valid. Preparing your workspace...",
-    "welcomeDescription": "Welcome to Retail Manager. Please enter your activation key to unlock the full features.",
+    "welcomeDescription": "Welcome to Djati. Please enter your activation key to unlock the full features.",
     "hardwareId": "Hardware ID",
     "copy": "Copy",
     "attemptsInfo": "Attempts today: {{today}}/3 | Total fails: {{total}}/15",
@@ -1521,7 +1521,7 @@
     "appName": "Application Name",
     "version": "Version",
     "copyright": "Copyright",
-    "copyrightText": "© 2026 Retail Manager. All rights reserved."
+    "copyrightText": "© 2026 Djati. All rights reserved."
   },
   "error": {
     "occurred": "An error occurred",

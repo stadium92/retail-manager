@@ -55,8 +55,22 @@ export function NavigableCell({
         // We are the target!
         const focusable = cellRef.current?.querySelector('input, button') as HTMLElement;
         if (focusable) {
-          // Simply focus. The SalesModule state update will handle the value.
           focusable.focus();
+          
+          // If it's an input, we need to inject the key manually because the 
+          // global listener called e.preventDefault()
+          if (focusable instanceof HTMLInputElement && focusable.type !== 'button' && focusable.type !== 'submit') {
+            // Use a slight timeout to ensure the focus state is fully processed
+            setTimeout(() => {
+              // The user specifically requested that typing while hovering OVERWRITES the existing value
+              focusable.value = e.detail.key;
+              focusable.selectionStart = focusable.selectionEnd = 1;
+              
+              // Trigger a synthetic change event so React state updates
+              const event = new Event('input', { bubbles: true });
+              focusable.dispatchEvent(event);
+            }, 10);
+          }
         }
       }
     };
