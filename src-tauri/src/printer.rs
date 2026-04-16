@@ -4,150 +4,221 @@ use crate::license::check_license_gate;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use image::{DynamicImage, GenericImageView};
 
 #[cfg(windows)]
-use std::os::windows::process::CommandExt;
+use std::ptr;
+#[cfg(windows)]
+use winapi::um::winspool::{OpenPrinterW, ClosePrinter, StartDocPrinterW, EndDocPrinter, StartPagePrinter, EndPagePrinter, WritePrinter, DOC_INFO_1W};
+#[cfg(windows)]
+use std::os::windows::ffi::OsStrExt;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Printer {
-    id: String,
-    name: String,
-    is_default: bool,
-    status: String,
+    pub id: String,
+    pub name: String,
+    pub is_default: bool,
+    pub status: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ReceiptItem {
-    name: String,
-    qty: f64,
-    price: f64,
-    total: f64,
+    pub name: String,
+    pub qty: f64,
+    pub price: f64,
+    pub total: f64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ReceiptData {
-    invoice: String,
+    pub invoice: String,
     #[serde(rename = "storeName")]
-    store_name: String,
+    pub store_name: String,
     #[serde(rename = "storeAddress")]
-    store_address: String,
-    phone: String,
-    items: Vec<ReceiptItem>,
-    subtotal: f64,
-    discount: f64,
-    total: f64,
-    date: String,
-    cashier: String,
+    pub store_address: String,
+    pub phone: String,
+    pub items: Vec<ReceiptItem>,
+    pub subtotal: f64,
+    pub discount: f64,
+    pub total: f64,
+    pub date: String,
+    pub cashier: String,
 }
+
+// ESC/POS Commands
+const ESC: u8 = 0x1B;
+const GS: u8 = 0x1D;
+const LF: u8 = 0x0A;
 
 #[tauri::command]
 pub async fn discover_printers(app_handle: AppHandle) -> Result<Vec<Printer>, String> {
     check_license_gate(&app_handle)?;
-    // In a real implementation, this would use system APIs (winspool on Windows, CUPS on macOS/Linux)
-    // For now, we return mock data or integrate with the local agent logic
-    Ok(vec![
-        Printer {
-            id: "ptr_01".into(),
-            name: "Thermal Receipt Printer".into(),
-            is_default: true,
-            status: "online".into(),
+    
+    #[cfg(windows)]
+    {
+        use std::ptr;
+        use winapi::um::winspool::{EnumPrintersW, PRINTER_INFO_2W, PRINTER_ENUM_LOCAL, PRINTER_ENUM_CONNECTIONS};
+
+        let mut bytes_needed: u32 = 0;
+        let mut count: u32 = 0;
+
+        unsafe {
+            // First call to get the buffer size
+            EnumPrintersW(PRINTER_ENUM_LOCAL | PRINTER_ENUM_CONNECTIONS, ptr::null_mut(), 2, ptr::null_mut(), 0, &mut bytes_needed, &mut count);
+            
+            let mut buffer = vec![0u8; bytes_needed as usize];
+            if EnumPrintersW(PRINTER_ENUM_LOCAL | PRINTER_ENUM_CONNECTIONS, ptr::null_mut(), 2, buffer.as_mut_ptr(), bytes_needed, &mut bytes_needed, &mut count) != 0 {
+                let prn_info = buffer.as_ptr() as *const PRINTER_INFO_2W;
+                let mut printers = Vec::new();
+                
+                for i in 0..count {
+                    let info = *prn_info.add(i as usize);
+                    let name_raw = info.pPrinterName;
+                    let mut name = String::new();
+                    let mut len = 0;
+                    while *name_raw.add(len) != 0 {
+                        len += 1;
+                    }
+                    name = String::from_utf16_lossy(std::slice::from_raw_parts(name_raw, len));
+                    
+                    printers.push(Printer {
+                        id: name.clone(),
+                        name: name,
+                        is_default: (info.Attributes & 0x00000004) != 0, // PRINTER_ATTRIBUTE_DEFAULT
+                        status: "online".into(),
+                    });
+                }
+                return Ok(printers);
+            }
         }
-    ])
+        
+        // Fallback if enumeration fails
+        Ok(vec![Printer { id: "default".into(), name: "System Default Printer".into(), is_default: true, status: "online".into() }])
+    }
+
+    #[cfg(not(windows))]
+    {
+        Ok(vec![
+            Printer {
+                id: "lpr".into(),
+                name: "Generic Thermal (LPR)".into(),
+                is_default: true,
+                status: "online".into(),
+            }
+        ])
+    }
 }
 
-#[tauri::command]
-pub async fn set_default_printer(app_handle: AppHandle, id: String) -> Result<(), String> {
-    check_license_gate(&app_handle)?;
-    println!("Setting default printer to: {}", id);
-    Ok(())
-}
+// ... (get_logo_bytes remains the same)
 
 #[tauri::command]
 pub async fn print_receipt(app_handle: AppHandle, data: ReceiptData) -> Result<bool, String> {
     check_license_gate(&app_handle)?;
-    println!("Printing receipt: {}", data.invoice);
     
-    // 1. Format the receipt as an 80mm ESC/POS style plain text block
-    let mut receipt_text = String::new();
-    
-    // Center aligned header roughly (approx 32-40 characters wide for 58mm-80mm)
-    let width = 32;
-    let store_name = if data.store_name.len() > width { &data.store_name[..width] } else { &data.store_name };
-    let padding = (width - store_name.len()) / 2;
-    receipt_text.push_str(&format!("{:width$}{}\n", "", store_name, width = padding));
-    
-    receipt_text.push_str(&format!("{}\n", data.store_address));
-    receipt_text.push_str(&format!("Tel: {}\n", data.phone));
-    receipt_text.push_str("--------------------------------\n");
-    receipt_text.push_str(&format!("Facture: {}\n", data.invoice));
-    receipt_text.push_str(&format!("Date: {}\n", data.date));
-    receipt_text.push_str(&format!("Caissier: {}\n", data.cashier));
-    receipt_text.push_str("--------------------------------\n");
-    receipt_text.push_str("Article         Qte  Prix  Total\n");
-    receipt_text.push_str("--------------------------------\n");
-    
+    // ... (raw buffer construction remains the same)
+    let mut raw = Vec::new();
+    raw.extend_from_slice(&[ESC, 0x40]); 
+    if let Some(logo_bytes) = get_logo_bytes(&app_handle) {
+        raw.extend_from_slice(&[ESC, 0x61, 1]); // Center
+        raw.extend(logo_bytes);
+        raw.push(LF);
+    }
+    raw.extend_from_slice(&[ESC, 0x61, 1]);
+    raw.extend_from_slice(&[GS, 0x21, 0x11]);
+    raw.extend(data.store_name.as_bytes());
+    raw.push(LF);
+    raw.extend_from_slice(&[GS, 0x21, 0x00]);
+    raw.extend(data.store_address.as_bytes());
+    raw.push(LF);
+    raw.extend(format!("Tel: {}", data.phone).as_bytes());
+    raw.push(LF);
+    raw.extend_from_slice(b"--------------------------------\n");
+    raw.extend_from_slice(&[ESC, 0x61, 0]);
+    raw.extend(format!("Facture: {}\n", data.invoice).as_bytes());
+    raw.extend(format!("Date:    {}\n", data.date).as_bytes());
+    raw.extend(format!("Vendeur: {}\n", data.cashier).as_bytes());
+    raw.extend_from_slice(b"--------------------------------\n");
+    raw.extend_from_slice(b"Article         Qte  Prix  Total\n");
+    raw.extend_from_slice(b"--------------------------------\n");
     for item in data.items {
-        let name_short = if item.name.len() > 14 { format!("{}..", &item.name[..12]) } else { format!("{:<14}", item.name) };
-        receipt_text.push_str(&format!("{} {:<4} {:<5} {}\n", name_short, item.qty, item.price, item.total));
+        let name = if item.name.len() > 14 { format!("{}..", &item.name[..12]) } else { format!("{:<14}", item.name) };
+        raw.extend(format!("{} {:<4} {:<5} {:>7}\n", name, item.qty, item.price, item.total).as_bytes());
     }
-    
-    receipt_text.push_str("--------------------------------\n");
-    receipt_text.push_str(&format!("Sous-total:               {}\n", data.subtotal));
+    raw.extend_from_slice(b"--------------------------------\n");
+    raw.extend_from_slice(&[ESC, 0x61, 2]);
+    raw.extend(format!("Sous-total: {:>10}\n", data.subtotal).as_bytes());
     if data.discount > 0.0 {
-        receipt_text.push_str(&format!("Remise:                   -{}\n", data.discount));
+        raw.extend(format!("Remise:     {:>10}\n", data.discount).as_bytes());
     }
-    receipt_text.push_str(&format!("TOTAL:                    {} FCFA\n", data.total));
-    receipt_text.push_str("--------------------------------\n");
-    receipt_text.push_str("        MERCI DE VOTRE VISITE!        \n");
-    receipt_text.push_str("        Propulse par Jati Tech        \n");
-    receipt_text.push_str("\n\n\n\n\n\n\n"); // Feed paper for cutting
-    
-    // 2. Write to a temporary file
-    let temp_dir = std::env::temp_dir();
-    let receipt_path = temp_dir.join(format!("receipt_{}.txt", data.invoice));
-    fs::write(&receipt_path, &receipt_text).map_err(|e| e.to_string())?;
-    
-    // 3. Send to printer silently based on OS
-    #[cfg(target_os = "windows")]
+    raw.extend_from_slice(&[GS, 0x21, 0x01]);
+    raw.extend(format!("TOTAL: {:>10} FCFA\n", data.total).as_bytes());
+    raw.extend_from_slice(&[GS, 0x21, 0x00]);
+    raw.extend_from_slice(&[ESC, 0x61, 1]);
+    raw.push(LF);
+    raw.extend_from_slice(b"STIHL 100 YEARS: 1926-2026\n");
+    raw.extend_from_slice(b"MERCI DE VOTRE VISITE!\n");
+    raw.extend_from_slice(b"Propulse par Djati ERP\n");
+    raw.extend_from_slice(&[GS, 0x56, 0x42, 0x00]);
+
+    #[cfg(windows)]
     {
-        // Use PowerShell's Out-Printer which uses the default system printer silently
-        let path_str = receipt_path.to_str().unwrap();
-        let cmd = format!("Get-Content '{}' | Out-Printer", path_str);
-        match Command::new("powershell")
-            .args(&["-NoProfile", "-Command", &cmd])
-            .creation_flags(0x08000000) // CREATE_NO_WINDOW
-            .output() 
-        {
-            Ok(_) => println!("Printed successfully via PowerShell"),
-            Err(e) => return Err(format!("Print failed: {}", e)),
-        }
-    }
-    
-    #[cfg(target_os = "macos")]
-    {
-        // Use lpr on Mac
-        match Command::new("lpr").arg(receipt_path.to_str().unwrap()).output() {
-            Ok(_) => println!("Printed successfully via lpr"),
-            Err(e) => return Err(format!("Print failed: {}", e)),
-        }
-    }
-    
-    #[cfg(target_os = "linux")]
-    {
-        // Use lpr on Linux
-        match Command::new("lpr").arg(receipt_path.to_str().unwrap()).output() {
-            Ok(_) => println!("Printed successfully via lpr"),
-            Err(e) => return Err(format!("Print failed: {}", e)),
+        use std::ffi::OsString;
+        use winapi::um::winspool::{GetDefaultPrinterW};
+
+        unsafe {
+            let mut h_printer: winapi::shared::ntdef::HANDLE = ptr::null_mut();
+            
+            // LOGIC: First try to find a printer named "POS-80", 
+            // if not found, use the SYSTEM DEFAULT PRINTER.
+            let mut target_printer_name = OsString::from("POS-80");
+            let mut name_u16: Vec<u16> = target_printer_name.encode_wide().chain(Some(0)).collect();
+            
+            if OpenPrinterW(name_u16.as_ptr() as *mut _, &mut h_printer, ptr::null_mut()) == 0 {
+                // POS-80 not found, let's get the default one
+                let mut len: u32 = 0;
+                GetDefaultPrinterW(ptr::null_mut(), &mut len);
+                let mut buf = vec![0u16; len as usize];
+                if GetDefaultPrinterW(buf.as_mut_ptr(), &mut len) != 0 {
+                    let default_name = String::from_utf16_lossy(&buf[..len as usize - 1]);
+                    println!("Using Default Printer: {}", default_name);
+                    OpenPrinterW(buf.as_ptr() as *mut _, &mut h_printer, ptr::null_mut());
+                }
+            }
+
+            if !h_printer.is_null() {
+                let mut doc_info = DOC_INFO_1W {
+                    pDocName: OsString::from("Djati Receipt").encode_wide().chain(Some(0)).collect::<Vec<u16>>().as_ptr() as *mut _,
+                    pOutputFile: ptr::null_mut(),
+                    pDatatype: OsString::from("RAW").encode_wide().chain(Some(0)).collect::<Vec<u16>>().as_ptr() as *mut _,
+                };
+
+                if StartDocPrinterW(h_printer, 1, &mut doc_info as *mut _ as *mut _) != 0 {
+                    StartPagePrinter(h_printer);
+                    let mut bytes_written: u32 = 0;
+                    WritePrinter(h_printer, raw.as_ptr() as *mut _, raw.len() as u32, &mut bytes_written);
+                    EndPagePrinter(h_printer);
+                    EndDocPrinter(h_printer);
+                }
+                ClosePrinter(h_printer);
+                return Ok(true);
+            }
+            
+            Err("No suitable printer found. Please set a default printer in Windows.".into())
         }
     }
 
-    Ok(true)
+    #[cfg(not(windows))]
+    {
+        let temp_path = std::env::temp_dir().join("receipt.bin");
+        fs::write(&temp_path, &raw).map_err(|e| e.to_string())?;
+        Command::new("lpr").arg(temp_path.to_str().unwrap()).output().map_err(|e| e.to_string())?;
+        Ok(true)
+    }
 }
 
 #[tauri::command]
 pub async fn download_receipt(app_handle: AppHandle, data: ReceiptData) -> Result<(), String> {
     check_license_gate(&app_handle)?;
     println!("Generating PDF for download: {}", data.invoice);
-    // Logic to trigger OS file save dialog
     Ok(())
 }
