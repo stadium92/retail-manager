@@ -37,8 +37,6 @@ export interface NavigationState {
   inputMethod: InputMethod;
   /** Total number of data rows currently in the grid (set by the host grid). */
   rowCount: number;
-  /** A character captured during hover mode to be injected into the next edit session. */
-  pendingKeystroke: string | null;
 }
 
 export interface NavigationActions {
@@ -60,10 +58,6 @@ export interface NavigationActions {
   setMode: (mode: NavigationMode) => void;
   /** Toggle between hover and edit (Enter key behaviour). */
   toggleMode: () => void;
-  /** Start an edit session with a pre-captured key. */
-  startEditWithKey: (key: string) => void;
-  /** Clear the pending keystroke after injection. */
-  clearPendingKeystroke: () => void;
 
   // --- Input method ---
   setInputMethod: (method: InputMethod) => void;
@@ -83,7 +77,6 @@ export const useNavigationStore = create<NavigationStore>()((set, get) => ({
   mode: 'hover',
   inputMethod: 'keyboard',
   rowCount: 0,
-  pendingKeystroke: null,
 
   // --- Movement ---------------------------------------------------
   moveRight: () => {
@@ -141,8 +134,6 @@ export const useNavigationStore = create<NavigationStore>()((set, get) => ({
     const { mode } = get();
     set({ mode: mode === 'hover' ? 'edit' : 'hover' });
   },
-  startEditWithKey: (key) => set({ mode: 'edit', pendingKeystroke: key }),
-  clearPendingKeystroke: () => set({ pendingKeystroke: null }),
 
   // --- Input method ---
   setInputMethod: (method) => set({ inputMethod: method }),

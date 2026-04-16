@@ -1043,9 +1043,10 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       }
     };
     const handleCaptureKeystroke = (e: any) => {
-      // Re-entering Edit mode when a key is captured from hover
-      const store = useNavigationStore.getState();
-      store.setMode('edit');
+      // Intentionally left blank. 
+      // NavigableCell.tsx now manually injects the keystroke into the DOM input,
+      // which triggers a natural synthetic React onChange event. 
+      // Manually overwriting state here causes cursor focus issues.
     };
 
     window.addEventListener('nav-delete-row', handleDeleteEvent);
@@ -1057,64 +1058,12 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     const onSearchShortcut = () => setIsProductLookupOpen(true);
     const onSaveShortcut = () => handleSaveProformaRef.current();
     const onScannerInput = (e: any) => handleHardwareScanRef.current(e);
-    const handleNextRowEvent = (e: any) => {
-      const { row, forceNew } = e.detail || {};
-      const store = useNavigationStore.getState();
-      
-      // Smart row detection: use provided row, or current activeCell, or fallback to selectedIndex
-      let rowIndex = typeof row === 'number' ? row : (store.activeCell?.row ?? selectedIndex);
-      
-      // If we are completely lost (e.g. clicked outside), default to the very last line
-      if (rowIndex < 0) {
-          rowIndex = lineItems.length - 1;
-      }
-      
-      // If forceNew (F7) OR we are on the last row, add a new empty row
-      if (forceNew || rowIndex >= lineItems.length - 1) {
-          // Check if the last row is ALREADY empty to avoid spamming empty lines
-          const lastItem = lineItems[lineItems.length - 1];
-          if (lastItem && !lastItem.productId && !forceNew) {
-              // Already have an empty line at the bottom, just jump to it
-              store.setActiveCell({ row: lineItems.length - 1, col: 0 });
-              store.setMode('edit');
-              return;
-          }
-
-          const newItem = {
-            id: crypto.randomUUID(),
-            lineNumber: lineItems.length + 1,
-            designation: '',
-            code: '',
-            conditionnement: 1,
-            stock: 0,
-            unitPrice: '',
-            basePrice: 0,
-            quantity: '',
-            discountPercent: '',
-            lineTotal: 0,
-            isBox: false,
-            priceTiers: { 1: 0, 2: 0, 3: 0, 4: 0 }
-          };
-          updateSession(mode, { lineItems: [...lineItems, newItem] });
-          
-          // Jump to the newly created row's Designation column (index 0)
-          setTimeout(() => {
-              store.setActiveCell({ row: lineItems.length, col: 0 });
-              store.setMode('hover');
-          }, 50);
-      } else {
-          // Normal advance
-          store.advanceToNextRow();
-          store.setMode('hover');
-      }
-    };
 
     window.addEventListener('scanner-input', onScannerInput);
     window.addEventListener('nav-pay-shortcut', onPayShortcut);
     window.addEventListener('nav-search-shortcut', onSearchShortcut);
     window.addEventListener('nav-save-shortcut', onSaveShortcut);
     window.addEventListener('nav-capture-keystroke', handleCaptureKeystroke);
-    window.addEventListener('nav-next-row', handleNextRowEvent);
     
     return () => {
       window.removeEventListener('nav-delete-row', handleDeleteEvent);
@@ -1122,7 +1071,6 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       window.removeEventListener('nav-open-search', handleSearchEvent);
       window.removeEventListener('nav-adjust-quantity', handleAdjustQtyEvent);
       window.removeEventListener('nav-adjust-price', handleAdjustPriceEvent);
-      window.removeEventListener('nav-next-row', handleNextRowEvent);
 
       window.removeEventListener('scanner-input', onScannerInput);
       window.removeEventListener('nav-pay-shortcut', onPayShortcut);
@@ -1156,7 +1104,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         
         const store = useNavigationStore.getState();
         store.setActiveCell({ row: targetRow, col: 0 });
-        store.setMode('hover');
+        store.setMode('edit');
       }
     };
     
