@@ -1058,12 +1058,39 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     const onSearchShortcut = () => setIsProductLookupOpen(true);
     const onSaveShortcut = () => handleSaveProformaRef.current();
     const onScannerInput = (e: any) => handleHardwareScanRef.current(e);
+    const handleNextRowEvent = (e: any) => {
+      const { row, forceNew } = e.detail || {};
+      const store = useNavigationStore.getState();
+      const rowIndex = typeof row === 'number' ? row : selectedIndex;
+      if (forceNew || rowIndex >= lineItems.length - 1) {
+          const newItem = {
+            id: crypto.randomUUID(),
+            lineNumber: lineItems.length + 1,
+            designation: '',
+            code: '',
+            conditionnement: 1,
+            stock: 0,
+            unitPrice: '',
+            basePrice: 0,
+            quantity: '',
+            discountPercent: '',
+            lineTotal: 0,
+            isBox: false,
+            priceTiers: { 1: 0, 2: 0, 3: 0, 4: 0 }
+          };
+          updateSession(mode, { lineItems: [...lineItems, newItem] });
+          setTimeout(() => { store.setActiveCell({ row: lineItems.length, col: 0 }); }, 10);
+      } else {
+          store.advanceToNextRow();
+      }
+    };
 
     window.addEventListener('scanner-input', onScannerInput);
     window.addEventListener('nav-pay-shortcut', onPayShortcut);
     window.addEventListener('nav-search-shortcut', onSearchShortcut);
     window.addEventListener('nav-save-shortcut', onSaveShortcut);
     window.addEventListener('nav-capture-keystroke', handleCaptureKeystroke);
+    window.addEventListener('nav-next-row', handleNextRowEvent);
     
     return () => {
       window.removeEventListener('nav-delete-row', handleDeleteEvent);
@@ -1071,6 +1098,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       window.removeEventListener('nav-open-search', handleSearchEvent);
       window.removeEventListener('nav-adjust-quantity', handleAdjustQtyEvent);
       window.removeEventListener('nav-adjust-price', handleAdjustPriceEvent);
+      window.removeEventListener('nav-next-row', handleNextRowEvent);
 
       window.removeEventListener('scanner-input', onScannerInput);
       window.removeEventListener('nav-pay-shortcut', onPayShortcut);

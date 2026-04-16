@@ -37,6 +37,14 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
               return;
           }
       }
+      if (e.key === 'F7') {
+          if (!isDialogOpen) {
+              e.preventDefault();
+              e.stopPropagation();
+              window.dispatchEvent(new CustomEvent('nav-next-row', { detail: { row: state.activeCell?.row, forceNew: true } }));
+              return;
+          }
+      }
       if (e.key === 'F10') {
           if (!isDialogOpen) {
               e.preventDefault();
@@ -51,77 +59,21 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
       const isInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
       const state = getState();
 
-      // 1. Any key press → switch to keyboard input method
-      if (state.inputMethod !== 'keyboard') {
-        store.setState({ inputMethod: 'keyboard' });
-      }
-
-      // ---------------------------------------------------------------
-      // Scanner Detection Logic (Instant Iron Shield)
-      // ---------------------------------------------------------------
-      const now = Date.now();
-      const timeSinceLastKey = now - lastKeyTimeRef.current;
-      
-      // Update timing ref for next key
-      lastKeyTimeRef.current = now;
-
-      if (e.key === 'Enter') {
-        // If we have accumulated enough characters quickly, it's definitely a barcode scan
-        if (scanBufferRef.current.length >= SCANNER_CHAR_THRESHOLD) {
-          e.preventDefault();
-          e.stopPropagation();
-
-          const code = scanBufferRef.current;
-          scanBufferRef.current = '';
-          (window as any).isScannerTyping = false; // Scan finished
-          window.dispatchEvent(new CustomEvent('scanner-input', { detail: { code } }));
-          return;
-        }
-        // Not a scan, just a normal enter press
-        scanBufferRef.current = '';
-      } else if (e.key.length === 1) {
-        const isSuperHumanSpeed = timeSinceLastKey < 35;
-
-        if (isSuperHumanSpeed) {
-          // SCANNER MODE: We are in a burst of speed.
-          scanBufferRef.current += e.key;
-          (window as any).isScannerTyping = true;
-          
-          // Block the browser from putting these into the input box
-          if (scanBufferRef.current.length >= 2) {
-             e.preventDefault();
-             e.stopPropagation();
-          }
-        } else {
-          // HUMAN MODE: Key arrived slowly.
-          // 1. Wipe the buffer - human keys are not barcodes
-          scanBufferRef.current = e.key; 
-          (window as any).isScannerTyping = false;
-          
-          // 2. Clear buffer after a tiny delay if no other key follows
-          // This ensures that the next scan starts fresh.
-          if (scanTimerRef.current) clearTimeout(scanTimerRef.current);
-          scanTimerRef.current = setTimeout(() => {
-            if (!(window as any).isScannerTyping) {
-              scanBufferRef.current = '';
-            }
-          }, 100);
-        }
-      }
-
       // ---------------------------------------------------------------
       // Global Modifiers / Bypasses
       // ---------------------------------------------------------------
-      if (e.key === 'Tab' || e.key === 'Shift') {
+      if (e.key === 'Tab') {
         e.preventDefault();
-        // FORCE BLUR FIRST
-        if (document.activeElement instanceof HTMLElement) {
-          document.activeElement.blur();
-        }
-        // Then wait a tiny bit for the browser to catch up, then jump
-        setTimeout(() => {
-          store.getState().jumpToLastEmptyRow();
-        }, 10);
+        if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+        setTimeout(() => store.getState().jumpToLastEmptyRow(), 10);
+        return;
+      }
+
+      // NEXT ROW SHORTCUTS: Shift (outside input) or Shift+Enter (anywhere)
+      if ((e.key === 'Shift' && !isInput) || (e.key === 'Enter' && e.shiftKey)) {
+        e.preventDefault();
+        if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+        window.dispatchEvent(new CustomEvent('nav-next-row', { detail: { row: state.activeCell?.row } }));
         return;
       }
 
