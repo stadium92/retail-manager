@@ -72,8 +72,13 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
       // NEXT ROW SHORTCUTS: Shift (outside input) or Shift+Enter (anywhere)
       if ((e.key === 'Shift' && !isInput) || (e.key === 'Enter' && e.shiftKey)) {
         e.preventDefault();
-        if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-        window.dispatchEvent(new CustomEvent('nav-next-row', { detail: { row: state.activeCell?.row } }));
+        e.stopPropagation();
+        
+        // We don't blur here anymore because SalesModule will handle the transition.
+        // Blurring manually can cause the window to lose focus if timed poorly.
+        window.dispatchEvent(new CustomEvent('nav-next-row', { 
+            detail: { row: getState().activeCell?.row ?? -1 } 
+        }));
         return;
       }
 

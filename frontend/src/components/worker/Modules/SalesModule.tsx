@@ -1061,8 +1061,26 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     const handleNextRowEvent = (e: any) => {
       const { row, forceNew } = e.detail || {};
       const store = useNavigationStore.getState();
-      const rowIndex = typeof row === 'number' ? row : selectedIndex;
+      
+      // Smart row detection: use provided row, or current activeCell, or fallback to selectedIndex
+      let rowIndex = typeof row === 'number' ? row : (store.activeCell?.row ?? selectedIndex);
+      
+      // If we are completely lost (e.g. clicked outside), default to the very last line
+      if (rowIndex < 0) {
+          rowIndex = lineItems.length - 1;
+      }
+      
+      // If forceNew (F7) OR we are on the last row, add a new empty row
       if (forceNew || rowIndex >= lineItems.length - 1) {
+          // Check if the last row is ALREADY empty to avoid spamming empty lines
+          const lastItem = lineItems[lineItems.length - 1];
+          if (lastItem && !lastItem.productId && !forceNew) {
+              // Already have an empty line at the bottom, just jump to it
+              store.setActiveCell({ row: lineItems.length - 1, col: 0 });
+              store.setMode('edit');
+              return;
+          }
+
           const newItem = {
             id: crypto.randomUUID(),
             lineNumber: lineItems.length + 1,
@@ -1079,9 +1097,16 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
             priceTiers: { 1: 0, 2: 0, 3: 0, 4: 0 }
           };
           updateSession(mode, { lineItems: [...lineItems, newItem] });
-          setTimeout(() => { store.setActiveCell({ row: lineItems.length, col: 0 }); }, 10);
+          
+          // Jump to the newly created row's Designation column (index 0)
+          setTimeout(() => {
+              store.setActiveCell({ row: lineItems.length, col: 0 });
+              store.setMode('edit');
+          }, 50);
       } else {
+          // Normal advance
           store.advanceToNextRow();
+          store.setMode('edit');
       }
     };
 
