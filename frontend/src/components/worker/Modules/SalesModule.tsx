@@ -1042,6 +1042,48 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         handlePriceChange(rowIndex, Math.max(0, currentPrice + (delta * 500)));
       }
     };
+    const handleNextRowEvent = (e: any) => {
+      const { row, forceNew } = e.detail || {};
+      const store = useNavigationStore.getState();
+      
+      // Smart row detection: use provided row, or current activeCell, or fallback to selectedIndex
+      let rowIndex = typeof row === 'number' ? row : (store.activeCell?.row ?? selectedIndex);
+      
+      if (rowIndex < 0) rowIndex = lineItems.length - 1;
+      
+      if (forceNew || rowIndex >= lineItems.length - 1) {
+          const lastItem = lineItems[lineItems.length - 1];
+          if (lastItem && !lastItem.productId && !forceNew) {
+              store.setActiveCell({ row: lineItems.length - 1, col: 0 });
+              store.setMode('hover');
+              return;
+          }
+
+          const newItem = {
+            id: crypto.randomUUID(),
+            lineNumber: lineItems.length + 1,
+            designation: '',
+            code: '',
+            conditionnement: 1,
+            stock: 0,
+            unitPrice: '',
+            basePrice: 0,
+            quantity: '',
+            discountPercent: '',
+            lineTotal: 0,
+            isBox: false,
+            priceTiers: { 1: 0, 2: 0, 3: 0, 4: 0 }
+          };
+          updateSession(mode, { lineItems: [...lineItems, newItem] });
+          setTimeout(() => {
+              store.setActiveCell({ row: lineItems.length, col: 0 });
+              store.setMode('hover');
+          }, 50);
+      } else {
+          store.advanceToNextRow();
+          store.setMode('hover');
+      }
+    };
     const handleCaptureKeystroke = (e: any) => {
       // Intentionally left blank. 
       // NavigableCell.tsx now manually injects the keystroke into the DOM input,
@@ -1054,6 +1096,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     window.addEventListener('nav-open-search', handleSearchEvent);
     window.addEventListener('nav-adjust-quantity', handleAdjustQtyEvent);
     window.addEventListener('nav-adjust-price', handleAdjustPriceEvent);
+    window.addEventListener('nav-next-row', handleNextRowEvent);
     const onPayShortcut = () => openPaymentRef.current();
     const onSearchShortcut = () => setIsProductLookupOpen(true);
     const onSaveShortcut = () => handleSaveProformaRef.current();
@@ -1071,6 +1114,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       window.removeEventListener('nav-open-search', handleSearchEvent);
       window.removeEventListener('nav-adjust-quantity', handleAdjustQtyEvent);
       window.removeEventListener('nav-adjust-price', handleAdjustPriceEvent);
+      window.removeEventListener('nav-next-row', handleNextRowEvent);
 
       window.removeEventListener('scanner-input', onScannerInput);
       window.removeEventListener('nav-pay-shortcut', onPayShortcut);

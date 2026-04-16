@@ -17,7 +17,7 @@ export function useGlobalKeyboard() {
     const getState = store.getState;
 
     function handleKeyDown(e: KeyboardEvent) {
-const isDialogOpen = !!document.querySelector('[role="dialog"]');
+      const isDialogOpen = !!document.querySelector('[role="dialog"]');
       
       // 0. HANDLE GLOBAL SHORTCUTS FIRST (Allow them even if focused in an input)
       if (e.key === 'F4' || e.key === 'F2') {
@@ -37,14 +37,17 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
               return;
           }
       }
+
+      // NEW: F7 for New Row
       if (e.key === 'F7') {
           if (!isDialogOpen) {
               e.preventDefault();
               e.stopPropagation();
-              window.dispatchEvent(new CustomEvent('nav-next-row', { detail: { row: state.activeCell?.row, forceNew: true } }));
+              window.dispatchEvent(new CustomEvent('nav-next-row', { detail: { row: getState().activeCell?.row, forceNew: true } }));
               return;
           }
       }
+
       if (e.key === 'F10') {
           if (!isDialogOpen) {
               e.preventDefault();
@@ -59,6 +62,51 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
       const isInput = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
       const state = getState();
 
+      // 1. Any key press → switch to keyboard input method
+      if (state.inputMethod !== 'keyboard') {
+        store.setState({ inputMethod: 'keyboard' });
+      }
+
+      // ---------------------------------------------------------------
+      // Scanner Detection Logic (RESTORED)
+      // ---------------------------------------------------------------
+      const now = Date.now();
+      const timeSinceLastKey = now - lastKeyTimeRef.current;
+      
+      lastKeyTimeRef.current = now;
+
+      if (e.key === 'Enter' && !e.shiftKey) { // Normal Enter (not Shift+Enter)
+        if (scanBufferRef.current.length >= SCANNER_CHAR_THRESHOLD) {
+          e.preventDefault();
+          e.stopPropagation();
+          const code = scanBufferRef.current;
+          scanBufferRef.current = '';
+          (window as any).isScannerTyping = false;
+          window.dispatchEvent(new CustomEvent('scanner-input', { detail: { code } }));
+          return;
+        }
+        scanBufferRef.current = '';
+      } else if (e.key.length === 1) {
+        const isSuperHumanSpeed = timeSinceLastKey < 35;
+        if (isSuperHumanSpeed) {
+          scanBufferRef.current += e.key;
+          (window as any).isScannerTyping = true;
+          if (scanBufferRef.current.length >= 2) {
+             e.preventDefault();
+             e.stopPropagation();
+          }
+        } else {
+          scanBufferRef.current = e.key; 
+          (window as any).isScannerTyping = false;
+          if (scanTimerRef.current) clearTimeout(scanTimerRef.current);
+          scanTimerRef.current = setTimeout(() => {
+            if (!(window as any).isScannerTyping) {
+              scanBufferRef.current = '';
+            }
+          }, 100);
+        }
+      }
+
       // ---------------------------------------------------------------
       // Global Modifiers / Bypasses
       // ---------------------------------------------------------------
@@ -69,20 +117,13 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
         return;
       }
 
-      // NEXT ROW SHORTCUTS: Shift (outside input) or Shift+Enter (anywhere)
+      // NEW: Shift (standalone) or Shift+Enter for Next Row
       if ((e.key === 'Shift' && !isInput) || (e.key === 'Enter' && e.shiftKey)) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        // Release focus from any input so arrows can navigate the grid
-        if (document.activeElement instanceof HTMLElement) {
-            document.activeElement.blur();
-        }
-
-        window.dispatchEvent(new CustomEvent('nav-next-row', { 
-            detail: { row: getState().activeCell?.row ?? -1 } 
-        }));
-        return;
+          e.preventDefault();
+          e.stopPropagation();
+          if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+          window.dispatchEvent(new CustomEvent('nav-next-row', { detail: { row: getState().activeCell?.row } }));
+          return;
       }
 
       // ---------------------------------------------------------------
@@ -91,17 +132,12 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
       if (state.mode === 'edit') {
         if (e.key === 'Enter') {
           e.preventDefault();
-          
-          if (document.activeElement instanceof HTMLElement) {
-            document.activeElement.blur();
-          }
-
+          if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
           if (state.activeCell) {
             const col = GRID_COLUMNS[state.activeCell.col];
             if (col === 'designation') {
               window.dispatchEvent(new CustomEvent('nav-open-search', { detail: { row: state.activeCell.row } }));
             }
-            
             store.getState().setMode('hover');
             if (col !== 'total') {
               store.getState().moveRight();
@@ -123,10 +159,13 @@ const isDialogOpen = !!document.querySelector('[role="dialog"]');
       // ---------------------------------------------------------------
       if (state.mode === 'hover' && !isInput && state.activeCell) {
         // --- Type-to-Edit Capture ---
-        // If it's a single character (letter/number), enter edit mode and capture it
         if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
           e.preventDefault();
-          store.getState().startEditWithKey(e.key);
+          store.getState().setMode('edit');
+          
+          window.dispatchEvent(new CustomEvent('nav-capture-keystroke', { 
+              detail: { row: state.activeCell.row, col: state.activeCell.col, key: e.key } 
+          }));
           return;
         }
 
