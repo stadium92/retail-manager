@@ -9,7 +9,7 @@ export interface InvoiceData {
     order_ref?: string;
     storeName: string;
     storeAddress?: string;
-    workerName: string;
+    workerName?: string;
     customerName?: string;
     customerPhone?: string;
     customerAddress?: string;
@@ -19,6 +19,7 @@ export interface InvoiceData {
     type: 'detail' | 'gros' | 'proforma';
     paymentMethod?: string;
 }
+
 
 const StihlLogo = () => (
     <div className="flex items-center justify-center self-start shrink-0 mr-4">
@@ -38,8 +39,13 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, { data: InvoiceData }>
     const isProforma = data.type === 'proforma';
     const { t } = useTranslation();
 
-    // Check if any product in the invoice is a STIHL product
-    const hasStihlProduct = data.items.some(item => item.product.name.toLowerCase().includes('stihl'));
+    // Dynamically check if any product in the cart is a STIHL product to trigger the custom template
+    const hasStihlProduct = data.items.some(item => {
+        if (!item.product || !item.product.name) return false;
+        const name = item.product.name.toLowerCase();
+        // Check for both the correct spelling 'stihl' and the common pronunciation 'steel'
+        return name.includes('stihl') || name.includes('steel');
+    });
 
     return (
         <div ref={ref} className="p-8 max-w-[800px] mx-auto bg-white text-black font-sans hidden print:block">
@@ -50,11 +56,12 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, { data: InvoiceData }>
                     <div>
                         {/* Title adjusts based on template mode */}
                         <h1 className={`text-2xl font-bold uppercase tracking-wider ${hasStihlProduct ? 'text-[#f04e23]' : 'text-gray-900'}`}>
-                            {hasStihlProduct ? 'Revendeur Agréé STIHL' : data.storeName}
+                            {hasStihlProduct ? 'Revendeur Agréé STIHL' : 'JATE'}
                         </h1>
                         <p className="text-sm text-gray-700 font-bold mb-1">ETS Madjou Sylla - QUINCAILLERIE DE LA PAIX</p>
+                        <p className="text-[11px] text-gray-600 font-medium tracking-tight mb-1 uppercase">Vente de machine tronçonneuse, disque, meule bosch</p>
                         <p className="text-sm text-gray-600 leading-tight">{data.storeAddress || t('invoice.defaultStore')}</p>
-                        <p className="text-sm text-gray-600 leading-tight">Tel: +223 20 22 26 45 / +223 77 77 90 60</p>
+                        <p className="text-sm text-gray-600 leading-tight">Tel: +223 77 77 90 60 / 20 22 26 45 / 79 45 49 46</p>
                         <p className="text-xs text-gray-500 leading-tight mt-1">Face centre Djoliba, BP 2844, Bamako</p>
                     </div>
                 </div>
@@ -71,6 +78,12 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, { data: InvoiceData }>
                         </p>
                     )}
                     <p className="text-sm mt-1 text-gray-500">{format(new Date(data.created_at), 'dd/MM/yyyy HH:mm')}</p>
+                    {data.workerName && (
+                        <p className="text-sm mt-1 text-gray-500 font-medium">Caissier: {data.workerName}</p>
+                    )}
+                    {data.paymentMethod && !isProforma && (
+                        <p className="text-sm mt-1 text-gray-500 font-medium uppercase">Paiement: {data.paymentMethod}</p>
+                    )}
                 </div>
             </div>
 
@@ -97,7 +110,6 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, { data: InvoiceData }>
                         <tr key={idx} className="border-b border-gray-100">
                             <td className="py-2">
                                 <span className="font-medium block">{item.product.name}</span>
-                                <span className="text-xs text-gray-500">{item.product.sku}</span>
                             </td>
                             <td className="text-right py-2">{item.product.unit_price.toLocaleString()}</td>
                             <td className="text-center py-2">{item.quantity}</td>
@@ -118,15 +130,20 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, { data: InvoiceData }>
             </div>
 
             {/* Footer / Disclaimer */}
-            <div className="text-center text-xs text-gray-500 mt-12 border-t pt-4">
-                {isProforma ? (
-                    <p className="italic font-medium text-black">
-                        {t('invoice.proformaNote')}
-                    </p>
-                ) : (
-                    <p>{t('invoice.thankYou')}</p>
-                )}
-                <p className="mt-2">{t('invoice.generatedBy')}</p>
+            <div className="flex justify-between items-center text-xs text-gray-500 mt-12 border-t pt-4">
+                <div className="flex flex-col items-start opacity-75 mr-4">
+                    <img src="/jati-icon.png" alt="Jati Logo" className="h-[40px] object-contain mb-0.5 grayscale" />
+                    <span className="text-[10px] font-medium tracking-wide">Propulsé par JATE</span>
+                </div>
+                <div className="text-center flex-1 pr-16">
+                    {isProforma ? (
+                        <p className="italic font-medium text-black">
+                            {t('invoice.proformaNote')}
+                        </p>
+                    ) : (
+                        <p className="font-medium text-gray-800">{t('invoice.thankYou')}</p>
+                    )}
+                </div>
             </div>
         </div>
     );

@@ -10,6 +10,7 @@ interface SanifereFooterProps {
   onValidate?: () => void;
   onSettlement?: () => void;
   onPrint?: () => void;
+  onPrintA4?: () => void;
   onInsert?: () => void;
   onDelete?: () => void;
   onProductCard?: () => void;
@@ -26,6 +27,7 @@ export function SanifereFooter({
   onValidate,
   onSettlement,
   onPrint,
+  onPrintA4,
   onInsert,
   onDelete,
   onProductCard,
@@ -51,6 +53,7 @@ export function SanifereFooter({
       'ACTION_PAY': t('pos.totals.pay'),
       'ACTION_SCAN': t('pos.totals.scan'),
       'ACTION_PRINT': t('common.print'),
+      'ACTION_PRINT_A4': 'Impr. A4',
       'ACTION_SEARCH': t('common.search'),
       'ACTION_SAVE': t('menu.program.save'),
       'delete': t('common.delete'),
@@ -101,11 +104,14 @@ export function SanifereFooter({
       if (key === 'F9' && (!action || action === 'ACTION_PRINT')) {
         label = t('common.print');
       }
+      if (key === 'F11' && (!action || action === 'ACTION_PRINT_A4')) {
+        label = 'Impr. A4';
+      }
       if (key === 'F10' && (!action || action === 'ACTION_SAVE')) {
         label = t('menu.program.save');
       }
 
-      const finalAction = action || (key === 'F9' ? 'ACTION_PRINT' : key === 'F10' ? 'ACTION_SAVE' : '');
+      const finalAction = action || (key === 'F9' ? 'ACTION_PRINT' : key === 'F10' ? 'ACTION_SAVE' : key === 'F11' ? 'ACTION_PRINT_A4' : '');
       return { key, label, action: finalAction };
     });
   }, [keyMappings, t]);
@@ -129,6 +135,7 @@ export function SanifereFooter({
       if (action === 'ACTION_VALIDATE') onValidate?.();
       else if (action === 'ACTION_PAY' || action === 'settlement') onSettlement?.();
       else if (action === 'ACTION_PRINT') onPrint?.();
+      else if (action === 'ACTION_PRINT_A4') onPrintA4?.();
       else if (action === 'ACTION_SEARCH' || action === 'productCard') onProductCard?.();
       else if (action === 'insert') onInsert?.();
       else if (action === 'delete') onDelete?.();

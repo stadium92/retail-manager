@@ -7,9 +7,19 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @media print {
-            body { background: white; padding: 0; }
-            .shadow-lg { box-shadow: none; border: none; margin-bottom: 2rem !important; }
+            body { 
+                background: white; 
+                padding: 0; 
+                zoom: 0.70; /* Force shrink to fit on one page */
+            }
+            .shadow-lg { box-shadow: none; border: none; margin-bottom: 1rem !important; }
             h2.preview-title { display: none; }
+            
+            /* Alternative scaling for browsers that don't support zoom */
+            html {
+                transform: scale(0.8);
+                transform-origin: top center;
+            }
         }
     </style>
 </head>
@@ -27,6 +37,7 @@
                 <div>
                     <h1 class="text-2xl font-bold uppercase tracking-wider text-[#f04e23]">Revendeur Agréé STIHL</h1>
                     <p class="text-sm text-gray-700 font-bold mb-1">ETS Madjou Sylla - QUINCAILLERIE DE LA PAIX</p>
+                    <p class="text-[11px] text-gray-600 font-medium tracking-tight mb-1 uppercase">Vente de machine tronçonneuse, disque, meule bosch</p>
                     <p class="text-sm text-gray-600 leading-tight">Face centre Djoliba BP 2844</p>
                     <p class="text-sm text-gray-600 leading-tight">Tel: +223 20 22 26 45 / +223 77 77 90 60</p>
                 </div>
@@ -35,6 +46,8 @@
                 <h2 class="text-xl font-bold uppercase text-[#f04e23]">FACTURE</h2>
                 <p class="text-sm text-gray-500 font-mono mt-2">N° Facture: INV-92834</p>
                 <p class="text-sm mt-1 text-gray-500">16/04/2026 14:30</p>
+                <p class="text-sm mt-1 text-gray-500 font-medium">Caissier: Oumar</p>
+                <p class="text-sm mt-1 text-gray-500 font-medium uppercase">Paiement: CASH</p>
             </div>
         </div>
 
@@ -64,8 +77,14 @@
             </div>
         </div>
         <!-- Footer / Disclaimer -->
-        <div class="text-center text-xs text-gray-500 mt-12 border-t pt-4">
-            <p>Merci pour votre confiance.</p>
+        <div class="flex justify-between items-center text-xs text-gray-500 mt-12 border-t pt-4">
+            <div class="flex flex-col items-start opacity-75 mr-4">
+                <img src="./frontend/public/jati-icon.png" alt="Jati Logo" class="h-[40px] object-contain mb-0.5 grayscale" />
+                <span class="text-[10px] font-medium tracking-wide">Propulsé par JATE</span>
+            </div>
+            <div class="text-center flex-1 pr-16">
+                <p class="font-medium text-gray-800">Merci pour votre confiance.</p>
+            </div>
         </div>
     </div>
 
@@ -80,8 +99,9 @@
                     <img src="./frontend/public/quincaillerie-logo.jpg" alt="Quincaillerie Logo" class="h-[121px] w-[121px] object-contain rounded-md" />
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold uppercase tracking-wider text-gray-900">MAGASIN RETAIL</h1>
+                    <h1 class="text-2xl font-bold uppercase tracking-wider text-gray-900">JATE</h1>
                     <p class="text-sm text-gray-700 font-bold mb-1">ETS Madjou Sylla - QUINCAILLERIE DE LA PAIX</p>
+                    <p class="text-[11px] text-gray-600 font-medium tracking-tight mb-1 uppercase">Vente de machine tronçonneuse, disque, meule bosch</p>
                     <p class="text-sm text-gray-600 leading-tight">Face centre Djoliba BP 2844</p>
                     <p class="text-sm text-gray-600 leading-tight">Tel: +223 20 22 26 45 / +223 77 77 90 60</p>
                 </div>
@@ -90,6 +110,8 @@
                 <h2 class="text-xl font-bold uppercase text-gray-800">FACTURE</h2>
                 <p class="text-sm text-gray-500 font-mono mt-2">N° Facture: INV-92835</p>
                 <p class="text-sm mt-1 text-gray-500">16/04/2026 14:35</p>
+                <p class="text-sm mt-1 text-gray-500 font-medium">Caissier: Oumar</p>
+                <p class="text-sm mt-1 text-gray-500 font-medium uppercase">Paiement: CASH</p>
             </div>
         </div>
 
@@ -125,8 +147,14 @@
             </div>
         </div>
         <!-- Footer / Disclaimer -->
-        <div class="text-center text-xs text-gray-500 mt-12 border-t pt-4">
-            <p>Merci pour votre confiance.</p>
+        <div class="flex justify-between items-center text-xs text-gray-500 mt-12 border-t pt-4">
+            <div class="flex flex-col items-start opacity-75 mr-4">
+                <img src="./frontend/public/jati-icon.png" alt="Jati Logo" class="h-[40px] object-contain mb-0.5 grayscale" />
+                <span class="text-[10px] font-medium tracking-wide">Propulsé par JATE</span>
+            </div>
+            <div class="text-center flex-1 pr-16">
+                <p class="font-medium text-gray-800">Merci pour votre confiance.</p>
+            </div>
         </div>
     </div>
 </body>

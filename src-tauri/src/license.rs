@@ -2,6 +2,7 @@ use serde::{Serialize, Deserialize};
 use machine_uid;
 use sha2::{Sha256, Digest};
 use std::fs;
+use std::path::PathBuf;
 use tauri::AppHandle;
 use tauri::Manager;
 use ed25519_dalek::{Verifier, VerifyingKey, Signature};

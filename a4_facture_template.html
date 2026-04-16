@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facture A4 - Quincaillerie de la Paix</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 10mm 12mm;
+        }
+        body {
+            background-color: #e5e7eb;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .a4-sheet {
+            width: 210mm;
+            background: white;
+            margin: 8mm auto;
+            padding: 10mm 14mm;
+            box-sizing: border-box;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        @media print {
+            body {
+                background-color: white;
+                margin: 0;
+                padding: 0;
+            }
+            .a4-sheet {
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                box-shadow: none;
+                page-break-after: avoid;
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body class="font-sans text-gray-900 text-sm">
+
+    <div class="a4-sheet">
+
+        <!-- HEADER -->
+        <div class="flex justify-between items-center pb-3 mb-4 border-b-4 border-[#2c3e50]">
+            <div class="w-[80px] shrink-0">
+                <img src="./frontend/public/quincaillerie-logo.jpg" alt="Logo ETS" class="w-full h-auto object-contain rounded" onerror="this.style.display='none'">
+            </div>
+
+            <div class="flex-1 text-center px-3">
+                <div class="inline-block bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded mb-0.5">ETS Madjou Sylla</div>
+                <h1 class="text-2xl font-black tracking-tight text-[#2c3e50] leading-none uppercase mb-0.5">Quincaillerie De La Paix</h1>
+                <p class="text-[11px] font-bold text-red-600 tracking-wide uppercase mb-1">Vente de machine tronçonneuse, disque, meule, etc.</p>
+                <div class="text-xs font-semibold text-gray-800 leading-snug">
+                    <p>TEL: <span class="text-green-700">+223 77 77 90 60 / 20 22 26 45 / 79 45 49 46</span></p>
+                    <p class="text-blue-800">madjoulalasylla@gmail.com &nbsp;|&nbsp; <span class="text-gray-600">Face à Djoliba, près du Trésor</span></p>
+                </div>
+            </div>
+
+            <div class="w-[90px] shrink-0 flex justify-end">
+                <img src="./frontend/public/stihl-logo.jpg" alt="STIHL" class="w-full h-auto object-contain" onerror="this.style.display='none'">
+            </div>
+        </div>
+
+        <!-- INVOICE METADATA -->
+        <div class="flex justify-between items-start mb-4">
+            <div class="w-1/2">
+                <h2 class="text-2xl font-black text-gray-800 uppercase tracking-widest mb-2">Facture</h2>
+                <div class="grid grid-cols-[90px_1fr] gap-y-0.5 text-xs">
+                    <span class="font-bold text-gray-600">N° Facture :</span>
+                    <span class="font-mono font-medium text-gray-900">INV-2026-0841</span>
+                    <span class="font-bold text-gray-600">Date :</span>
+                    <span class="font-medium text-gray-900">16 Avril 2026</span>
+                    <span class="font-bold text-gray-600">Vendeur :</span>
+                    <span class="font-medium text-gray-900">Oumar</span>
+                </div>
+            </div>
+
+            <div class="w-[45%] border-2 border-gray-300 rounded p-3 bg-gray-50">
+                <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Facturé à :</p>
+                <h3 class="text-sm font-bold text-gray-900 mb-0.5">M. Entreprise BTP Mali</h3>
+                <p class="text-xs text-gray-700">ACI 2000, Bamako</p>
+                <p class="text-xs text-gray-700">Tel: +223 70 00 00 00</p>
+            </div>
+        </div>
+
+        <!-- TABLE OF ITEMS -->
+        <table class="w-full text-xs border-collapse mb-3">
+            <thead>
+                <tr class="bg-[#2c3e50] text-white">
+                    <th class="py-2 px-3 text-left border border-[#2c3e50] font-semibold">Désignation des Articles</th>
+                    <th class="py-2 px-3 text-center border border-[#2c3e50] font-semibold w-16">Qté</th>
+                    <th class="py-2 px-3 text-right border border-[#2c3e50] font-semibold w-28">Prix Unitaire</th>
+                    <th class="py-2 px-3 text-right border border-[#2c3e50] font-semibold w-28">Montant Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="py-2 px-3 border border-gray-300 font-medium text-gray-900">Tronçonneuse STIHL Farm Boss MS 382</td>
+                    <td class="py-2 px-3 border border-gray-300 text-center">2</td>
+                    <td class="py-2 px-3 border border-gray-300 text-right">350 000</td>
+                    <td class="py-2 px-3 border border-gray-300 text-right font-medium">700 000</td>
+                </tr>
+                <tr class="bg-gray-50">
+                    <td class="py-2 px-3 border border-gray-300 font-medium text-gray-900">Disque à tronçonner diamanté 230mm</td>
+                    <td class="py-2 px-3 border border-gray-300 text-center">5</td>
+                    <td class="py-2 px-3 border border-gray-300 text-right">15 000</td>
+                    <td class="py-2 px-3 border border-gray-300 text-right font-medium">75 000</td>
+                </tr>
+                <tr>
+                    <td class="py-2 px-3 border border-gray-300 font-medium text-gray-900">Meuleuse d'angle BOSCH GWS 2200</td>
+                    <td class="py-2 px-3 border border-gray-300 text-center">1</td>
+                    <td class="py-2 px-3 border border-gray-300 text-right">125 000</td>
+                    <td class="py-2 px-3 border border-gray-300 text-right font-medium">125 000</td>
+                </tr>
+                <!-- Empty lines for manual writing -->
+                <tr><td class="py-2 px-3 border border-gray-300">&nbsp;</td><td class="border border-gray-300"></td><td class="border border-gray-300"></td><td class="border border-gray-300"></td></tr>
+                <tr class="bg-gray-50"><td class="py-2 px-3 border border-gray-300">&nbsp;</td><td class="border border-gray-300"></td><td class="border border-gray-300"></td><td class="border border-gray-300"></td></tr>
+            </tbody>
+        </table>
+
+        <!-- TOTALS & SUM TEXT -->
+        <div class="flex justify-between items-start mb-6">
+            <div class="w-[50%]">
+                <p class="text-xs text-gray-600 italic">
+                    Arrêté la présente facture à la somme de :<br>
+                    <span class="font-bold text-gray-800">Neuf cent mille Francs CFA.</span>
+                </p>
+            </div>
+            <div class="w-[45%]">
+                <div class="flex justify-between items-center py-2 px-3 font-bold text-base bg-gray-100 border border-gray-300 rounded whitespace-nowrap">
+                    <span class="mr-4">NET À PAYER :</span>
+                    <span>900 000 FCFA</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- SIGNATURES -->
+        <div class="flex justify-between mt-6 mb-4 px-6">
+            <div class="text-center w-44">
+                <p class="font-bold text-gray-800 text-xs mb-10">Le Client</p>
+                <div class="border-b border-gray-400"></div>
+            </div>
+            <div class="text-center w-44">
+                <p class="font-bold text-gray-800 text-xs mb-10">La Direction</p>
+                <div class="border-b border-gray-400"></div>
+            </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="flex justify-end items-center pt-2 border-t border-gray-200">
+            <div class="flex items-center gap-1.5 opacity-40 grayscale">
+                <span class="text-[9px] font-semibold tracking-widest text-gray-500 uppercase">Propulsé par JATE</span>
+                <img src="./frontend/public/jati-icon.png" alt="Jate" class="h-4 object-contain" onerror="this.style.display='none'">
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>

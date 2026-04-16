@@ -33,6 +33,7 @@ export default function ProformaList() {
 
     const handlePrint = useReactToPrint({
         contentRef: printRef,
+        documentTitle: `Proforma_${selectedInvoice?.id?.slice(0, 8) || Date.now()}`,
     });
 
     const formatCurrency = (amount: number) => {

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useReactToPrint } from 'react-to-print';
 import { InvoiceTemplate, InvoiceData } from '@/components/printing/InvoiceTemplate';
+import { InvoiceA4Template } from '@/components/printing/InvoiceA4Template';
 import { usePrinter } from '@/contexts/PrinterContext';
 import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
@@ -99,21 +100,6 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     return savedInvoiceNumber || generateInvoiceNumber();
   }, [savedInvoiceNumber]);
 
-  const printRef = useRef<HTMLDivElement>(null);
-  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
-
-  const handlePrintTrigger = useReactToPrint({
-    contentRef: printRef,
-    onAfterPrint: () => setSelectedInvoice(null),
-  });
-
-  // Automatically trigger print when an invoice is selected
-  useEffect(() => {
-    if (selectedInvoice) {
-      handlePrintTrigger();
-    }
-  }, [selectedInvoice, handlePrintTrigger]);
-
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [isLoading, setIsLoading] = useState(true);
   const [isProductLookupOpen, setIsProductLookupOpen] = useState(false);
@@ -124,6 +110,9 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   const [store, setStore] = useState<any>(null);
 
   const stableValueRef = useRef<{row: number, col: number, value: any} | null>(null);
+  const a4PrintRef = useRef<HTMLDivElement>(null);
+  const [a4InvoiceData, setA4InvoiceData] = useState<InvoiceData | null>(null);
+  const [lastPaymentMethod, setLastPaymentMethod] = useState<string | undefined>(undefined);
 
   const fetchStoreSettings = useCallback(async () => {
     if (!storeId) return;
@@ -206,45 +195,6 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     const validItems = lineItems.filter(item => !!item.productId || !!item.designation);
     if (validItems.length === 0) return;
 
-    // Map to InvoiceData structure for the React Template
-    const invoiceData: InvoiceData = {
-        id: crypto.randomUUID(),
-        invoice_number: invoiceNumber,
-        order_ref: orderRef,
-        storeName: store?.name || "QUINCAILLERIE DE LA PAIX",
-        storeAddress: store?.address || "Face centre Djoliba, Bamako",
-        workerName: user?.full_name || "Vendeur",
-        customerName: customerName,
-        customerPhone: currentSession.customerPhone,
-        customerAddress: customerAddress,
-        created_at: new Date().toISOString(),
-        items: validItems.map(item => ({
-            product: {
-                id: item.productId || 'manual',
-                name: item.designation,
-                sku: item.code,
-                unit_price: Number(item.unitPrice) || 0,
-                // These are required by the Product type but optional for print
-                store_id: storeId,
-                quantity: item.stock,
-                created_at: '',
-                updated_at: ''
-            } as Product,
-            quantity: Number(item.quantity) || 1,
-            discount: Number(item.discountPercent) || 0,
-            unitPrice: Number(item.unitPrice) || 0,
-            lineTotal: item.lineTotal,
-            total: item.lineTotal
-        })),
-        total_price: netTotal,
-        type: mode === 'proforma' ? 'proforma' : (mode === 'facturation-gros' ? 'gros' : 'detail'),
-        paymentMethod: currentSession.paymentMethod || 'cash'
-    };
-
-    // Setting this triggers the useEffect -> react-to-print
-    setSelectedInvoice(invoiceData);
-    
-    // Also send to thermal printer if in Tauri mode
     const subtotal = validItems.reduce((sum, item) => {
         const packSize = item.conditionnement || 1;
         const multiplier = item.isBox ? packSize : 1;
@@ -278,10 +228,76 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
 
     try {
         await printReceipt(receiptData);
+        toast.success(t('printer.printSuccess'));
     } catch (e) {
-        console.warn("Thermal print skipped (not in desktop mode)");
+        console.error("Thermal print failed", e);
+        toast.error(t('printer.printFailed'));
     }
-  }, [lineItems, invoiceNumber, user, netTotal, printReceipt, store, t, mode, customerName, customerAddress, orderRef, currentSession, storeId]);
+  }, [lineItems, invoiceNumber, user, netTotal, printReceipt, store, t]);
+
+  const triggerA4Print = useReactToPrint({
+    contentRef: a4PrintRef,
+    documentTitle: `Facture_A4_${invoiceNumber}_${new Date().toISOString().split('T')[0]}`,
+  });
+
+  const handlePrintA4 = useCallback(() => {
+    if (lineItems.length === 0) return;
+    const validItems = lineItems.filter(item => !!item.productId || !!item.designation);
+    if (validItems.length === 0) return;
+
+    const cartItems = validItems.map(item => {
+      const unitPrice = Number(item.unitPrice) || 0;
+      const qty = Number(item.quantity) || 0;
+      const packSize = Number(item.conditionnement) || 1;
+      const isBox = item.isBox || false;
+      const discountPct = Number(item.discountPercent) || 0;
+      const multiplier = isBox ? packSize : 1;
+      const subtotal = unitPrice * qty * multiplier;
+      const lineTotal = Math.round(subtotal - subtotal * (discountPct / 100));
+
+      return {
+        product: {
+          id: item.productId || '',
+          name: item.designation || '',
+          sku: item.code || '',
+          unit_price: unitPrice,
+          quantity_per_box: packSize,
+          // Pass price tiers so the template can show the right label if needed
+          selling_price_2: item.priceTiers?.[2] || undefined,
+          selling_price_3: item.priceTiers?.[3] || undefined,
+          selling_price_4: item.priceTiers?.[4] || undefined,
+        },
+        quantity: qty,
+        unit_price: unitPrice,
+        isBox,
+        discount: discountPct,
+        lineTotal,
+        total: lineTotal,
+      };
+    }) as any[];
+
+    const invoiceType = mode === 'proforma' ? 'proforma' : mode === 'facturation-gros' ? 'gros' : 'detail';
+
+    const invoiceData: InvoiceData = {
+      id: invoiceNumber,
+      invoice_number: invoiceNumber,
+      order_ref: currentSession.orderRef || undefined,
+      storeName: store?.name || 'Quincaillerie De La Paix',
+      storeAddress: store?.address || 'Face à Djoliba, près du Trésor',
+      workerName: user?.full_name || user?.email || t('edition.seller'),
+      customerName: currentSession.customerName || undefined,
+      customerPhone: undefined, // customerPhone not stored in session; use address only
+      customerAddress: currentSession.customerAddress || undefined,
+      created_at: new Date().toISOString(),
+      items: cartItems,
+      total_price: netTotal,
+      type: invoiceType,
+      paymentMethod: invoiceType !== 'proforma' ? (lastPaymentMethod || undefined) : undefined,
+    };
+
+    setA4InvoiceData(invoiceData);
+    setTimeout(() => triggerA4Print(), 100);
+  }, [lineItems, invoiceNumber, user, netTotal, store, mode, currentSession, lastPaymentMethod, triggerA4Print, t]);
 
   const handleClientChange = useCallback((field: 'code' | 'name', value: string, phone?: string, address?: string) => {
     let updates: any = {};
@@ -640,6 +656,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   }, [lineItems, mode, updateSession]);
 
   const handlePaymentConfirm = useCallback(async (paymentMethod: string, amountPaid: number, isCredit: boolean) => {
+    setLastPaymentMethod(paymentMethod);
     if (lineItems.length === 0) return;
     try {
       let saleType: 'detail' | 'gros' | 'proforma' = 'detail';
@@ -875,13 +892,16 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         onSelectLine={(index) => { setSelectedIndex(index); const store = useNavigationStore.getState(); if (store.activeCell?.row !== index) store.setActiveCell({ row: index, col: store.activeCell?.col || 0 }); }}
         onQuantityChange={handleQuantityChange} onDiscountChange={handleDiscountChange} onDeleteLine={handleDeleteLine} onDesignationChange={handleDesignationChange} onOpenSearch={() => setIsProductLookupOpen(true)} onPriceChange={handlePriceChange} onToggleUnit={handleToggleUnit} onGlobalTierChange={handleGlobalTierChange} onRowTierChange={handleRowTierChange} activeTier={activeTier} enablePriceTiers={mode === 'proforma'} persistenceKey={`sales_grid_${user?.id || 'anon'}`}
       />
-      <SanifereFooter mode={mode} netTotal={netTotal} onValidate={() => lineItems.length > 0 && openPayment()} onSettlement={() => lineItems.length > 0 && openPayment()} onProductCard={() => setIsProductLookupOpen(true)} onDelete={() => selectedIndex >= 0 && handleDeleteLine(selectedIndex)} onSave={handleSaveProforma} onPrint={handlePrint} />
+      <SanifereFooter mode={mode} netTotal={netTotal} onValidate={() => lineItems.length > 0 && openPayment()} onSettlement={() => lineItems.length > 0 && openPayment()} onProductCard={() => setIsProductLookupOpen(true)} onDelete={() => selectedIndex >= 0 && handleDeleteLine(selectedIndex)} onSave={handleSaveProforma} onPrint={handlePrint} onPrintA4={handlePrintA4} />
       <ProductLookupDialog initialSearch={initialSearchQuery} open={isProductLookupOpen} onOpenChange={(open) => { setIsProductLookupOpen(open); if (!open) setTimeout(() => { const store = useNavigationStore.getState(); if (store.activeCell) store.setMode('hover'); }, 50); }} storeId={storeId} mode={mode === 'facturation-gros' ? 'wholesale' : 'retail'}
         onSelect={(product) => { addProduct(product); setInitialSearchQuery(''); setTimeout(() => { const store = useNavigationStore.getState(); if (store.activeCell) { store.setActiveCell({ row: store.activeCell.row, col: 5 }); store.setMode('hover'); } }, 100); }}
       />
       <PaymentDialog open={isPaymentOpen} onOpenChange={(open) => { setIsPaymentOpen(open); if (!open) setTimeout(() => { const store = useNavigationStore.getState(); store.jumpToLastEmptyRow(); store.setMode('hover'); }, 100); }} mode={mode} totalAmount={netTotal} onConfirm={handlePaymentConfirm} />
       <BarcodeScanner isScanning={isScanning} onResult={handleScanResult} onClose={() => setIsScanning(false)} />
-      <div style={{ display: 'none' }}>{selectedInvoice && <InvoiceTemplate ref={printRef} data={selectedInvoice} />}</div>
+      {/* Hidden A4 Invoice Template for printing */}
+      <div style={{ display: 'none' }}>
+        {a4InvoiceData && <InvoiceA4Template ref={a4PrintRef} data={a4InvoiceData} />}
+      </div>
     </div>
   );
 }
