@@ -104,7 +104,15 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
 
   const handlePrintTrigger = useReactToPrint({
     contentRef: printRef,
+    onAfterPrint: () => setSelectedInvoice(null),
   });
+
+  // Automatically trigger print when an invoice is selected
+  useEffect(() => {
+    if (selectedInvoice) {
+      handlePrintTrigger();
+    }
+  }, [selectedInvoice, handlePrintTrigger]);
 
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [isLoading, setIsLoading] = useState(true);
@@ -195,21 +203,62 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   const handlePrint = useCallback(async () => {
     if (lineItems.length === 0) return;
     
-    const validItems = lineItems.filter(item => !!item.productId && item.quantity > 0);
+    const validItems = lineItems.filter(item => !!item.productId || !!item.designation);
+    if (validItems.length === 0) return;
+
+    // Map to InvoiceData structure for the React Template
+    const invoiceData: InvoiceData = {
+        id: crypto.randomUUID(),
+        invoice_number: invoiceNumber,
+        order_ref: orderRef,
+        storeName: store?.name || "QUINCAILLERIE DE LA PAIX",
+        storeAddress: store?.address || "Face centre Djoliba, Bamako",
+        workerName: user?.full_name || "Vendeur",
+        customerName: customerName,
+        customerPhone: currentSession.customerPhone,
+        customerAddress: customerAddress,
+        created_at: new Date().toISOString(),
+        items: validItems.map(item => ({
+            product: {
+                id: item.productId || 'manual',
+                name: item.designation,
+                sku: item.code,
+                unit_price: Number(item.unitPrice) || 0,
+                // These are required by the Product type but optional for print
+                store_id: storeId,
+                quantity: item.stock,
+                created_at: '',
+                updated_at: ''
+            } as Product,
+            quantity: Number(item.quantity) || 1,
+            discount: Number(item.discountPercent) || 0,
+            unitPrice: Number(item.unitPrice) || 0,
+            lineTotal: item.lineTotal,
+            total: item.lineTotal
+        })),
+        total_price: netTotal,
+        type: mode === 'proforma' ? 'proforma' : (mode === 'facturation-gros' ? 'gros' : 'detail'),
+        paymentMethod: currentSession.paymentMethod || 'cash'
+    };
+
+    // Setting this triggers the useEffect -> react-to-print
+    setSelectedInvoice(invoiceData);
+    
+    // Also send to thermal printer if in Tauri mode
     const subtotal = validItems.reduce((sum, item) => {
         const packSize = item.conditionnement || 1;
         const multiplier = item.isBox ? packSize : 1;
-        return sum + (item.quantity * item.unitPrice * multiplier);
+        return sum + (Number(item.quantity) * Number(item.unitPrice) * multiplier);
     }, 0);
     const totalDiscount = subtotal - netTotal;
 
     const receiptItems = validItems.map(item => {
         const packSize = item.conditionnement || 1;
-        let displayQty = item.isBox ? item.quantity * packSize : item.quantity;
+        let displayQty = item.isBox ? Number(item.quantity) * packSize : Number(item.quantity);
         return {
           name: item.designation,
           qty: displayQty,
-          price: item.unitPrice,
+          price: Number(item.unitPrice),
           total: item.lineTotal,
         };
     });
@@ -230,9 +279,9 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     try {
         await printReceipt(receiptData);
     } catch (e) {
-        console.error("Print failed", e);
+        console.warn("Thermal print skipped (not in desktop mode)");
     }
-  }, [lineItems, invoiceNumber, user, netTotal, printReceipt, store, t]);
+  }, [lineItems, invoiceNumber, user, netTotal, printReceipt, store, t, mode, customerName, customerAddress, orderRef, currentSession, storeId]);
 
   const handleClientChange = useCallback((field: 'code' | 'name', value: string, phone?: string, address?: string) => {
     let updates: any = {};
@@ -483,6 +532,18 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     };
     updateSession(mode, { lineItems: newItems });
   }, [lineItems, mode, updateSession]);
+
+  const handleScanResult = useCallback((code: string) => {
+    if (!code) return;
+    setIsScanning(false);
+    scanProduct(code).then(product => {
+      if (product) {
+        addProduct(product);
+      } else {
+        toast.error(t('worker.sales.itemNotFound') + ': ' + code);
+      }
+    });
+  }, [scanProduct, addProduct, t]);
 
   const handleDesignationChange = useCallback((index: number, value: string) => {
     setInitialSearchQuery(value);
