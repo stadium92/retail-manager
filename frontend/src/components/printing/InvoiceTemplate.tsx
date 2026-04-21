@@ -56,7 +56,7 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, { data: InvoiceData }>
                     <div>
                         {/* Title adjusts based on template mode */}
                         <h1 className={`text-2xl font-bold uppercase tracking-wider ${hasStihlProduct ? 'text-[#f04e23]' : 'text-gray-900'}`}>
-                            {hasStihlProduct ? 'Revendeur Agréé STIHL' : 'JATE'}
+                            {hasStihlProduct ? 'STIHL' : 'ETS Quincaillerie de la paix'}
                         </h1>
                         <p className="text-sm text-gray-700 font-bold mb-1">ETS Madjou Sylla - QUINCAILLERIE DE LA PAIX</p>
                         <p className="text-[11px] text-gray-600 font-medium tracking-tight mb-1 uppercase">Vente de machine tronçonneuse, disque, meule bosch</p>
