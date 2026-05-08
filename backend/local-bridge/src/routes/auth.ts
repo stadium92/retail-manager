@@ -297,6 +297,31 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     return reply.send({ message: 'Logged out' });
   });
 
+  app.post('/rest/v1/auth/update-password', async (request, reply) => {
+    const claims = authenticateRequest(request, reply, ['master', 'worker', 'deliverer']);
+    if (!claims) return;
+
+    const schema = z.object({
+      currentPassword: z.string(),
+      newPassword: z.string().min(8),
+    });
+
+    const parsed = schema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'ValidationFailed', details: parsed.error.flatten() });
+    }
+
+    const user = db.getUserById(claims.sub);
+    if (!user || !bcrypt.compareSync(parsed.data.currentPassword, user.password_hash)) {
+      return reply.status(401).send({ error: 'InvalidCredentials' });
+    }
+
+    const newHash = bcrypt.hashSync(parsed.data.newPassword, 10);
+    db.updateUserPassword(user.id, newHash);
+    
+    return reply.send({ message: 'Password updated successfully' });
+  });
+
   app.post('/auth/workers', async (request, reply) => {
     const claims = authenticateRequest(request, reply, ['master']);
     if (!claims) return;

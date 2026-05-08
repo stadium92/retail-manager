@@ -249,7 +249,7 @@ export function SanifereGrid({
         </div>
         
         <div className="px-1 py-1 border-r border-black/30 text-center relative">
-          {t('pos.grid.headers.discount')}
+          {t('pos.grid.headers.discountAmount') || 'Remise (FCFA)'}
           <ResizeHandle colId="rem" />
         </div>
         

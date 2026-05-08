@@ -48,10 +48,9 @@ function getProductPrice(product: Product, mode: SaleMode, tier: number): number
   }
 }
 
-function calculateLineTotal(unitPrice: number, quantity: number, discountPercent: number, isBox: boolean = false, packSize: number = 1): number {
+function calculateLineTotal(unitPrice: number, quantity: number, discountAmount: number, isBox: boolean = false, packSize: number = 1): number {
   const multiplier = isBox ? (packSize || 1) : 1;
   const subtotal = unitPrice * quantity * multiplier;
-  const discountAmount = subtotal * (discountPercent / 100);
   return Math.round(subtotal - discountAmount);
 }
 
@@ -250,10 +249,10 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       const qty = Number(item.quantity) || 0;
       const packSize = Number(item.conditionnement) || 1;
       const isBox = item.isBox || false;
-      const discountPct = Number(item.discountPercent) || 0;
+      const discountAmt = Number(item.discountAmount) || 0;
       const multiplier = isBox ? packSize : 1;
       const subtotal = unitPrice * qty * multiplier;
-      const lineTotal = Math.round(subtotal - subtotal * (discountPct / 100));
+      const lineTotal = Math.round(subtotal - discountAmt);
 
       return {
         product: {
@@ -270,7 +269,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         quantity: qty,
         unit_price: unitPrice,
         isBox,
-        discount: discountPct,
+        discount: discountAmt,
         lineTotal,
         total: lineTotal,
       };
@@ -319,14 +318,14 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       updates.clientId = matchedClient.id;
 
       const service = services.find(s => s.id === matchedClient!.service_id);
-      const groupDiscount = service?.default_discount_percent || 0;
+      const groupDiscount = service?.default_discount_amount || 0;
 
       if (groupDiscount > 0) {
-        toast.info(t('menu.program.autoDiscount', { percent: groupDiscount }));
+        toast.info(t('menu.program.autoDiscount', { amount: groupDiscount }));
         if (lineItems.length > 0) {
           const updatedItems = lineItems.map(item => ({
             ...item,
-            discountPercent: groupDiscount,
+            discountAmount: groupDiscount,
             lineTotal: calculateLineTotal(item.unitPrice, item.quantity, groupDiscount, item.isBox, item.conditionnement),
           }));
           updates.lineItems = updatedItems;
@@ -340,7 +339,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         if (lineItems.length > 0) {
           const updatedItems = lineItems.map(item => ({
             ...item,
-            discountPercent: 0,
+            discountAmount: 0,
             lineTotal: calculateLineTotal(item.unitPrice, item.quantity, 0, item.isBox, item.conditionnement),
           }));
           updates.lineItems = updatedItems;
@@ -471,7 +470,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       basePrice: price,
       unitPrice: price,
       quantity: 1,
-      discountPercent: clientDiscount,
+      discountAmount: clientDiscount,
       lineTotal: calculateLineTotal(price, 1, clientDiscount, false, packSize),
       priceTiers: priceTiers
     };
@@ -543,7 +542,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     const numDisc = discount === '' ? 0 : Number(discount);
     newItems[index] = {
       ...item,
-      discountPercent: discount,
+      discountAmount: discount,
       lineTotal: calculateLineTotal(Number(item.unitPrice) || 0, Number(item.quantity) || 0, numDisc, item.isBox, item.conditionnement),
     };
     updateSession(mode, { lineItems: newItems });
@@ -672,7 +671,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         return {
           product: { id: item.productId || '', store_id: storeId, name: item.designation, unit_price: item.unitPrice, quantity: item.stock, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
           quantity: totalUnitsForDb,
-          discount: item.discountPercent,
+          discount: item.discountAmount,
           unit_price: item.unitPrice,
           lineTotal: item.lineTotal,
           total: item.lineTotal,
@@ -716,7 +715,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         return {
           product: { id: item.productId || '', store_id: storeId, name: item.designation, unit_price: item.unitPrice, quantity: item.stock, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
           quantity: totalUnitsForDb,
-          discount: item.discountPercent,
+          discount: item.discountAmount,
           unit_price: item.unitPrice,
           lineTotal: item.lineTotal,
           total: item.lineTotal,
@@ -877,7 +876,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   if (isLoading) return <div className="h-full flex items-center justify-center font-mono text-muted-foreground">{t('common.loading')}</div>;
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div id="sales-module-container" className="h-full flex flex-col overflow-hidden">
       <SanifereHeader mode={mode} invoiceNumber={invoiceNumber} customerCode={customerCode} customerName={customerName} customerPhone={currentSession.customerPhone || ''} customerAddress={customerAddress} orderRef={orderRef}
         onCustomerChange={(code, name, phone, address) => {
           if (code !== customerCode) handleClientChange('code', code, phone, address);

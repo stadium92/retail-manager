@@ -119,11 +119,13 @@ export function useGlobalKeyboard() {
 
       // NEW: Shift (standalone) or Shift+Enter for Next Row
       if (e.key === 'Shift' || (e.key === 'Enter' && e.shiftKey)) {
-          e.preventDefault();
-          e.stopPropagation();
-          if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-          window.dispatchEvent(new CustomEvent('nav-next-row', { detail: { row: getState().activeCell?.row } }));
-          return;
+          if (document.getElementById('sales-module-container')) {
+              e.preventDefault();
+              e.stopPropagation();
+              if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+              window.dispatchEvent(new CustomEvent('nav-next-row', { detail: { row: getState().activeCell?.row } }));
+              return;
+          }
       }
 
       // ---------------------------------------------------------------

@@ -92,6 +92,11 @@ export const createAuthRepo = (db: Database.Database) => ({
       .run(accessToken, refreshToken, expiresAt, new Date().toISOString(), sessionId);
   },
 
+  updateUserPassword(userId: string, passwordHash: string) {
+    db.prepare('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?')
+      .run(passwordHash, new Date().toISOString(), userId);
+  },
+
   deleteSession(sessionId: string) {
     db.prepare('DELETE FROM sessions WHERE id = ?').run(sessionId);
   },
