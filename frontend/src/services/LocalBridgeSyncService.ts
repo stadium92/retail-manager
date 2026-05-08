@@ -1,5 +1,6 @@
 import { LocalDatabase } from './LocalDatabase';
-import { getDataClient, smartFetch } from '@/lib/dataClient';
+import { getDataClient } from '@/lib/dataClient';
+import { OfflineAuthService } from './OfflineAuthService';
 
 interface SyncPushResult {
   pushed: number;
@@ -13,18 +14,34 @@ interface SyncPushResult {
  */
 export class LocalBridgeSyncService {
   
-  private static getCloudConfig() {
-    return {
-      token: localStorage.getItem('jati_sync_token'),
-      url: localStorage.getItem('jati_cloud_url') || 'http://localhost:3000'
-    };
+  private static async getCloudConfig() {
+    try {
+      const { localBridgeBaseUrl } = getDataClient();
+      const headers = await OfflineAuthService.getAuthHeaders();
+      if (!headers) return null;
+      
+      const res = await fetch(`${localBridgeBaseUrl}/rest/v1/system/env`, { headers });
+      const data = await res.json();
+      
+      if (res.ok && data.config) {
+        return {
+          token: data.config.MASTER_TOKEN,
+          machineId: data.config.MACHINE_ID,
+          url: localStorage.getItem('jati_cloud_url') || 'https://djati-cloud-hub.moh-kuhh.workers.dev'
+        };
+      }
+      return null;
+    } catch (e) {
+      console.error('Failed to get cloud config', e);
+      return null;
+    }
   }
 
   static async pushPendingMutations(): Promise<SyncPushResult> {
-    const { token, url } = this.getCloudConfig();
+    const config = await this.getCloudConfig();
     const dataClient = getDataClient();
     
-    if (!dataClient.isLocalFirst || !token) {
+    if (!dataClient.isLocalFirst || !config || !config.token) {
       return { pushed: 0, failed: 0, pending: 0 };
     }
 
@@ -35,7 +52,6 @@ export class LocalBridgeSyncService {
     let pushed = 0;
     let failed = 0;
 
-    // 1. Process local mutations (idempotent push to Cloud)
     for (const item of pendingLocal) {
       const data = item.data || {};
       if (!data.entity || !data.payload) {
@@ -44,16 +60,17 @@ export class LocalBridgeSyncService {
       }
 
       try {
-        const response = await fetch(`${url}/api/v1/sync`, {
+        const response = await fetch(`${config.url}/api/v1/sync`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             store_id: data.store_id,
-            sync_token: token,
+            machine_id: config.machineId || 'UNKNOWN',
+            sync_token: config.token,
             sales: data.entity === 'sales' ? [data.payload] : [],
-            // Future: add products and customers here
+            inventory: data.entity === 'inventory' || data.entity === 'products' ? [data.payload] : []
           }),
         });
 
@@ -78,11 +95,11 @@ export class LocalBridgeSyncService {
   }
 
   static async pullData(): Promise<{ pulled: number } | null> {
-    const { token, url } = this.getCloudConfig();
-    if (!token) return null;
+    const config = await this.getCloudConfig();
+    if (!config || !config.token) return null;
 
     try {
-      const response = await fetch(`${url}/health`);
+      const response = await fetch(`${config.url}/health`);
       if (!response.ok) return null;
       
       // Future: Implement full data pull (products, settings)
