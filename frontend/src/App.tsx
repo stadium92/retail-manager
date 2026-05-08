@@ -27,6 +27,7 @@ import InvitationsPage from "./pages/master/Invitations";
 import TeamPage from "./pages/master/Team";
 import FilesPage from "./pages/master/Files";
 import AuditLogsPage from "./pages/master/AuditLogs";
+import CloudSyncPage from "./pages/master/CloudSync";
 import HelpPage from "./pages/shared/Help";
 import WorkerDashboard from "./pages/worker/Dashboard";
 import POSPage from "./pages/worker/POS";
@@ -76,6 +77,7 @@ const App = () => (
                       <Route path="invitations" element={<InvitationsPage />} />
                       <Route path="team" element={<TeamPage />} />
                       <Route path="audit-logs" element={<AuditLogsPage />} />
+                      <Route path="cloud-sync" element={<CloudSyncPage />} />
                       <Route path="help" element={<HelpPage />} />
                     </Route>
                     <Route path="/worker" element={<Navigate to="/worker/dashboard" replace />} />
