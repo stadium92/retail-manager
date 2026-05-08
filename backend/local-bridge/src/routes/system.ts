@@ -1,9 +1,78 @@
 import type { FastifyInstance } from 'fastify';
 import { db } from '../db/index.js';
 import { authenticateRequest } from './utils/auth.js';
+import fs from 'fs';
+import path from 'path';
 
 export async function registerSystemRoutes(app: FastifyInstance) {
   console.log('[System] Registering System Routes...');
+
+  const envFilePath = path.join(process.cwd(), '../../.env');
+
+  app.get('/rest/v1/system/env', async (request, reply) => {
+    const claims = authenticateRequest(request, reply, ['master']);
+    if (!claims) return;
+
+    try {
+      if (fs.existsSync(envFilePath)) {
+        const envContent = fs.readFileSync(envFilePath, 'utf-8');
+        const config: Record<string, string> = {};
+        envContent.split('\n').forEach(line => {
+          const match = line.match(/^([^=]+)=(.*)$/);
+          if (match) {
+            config[match[1].trim()] = match[2].trim();
+          }
+        });
+        return reply.send({ success: true, config });
+      }
+      return reply.send({ success: true, config: {} });
+    } catch (error: any) {
+      return reply.status(500).send({ error: 'ReadFailed', message: error.message });
+    }
+  });
+
+  app.post('/rest/v1/system/env', async (request, reply) => {
+    const claims = authenticateRequest(request, reply, ['master']);
+    if (!claims) return;
+
+    try {
+      const config = request.body as Record<string, string>;
+      let envContent = '';
+      
+      if (fs.existsSync(envFilePath)) {
+         const existingLines = fs.readFileSync(envFilePath, 'utf-8').split('\n');
+         const updatedKeys = new Set(Object.keys(config));
+         
+         for (const line of existingLines) {
+           const match = line.match(/^([^=]+)=(.*)$/);
+           if (match) {
+             const key = match[1].trim();
+             if (config[key] !== undefined) {
+               envContent += `${key}=${config[key]}\n`;
+               updatedKeys.delete(key);
+             } else {
+               envContent += `${line}\n`;
+             }
+           } else if (line.trim() !== '') {
+               envContent += `${line}\n`;
+           }
+         }
+         
+         for (const key of updatedKeys) {
+            envContent += `${key}=${config[key]}\n`;
+         }
+      } else {
+         for (const [key, value] of Object.entries(config)) {
+            envContent += `${key}=${value}\n`;
+         }
+      }
+      
+      fs.writeFileSync(envFilePath, envContent.trim() + '\n', 'utf-8');
+      return reply.send({ success: true, message: 'Configuration saved. Restart required.' });
+    } catch (error: any) {
+      return reply.status(500).send({ error: 'WriteFailed', message: error.message });
+    }
+  });
 
   app.get('/rest/v1/ping', async (request, reply) => {
     // The server Date header will be automatically set by Fastify/Node.js
