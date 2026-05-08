@@ -102,10 +102,10 @@ export default function StoresPage() {
         if (!store) {
           // Check license limit for new stores
           const isActivated = license?.status === 'active';
-          if (!isActivated && stores.length >= 2) {
+          if (!isActivated && stores.length >= 5) {
             toast({
               title: "License Limit Reached",
-              description: "Trial version is limited to 2 stores. Please activate the application to add more.",
+              description: "Trial version is limited to 5 stores. Please activate the application to add more.",
               variant: "destructive",
             });
             return;
