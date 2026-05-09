@@ -25,6 +25,7 @@ export default function CloudSyncPage() {
   const [machineId, setMachineId] = useState('');
   const [masterToken, setMasterToken] = useState('');
   const [storeTokens, setStoreTokens] = useState('');
+  const [cloudUrl, setCloudUrl] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [isLoading, setIsLoading] = useState(true);
@@ -41,6 +42,7 @@ export default function CloudSyncPage() {
           setMachineId(data.config.MACHINE_ID || '');
           setMasterToken(data.config.MASTER_TOKEN || '');
           setStoreTokens(data.config.SYNC_STORE_TOKENS || '');
+          setCloudUrl(data.config.CLOUD_URL || 'https://djati-cloud-hub.moh-kuhh.workers.dev');
           
           if (data.config.MACHINE_ID && data.config.MASTER_TOKEN) {
             setConnectionStatus('success');
@@ -56,8 +58,8 @@ export default function CloudSyncPage() {
   }, []);
 
   const handleSaveConfiguration = async () => {
-    if (!machineId || !masterToken) {
-      toast.error("Veuillez saisir le Machine ID et le Master Token.");
+    if (!machineId || !masterToken || !cloudUrl) {
+      toast.error("Veuillez saisir l'URL du Cloud, le Machine ID et le Master Token.");
       return;
     }
     setIsSaving(true);
@@ -70,7 +72,8 @@ export default function CloudSyncPage() {
         body: JSON.stringify({
           MACHINE_ID: machineId,
           MASTER_TOKEN: masterToken,
-          SYNC_STORE_TOKENS: storeTokens
+          SYNC_STORE_TOKENS: storeTokens,
+          CLOUD_URL: cloudUrl
         })
       });
       
@@ -127,6 +130,21 @@ export default function CloudSyncPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              <div className="space-y-3">
+                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">URL de votre VPS Cloud</Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Globe className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="https://api.djati.com"
+                      value={cloudUrl}
+                      onChange={(e) => setCloudUrl(e.target.value)}
+                      className="pl-10 h-11 font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-3">
                 <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Machine ID</Label>
                 <div className="flex gap-2">
