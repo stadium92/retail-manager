@@ -920,6 +920,7 @@
         "price": "Unit Price",
         "qty": "Qty",
         "discount": "Discount %",
+        "discountAmount": "Discount Amount",
         "total": "Total"
       },
       "stock": "Stock"
