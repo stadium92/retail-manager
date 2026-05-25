@@ -39,14 +39,18 @@ export function LicenseProvider({ children }: { children: React.ReactNode }) {
     try {
       // Fallback for web dev
       if (!(window as any).__TAURI_INTERNALS__) {
+        const isActivated = localStorage.getItem('rm_activated') === 'true';
         setLicense({
-          status: 'trial',
+          status: isActivated ? 'active' : 'trial',
           days_remaining: 30,
-          stores: [],
-          device_hash: 'DEV-HASH',
+          stores: isActivated ? [{
+            store_id: 'store-001',
+            store_name: 'Store 0x8842',
+            activated_at: new Date().toISOString()
+          }] : [],
+          device_hash: '0x8842',
         });
         
-        const isActivated = localStorage.getItem('rm_activated') === 'true';
         const isSessionSkipped = sessionStorage.getItem('rm_trial_skipped') === 'true';
         setTrialSkipped(isSessionSkipped);
         
@@ -100,7 +104,7 @@ export function LicenseProvider({ children }: { children: React.ReactNode }) {
   };
 
   const getDeviceHash = async () => {
-    if (!(window as any).__TAURI_INTERNALS__) return 'DEV-HASH';
+    if (!(window as any).__TAURI_INTERNALS__) return '0x8842';
     return await invoke<string>('get_device_hash_command');
   };
 
