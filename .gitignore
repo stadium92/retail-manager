@@ -40,3 +40,5 @@ backend/local-bridge/retail-manager-logs/
 
 # Private/Confidential Documents
 docs/FINANCIAL_STRATEGY.md
+
+testsprite_tests/tmp/config.json

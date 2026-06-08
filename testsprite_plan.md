@@ -2,7 +2,7 @@
 
 ## Authentication Credentials
 The following accounts must be used to test role-based access control and module functionality:
-- **Master Account:** `ursula@master.com` / `madfaX-1pobwa-synnoj`
+- **Master Account:** `ursula@master.com` / `1234567890`
 - **Manager Account:** `frangin@gmail.com` / `=87654321`
 - **Worker Account 1:** `jesse@worker.com` / `ximdu1-sowsyf-Mokkaz`
 - **Worker Account 2:** `dilly@worker.com` / `dofwum-qEfnoz-6mexci`

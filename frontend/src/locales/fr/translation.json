@@ -994,6 +994,7 @@
         "price": "Prix Unitaire",
         "qty": "Quantité",
         "discount": "Remise %",
+        "discountAmount": "Remise (Montant)",
         "total": "Total"
       },
       "stock": "Stock"
