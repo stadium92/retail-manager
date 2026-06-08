@@ -95,16 +95,22 @@ export class LocalBridgeSyncService {
   }
 
   static async pullData(): Promise<{ pulled: number } | null> {
-    const config = await this.getCloudConfig();
-    if (!config || !config.token) return null;
-
     try {
-      const response = await fetch(`${config.url}/health`);
+      const dataClient = getDataClient();
+      const headers = await OfflineAuthService.getAuthHeaders();
+      if (!headers) return null;
+
+      const response = await fetch(`${dataClient.localBridgeBaseUrl}/rest/v1/sync/pull`, {
+        method: 'GET',
+        headers
+      });
+
       if (!response.ok) return null;
       
-      // Future: Implement full data pull (products, settings)
-      return { pulled: 0 };
+      const result = await response.json();
+      return { pulled: (result.pulledSales || 0) + (result.pulledInventory || 0) };
     } catch (e) {
+      console.error('Failed to pull data', e);
       return null;
     }
   }
