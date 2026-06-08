@@ -198,10 +198,9 @@ export function SanifereRow({
           id={`discount-input-${index}`}
           type="number"
           min={0}
-          max={100}
-          value={item.discountPercent === 0 ? '' : item.discountPercent}
+          value={item.discountAmount === 0 ? '' : item.discountAmount}
           onChange={(e) => onDiscountChange(index, e.target.value === '' ? '' : parseFloat(e.target.value))}
-          onBlur={() => { if (item.discountPercent === '') onDiscountChange(index, 0); }}
+          onBlur={() => { if (item.discountAmount === '') onDiscountChange(index, 0); }}
           onClick={(e) => {
             e.stopPropagation();
             const store = useNavigationStore.getState();

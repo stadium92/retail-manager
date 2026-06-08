@@ -206,7 +206,10 @@ export function SettingsModule({ storeId, mode }: SettingsModuleProps) {
       const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/auth/update-password`, {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: passwordForm.newPassword }),
+        body: JSON.stringify({ 
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword 
+        }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));

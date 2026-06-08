@@ -17,7 +17,8 @@ import {
   UsersRound,
   ScrollText,
   HelpCircle,
-  Cloud
+  Cloud,
+  KeyRound
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,6 +32,10 @@ import { CurrencySwitcher } from '@/components/shared/CurrencySwitcher';
 import { HardwareStatus } from '@/components/shared/HardwareStatus';
 import { ActivationDialog } from '@/components/license/ActivationDialog';
 import { StoreMultiSelector } from './StoreMultiSelector';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 
 export function MasterLayout() {
   const { t } = useTranslation();
@@ -38,10 +43,51 @@ export function MasterLayout() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth', { replace: true });
+  };
+
+  const handleChangePassword = async () => {
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      toast.error('All fields are required.');
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast.error('New passwords do not match.');
+      return;
+    }
+    setIsChangingPassword(true);
+    try {
+      const { getDataClient } = await import('@/lib/dataClient');
+      const { OfflineAuthService } = await import('@/services/OfflineAuthService');
+      const dc = getDataClient();
+      const headers = await OfflineAuthService.getAuthHeaders();
+      if (!headers) throw new Error('Session expired');
+      const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/auth/update-password`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword 
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.message || body?.error || 'Password update failed');
+      }
+      toast.success('Password updated successfully');
+      setIsPasswordDialogOpen(false);
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (error: any) {
+      toast.error(error.message || 'Error updating password');
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   const navItems = [
@@ -149,10 +195,19 @@ export function MasterLayout() {
 
       <div className="border-t border-sidebar-border p-4 space-y-2">
         {user && (
-          <p className="text-sm text-sidebar-foreground/60 truncate px-3">
+          <p className="text-sm text-sidebar-foreground/60 truncate px-3 mb-2">
             {user.email}
           </p>
         )}
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-start mb-2"
+          onClick={() => setIsPasswordDialogOpen(true)}
+        >
+          <KeyRound className="h-4 w-4 mr-2" />
+          Change Password
+        </Button>
         <Button
           variant="outline"
           size="sm"
@@ -200,6 +255,46 @@ export function MasterLayout() {
         <Outlet />
         <ActivationDialog />
       </main>
+
+      <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Password</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Current Password</Label>
+              <Input
+                type="password"
+                value={passwordForm.currentPassword}
+                onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>New Password</Label>
+              <Input
+                type="password"
+                value={passwordForm.newPassword}
+                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Confirm New Password</Label>
+              <Input
+                type="password"
+                value={passwordForm.confirmPassword}
+                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPasswordDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleChangePassword} disabled={isChangingPassword}>
+              {isChangingPassword ? 'Updating...' : 'Update Password'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
