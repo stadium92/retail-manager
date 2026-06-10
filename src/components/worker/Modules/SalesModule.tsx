@@ -26,6 +26,7 @@ import { useProductScanner } from '@/hooks/useProductScanner';
 import { useTranslation } from 'react-i18next';
 import { useFormatters } from '@/utils/formatting';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { useStockDeduction } from '@/hooks/useStockDeduction';
 
 import { OfflineStoreService } from '@/services/OfflineStoreService';
 
@@ -70,6 +71,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   const { clients, setClients, services } = useMasterDataStore();
   const { scanProduct } = useProductScanner(storeId);
   const { printReceipt } = usePrinter();
+  const { deduct } = useStockDeduction();
 
   const keyValidate = getKeyForAction('ACTION_VALIDATE') || 'F2';
   const keySearch = getKeyForAction('ACTION_SEARCH') || 'F3';
@@ -737,6 +739,12 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       }, cartItems);
 
       if (error) throw error;
+
+      // Deduct stock for recipe ingredients
+      for (const item of cartItems) {
+        await deduct(item.product.id, item.quantity);
+      }
+
       toast.success(t('worker.sales.saleRecorded'));
       window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'sale' } }));
       updateSession(mode, { 
@@ -753,7 +761,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       });
       setSelectedIndex(-1);
     } catch (error) { toast.error(t('common.error')); }
-  }, [lineItems, storeId, user, netTotal, mode, customerName, currentSession.clientId, clients, customerAddress, invoiceNumber, orderRef, currentSession.clientDiscount, currentSession.tableNumber, currentSession.orderType, currentSession.kitchenNotes, updateSession, t]);
+  }, [lineItems, storeId, user, netTotal, mode, customerName, currentSession.clientId, clients, customerAddress, invoiceNumber, orderRef, currentSession.clientDiscount, currentSession.tableNumber, currentSession.orderType, currentSession.kitchenNotes, updateSession, t, deduct]);
 
   const handleSaveProforma = useCallback(async () => {
     if (lineItems.length === 0) return;
@@ -797,6 +805,12 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         waiter_id: user?.id || null,
       }, cartItems);
       if (error) throw error;
+
+      // Deduct stock for recipe ingredients
+      for (const item of cartItems) {
+        await deduct(item.product.id, item.quantity);
+      }
+
       toast.success(t('menu.program.saveSuccess'));
       window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'sale' } }));
       updateSession(mode, { 
@@ -813,7 +827,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       });
       setSelectedIndex(-1);
     } catch (error) { toast.error(t('common.error')); }
-  }, [lineItems, storeId, user, netTotal, mode, customerName, currentSession.clientId, clients, customerAddress, invoiceNumber, orderRef, currentSession.clientDiscount, currentSession.tableNumber, currentSession.orderType, currentSession.kitchenNotes, updateSession, t]);
+  }, [lineItems, storeId, user, netTotal, mode, customerName, currentSession.clientId, clients, customerAddress, invoiceNumber, orderRef, currentSession.clientDiscount, currentSession.tableNumber, currentSession.orderType, currentSession.kitchenNotes, updateSession, t, deduct]);
 
   const openPaymentRef = useRef(openPayment);
   const handleSaveProformaRef = useRef(handleSaveProforma);

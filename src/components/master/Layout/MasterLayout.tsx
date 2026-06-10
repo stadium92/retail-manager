@@ -18,10 +18,12 @@ import {
   ScrollText,
   HelpCircle,
   Cloud,
-  KeyRound
+  KeyRound,
+  FlaskConical
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStockAlerts } from '@/hooks/useStockAlerts';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
@@ -42,6 +44,7 @@ export function MasterLayout() {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { lowStockCount, expiringCount } = useStockAlerts();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -105,6 +108,11 @@ export function MasterLayout() {
       title: t('sidebar.inventory'),
       url: '/master/inventory',
       icon: Package,
+    },
+    {
+      title: 'Ingrédients',
+      url: '/master/ingredients',
+      icon: FlaskConical,
     },
     {
       title: t('sidebar.sales'),
@@ -188,7 +196,12 @@ export function MasterLayout() {
             onClick={() => mobile && setMobileMenuOpen(false)}
           >
             <item.icon className="h-5 w-5" />
-            <span>{item.title}</span>
+            <span className="flex-1">{item.title}</span>
+            {item.url === '/master/ingredients' && (lowStockCount + expiringCount) > 0 && (
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[9px] font-black text-white shrink-0">
+                {lowStockCount + expiringCount}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

@@ -21,6 +21,8 @@ import { cn } from '@/lib/utils';
 import { ProductLookupDialog } from '../Sales/ProductLookupDialog';
 import { MasterPasswordGate } from '@/components/shared/MasterPasswordGate';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { RecipeBuilder } from '@/components/recipe/RecipeBuilder';
 
 interface FichiersProduitsModuleProps {
   storeId: string;
@@ -36,6 +38,9 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLookupOpen, setIsLookupOpen] = useState(false);
   const [lookupTargetIndex, setLookupTargetIndex] = useState<number | null>(null);
+  
+  const [recipeItems, setRecipeItems] = useState<{ ingredient_id: string; quantity_needed: number; unit: string }[]>([]);
+  const [recipeCost, setRecipeCost] = useState(0);
   
   const [editingProduct, setEditingProduct] = useState<ProductMaster | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -259,6 +264,8 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     setFormData(initialFormState);
     setMultiItems([{ ...initialFormState, id: crypto.randomUUID(), isOpen: false }]);
     setEditingProduct(null);
+    setRecipeItems([]);
+    setRecipeCost(0);
   };
 
 
@@ -383,6 +390,18 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                 throw result.error;
             }
             console.log('[FichiersProduits] Save successful for item:', item.name);
+
+            // Save recipe composition links
+            if (registrationMode === 'single' && result.data?.id) {
+                await OfflineAuthService.localBridgeRequest('/rest/v1/recipes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        dish_id: result.data.id,
+                        items: recipeItems,
+                    }),
+                });
+            }
         }
 
         toast({ title: t('common.success') });
@@ -397,7 +416,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     }
   };
 
-  const handleEdit = (p: ProductMaster) => {
+  const handleEdit = async (p: ProductMaster) => {
     setEditingProduct(p);
     setRegistrationMode('single');
     const packSize = getPackSize(p.packaging || '1');
@@ -426,6 +445,23 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
       course_type: p.course_type || 'Main',
       modifiers: Array.isArray(p.modifiers) ? p.modifiers.join(', ') : (typeof p.modifiers === 'string' ? p.modifiers : ''),
     });
+
+    try {
+      const items = await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/recipes?dish_id=${p.id}`);
+      if (Array.isArray(items)) {
+        setRecipeItems(items.map(item => ({
+          ingredient_id: item.ingredient_id,
+          quantity_needed: Number(item.quantity_needed),
+          unit: item.unit,
+        })));
+      } else {
+        setRecipeItems([]);
+      }
+    } catch (err) {
+      console.error('Failed to load recipe items:', err);
+      setRecipeItems([]);
+    }
+
     setIsDialogOpen(true);
   };
 
@@ -510,224 +546,269 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     });
   }, [localProducts, searchQuery, selectedFamily]);
 
-  const renderProductFields = (data: typeof initialFormState, update: (field: keyof typeof initialFormState, val: any) => void, index?: number) => {
+  const renderIdentificationPanel = (data: typeof initialFormState, update: (field: keyof typeof initialFormState, val: any) => void, index?: number) => {
+    return (
+      <div className="space-y-6">
+        <h3 className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground border-b pb-2 flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-primary" />{t('inventory.sectionIdentification')}
+        </h3>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label className="font-bold">{t('inventory.fields.name')} *</Label>
+            <Input 
+              id={`product-name-${index ?? 'single'}`}
+              value={data.name} 
+              onChange={e => update('name', e.target.value)} 
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  document.getElementById(`product-purchase-price-${index ?? 'single'}`)?.focus();
+                }
+              }}
+              required 
+              className="h-12 text-lg font-semibold bg-muted/20" 
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase">{t('inventory.fields.sku')}</Label>
+              <Input 
+                value={data.sku} 
+                onChange={e => update('sku', e.target.value)} 
+                onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+                className="h-10 font-mono" 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase">{t('inventory.fields.barcode')}</Label>
+              <div className="flex gap-2">
+                <Input 
+                  value={data.barcode} 
+                  onChange={e => update('barcode', e.target.value)} 
+                  onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+                  className="h-10 font-mono" 
+                />
+                <Button type="button" variant="outline" size="icon" onClick={() => update('barcode', `PRD${Date.now().toString(36).toUpperCase()}`)} className="h-10 w-10 shrink-0">
+                  <Barcode className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-bold uppercase text-primary">{t('inventory.fields.family')}</Label>
+            <div className="relative">
+              <Input 
+                list={`families-list-${index ?? 'single'}`}
+                value={data.family_id} 
+                onChange={e => update('family_id', e.target.value, index)} 
+                placeholder={t('inventory.fields.selectFamily')}
+                className="h-10 bg-primary/5 border-primary/20 pr-8 font-bold"
+              />
+              <datalist id={`families-list-${index ?? 'single'}`}>
+                {families.map(fam => <option key={fam.id} value={fam.name} />)}
+              </datalist>
+              <ChevronDown className="absolute right-2 top-3 h-4 w-4 text-primary/40 pointer-events-none" />
+            </div>
+          </div>
+          <div className="space-y-2"><Label className="text-xs font-bold uppercase">{t('inventory.fields.brand')}</Label><Input value={data.brand} onChange={e => update('brand', e.target.value)} className="h-10" /></div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPricesPanel = (data: typeof initialFormState, update: (field: keyof typeof initialFormState, val: any) => void, index?: number, showRecipeCost?: boolean) => {
     const margin = Number(data.selling_price_detail) > 0 && Number(data.purchase_price) > 0
-        ? (((Number(data.selling_price_detail) - Number(data.purchase_price)) / Number(data.purchase_price)) * 100).toFixed(1)
-        : '0';
+      ? (((Number(data.selling_price_detail) - Number(data.purchase_price)) / Number(data.purchase_price)) * 100).toFixed(1)
+      : '0';
 
     return (
-        <>
-            <div className="col-span-full mb-6 bg-muted/30 p-4 rounded-xl border-2 border-dashed border-muted flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <Search className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground">{t('inventory.importFromExisting')}</span>
-                </div>
-                <Button variant="outline" size="sm" type="button" onClick={() => { setLookupTargetIndex(index ?? null); setIsLookupOpen(true); }} className="h-8 uppercase font-black text-[10px] tracking-widest px-4 border-primary/20 hover:bg-primary hover:text-white">Choisir l'article</Button>
+      <div className="space-y-6">
+        <h3 className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground border-b pb-2 flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-success" />{t('inventory.sectionPrices')}
+        </h3>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-sm font-black text-primary uppercase tracking-wider">{t('inventory.fields.price1Detail')} *</Label>
+            <div className="relative"><Input type="number" value={data.selling_price_detail} onChange={handleNumChange('selling_price_detail', index)} onBlur={handleNumBlur('selling_price_detail', index)} required className="h-14 text-2xl font-black border-primary/40 bg-primary/5 pl-4 pr-12 text-primary" /><span className="absolute right-4 top-4 font-black text-primary/40 text-xl">F</span></div>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2"><Label className="text-xs font-bold uppercase">{t('inventory.fields.price2Discount')}</Label><Input type="number" value={data.selling_price_2} onChange={handleNumChange('selling_price_2', index)} onBlur={handleNumBlur('selling_price_2', index)} className="h-10" /></div>
+            <div className="space-y-2"><Label className="text-xs font-bold uppercase">{t('inventory.fields.price3Bulk')}</Label><Input type="number" value={data.selling_price_3} onChange={handleNumChange('selling_price_3', index)} onBlur={handleNumBlur('selling_price_3', index)} className="h-10" /></div>
+            <div className="space-y-2"><Label className="text-xs font-bold uppercase">{t('inventory.fields.price4Resale')}</Label><Input type="number" value={data.selling_price_4} onChange={handleNumChange('selling_price_4', index)} onBlur={handleNumBlur('selling_price_4', index)} className="h-10" /></div>
+          </div>
+          <div className="space-y-2 pt-2">
+            <Label className="text-xs font-bold uppercase">{t('inventory.fields.purchasePrice')}</Label>
+            <div className="relative">
+              <Input 
+                id={`product-purchase-price-${index ?? 'single'}`}
+                type="number" 
+                value={data.purchase_price} 
+                onChange={handleNumChange('purchase_price', index)} 
+                onBlur={handleNumBlur('purchase_price', index)} 
+                className="h-10 font-bold bg-muted/30" 
+              />
+              <span className="absolute right-3 top-2.5 text-muted-foreground text-xs font-bold">F</span>
             </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2"><Label className="text-xs font-black uppercase text-danger">{t('inventory.fields.wholesalePriceHT')}</Label><Input type="number" value={data.selling_price_ht} onChange={handleNumChange('selling_price_ht', index)} onBlur={handleNumBlur('selling_price_ht', index)} className="h-10 border-danger/20" /></div>
+            <div className="space-y-2"><Label className="text-xs font-black uppercase text-danger">{t('inventory.fields.wholesalePriceTTC')}</Label><Input type="number" value={data.selling_price_ttc} onChange={handleNumChange('selling_price_ttc', index)} onBlur={handleNumBlur('selling_price_ttc', index)} className="h-10 border-danger/20 font-bold" /></div>
+          </div>
+          <div className="p-6 rounded-2xl bg-success/5 border border-success/10 mt-4 shadow-inner flex justify-between items-center"><span className="text-xs font-black uppercase tracking-widest text-success/60">{t('menu.program.calculatedMargin')}:</span><span className="text-3xl font-black text-success">{margin}%</span></div>
 
-            <div className="space-y-6 border-r pr-6">
-                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground border-b pb-2 flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary" />{t('inventory.sectionIdentification')}
-                </h3>
-                <div className="space-y-4">
-                    <div className="space-y-2">
-                        <Label className="font-bold">{t('inventory.fields.name')} *</Label>
-                        <Input 
-                            id={`product-name-${index ?? 'single'}`}
-                            value={data.name} 
-                            onChange={e => update('name', e.target.value)} 
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    document.getElementById(`product-purchase-price-${index ?? 'single'}`)?.focus();
-                                }
-                            }}
-                            required 
-                            className="h-12 text-lg font-semibold bg-muted/20" 
-                        />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-xs font-bold uppercase">{t('inventory.fields.sku')}</Label>
-                          <Input 
-                            value={data.sku} 
-                            onChange={e => update('sku', e.target.value)} 
-                            onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
-                            className="h-10 font-mono" 
-                          />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase">{t('inventory.fields.barcode')}</Label>
-                            <div className="flex gap-2">
-                              <Input 
-                                value={data.barcode} 
-                                onChange={e => update('barcode', e.target.value)} 
-                                onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
-                                className="h-10 font-mono" 
-                              />
-                              <Button type="button" variant="outline" size="icon" onClick={() => update('barcode', `PRD${Date.now().toString(36).toUpperCase()}`)} className="h-10 w-10 shrink-0">
-                                <Barcode className="h-4 w-4" />
-                              </Button>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase text-primary">{t('inventory.fields.family')}</Label>
-                        <div className="relative">
-                          <Input 
-                              list={`families-list-${index ?? 'single'}`}
-                              value={data.family_id} 
-                              onChange={e => update('family_id', e.target.value, index)} 
-                              placeholder={t('inventory.fields.selectFamily')}
-                              className="h-10 bg-primary/5 border-primary/20 pr-8 font-bold"
-                          />
-                          <datalist id={`families-list-${index ?? 'single'}`}>
-                              {families.map(fam => <option key={fam.id} value={fam.name} />)}
-                          </datalist>
-                          <ChevronDown className="absolute right-2 top-3 h-4 w-4 text-primary/40 pointer-events-none" />
-                        </div>
-                    </div>
-                    <div className="space-y-2"><Label className="text-xs font-bold uppercase">{t('inventory.fields.brand')}</Label><Input value={data.brand} onChange={e => update('brand', e.target.value)} className="h-10" /></div>
-                </div>
+          {showRecipeCost && recipeCost > 0 && (
+            <div className="p-6 rounded-2xl bg-primary/5 border border-primary/10 mt-4 shadow-inner flex flex-col gap-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-black uppercase tracking-widest text-primary/60">Coût ingrédients estimé:</span>
+                <span className="text-xl font-mono font-black text-primary">{recipeCost.toLocaleString()} F CFA</span>
+              </div>
+              <div className="flex justify-between items-center border-t pt-2 mt-1">
+                <span className="text-xs font-black uppercase tracking-widest text-teal/80">Marge brute estimée:</span>
+                <span className="text-xl font-mono font-black text-teal">{(Number(data.selling_price_detail) - recipeCost).toLocaleString()} F CFA</span>
+              </div>
             </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
-            <div className="space-y-6 border-r px-6">
-                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground border-b pb-2 flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-success" />{t('inventory.sectionPrices')}
-                </h3>
-                <div className="space-y-4">
-                    <div className="space-y-2">
-                        <Label className="text-sm font-black text-primary uppercase tracking-wider">{t('inventory.fields.price1Detail')} *</Label>
-                        <div className="relative"><Input type="number" value={data.selling_price_detail} onChange={handleNumChange('selling_price_detail', index)} onBlur={handleNumBlur('selling_price_detail', index)} required className="h-14 text-2xl font-black border-primary/40 bg-primary/5 pl-4 pr-12 text-primary" /><span className="absolute right-4 top-4 font-black text-primary/40 text-xl">F</span></div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4">
-                        <div className="space-y-2"><Label className="text-xs font-bold uppercase">{t('inventory.fields.price2Discount')}</Label><Input type="number" value={data.selling_price_2} onChange={handleNumChange('selling_price_2', index)} onBlur={handleNumBlur('selling_price_2', index)} className="h-10" /></div>
-                        <div className="space-y-2"><Label className="text-xs font-bold uppercase">{t('inventory.fields.price3Bulk')}</Label><Input type="number" value={data.selling_price_3} onChange={handleNumChange('selling_price_3', index)} onBlur={handleNumBlur('selling_price_3', index)} className="h-10" /></div>
-                        <div className="space-y-2"><Label className="text-xs font-bold uppercase">{t('inventory.fields.price4Resale')}</Label><Input type="number" value={data.selling_price_4} onChange={handleNumChange('selling_price_4', index)} onBlur={handleNumBlur('selling_price_4', index)} className="h-10" /></div>
-                    </div>
-                    <div className="space-y-2 pt-2">
-                        <Label className="text-xs font-bold uppercase">{t('inventory.fields.purchasePrice')}</Label>
-                        <div className="relative">
-                            <Input 
-                                id={`product-purchase-price-${index ?? 'single'}`}
-                                type="number" 
-                                value={data.purchase_price} 
-                                onChange={handleNumChange('purchase_price', index)} 
-                                onBlur={handleNumBlur('purchase_price', index)} 
-                                className="h-10 font-bold bg-muted/30" 
-                            />
-                            <span className="absolute right-3 top-2.5 text-muted-foreground text-xs font-bold">F</span>
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2"><Label className="text-xs font-black uppercase text-danger">{t('inventory.fields.wholesalePriceHT')}</Label><Input type="number" value={data.selling_price_ht} onChange={handleNumChange('selling_price_ht', index)} onBlur={handleNumBlur('selling_price_ht', index)} className="h-10 border-danger/20" /></div>
-                        <div className="space-y-2"><Label className="text-xs font-black uppercase text-danger">{t('inventory.fields.wholesalePriceTTC')}</Label><Input type="number" value={data.selling_price_ttc} onChange={handleNumChange('selling_price_ttc', index)} onBlur={handleNumBlur('selling_price_ttc', index)} className="h-10 border-danger/20 font-bold" /></div>
-                    </div>
-                    <div className="p-6 rounded-2xl bg-success/5 border border-success/10 mt-4 shadow-inner flex justify-between items-center"><span className="text-xs font-black uppercase tracking-widest text-success/60">{t('menu.program.calculatedMargin')}:</span><span className="text-3xl font-black text-success">{margin}%</span></div>
-                </div>
+  const renderLogisticsPanel = (data: typeof initialFormState, update: (field: keyof typeof initialFormState, val: any) => void, index?: number) => {
+    return (
+      <div className="space-y-6">
+        <h3 className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground border-b pb-2 flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />{t('inventory.sectionLogistics')}
+        </h3>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase">{t('menu.program.unit')}</Label>
+              <Select value={data.unit_type} onValueChange={v => update('unit_type', v)}>
+                <SelectTrigger className="h-10 font-bold"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Pièce">{t('inventory.unitTypes.piece')}</SelectItem>
+                  <SelectItem value="Carton">{t('inventory.unitTypes.carton')}</SelectItem>
+                  <SelectItem value="KG">{t('inventory.unitTypes.kg')}</SelectItem>
+                  <SelectItem value="Litre">{t('inventory.unitTypes.litre')}</SelectItem>
+                  <SelectItem value="Paquet">{t('inventory.unitTypes.paquet')}</SelectItem>
+                  <SelectItem value="Sac">{t('inventory.unitTypes.sac')}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+            <div className="space-y-2"><Label className="text-xs font-bold uppercase text-primary">{t('inventory.fields.packaging')}</Label><Input value={data.packaging} onChange={e => update('packaging', e.target.value)} placeholder={t('inventory.fields.packagingPlaceholder')} className="h-10 font-bold border-primary/20" /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2"><Label className="text-xs font-black uppercase text-primary">{registrationMode === 'single' ? t('inventory.fields.initialQuantity') : t('inventory.fields.quantity')}</Label><Input type="number" value={registrationMode === 'single' ? data.reorder_quantity : data.quantity} onChange={handleNumChange(registrationMode === 'single' ? 'reorder_quantity' : 'quantity', index)} className="h-10 font-black bg-primary/5 border-primary/20" /></div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase">{t('inventory.fields.minStock')}</Label>
+              <Input 
+                type="number" 
+                value={data.min_stock_alert} 
+                onChange={(e) => {
+                  const v = e.target.value;
+                  update('min_stock_alert', v === '' ? '' : Number(v), index);
+                }} 
+                className="h-10 border-primary/20 font-bold" 
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
-            <div className="space-y-6 border-r px-6">
-                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground border-b pb-2 flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />{t('inventory.sectionLogistics')}
-                </h3>
-                <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase">{t('menu.program.unit')}</Label>
-                            <Select value={data.unit_type} onValueChange={v => update('unit_type', v)}>
-                                <SelectTrigger className="h-10 font-bold"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Pièce">{t('inventory.unitTypes.piece')}</SelectItem>
-                                    <SelectItem value="Carton">{t('inventory.unitTypes.carton')}</SelectItem>
-                                    <SelectItem value="KG">{t('inventory.unitTypes.kg')}</SelectItem>
-                                    <SelectItem value="Litre">{t('inventory.unitTypes.litre')}</SelectItem>
-                                    <SelectItem value="Paquet">{t('inventory.unitTypes.paquet')}</SelectItem>
-                                    <SelectItem value="Sac">{t('inventory.unitTypes.sac')}</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2"><Label className="text-xs font-bold uppercase text-primary">{t('inventory.fields.packaging')}</Label><Input value={data.packaging} onChange={e => update('packaging', e.target.value)} placeholder={t('inventory.fields.packagingPlaceholder')} className="h-10 font-bold border-primary/20" /></div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2"><Label className="text-xs font-black uppercase text-primary">{registrationMode === 'single' ? t('inventory.fields.initialQuantity') : t('inventory.fields.quantity')}</Label><Input type="number" value={registrationMode === 'single' ? data.reorder_quantity : data.quantity} onChange={handleNumChange(registrationMode === 'single' ? 'reorder_quantity' : 'quantity', index)} className="h-10 font-black bg-primary/5 border-primary/20" /></div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-bold uppercase">{t('inventory.fields.minStock')}</Label>
-                          <Input 
-                            type="number" 
-                            value={data.min_stock_alert} 
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              update('min_stock_alert', v === '' ? '' : Number(v), index);
-                            }} 
-                            className="h-10 border-primary/20 font-bold" 
-                          />
-                        </div>
-                    </div>
-                </div>
+  const renderRestaurantPanel = (data: typeof initialFormState, update: (field: keyof typeof initialFormState, val: any) => void, index?: number) => {
+    return (
+      <div className="space-y-6">
+        <h3 className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground border-b pb-2 flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />{t('inventory.sectionRestaurant') || 'Cuisine & Menu'}
+        </h3>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase">Préparation (min)</Label>
+              <Input 
+                type="number" 
+                value={data.prep_time_minutes} 
+                onChange={handleNumChange('prep_time_minutes', index)} 
+                className="h-10 font-bold border-primary/20" 
+              />
             </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase">Type de Plat</Label>
+              <Select value={data.course_type} onValueChange={v => update('course_type', v)}>
+                <SelectTrigger className="h-10 font-bold"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Starter">Entrée</SelectItem>
+                  <SelectItem value="Main">Plat Principal</SelectItem>
+                  <SelectItem value="Dessert">Dessert</SelectItem>
+                  <SelectItem value="Drink">Boisson</SelectItem>
+                  <SelectItem value="Side">Accompagnement</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-muted-foreground/10">
+            <div className="space-y-0.5">
+              <Label className="text-xs font-bold uppercase">Disponible</Label>
+              <div className="text-[10px] text-muted-foreground">Activer pour la commande</div>
+            </div>
+            <Switch checked={!!data.is_available} onCheckedChange={v => update('is_available', v)} />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-bold uppercase">Allergènes (séparés par virgules)</Label>
+            <Input 
+              value={data.allergens} 
+              onChange={e => update('allergens', e.target.value)} 
+              placeholder="ex: Gluten, Lactose, Arachides"
+              className="h-10" 
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-bold uppercase">Options / Suppléments (séparés par virgules)</Label>
+            <Input 
+              value={data.modifiers} 
+              onChange={e => update('modifiers', e.target.value)} 
+              placeholder="ex: Sauce piquante, Frites supp"
+              className="h-10" 
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-bold uppercase">{t('inventory.fields.image')}</Label>
+            <ImageUpload currentImageUrl={data.image_url} onImageUploaded={url => update('image_url', url)} onImageRemoved={() => update('image_url', '')} folder="inventory" />
+          </div>
+        </div>
+      </div>
+    );
+  };
 
-            <div className="space-y-6 pl-6">
-                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground border-b pb-2 flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />{t('inventory.sectionRestaurant') || 'Cuisine & Menu'}
-                </h3>
-                <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase">Préparation (min)</Label>
-                            <Input 
-                                type="number" 
-                                value={data.prep_time_minutes} 
-                                onChange={handleNumChange('prep_time_minutes', index)} 
-                                className="h-10 font-bold border-primary/20" 
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase">Type de Plat</Label>
-                            <Select value={data.course_type} onValueChange={v => update('course_type', v)}>
-                                <SelectTrigger className="h-10 font-bold"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Starter">Entrée</SelectItem>
-                                    <SelectItem value="Main">Plat Principal</SelectItem>
-                                    <SelectItem value="Dessert">Dessert</SelectItem>
-                                    <SelectItem value="Drink">Boisson</SelectItem>
-                                    <SelectItem value="Side">Accompagnement</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-muted-foreground/10">
-                        <div className="space-y-0.5">
-                            <Label className="text-xs font-bold uppercase">Disponible</Label>
-                            <div className="text-[10px] text-muted-foreground">Activer pour la commande</div>
-                        </div>
-                        <Switch checked={!!data.is_available} onCheckedChange={v => update('is_available', v)} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase">Allergènes (séparés par virgules)</Label>
-                        <Input 
-                            value={data.allergens} 
-                            onChange={e => update('allergens', e.target.value)} 
-                            placeholder="ex: Gluten, Lactose, Arachides"
-                            className="h-10" 
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase">Options / Suppléments (séparés par virgules)</Label>
-                        <Input 
-                            value={data.modifiers} 
-                            onChange={e => update('modifiers', e.target.value)} 
-                            placeholder="ex: Sauce piquante, Frites supp"
-                            className="h-10" 
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase">{t('inventory.fields.image')}</Label>
-                        <ImageUpload currentImageUrl={data.image_url} onImageUploaded={url => update('image_url', url)} onImageRemoved={() => update('image_url', '')} folder="inventory" />
-                    </div>
-                </div>
-            </div>
-        </>
+  const renderProductFields = (data: typeof initialFormState, update: (field: keyof typeof initialFormState, val: any) => void, index?: number) => {
+    return (
+      <>
+        <div className="col-span-full mb-6 bg-muted/30 p-4 rounded-xl border-2 border-dashed border-muted flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Search className="h-5 w-5 text-muted-foreground" />
+            <span className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground">{t('inventory.importFromExisting')}</span>
+          </div>
+          <Button variant="outline" size="sm" type="button" onClick={() => { setLookupTargetIndex(index ?? null); setIsLookupOpen(true); }} className="h-8 uppercase font-black text-[10px] tracking-widest px-4 border-primary/20 hover:bg-primary hover:text-white">Choisir l'article</Button>
+        </div>
+
+        <div className="space-y-6 border-r pr-6">
+          {renderIdentificationPanel(data, update, index)}
+        </div>
+
+        <div className="space-y-6 border-r px-6">
+          {renderPricesPanel(data, update, index)}
+        </div>
+
+        <div className="space-y-6 border-r px-6">
+          {renderLogisticsPanel(data, update, index)}
+        </div>
+
+        <div className="space-y-6 pl-6">
+          {renderRestaurantPanel(data, update, index)}
+        </div>
+      </>
     );
   };
 
@@ -833,10 +914,68 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     }} className="flex-1 flex flex-col min-h-0 bg-background overflow-hidden">
             <div className="flex-1 overflow-y-auto">
               {registrationMode === 'single' ? (
-                <div className="p-8">
-                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-0">
-                    {renderProductFields(formData, (field, val) => updateField(field, val))}
-                  </div>
+                <div className="p-8 space-y-6">
+                  {!editingProduct && (
+                    <div className="bg-muted/30 p-4 rounded-xl border-2 border-dashed border-muted flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Search className="h-5 w-5 text-muted-foreground" />
+                        <span className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground">{t('inventory.importFromExisting')}</span>
+                      </div>
+                      <Button variant="outline" size="sm" type="button" onClick={() => { setLookupTargetIndex(null); setIsLookupOpen(true); }} className="h-8 uppercase font-black text-[10px] tracking-widest px-4 border-primary/20 hover:bg-primary hover:text-white">Choisir l'article</Button>
+                    </div>
+                  )}
+
+                  <Tabs defaultValue="info" className="w-full">
+                    <TabsList className="flex items-center gap-2 border-b bg-muted/20 p-1 rounded-xl mb-6 max-w-2xl">
+                      <TabsTrigger value="info" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-black uppercase tracking-wider text-[11px] rounded-lg px-6 py-2.5 transition-all">
+                        INFORMATIONS GENERALES
+                      </TabsTrigger>
+                      <TabsTrigger value="prices" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-black uppercase tracking-wider text-[11px] rounded-lg px-6 py-2.5 transition-all">
+                        PRIX ET MARGES
+                      </TabsTrigger>
+                      <TabsTrigger value="logistics" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-black uppercase tracking-wider text-[11px] rounded-lg px-6 py-2.5 transition-all">
+                        LOGISTIQUE ET STOCK
+                      </TabsTrigger>
+                      <TabsTrigger value="recipe" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-black uppercase tracking-wider text-[11px] rounded-lg px-6 py-2.5 transition-all">
+                        RECETTE & COMPOSITION
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="info" className="space-y-6 mt-0">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 bg-card p-6 rounded-2xl border border-muted-foreground/10 shadow-sm">
+                        <div className="space-y-6">
+                          {renderIdentificationPanel(formData, (field, val) => updateField(field, val))}
+                        </div>
+                        <div className="space-y-6">
+                          {renderRestaurantPanel(formData, (field, val) => updateField(field, val))}
+                        </div>
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="prices" className="space-y-6 mt-0">
+                      <div className="max-w-2xl bg-card p-6 rounded-2xl border border-muted-foreground/10 shadow-sm">
+                        {renderPricesPanel(formData, (field, val) => updateField(field, val), undefined, true)}
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="logistics" className="space-y-6 mt-0">
+                      <div className="max-w-2xl bg-card p-6 rounded-2xl border border-muted-foreground/10 shadow-sm">
+                        {renderLogisticsPanel(formData, (field, val) => updateField(field, val))}
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="recipe" className="space-y-6 mt-0">
+                      <div className="bg-card p-6 rounded-2xl border border-muted-foreground/10 shadow-sm">
+                        <RecipeBuilder
+                          dishId={editingProduct ? editingProduct.id : null}
+                          storeId={storeId}
+                          sellingPrice={Number(formData.selling_price_detail) || 0}
+                          onChange={(items) => setRecipeItems(items)}
+                          onCostChange={(cost) => setRecipeCost(cost)}
+                        />
+                      </div>
+                    </TabsContent>
+                  </Tabs>
                 </div>
               ) : (
                 <div className="p-6 space-y-4">

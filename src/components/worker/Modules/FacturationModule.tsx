@@ -11,6 +11,7 @@ import { OfflineInventoryService } from '@/services/OfflineInventoryService';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { useStockDeduction } from '@/hooks/useStockDeduction';
 import { useFormatters } from '@/utils/formatting';
 import { useRegisterShortcuts } from '@/contexts/ShortcutsContext';
 import { useSettingsStore } from '@/stores/useSettingsStore';
@@ -45,6 +46,7 @@ export function FacturationModule({ storeId, mode }: FacturationModuleProps) {
   const { formatCurrency } = useFormatters();
   const { getKeyForAction } = useSettingsStore();
   const { user } = useAuth();
+  const { deduct } = useStockDeduction();
   const { 
     cart, 
     addToCart, 
@@ -197,6 +199,11 @@ export function FacturationModule({ storeId, mode }: FacturationModuleProps) {
         variant: 'destructive',
       });
       return;
+    }
+
+    // Deduct stock for recipe ingredients
+    for (const item of saleItems) {
+      await deduct(item.product_id, item.quantity);
     }
     
     toast({ 

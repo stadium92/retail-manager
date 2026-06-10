@@ -12,6 +12,7 @@ import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { LogOut, Zap } from 'lucide-react';
 import { getDataClient } from '@/lib/dataClient';
+import { useStockDeduction } from '@/hooks/useStockDeduction';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { useTranslation } from 'react-i18next';
 import { useFormatters } from '@/utils/formatting';
@@ -20,6 +21,7 @@ export default function StrategicPOS() {
   const { t, i18n } = useTranslation();
   const { formatCurrency } = useFormatters();
   const { user } = useAuth();
+  const { deduct } = useStockDeduction();
   const { 
     cart, 
     clearCart,
@@ -123,6 +125,11 @@ export default function StrategicPOS() {
         variant: 'destructive' 
       });
       return;
+    }
+
+    // Deduct stock for recipe ingredients
+    for (const item of saleItems) {
+      await deduct(item.product_id, item.quantity);
     }
     
     toast({ 
