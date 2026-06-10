@@ -112,3 +112,32 @@ DROP TRIGGER IF EXISTS trg_sale_items_updated_at ON public.sale_items;
 CREATE TRIGGER trg_sale_items_updated_at
 BEFORE UPDATE ON public.sale_items
 FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- 8. Enable Realtime broadcast safely (only add tables if not already in publication)
+DO $$
+BEGIN
+  -- Add products table
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'products'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.products;
+  END IF;
+
+  -- Add sales table
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'sales'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.sales;
+  END IF;
+
+  -- Add sale_items table
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'sale_items'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.sale_items;
+  END IF;
+END $$;
+
