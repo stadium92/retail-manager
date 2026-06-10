@@ -1,8 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Fallback credentials to ensure the compiled Tauri desktop app connects to the correct Supabase instance out-of-the-box
-export const FALLBACK_SUPABASE_URL = "https://vznjhmlzrmxgzggjcutk.supabase.co";
-export const FALLBACK_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6bmpobWx6cm14Z3pnZ2pjdXRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI0MjU0ODQsImV4cCI6MjA3ODAwMTQ4NH0.vQwEbq6BrUTyaKdp5mRxNuuCEfaboCIyhS7YbrOZq14";
+export const FALLBACK_SUPABASE_URL = "https://fpvrbxmbrotdwlyebqv.supabase.co";
+export const FALLBACK_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwdnJieG1icm90b3dkbHllYnF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNzE1MjMsImV4cCI6MjA5NjY0NzUyM30.8_mjBGr1FpYE20cc22iehEf0Xi9Fix2M0d_SSHIDQuI";
+
+
 
 const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined) || FALLBACK_SUPABASE_URL;
 
