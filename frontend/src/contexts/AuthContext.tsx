@@ -6,6 +6,7 @@ import { DEV_MODE_UUIDS } from '@/utils/devMode';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { getDataClient } from '@/lib/dataClient';
 import { SyncService } from '@/services/SyncService';
+import { LocalBridgeSyncService } from '@/services/LocalBridgeSyncService';
 import { LocalDatabase } from '@/services/LocalDatabase';
 import i18n from '@/i18n/config';
 
@@ -53,6 +54,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => clearInterval(heartbeat);
   }, [user]);
+
+  useEffect(() => {
+    const activeRole = roles[0];
+    const storeId = activeRole?.store_id;
+
+    if (storeId) {
+      console.log('[AuthContext] Auto-starting LocalBridgeSyncService for store:', storeId);
+      LocalBridgeSyncService.start(storeId);
+      return () => {
+        console.log('[AuthContext] Stopping LocalBridgeSyncService');
+        LocalBridgeSyncService.stop();
+      };
+    }
+  }, [roles]);
 
   // Poll Backend Readiness
   useEffect(() => {
