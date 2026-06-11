@@ -5,6 +5,7 @@ on:
     branches:
       - feat/moe-stihl-templates
       - feat/stihl-niamakoro
+      - feat/niamanan-dubai
     tags:
       - 'v*'
   pull_request:
