@@ -21,17 +21,9 @@ export interface InvoiceData {
 }
 
 
-const StihlLogo = () => (
+const HoldingProLogo = () => (
     <div className="flex items-center justify-center self-start shrink-0 mr-4">
-        {/* Make sure 'stihl-logo.jpg' exists in frontend/public */}
-        <img src="/stihl-logo.jpg" alt="STIHL Logo" className="h-[105px] object-contain" />
-    </div>
-);
-
-const QuincaillerieLogo = () => (
-    <div className="flex items-center justify-center self-start shrink-0 mr-4">
-        {/* Make sure 'quincaillerie-logo.jpg' exists in frontend/public */}
-        <img src="/quincaillerie-logo.jpg" alt="Quincaillerie Logo" className="h-[121px] w-[121px] object-contain rounded-md" />
+        <img src="/logo.png" alt="Holding Pro Logo" className="h-[90px] w-[90px] object-contain rounded-full border border-gray-200" />
     </div>
 );
 
@@ -39,34 +31,27 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, { data: InvoiceData }>
     const isProforma = data.type === 'proforma';
     const { t } = useTranslation();
 
-    // Dynamically check if any product in the cart is a STIHL product to trigger the custom template
-    const hasStihlProduct = data.items.some(item => {
-        if (!item.product || !item.product.name) return false;
-        const name = item.product.name.toLowerCase();
-        // Check for both the correct spelling 'stihl' and the common pronunciation 'steel'
-        return name.includes('stihl') || name.includes('steel');
-    });
+    // Always use the premium layout for Holding Pro
+    const hasStihlProduct = true;
 
     return (
         <div ref={ref} className="p-8 max-w-[800px] mx-auto bg-white text-black font-sans hidden print:block">
             {/* Header */}
-            <div className={`flex justify-between items-start border-b pb-4 mb-4 ${hasStihlProduct ? 'border-[#f04e23] border-b-4' : 'border-black border-b-2'}`}>
+            <div className="flex justify-between items-start border-b pb-4 mb-4 border-[#1a1a2e] border-b-4">
                 <div className="flex items-center gap-4">
-                    {hasStihlProduct ? <StihlLogo /> : <QuincaillerieLogo />}
+                    <HoldingProLogo />
                     <div>
-                        {/* Title adjusts based on template mode */}
-                        <h1 className={`text-2xl font-bold uppercase tracking-wider ${hasStihlProduct ? 'text-[#f04e23]' : 'text-gray-900'}`}>
-                            {hasStihlProduct ? 'STIHL' : 'ETS Quincaillerie de la paix'}
+                        <h1 className="text-2xl font-black uppercase tracking-wider text-[#1a1a2e]">
+                            HOLDING PRO
                         </h1>
-                        <p className="text-sm text-gray-700 font-bold mb-1">ETS Madjou Sylla - QUINCAILLERIE DE LA PAIX</p>
-                        <p className="text-[11px] text-gray-600 font-medium tracking-tight mb-1 uppercase">Vente de machine tronçonneuse, disque, meule bosch</p>
-                        <p className="text-sm text-gray-600 leading-tight">{data.storeAddress || t('invoice.defaultStore')}</p>
-                        <p className="text-sm text-gray-600 leading-tight">Tel: +223 77 77 90 60 / 20 22 26 45 / 79 45 49 46</p>
-                        <p className="text-xs text-gray-500 leading-tight mt-1">Niamakoro près de SONEF, Bamako</p>
+                        <p className="text-sm text-gray-700 font-bold mb-1">Commerce d'Électronique & Services</p>
+                        <p className="text-[11px] text-gray-600 font-bold tracking-tight mb-1 uppercase">Niamana Dubaï — Toujours Clients Satisfaits</p>
+                        <p className="text-sm text-gray-600 leading-tight">{data.storeAddress || "Niamana en face station Shell, Bamako"}</p>
+                        <p className="text-sm text-gray-600 leading-tight">Tel: +223 79 34 60 73 / 70 68 21 00 / 71 06 65 75</p>
                     </div>
                 </div>
                 <div className="text-right">
-                    <h2 className={`text-xl font-bold uppercase ${hasStihlProduct ? 'text-[#f04e23]' : 'text-gray-800'}`}>
+                    <h2 className="text-xl font-bold uppercase text-[#1a1a2e]">
                         {isProforma ? t('invoice.proforma') : (data.paymentMethod === 'credit' ? 'FACTURE À CRÉDIT' : t('invoice.cashReceipt'))}
                     </h2>
                     <p className="text-sm text-gray-500 font-mono mt-2">

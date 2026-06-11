@@ -22,19 +22,9 @@ export const InvoiceA4Template = forwardRef<HTMLDivElement, { data: InvoiceData 
         return amount.toLocaleString('fr-FR') + ' FCFA';
     };
 
-    const hasStihlProduct = data.items.some(item =>
-        item.product.name.toLowerCase().includes('stihl') ||
-        item.product.name.toLowerCase().includes('steel')
-    );
-
-    const hasNonStihlProduct = data.items.some(item =>
-        !(item.product.name.toLowerCase().includes('stihl') ||
-          item.product.name.toLowerCase().includes('steel'))
-    );
-
-    const onlyStihl = hasStihlProduct && !hasNonStihlProduct;
-    const both = hasStihlProduct && hasNonStihlProduct;
-    const onlyQuincaillerie = hasNonStihlProduct && !hasStihlProduct; // Or just fallback if no stihl
+    // Always use the premium layout for Holding Pro
+    const hasStihlProduct = true;
+    const onlyStihl = true;
 
     return (
         <div
@@ -43,42 +33,38 @@ export const InvoiceA4Template = forwardRef<HTMLDivElement, { data: InvoiceData 
             style={{ width: '210mm', minHeight: '297mm', padding: '10mm 15mm' }}
         >
             {/* Watermark Logos */}
-            <div className="absolute inset-0 z-0 pointer-events-none flex flex-col justify-center items-center opacity-[0.15]">
-                {onlyStihl && (
-                    <img src="/stihl-logo.jpg" alt="Watermark STIHL" className="w-[60%] h-auto object-contain grayscale contrast-200" />
-                )}
-                {both && (
-                    <>
-                        <img src="/quincaillerie-logo.jpg" alt="Watermark Quincaillerie" className="w-[55%] h-auto object-contain grayscale contrast-200" />
-                        <img src="/stihl-logo.jpg" alt="Watermark STIHL" className="w-[45%] h-auto object-contain grayscale contrast-200 -mt-2" />
-                    </>
-                )}
-                {(!hasStihlProduct || onlyQuincaillerie) && !both && !onlyStihl && (
-                    <img src="/quincaillerie-logo.jpg" alt="Watermark Quincaillerie" className="w-[70%] h-auto object-contain grayscale contrast-200" />
-                )}
+            <div className="absolute inset-0 z-0 pointer-events-none flex flex-col justify-center items-center opacity-[0.07]">
+                <img src="/logo.png" alt="Watermark Holding Pro" className="w-[65%] h-auto object-contain grayscale contrast-200" />
             </div>
 
+            {/* RAINBOW TOP BAR */}
+            <div className="rainbow-bar mb-4 z-10" style={{ background: 'linear-gradient(90deg, #f97316, #ec4899, #a855f7, #3b82f6, #22c55e, #eab308, #f97316)', height: '4px', width: '100%', borderRadius: '2px' }} />
+
             {/* HEADER MODULE */}
-            <div className={`relative z-10 flex flex-col justify-center items-center mb-6 pb-4 border-b-4 ${hasStihlProduct ? 'border-[#f04e23]' : 'border-[#2c3e50]'}`}>
-                <div className="w-full text-center px-4">
-                    <div className="inline-block bg-red-600 text-white text-xs font-bold px-2 py-1 rounded mb-1">
-                        ETS Madjou Sylla
+            <div className="relative z-10 flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
+                <div className="flex items-center gap-3">
+                    <img src="/logo.png" alt="Holding Pro Logo" style={{ width: '52px', height: '52px', objectFit: 'contain', borderRadius: '50%', border: '2px solid #e5e7eb' }} />
+                    <div>
+                        <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-400 mb-0.5">Commerce d'Électronique & Services</div>
+                        <h1 className="text-2xl font-black tracking-tight leading-none" style={{ background: 'linear-gradient(90deg, #f97316, #a855f7, #3b82f6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                            HOLDING PRO
+                        </h1>
+                        <div className="text-[11px] font-bold text-gray-700 tracking-wide uppercase">Niamana Dubaï</div>
                     </div>
-                    <h1 className={`text-3xl font-black tracking-tight mb-1 leading-none uppercase ${hasStihlProduct ? 'text-[#f04e23]' : 'text-[#2c3e50]'}`}>
-                        Quincaillerie De La Paix
-                    </h1>
-                    <p className="text-[13px] font-bold text-red-600 tracking-wide uppercase mb-2">
-                        Vente de machine tronçonneuse, disque, meule, etc.
-                    </p>
-                    <div className="text-sm font-semibold text-gray-800 leading-snug">
-                        <p>TEL: <span className="text-green-700">+223 77 77 90 60 / 20 22 26 45 / 79 45 49 46</span></p>
-                        <p className="text-blue-800">madjoulalasylla@gmail.com &nbsp;|&nbsp; <span className="text-gray-600">Niamakoro près de SONEF</span></p>
+                </div>
+                <div className="text-right">
+                    <div className="inline-block bg-gray-900 text-white text-[9px] font-bold px-2 py-0.5 rounded-full mb-1 tracking-wider">
+                        TOUJOURS CLIENTS SATISFAITS
+                    </div>
+                    <div className="text-xs font-semibold text-gray-700 leading-relaxed">
+                        <p>📞 <span className="text-green-700">79 34 60 73 · 70 68 21 00 · 71 06 65 75</span></p>
+                        <p className="text-gray-500 text-[10px]">Niamana en face station Shell, Bamako</p>
                     </div>
                 </div>
             </div>
 
             {/* INVOICE METADATA */}
-            <div className="flex justify-between items-start mb-8">
+            <div className="flex justify-between items-start mb-8 relative z-10">
                 <div className="w-1/2">
                     <h2 className="text-3xl font-black text-gray-800 uppercase tracking-widest mb-4">
                         {data.type === 'proforma' ? 'Proforma' : 'Facture'}
@@ -124,14 +110,14 @@ export const InvoiceA4Template = forwardRef<HTMLDivElement, { data: InvoiceData 
             </div>
 
             {/* TABLE OF ITEMS */}
-            <div className="flex-grow">
+            <div className="flex-grow relative z-10">
                 <table className="w-full text-sm border-collapse mb-6">
                     <thead>
-                        <tr className="bg-[#2c3e50] text-white">
-                            <th className="py-2 px-3 text-left border border-[#2c3e50] font-semibold">Désignation</th>
-                            <th className="py-2 px-3 text-center border border-[#2c3e50] font-semibold w-20">Qté</th>
-                            <th className="py-2 px-3 text-right border border-[#2c3e50] font-semibold w-28">Prix U.</th>
-                            <th className="py-2 px-3 text-right border border-[#2c3e50] font-semibold w-32">Montant</th>
+                        <tr className="bg-[#1a1a2e] text-white">
+                            <th className="py-2 px-3 text-left border border-[#1a1a2e] font-semibold">Désignation</th>
+                            <th className="py-2 px-3 text-center border border-[#1a1a2e] font-semibold w-20">Qté</th>
+                            <th className="py-2 px-3 text-right border border-[#1a1a2e] font-semibold w-28">Prix U.</th>
+                            <th className="py-2 px-3 text-right border border-[#1a1a2e] font-semibold w-32">Montant</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -174,9 +160,11 @@ export const InvoiceA4Template = forwardRef<HTMLDivElement, { data: InvoiceData 
                     </div>
 
                     <div className="w-[45%]">
-                        <div className="flex justify-between items-center py-2 px-3 font-bold text-lg bg-transparent border border-gray-300 rounded whitespace-nowrap">
+                        <div className="flex justify-between items-center py-2.5 px-3 font-black text-sm text-white rounded-lg border border-gray-300" style={{ background: 'linear-gradient(135deg, #1a1a2e, #2d1b69)' }}>
                             <span className="mr-4">NET À PAYER :</span>
-                            <span>{formatCurrency(data.total_price)}</span>
+                            <span className="text-lg font-extrabold" style={{ background: 'linear-gradient(90deg, #f97316, #ec4899, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                                {formatCurrency(data.total_price)}
+                            </span>
                         </div>
                     </div>
                 </div>

@@ -177,7 +177,7 @@ pub async fn print_receipt(app_handle: AppHandle, data: ReceiptData) -> Result<b
     raw.extend_from_slice(&[GS, 0x21, 0x00]); // Reset size
 
     // 4. Address & Phone
-    raw.extend("Niamakoro près de SONEF".as_bytes());
+    raw.extend("Niamana en face station Shell".as_bytes());
     raw.push(LF);
     raw.extend(format!("Tel: {}", data.phone).as_bytes());
     raw.push(LF);
@@ -212,7 +212,7 @@ pub async fn print_receipt(app_handle: AppHandle, data: ReceiptData) -> Result<b
     // 8. Footer & Slogan
     raw.extend_from_slice(&[ESC, 0x61, 1]); // Center
     raw.push(LF);
-    raw.extend_from_slice(b"STIHL 100 YEARS: 1926-2026\n");
+    raw.extend_from_slice(b"TOUJOURS CLIENTS SATISFAITS\n");
     raw.extend_from_slice(b"MERCI DE VOTRE VISITE!\n");
     raw.extend_from_slice(b"Propulse par Djati ERP\n");
 
