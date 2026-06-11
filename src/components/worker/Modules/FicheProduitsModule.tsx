@@ -23,12 +23,14 @@ import {
   UtensilsCrossed,
   X,
   Trash2,
+  Minus,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { getDataClient } from '@/lib/dataClient';
 import { RecipeBuilder, RecipeIngredient } from '@/components/recipe/RecipeBuilder';
+import { ImageUpload } from '@/components/shared/ImageUpload';
 
 interface FicheProduitsModuleProps {
   storeId: string;
@@ -71,6 +73,26 @@ const defaultPackForm: PackForm = {
   selected_items: [],
 };
 
+export interface PlateFormState {
+  id: string;
+  _ui_pendingId: string;
+  name: string;
+  image_url: string;
+  selling_price_detail: number;
+  recipeItems: RecipeIngredient[];
+  recipeCost: number;
+}
+
+const getInitialPlateFormState = (): PlateFormState => ({
+  id: crypto.randomUUID(),
+  _ui_pendingId: crypto.randomUUID(),
+  name: '',
+  image_url: '',
+  selling_price_detail: 0,
+  recipeItems: [],
+  recipeCost: 0
+});
+
 export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
   const { t, i18n } = useTranslation();
   const [allItems, setAllItems] = useState<MenuItem[]>([]);
@@ -78,16 +100,15 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
   const [savingPack, setSavingPack] = useState(false);
 
   // ── State for Adding Plates ───────────────────────────────────────────────
-  const pendingPlateId = useRef<string>('');
   const [plateDialogOpen, setPlateDialogOpen] = useState(false);
   const [savingPlate, setSavingPlate] = useState(false);
-  const [plateForm, setPlateForm] = useState({
-    name: '',
-    image_url: '',
-    selling_price_detail: 0
-  });
-  const [recipeItems, setRecipeItems] = useState<RecipeIngredient[]>([]);
-  const [recipeCost, setRecipeCost] = useState(0);
+  const [registrationMode, setRegistrationMode] = useState<'single' | 'multi'>('single');
+  const [selectedMultiPlateIndex, setSelectedMultiPlateIndex] = useState(0);
+  const [activeTab, setActiveTab] = useState<'informations' | 'prix' | 'composition'>('informations');
+  
+  const [singlePlateForm, setSinglePlateForm] = useState<PlateFormState>(getInitialPlateFormState());
+  const [multiPlates, setMultiPlates] = useState<PlateFormState[]>([getInitialPlateFormState()]);
+
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -159,46 +180,86 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
   };
 
   const handleOpenAddPlate = () => {
-    pendingPlateId.current = crypto.randomUUID();
-    setPlateForm({ name: '', image_url: '', selling_price_detail: 0 });
-    setRecipeItems([]);
-    setRecipeCost(0);
+    setSinglePlateForm(getInitialPlateFormState());
+    setMultiPlates([getInitialPlateFormState()]);
+    setRegistrationMode('single');
+    setSelectedMultiPlateIndex(0);
+    setActiveTab('informations');
     setPlateDialogOpen(true);
   };
 
+  const addMultiPlateRow = () => {
+    setMultiPlates(prev => {
+        setTimeout(() => setSelectedMultiPlateIndex(prev.length), 0);
+        return [...prev, getInitialPlateFormState()];
+    });
+  };
+
+  const removeMultiPlateRow = (id: string) => {
+    setMultiPlates(prev => {
+        const newItems = prev.filter(item => item.id !== id);
+        setTimeout(() => {
+            setSelectedMultiPlateIndex(curr => Math.min(curr, Math.max(0, newItems.length - 1)));
+        }, 0);
+        return newItems;
+    });
+  };
+
+  const updateActivePlate = (updates: Partial<PlateFormState>) => {
+    if (registrationMode === 'single') {
+        setSinglePlateForm(prev => ({ ...prev, ...updates }));
+    } else {
+        setMultiPlates(prev => {
+            const next = [...prev];
+            if (next[selectedMultiPlateIndex]) {
+                next[selectedMultiPlateIndex] = { ...next[selectedMultiPlateIndex], ...updates };
+            }
+            return next;
+        });
+    }
+  };
+
   const handleSavePlate = async () => {
-    if (!plateForm.name.trim() || plateForm.selling_price_detail <= 0) {
-      toast({ title: 'Le nom et le prix sont obligatoires', variant: 'destructive' });
+    const itemsToSave = (registrationMode === 'single' ? [singlePlateForm] : multiPlates).filter(item => {
+        return item.name.trim() !== '' && item.selling_price_detail > 0;
+    });
+
+    if (itemsToSave.length === 0) {
+      toast({ title: 'Remplissez au moins un plat avec un nom et un prix valide', variant: 'destructive' });
       return;
     }
 
     setSavingPlate(true);
     try {
-      const data = {
-        name: plateForm.name,
-        selling_price_detail: Number(plateForm.selling_price_detail),
-        image_url: plateForm.image_url,
-        item_type: 'dish',
-        unit_type: 'Pièce',
-        packaging: '1',
-        is_available: true,
-        store_id: storeId,
-      };
+      for (const item of itemsToSave) {
+          const data = {
+            name: item.name,
+            selling_price_detail: Number(item.selling_price_detail),
+            image_url: item.image_url,
+            item_type: 'dish',
+            unit_type: 'Pièce',
+            packaging: '1',
+            is_available: true,
+            store_id: storeId,
+          };
 
-      const result = await OfflineInventoryService.createItem({ ...data, id: pendingPlateId.current });
-      if (result.error) throw result.error;
+          const result = await OfflineInventoryService.createItem({ ...data, id: item.id });
+          if (result.error) throw result.error;
 
-      // Save composition
-      await OfflineAuthService.localBridgeRequest('/rest/v1/recipes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          dish_id: pendingPlateId.current,
-          items: recipeItems,
-        }),
-      });
+          // Save composition
+          if (item.recipeItems && item.recipeItems.length > 0) {
+              await OfflineAuthService.localBridgeRequest('/rest/v1/recipes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  dish_id: item.id,
+                  items: item.recipeItems,
+                }),
+              });
+          }
+      }
 
-      toast({ title: `🍽️ Plat "${plateForm.name}" créé avec succès` });
+      toast({ title: registrationMode === 'single' ? `🍽️ Plat "${itemsToSave[0].name}" créé avec succès` : `🍽️ ${itemsToSave.length} plats créés avec succès` });
       setPlateDialogOpen(false);
       loadItems(true);
     } catch (err: any) {
@@ -207,6 +268,7 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
       setSavingPlate(false);
     }
   };
+
 
   const handleCreatePack = async () => {
     if (!packForm.name.trim()) {
@@ -504,13 +566,14 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
               />
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">URL Image (optionnel)</Label>
-              <Input
-                value={packForm.image_url}
-                onChange={e => setPackForm(f => ({ ...f, image_url: e.target.value }))}
-                placeholder="https://..."
-                className="h-9 text-xs"
+            <div className="space-y-1.5 flex flex-col">
+              <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Image (optionnel)</Label>
+              <ImageUpload
+                currentImageUrl={packForm.image_url}
+                onImageUploaded={(url) => setPackForm(f => ({ ...f, image_url: url }))}
+                onImageRemoved={() => setPackForm(f => ({ ...f, image_url: '' }))}
+                folder="inventory"
+                className="w-full"
               />
             </div>
 
@@ -596,100 +659,211 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
 
       {/* ── Add Plate Dialog ──────────────────────────────────────────────── */}
       <Dialog open={plateDialogOpen} onOpenChange={setPlateDialogOpen}>
-        <DialogContent className="max-w-4xl w-[90vw] h-[85vh] p-0 flex flex-col gap-0 overflow-hidden shadow-2xl rounded-xl border border-gray-200 bg-white [&>button]:hidden">
-          <div className="flex flex-col h-full bg-slate-50/50">
+        <DialogContent className="max-w-5xl w-[95vw] h-[85vh] p-0 flex flex-col gap-0 overflow-hidden shadow-2xl rounded-xl border border-gray-200 bg-white [&>button]:hidden">
+          <div className="flex flex-col h-full bg-slate-50/50 djati-modal-wrapper">
+            <style>{`
+              .djati-modal-wrapper {
+                --teal: #00b09b;
+                --teal-h: #009688;
+                --teal-light: #e6f7f5;
+                --teal-border: #53dbc5;
+                --txt: #111827;
+                --txt-2: #6b7280;
+                --txt-m: #9ca3af;
+                --border: #e5e7eb;
+                --surface: #ffffff;
+                --surface-l: #f9fafb;
+                font-family: 'Inter', sans-serif;
+                color: var(--txt);
+              }
+              .djati-tab-bar {
+                display: flex; gap: 2px; padding: 10px 24px;
+                border-bottom: 1px solid var(--border);
+                flex-shrink: 0; background: #fff; justify-content: center;
+              }
+              .djati-tab-btn {
+                display: inline-flex; align-items: center; gap: 6px;
+                padding: 6px 14px; border-radius: 9999px;
+                font-size: 13px; font-weight: 500; border: none; cursor: pointer;
+                background: transparent; color: var(--txt-2); transition: all .15s;
+              }
+              .djati-tab-btn:hover { background: var(--teal-light); color: var(--teal); }
+              .djati-tab-btn.active { background: var(--teal); color: #fff; }
+              .djati-toggle {
+                width: 44px; height: 24px; background: #d1d5db; border-radius: 9999px;
+                position: relative; cursor: pointer; transition: background .2s; flex-shrink: 0;
+              }
+              .djati-toggle.on { background: var(--teal); }
+              .djati-toggle::after {
+                content: ''; width: 18px; height: 18px; background: #fff; border-radius: 9999px;
+                position: absolute; top: 3px; left: 3px; transition: transform .2s;
+                box-shadow: 0 1px 3px rgba(0,0,0,.2);
+              }
+              .djati-toggle.on::after { transform: translateX(20px); }
+            `}</style>
+
             <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200 bg-white flex justify-between items-center shadow-sm z-10 relative">
-              <h2 className="text-xl font-black text-foreground">Nouvel Article (Plat)</h2>
-              <div className="absolute top-4 right-4 flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-full hover:bg-red-500/10 hover:text-red-600 text-muted-foreground transition-colors"
-                  onClick={() => setPlateDialogOpen(false)}
-                >
+              <div className="flex items-center gap-4">
+                <h2 className="text-xl font-black text-foreground">
+                  {registrationMode === 'multi' ? 'AJOUT MULTIPLE' : 'Nouvel Article (Plat)'}
+                </h2>
+                <div className="flex flex-col ml-4">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Mode Multiple</span>
+                  <div 
+                    className={cn("djati-toggle", registrationMode === 'multi' && "on")}
+                    onClick={() => {
+                      const val = registrationMode === 'single';
+                      setRegistrationMode(val ? 'multi' : 'single');
+                      if (val && multiPlates.length === 0) addMultiPlateRow();
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-red-500/10 hover:text-red-600 text-muted-foreground transition-colors" onClick={() => setPlateDialogOpen(false)}>
                   <X className="h-5 w-5" />
                 </Button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Plate Info */}
-                <div className="space-y-4">
-                  <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground mb-4">Informations & Prix</h3>
-                  
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Nom du Plat <span className="text-red-500">*</span></Label>
-                    <Input
-                      value={plateForm.name}
-                      onChange={e => setPlateForm({ ...plateForm, name: e.target.value })}
-                      placeholder="Ex: Burger Maison"
-                      className="h-10 border-gray-300 font-medium"
-                    />
-                  </div>
+            <div className="djati-tab-bar">
+              <button type="button" className={cn("djati-tab-btn", activeTab === 'informations' && "active")} onClick={() => setActiveTab('informations')}>
+                Informations
+              </button>
+              <button type="button" className={cn("djati-tab-btn", activeTab === 'prix' && "active")} onClick={() => setActiveTab('prix')}>
+                Prix
+              </button>
+              <button type="button" className={cn("djati-tab-btn", activeTab === 'composition' && "active")} onClick={() => setActiveTab('composition')}>
+                Composition
+              </button>
+            </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">URL de l'image (Optionnel)</Label>
-                    <Input
-                      value={plateForm.image_url}
-                      onChange={e => setPlateForm({ ...plateForm, image_url: e.target.value })}
-                      placeholder="https://..."
-                      className="h-10 border-gray-300 font-medium"
-                    />
-                  </div>
-
-                  <div className="space-y-2 pt-4">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-primary">Prix de Vente <span className="text-red-500">*</span></Label>
-                    <div className="relative">
-                      <Input
-                        type="number"
-                        value={plateForm.selling_price_detail || ''}
-                        onChange={e => setPlateForm({ ...plateForm, selling_price_detail: Number(e.target.value) })}
-                        className="h-14 border-gray-300 font-black text-2xl pl-4 pr-12 text-primary bg-primary/5"
-                        placeholder="0"
-                      />
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground">F</span>
+            <div className={cn("flex-1 overflow-hidden flex flex-row", registrationMode === 'multi' ? "p-0" : "p-6")}>
+              {registrationMode === 'multi' && (
+                <div className="w-[280px] flex-shrink-0 border-r bg-muted/5 overflow-y-auto p-4 space-y-3">
+                  {multiPlates.map((item, index) => (
+                    <div 
+                      key={item.id} 
+                      className={cn(
+                        "p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between shadow-sm",
+                        index === selectedMultiPlateIndex 
+                          ? "border-primary bg-primary/5" 
+                          : "border-transparent bg-white hover:border-primary/30"
+                      )}
+                      onClick={() => setSelectedMultiPlateIndex(index)}
+                    >
+                      <div className="flex flex-col flex-1 min-w-0 mr-2">
+                        <span className="font-bold text-sm truncate text-foreground">
+                          {item.name || `Nouveau Plat #${index + 1}`}
+                        </span>
+                        <span className="text-xs font-mono text-primary font-black mt-1">
+                          {item.selling_price_detail > 0 ? `${item.selling_price_detail.toLocaleString()} F` : 'Prix non défini'}
+                        </span>
+                      </div>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0" 
+                        onClick={(e) => { e.stopPropagation(); removeMultiPlateRow(item.id); }}
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
                     </div>
-                  </div>
-
-                  <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 mt-6">
-                    <div className="text-xs font-bold uppercase tracking-wider text-primary mb-1">Coût de revient estimé</div>
-                    <div className="text-2xl font-black text-primary font-mono">{recipeCost.toLocaleString()} F CFA</div>
-                    <div className="text-[10px] text-muted-foreground mt-1">Calculé automatiquement depuis la composition</div>
-                  </div>
+                  ))}
+                  <Button 
+                    variant="outline" 
+                    type="button" 
+                    className="w-full mt-2 border-dashed border-2 border-primary/30 text-primary hover:bg-primary/5 font-semibold" 
+                    onClick={addMultiPlateRow}
+                  >
+                    <Plus className="h-4 w-4 mr-2" /> Ajouter un plat
+                  </Button>
                 </div>
+              )}
 
-                {/* Composition */}
-                <div className="space-y-4 h-full flex flex-col">
-                  <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground mb-4">Composition (Recette)</h3>
-                  <div className="flex-1 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                    <RecipeBuilder
-                      dishId={pendingPlateId.current}
-                      storeId={storeId}
-                      sellingPrice={plateForm.selling_price_detail}
-                      onChange={setRecipeItems}
-                      onCostChange={setRecipeCost}
-                    />
-                  </div>
-                </div>
+              <div className="flex-1 overflow-y-auto p-6 bg-white min-w-0">
+                {(() => {
+                  const activeData = registrationMode === 'single' ? singlePlateForm : multiPlates[selectedMultiPlateIndex];
+                  if (!activeData) {
+                    return (
+                      <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                        <UtensilsCrossed className="h-12 w-12 mb-4 opacity-20" />
+                        <p>Aucun plat sélectionné</p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="max-w-2xl mx-auto w-full h-full flex flex-col">
+                      <div className={cn("space-y-4", activeTab === 'informations' ? "block" : "hidden")}>
+                        <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground mb-4">Informations</h3>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Nom du Plat <span className="text-red-500">*</span></Label>
+                          <Input
+                            value={activeData.name}
+                            onChange={e => updateActivePlate({ name: e.target.value })}
+                            placeholder="Ex: Burger Maison"
+                            className="h-10 border-gray-300 font-medium"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Image (Optionnel)</Label>
+                          <ImageUpload
+                            currentImageUrl={activeData.image_url}
+                            onImageUploaded={(url) => updateActivePlate({ image_url: url })}
+                            onImageRemoved={() => updateActivePlate({ image_url: '' })}
+                            folder="inventory"
+                          />
+                        </div>
+                      </div>
+
+                      <div className={cn("space-y-4", activeTab === 'prix' ? "block" : "hidden")}>
+                        <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground mb-4">Prix & Marges</h3>
+                        <div className="space-y-2 pt-2">
+                          <Label className="text-xs font-bold uppercase tracking-wider text-primary">Prix de Vente <span className="text-red-500">*</span></Label>
+                          <div className="relative">
+                            <Input
+                              type="number"
+                              value={activeData.selling_price_detail || ''}
+                              onChange={e => updateActivePlate({ selling_price_detail: Number(e.target.value) })}
+                              className="h-14 border-gray-300 font-black text-2xl pl-4 pr-12 text-primary bg-primary/5"
+                              placeholder="0"
+                            />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground">F</span>
+                          </div>
+                        </div>
+                        <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 mt-6">
+                          <div className="text-xs font-bold uppercase tracking-wider text-primary mb-1">Coût de revient estimé</div>
+                          <div className="text-2xl font-black text-primary font-mono">{activeData.recipeCost.toLocaleString()} F CFA</div>
+                          <div className="text-[10px] text-muted-foreground mt-1">Calculé automatiquement depuis la composition</div>
+                        </div>
+                      </div>
+
+                      <div className={cn("flex-1 flex-col h-full min-h-[400px]", activeTab === 'composition' ? "flex" : "hidden")}>
+                        <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground mb-4">Composition (Recette)</h3>
+                        <div className="flex-1 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm flex flex-col">
+                          <RecipeBuilder
+                            dishId={activeData._ui_pendingId}
+                            storeId={storeId}
+                            sellingPrice={activeData.selling_price_detail}
+                            onChange={(items) => updateActivePlate({ recipeItems: items })}
+                            onCostChange={(cost) => updateActivePlate({ recipeCost: cost })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
             <div className="flex-shrink-0 px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 z-10 relative">
-              <Button
-                variant="outline"
-                className="h-11 px-6 font-bold"
-                onClick={() => setPlateDialogOpen(false)}
-                disabled={savingPlate}
-              >
+              <Button variant="outline" className="h-11 px-6 font-bold" onClick={() => setPlateDialogOpen(false)} disabled={savingPlate}>
                 Annuler
               </Button>
-              <Button
-                onClick={handleSavePlate}
-                disabled={savingPlate || !plateForm.name.trim() || plateForm.selling_price_detail <= 0}
-                className="h-11 px-8 font-black bg-primary hover:bg-primary/90 text-white shadow-lg"
-              >
-                {savingPlate ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : 'Enregistrer le Plat'}
+              <Button onClick={handleSavePlate} disabled={savingPlate} className="h-11 px-8 font-black bg-primary hover:bg-primary/90 text-white shadow-lg">
+                {savingPlate ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : (registrationMode === 'multi' ? `Enregistrer ${multiPlates.length} plats` : 'Enregistrer le Plat')}
               </Button>
             </div>
           </div>
