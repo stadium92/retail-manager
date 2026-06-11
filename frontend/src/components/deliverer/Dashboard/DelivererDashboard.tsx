@@ -256,7 +256,8 @@ export function DelivererDashboard() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="deliveries" className="space-y-6">
+          {/* Keep components mounted to persist state across tabs */}
+          <div className={activeTab === 'deliveries' ? 'space-y-6' : 'hidden'}>
             <div className="grid grid-cols-2 gap-4">
               <Card>
                 <CardContent className="p-4 text-center">
@@ -354,15 +355,15 @@ export function DelivererDashboard() {
                 ))}
               </div>
             )}
-          </TabsContent>
+          </div>
 
-          <TabsContent value="map" className="space-y-6">
+          <div className={activeTab === 'map' ? 'space-y-6' : 'hidden'}>
             <Suspense fallback={<div className="text-center py-12"><p className="text-muted-foreground">{t('deliverer.dashboard.loadingMap')}</p></div>}>
               <DeliveryMap 
                 deliveries={deliveriesForMap}
               />
             </Suspense>
-          </TabsContent>
+          </div>
         </Tabs>
       </div>
 
