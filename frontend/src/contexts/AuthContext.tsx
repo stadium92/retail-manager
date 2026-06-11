@@ -4,12 +4,13 @@ import { AppRole, UserRole } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { DEV_MODE_UUIDS } from '@/utils/devMode';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
-import { getDataClient } from '@/lib/dataClient';
+import { getDataClient, smartFetch } from '@/lib/dataClient';
 import { SyncService } from '@/services/SyncService';
 import { LocalBridgeSyncService } from '@/services/LocalBridgeSyncService';
 import { LocalDatabase } from '@/services/LocalDatabase';
+import { supabase } from '@/lib/supabase';
 import i18n from '@/i18n/config';
-
+ 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -18,6 +19,7 @@ interface AuthContextType {
   rolesLoading: boolean;
   isOffline: boolean;
   isBackendReady: boolean;
+  isBootstrapped: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -37,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [rolesLoading, setRolesLoading] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [isBackendReady, setIsBackendReady] = useState(false);
+  const [isBootstrapped, setIsBootstrapped] = useState<boolean>(true);
   const rolesLoadingStartTimeRef = useRef<number | null>(null);
 
     // 3. Proactive Session Heartbeat: Keep LocalBridge token fresh
@@ -87,8 +90,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const response = await fetch(healthUrl);
         if (response.ok && isMounted) {
-          console.log('âœ… [AuthContext] Backend is READY');
+          const data = await response.json();
+          console.log('✅ [AuthContext] Backend is READY, bootstrapped:', data.isBootstrapped);
           setIsBackendReady(true);
+          setIsBootstrapped(data.isBootstrapped !== false);
           toast({
             title: i18n.t('sync.systemReady'),
             description: i18n.t('sync.systemReadyDesc'),
@@ -297,9 +302,101 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    console.log('ðŸ” AuthContext.signIn called for:', email);
-    // Use OfflineAuthService which handles both online and offline
-    const result = await OfflineAuthService.signIn(email, password);
+    console.log('ðŸ” AuthContext.signIn called for:', email, 'isBootstrapped:', isBootstrapped);
+    
+    let result;
+    if (!isBootstrapped) {
+      console.log('🔌 Running cloud designed account bootstrap flow...');
+      
+      // 1. Check online status
+      if (!navigator.onLine) {
+        toast({
+          title: 'Connection Required',
+          description: 'Internet connection is required to connect to your cloud designed account for the first time.',
+          variant: 'destructive',
+        });
+        return { error: { message: 'Internet connection is required for first-time account activation.' } };
+      }
+
+      try {
+        // 2. Authenticate with Supabase
+        const { data, error: supabaseError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (supabaseError) {
+          toast({
+            title: 'Cloud Sign In Failed',
+            description: supabaseError.message,
+            variant: 'destructive',
+          });
+          return { error: { message: supabaseError.message } };
+        }
+
+        if (!data.user) {
+          return { error: { message: 'Failed to retrieve cloud user details.' } };
+        }
+
+        // 3. Extract user metadata
+        const metadata = data.user.user_metadata || {};
+        const fullName = metadata.full_name || 'Cloud User';
+        const role = metadata.role || 'master';
+        const storeId = metadata.store_id;
+        const storeName = metadata.store_name || 'Cloud Store';
+
+        if (!storeId) {
+          toast({
+            title: 'Configuration Error',
+            description: 'Cloud account is missing required store association (store_id metadata).',
+            variant: 'destructive',
+          });
+          return { error: { message: 'Cloud account is missing required store association (store_id metadata).' } };
+        }
+
+        // 4. Send credentials to local bridge
+        const response = await smartFetch(`${dataClient.localBridgeBaseUrl}/auth/bootstrap-cloud`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: data.user.id,
+            email,
+            password,
+            full_name: fullName,
+            role,
+            store_id: storeId,
+            store_name: storeName,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          let message = 'Failed to bootstrap account locally.';
+          try {
+            const parsedErr = JSON.parse(errorText);
+            message = parsedErr.message || parsedErr.error || message;
+          } catch (e) {}
+          toast({
+            title: 'Local Provisioning Failed',
+            description: message,
+            variant: 'destructive',
+          });
+          return { error: { message } };
+        }
+
+        // 5. Sign in locally now that it has been bootstrapped
+        result = await OfflineAuthService.signIn(email, password);
+        if (!result.error) {
+          setIsBootstrapped(true);
+        }
+      } catch (err: any) {
+        console.error('Error during cloud bootstrap:', err);
+        return { error: { message: err.message || 'An unexpected error occurred during cloud bootstrap.' } };
+      }
+    } else {
+      result = await OfflineAuthService.signIn(email, password);
+    }
+
     console.log('ðŸ” AuthContext.signIn result:', result);
 
     if (result.error) {
@@ -472,6 +569,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     rolesLoading,
     isOffline,
     isBackendReady,
+    isBootstrapped,
     signIn,
     signUp,
     signOut,
