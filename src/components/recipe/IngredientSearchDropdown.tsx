@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, Loader2, X, Check } from 'lucide-react';
+import { Search, Plus, Loader2, X } from 'lucide-react';
 import { Ingredient } from '@/types/ingredients';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { useTranslation } from 'react-i18next';
@@ -21,6 +21,7 @@ export function IngredientSearchDropdown({ storeId, onSelect, excludeIds = [] }:
   const [searchQuery, setSearchQuery] = useState('');
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [loading, setLoading] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Quick create form state
   const [showQuickCreate, setShowQuickCreate] = useState(false);
@@ -33,6 +34,19 @@ export function IngredientSearchDropdown({ storeId, onSelect, excludeIds = [] }:
     current_stock: 0,
   });
   const [creating, setCreating] = useState(false);
+
+  // ── Bug 1 Fix: click-away listener ──────────────────────────────────────────
+  useEffect(() => {
+    const handleMouseDown = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+        setShowQuickCreate(false);
+      }
+    };
+    document.addEventListener('mousedown', handleMouseDown);
+    return () => document.removeEventListener('mousedown', handleMouseDown);
+  }, []);
+  // ────────────────────────────────────────────────────────────────────────────
 
   const fetchIngredients = async () => {
     setLoading(true);
@@ -119,7 +133,8 @@ export function IngredientSearchDropdown({ storeId, onSelect, excludeIds = [] }:
   };
 
   return (
-    <div className="relative w-full">
+    // ── Bug 1 Fix: wrap with containerRef ────────────────────────────────────
+    <div ref={containerRef} className="relative w-full">
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -273,9 +288,15 @@ export function IngredientSearchDropdown({ storeId, onSelect, excludeIds = [] }:
             </form>
           ) : (
             <div className="overflow-y-auto flex-1 max-h-[280px]">
-              {filteredIngredients.length === 0 ? (
+              {/* ── Bug 2 Fix: only show results when query has 1+ chars ── */}
+              {searchQuery.length === 0 ? (
+                <div className="p-5 text-center text-muted-foreground text-xs leading-relaxed">
+                  <Search className="h-6 w-6 mx-auto mb-2 opacity-30" />
+                  Tapez au moins <strong>1 caractère</strong> pour rechercher un ingrédient...
+                </div>
+              ) : filteredIngredients.length === 0 ? (
                 <div className="p-4 text-center text-muted-foreground text-xs">
-                  Aucun ingrédient trouvé.
+                  Aucun ingrédient trouvé pour "<strong>{searchQuery}</strong>".
                 </div>
               ) : (
                 filteredIngredients.map(ing => (
@@ -300,14 +321,12 @@ export function IngredientSearchDropdown({ storeId, onSelect, excludeIds = [] }:
             </div>
           )}
 
+          {/* Always-visible footer */}
           {!showQuickCreate && (
             <div
               className="border-t p-2 bg-muted/10 hover:bg-primary/5 cursor-pointer flex items-center justify-center gap-1.5 text-primary text-xs font-black uppercase tracking-wider"
               onClick={() => {
-                setQuickForm({
-                  ...quickForm,
-                  name: searchQuery,
-                });
+                setQuickForm({ ...quickForm, name: searchQuery });
                 setShowQuickCreate(true);
               }}
             >

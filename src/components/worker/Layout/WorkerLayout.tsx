@@ -35,6 +35,7 @@ import { KitchenDisplay } from '../Modules/KitchenDisplay';
 import { TableManagement } from '../Modules/TableManagement';
 import { SupabaseSyncService } from '@/services/SupabaseSyncService';
 import { CashierReadyOrdersBell } from './CashierReadyOrdersBell';
+import { IngredientsModule } from '../Modules/IngredientsModule';
 
 interface WorkerLayoutProps {
   className?: string;
@@ -132,6 +133,7 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
     'services-clients': t('menu.files.clientServices'),
     'fournisseurs': t('menu.files.suppliers'),
     'familles': t('menu.files.families'),
+    'ingredients': 'Ingrédients',
     'situation-client': t('menu.edition.clientStatus'),
     'suivi-ventes-jour': t('menu.edition.dailySales'),
     'suivi-ventes-produit': t('menu.edition.salesByProduct'),
@@ -256,6 +258,9 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
 
       case 'produits':
         return <FichiersProduitsModule storeId={storeId} />;
+
+      case 'ingredients':
+        return <IngredientsModule storeId={storeId} />;
 
       case 'clients':
         return <FichiersClientsModule storeId={storeId} />;

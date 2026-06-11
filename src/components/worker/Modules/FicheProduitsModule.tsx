@@ -1,325 +1,429 @@
-import { useState, useEffect, useCallback } from 'react';
-import { getDataClient } from '@/lib/dataClient';
-import { OfflineAuthService } from '@/services/OfflineAuthService';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { OfflineInventoryService } from '@/services/OfflineInventoryService';
-import { ProductMaster } from '@/stores/useMasterDataStore';
+import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
   Search,
   Package,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Boxes,
+  UtensilsCrossed,
+  X,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
+import { cn } from '@/lib/utils';
+import { getDataClient } from '@/lib/dataClient';
 
 interface FicheProduitsModuleProps {
   storeId: string;
 }
 
+interface MenuItem {
+  id: string;
+  name: string;
+  price?: number;
+  unit_price?: number;
+  selling_price_detail?: number;
+  image_url?: string;
+  item_type?: string;
+  category_id?: string;
+  quantity?: number;
+  updated_at?: string;
+}
+
+interface Pack {
+  id: string;
+  name: string;
+  price: number;
+  image_url?: string;
+  item_type: 'pack';
+  included_items?: string[];
+}
+
+interface PackForm {
+  name: string;
+  price: string;
+  image_url: string;
+  selected_items: string[];
+}
+
+const defaultPackForm: PackForm = {
+  name: '',
+  price: '',
+  image_url: '',
+  selected_items: [],
+};
+
 export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
   const { t, i18n } = useTranslation();
-  const [products, setProducts] = useState<ProductMaster[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [allItems, setAllItems] = useState<MenuItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
-  const currentProduct = products[currentIndex];
 
-  const formatCurrency = (amount: number) => {
-    return amount.toLocaleString(i18n.language === 'bm' ? 'fr-ML' : i18n.language) + ' F';
-  };
+  // Pack state
+  const [packDialogOpen, setPackDialogOpen] = useState(false);
+  const [packForm, setPackForm] = useState<PackForm>(defaultPackForm);
+  const [savingPack, setSavingPack] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const loadProducts = useCallback(async (notify = false) => {
+  const formatCurrency = (amount: number) =>
+    amount.toLocaleString(i18n.language === 'bm' ? 'fr-ML' : i18n.language) + ' F';
+
+  const loadItems = useCallback(async (silent = false) => {
     if (!storeId) return;
-    if (!notify) setIsLoading(true);
-
+    if (!silent) setLoading(true);
     try {
       const { data, error } = await OfflineInventoryService.getInventory(storeId, { notify: false });
-      
       if (error) throw error;
-      
-      if (data) {
-        // Map InventoryItem to ProductMaster format if needed (they are largely compatible)
-        const mapped = data.map(item => ({
-          id: item.id,
-          name: item.name,
-          sku: item.sku,
-          barcode: item.sku, // using sku as barcode placeholder
-          description: item.description,
-          purchase_price: item.cost || (item as any).cost_price || 0,
-          selling_price_detail: item.price || (item as any).unit_price || 0,
-          selling_price_wholesale: item.wholesale_price_ttc || (item as any).wholesale_price_ttc || 0,
-          selling_price_ht: item.wholesale_price_ht || (item as any).wholesale_price_ht || 0,
-          selling_price_ttc: item.wholesale_price_ttc || (item as any).wholesale_price_ttc || 0,
-          min_stock_alert: item.low_stock_threshold || (item as any).min_quantity || 0,
-          current_stock: item.quantity,
-          unit_type: item.unit_type || 'Pièce',
-          family_id: item.category_id,
-          brand: item.brand || '',
-          packaging: item.packaging || '',
-          aisle: item.aisle || '',
-          expiry_date: item.expiry_date,
-          store_id: item.store_id,
-          image_url: item.image_url,
-          created_at: item.created_at,
-          updated_at: item.updated_at,
-        } as unknown as ProductMaster));
-        
-        setProducts(mapped);
-      }
-    } catch (error) {
-      console.error('Failed to load products for FicheProduit', error);
+      setAllItems((data as unknown as MenuItem[]) || []);
+    } catch (err) {
+      console.error('[FicheProduitsModule] load error:', err);
       toast({ title: t('common.error'), variant: 'destructive' });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   }, [storeId, t]);
 
   useEffect(() => {
-    loadProducts();
-
-    // IMPLEMENT ROBUST SYNC: Listen for global database updates
-    const handleDataUpdate = (e: any) => {
-      if (e.detail?.type === 'inventory' || e.detail?.type === 'sale' || e.detail?.type === 'product') {
-        console.log('FicheProduits: Syncing data from global update event');
-        loadProducts(true);
-      }
+    loadItems();
+    const handler = (e: any) => {
+      if (['inventory', 'product'].includes(e.detail?.type)) loadItems(true);
     };
+    window.addEventListener('localDbDataUpdated' as any, handler);
+    return () => window.removeEventListener('localDbDataUpdated' as any, handler);
+  }, [loadItems]);
 
-    window.addEventListener('localDbDataUpdated' as any, handleDataUpdate);
-    return () => window.removeEventListener('localDbDataUpdated' as any, handleDataUpdate);
-  }, [loadProducts]);
+  // Separate packs from individual menu items
+  const packs = allItems.filter(i => i.item_type === 'pack') as unknown as Pack[];
+  const menuItems = allItems.filter(i => i.item_type !== 'pack');
 
-  const goToNext = () => {
-    if (currentIndex < products.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+  const filteredItems = menuItems.filter(i =>
+    i.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const getItemPrice = (item: MenuItem) =>
+    item.unit_price || item.selling_price_detail || item.price || 0;
+
+  const scrollPacks = (dir: 'left' | 'right') => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: dir === 'right' ? 200 : -200, behavior: 'smooth' });
     }
   };
 
-  const goToPrevious = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
+  const handleCreatePack = async () => {
+    if (!packForm.name.trim()) {
+      toast({ title: 'Le nom du pack est requis', variant: 'destructive' });
+      return;
+    }
+    setSavingPack(true);
+    try {
+      const dc = getDataClient();
+      const headers = await OfflineAuthService.getAuthHeaders();
+      if (!headers) throw new Error('Session requise');
+
+      const payload = {
+        store_id: storeId,
+        name: packForm.name.trim(),
+        unit_price: Number(packForm.price) || 0,
+        image_url: packForm.image_url || null,
+        item_type: 'pack',
+        is_available: true,
+      };
+
+      const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/products`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error('Échec de création du pack');
+
+      toast({ title: `✅ Pack "${packForm.name}" créé !` });
+      setPackDialogOpen(false);
+      setPackForm(defaultPackForm);
+      loadItems(true);
+    } catch (err: any) {
+      toast({ title: err.message || 'Erreur', variant: 'destructive' });
+    } finally {
+      setSavingPack(false);
     }
   };
 
-  const handleSearch = () => {
-    const index = products.findIndex(p => 
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.sku?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    if (index >= 0) {
-      setCurrentIndex(index);
-    } else {
-      toast({ title: t('worker.sales.itemNotFound'), variant: 'destructive' });
-    }
-  };
-
-  const getStockStatus = (quantity: number, threshold: number = 10) => {
-    if (quantity <= 0) return 'rupture';
-    if (quantity <= threshold) return 'low';
-    return 'ok';
-  };
-
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
-        <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
-
-  if (!currentProduct) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center">
-          <Package className="h-12 w-12 mx-auto mb-2 opacity-20" />
-          <div className="text-muted-foreground">{t('common.noData')}</div>
-        </div>
-      </div>
-    );
-  }
-
-  const stockStatus = getStockStatus(currentProduct.current_stock, currentProduct.min_stock_alert);
 
   return (
-    <div className="h-full flex flex-col p-4 bg-[hsl(60,80%,95%)] dark:bg-transparent">
-      {/* Header with navigation */}
-      <div className="flex items-center justify-between mb-4 bg-card/50 p-2 rounded-lg border border-border/50">
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder={t('common.search')}
-              className="w-64 h-9 pl-8"
-            />
-          </div>
-          <Button variant="ghost" size="sm" onClick={handleSearch} className="hover:bg-primary/10">
-            {t('common.search')}
-          </Button>
+    <div className="h-full flex flex-col gap-5 p-4 overflow-y-auto">
+
+      {/* ── Page Header ───────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-black text-foreground flex items-center gap-2">
+            <UtensilsCrossed className="h-5 w-5 text-primary" />
+            Menu
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {menuItems.length} plat{menuItems.length !== 1 ? 's' : ''} · {packs.length} pack{packs.length !== 1 ? 's' : ''}
+          </p>
         </div>
-        
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1">
-            <Button 
-              variant="outline" 
-              size="icon"
-              onClick={goToPrevious}
-              disabled={currentIndex === 0}
-              className="h-8 w-8"
-            >
+        <Button
+          onClick={() => setPackDialogOpen(true)}
+          variant="outline"
+          className="gap-2 border-primary/30 text-primary hover:bg-primary/10 font-bold text-xs"
+        >
+          <Boxes className="h-4 w-4" />
+          Créer un Pack
+        </Button>
+      </div>
+
+      {/* ── PACK SCROLLER ZONE ────────────────────────────────────────────── */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+            <Boxes className="h-3.5 w-3.5" /> Packs &amp; Combos
+          </h3>
+          <div className="flex gap-1">
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => scrollPacks('left')}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <div className="bg-primary/10 px-3 py-1 rounded text-xs font-bold min-w-[80px] text-center">
-              {currentIndex + 1} / {products.length}
-            </div>
-            <Button 
-              variant="outline" 
-              size="icon"
-              onClick={goToNext}
-              disabled={currentIndex >= products.length - 1}
-              className="h-8 w-8"
-            >
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => scrollPacks('right')}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
+
+        {packs.length === 0 ? (
+          <div
+            onClick={() => setPackDialogOpen(true)}
+            className="flex items-center gap-3 p-3 rounded-xl border-2 border-dashed border-border/50 text-muted-foreground cursor-pointer hover:border-primary/30 hover:text-primary hover:bg-primary/5 transition-all"
+          >
+            <Plus className="h-4 w-4 flex-shrink-0" />
+            <span className="text-xs font-bold">Créer votre premier pack combo...</span>
+          </div>
+        ) : (
+          <div
+            ref={scrollRef}
+            className="flex flex-row gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+            style={{ scrollbarWidth: 'thin' }}
+          >
+            {packs.map(pack => (
+              <div
+                key={pack.id}
+                className="flex-shrink-0 w-36 h-44 rounded-xl border border-border/60 bg-card overflow-hidden cursor-pointer hover:scale-105 hover:shadow-lg transition-all duration-200 group"
+              >
+                {/* Image area */}
+                <div className="h-[60%] bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center relative overflow-hidden">
+                  {pack.image_url ? (
+                    <img src={pack.image_url} alt={pack.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-3xl">📦</span>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+                {/* Info area */}
+                <div className="h-[40%] p-2 flex flex-col justify-between">
+                  <span className="font-bold text-xs text-foreground truncate leading-tight">{pack.name}</span>
+                  <span className="text-primary font-black text-sm font-mono">
+                    {formatCurrency(pack.price || 0)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Product Form - ROBUST SYNCED VIEW */}
-      <ScrollArea className="flex-1 rounded-xl border border-border/50 bg-card shadow-sm overflow-hidden">
-        <div className="p-6 space-y-8">
-          {/* Main Info Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
-               <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">{t('inventory.table.name')}</Label>
-                  <div className="text-3xl font-black text-primary tracking-tight">{currentProduct.name}</div>
-               </div>
-               
-               <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                    <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">REF / SKU</Label>
-                    <div className="font-mono text-lg">{currentProduct.sku || '—'}</div>
+      <div className="h-px bg-border/40" />
+
+      {/* ── INDIVIDUAL ITEMS ZONE ─────────────────────────────────────────── */}
+      <div className="space-y-3 flex-1">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2 flex-shrink-0">
+            <UtensilsCrossed className="h-3.5 w-3.5" /> Plats Individuels
+          </h3>
+          <div className="relative flex-1 max-w-xs">
+            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Rechercher..."
+              className="pl-8 h-8 text-xs bg-card border-border/60"
+            />
+          </div>
+        </div>
+
+        {filteredItems.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <Package className="h-10 w-10 opacity-20 mb-2" />
+            <p className="text-sm">{searchQuery ? `Aucun résultat pour "${searchQuery}"` : 'Aucun plat enregistré'}</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            {filteredItems.map(item => {
+              const stock = item.quantity ?? 0;
+              const price = getItemPrice(item);
+              const hasImage = !!item.image_url;
+
+              return (
+                <div
+                  key={item.id}
+                  className="rounded-xl border border-border/60 bg-card overflow-hidden hover:border-primary/30 hover:shadow-md transition-all duration-200 cursor-pointer group"
+                >
+                  {/* Image / placeholder */}
+                  <div className="aspect-video bg-gradient-to-br from-muted/60 to-muted/20 flex items-center justify-center overflow-hidden">
+                    {hasImage ? (
+                      <img src={item.image_url} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    ) : (
+                      <UtensilsCrossed className="h-8 w-8 opacity-20" />
+                    )}
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">{t('inventory.fields.category')}</Label>
-                    <div className="font-semibold text-lg">{currentProduct.family_id || t('common.unknown')}</div>
+                  {/* Info */}
+                  <div className="p-2.5 space-y-1">
+                    <p className="font-bold text-xs text-foreground truncate leading-tight">{item.name}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-primary font-black text-sm font-mono">{formatCurrency(price)}</span>
+                      <Badge
+                        className={cn(
+                          'text-[9px] border-none px-1.5 py-0',
+                          stock <= 0
+                            ? 'bg-red-500/15 text-red-400'
+                            : stock <= 5
+                            ? 'bg-orange-500/15 text-orange-400'
+                            : 'bg-teal-500/15 text-teal-400'
+                        )}
+                      >
+                        {stock <= 0 ? 'Rupture' : `×${stock}`}
+                      </Badge>
+                    </div>
+                    {item.category_id && (
+                      <p className="text-[10px] text-muted-foreground truncate">{item.category_id}</p>
+                    )}
                   </div>
-               </div>
-            </div>
-
-            <div className="bg-primary/5 rounded-2xl p-6 border border-primary/10 flex flex-col justify-center items-center text-center">
-               <Label className="text-[10px] font-bold uppercase text-primary tracking-widest mb-2">{t('menu.program.sellingPrice')}</Label>
-               <div className="text-4xl font-black text-primary">{formatCurrency(currentProduct.selling_price_detail || 0)}</div>
-               {currentProduct.packaging && (
-                 <div className="mt-2 text-xs font-bold text-muted-foreground italic">
-                   {t('inventory.fields.packaging')}: {currentProduct.packaging}
-                 </div>
-               )}
-            </div>
+                </div>
+              );
+            })}
           </div>
-
-          <div className="h-px bg-border/50" />
-
-          {/* Details Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-             <div className="space-y-1">
-                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">{t('menu.program.purchasePrice')}</Label>
-                <div className="text-xl font-bold">{formatCurrency(currentProduct.purchase_price || 0)}</div>
-             </div>
-             <div className="space-y-1">
-                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">{t('inventory.fields.wholesalePrice')}</Label>
-                <div className="text-xl font-bold text-success">{formatCurrency(currentProduct.selling_price_wholesale || 0)}</div>
-             </div>
-             <div className="space-y-1">
-                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">{t('inventory.fields.brand')}</Label>
-                <div className="text-xl font-bold">{currentProduct.brand || '—'}</div>
-             </div>
-             <div className="space-y-1">
-                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">{t('inventory.fields.aisle') || 'Rayon'}</Label>
-                <div className="text-xl font-bold">{currentProduct.aisle || '—'}</div>
-             </div>
-          </div>
-
-          {/* Stock Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-             <div className={cn(
-               "lg:col-span-1 rounded-2xl p-6 border flex flex-col items-center justify-center text-center space-y-2",
-               stockStatus === 'ok' ? "bg-success/5 border-success/20 text-success" :
-               stockStatus === 'low' ? "bg-warning/5 border-warning/20 text-warning" :
-               "bg-danger/5 border-danger/20 text-danger"
-             )}>
-                <Label className="text-[10px] font-bold uppercase tracking-widest">{t('menu.program.currentStock')}</Label>
-                <div className="text-5xl font-black">{currentProduct.current_stock}</div>
-                <div className="text-xs font-bold uppercase">
-                  {stockStatus === 'ok' ? t('inventory.statusIn') : 
-                   stockStatus === 'low' ? t('inventory.statusLow') : t('inventory.outOfStock')}
-                </div>
-             </div>
-
-             <div className="lg:col-span-2 grid grid-cols-2 gap-6 bg-muted/30 p-6 rounded-2xl">
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">{t('menu.program.minimumStock')}</Label>
-                  <div className="text-xl font-bold">{currentProduct.min_stock_alert || 0}</div>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">{t('inventory.fields.unit')}</Label>
-                  <div className="text-xl font-bold">{currentProduct.unit_type || t('inventory.unitTypes.piece')}</div>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">{t('inventory.fields.expiryDate')}</Label>
-                  <div className="text-xl font-bold text-danger">{currentProduct.expiry_date || '—'}</div>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Description</Label>
-                  <div className="text-sm text-muted-foreground leading-relaxed">{currentProduct.description || 'No description available.'}</div>
-                </div>
-             </div>
-          </div>
-        </div>
-      </ScrollArea>
-
-      <div className="mt-4 flex justify-between items-center px-2">
-        <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter italic">
-          {t('common.lastUpdate')}: {currentProduct.updated_at ? new Date(currentProduct.updated_at).toLocaleString() : '—'}
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={loadProducts} className="text-xs">
-            <RefreshCw className="h-3 w-3 mr-2" /> {t('common.refresh')}
-          </Button>
-        </div>
+        )}
       </div>
+
+      {/* ── Create Pack Dialog ────────────────────────────────────────────── */}
+      <Dialog open={packDialogOpen} onOpenChange={setPackDialogOpen}>
+        <DialogContent className="max-w-md bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-base font-black flex items-center gap-2">
+              <Boxes className="h-4 w-4 text-primary" />
+              Créer un Pack / Combo
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Nom du Pack *</Label>
+              <Input
+                value={packForm.name}
+                onChange={e => setPackForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Ex: Pack Burger Combo"
+                className="h-9"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Prix (CFA)</Label>
+              <Input
+                type="number"
+                value={packForm.price}
+                onChange={e => setPackForm(f => ({ ...f, price: e.target.value }))}
+                placeholder="5000"
+                className="h-9 font-mono"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">URL Image (optionnel)</Label>
+              <Input
+                value={packForm.image_url}
+                onChange={e => setPackForm(f => ({ ...f, image_url: e.target.value }))}
+                placeholder="https://..."
+                className="h-9 text-xs"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
+                Plats inclus ({packForm.selected_items.length} sélectionné{packForm.selected_items.length !== 1 ? 's' : ''})
+              </Label>
+              <div className="max-h-36 overflow-y-auto rounded-lg border border-border/50 bg-muted/20">
+                {menuItems.length === 0 ? (
+                  <p className="text-xs text-muted-foreground p-3 text-center">Aucun plat disponible</p>
+                ) : (
+                  menuItems.map(item => {
+                    const selected = packForm.selected_items.includes(item.id);
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => setPackForm(f => ({
+                          ...f,
+                          selected_items: selected
+                            ? f.selected_items.filter(id => id !== item.id)
+                            : [...f.selected_items, item.id],
+                        }))}
+                        className={cn(
+                          'flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-muted/40 border-b last:border-0 transition-colors',
+                          selected && 'bg-primary/5'
+                        )}
+                      >
+                        <div className={cn(
+                          'h-4 w-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors',
+                          selected ? 'bg-primary border-primary' : 'border-border'
+                        )}>
+                          {selected && <X className="h-2.5 w-2.5 text-primary-foreground" />}
+                        </div>
+                        <span className="text-xs font-medium text-foreground truncate">{item.name}</span>
+                        <span className="ml-auto text-xs font-mono text-primary flex-shrink-0">
+                          {formatCurrency(getItemPrice(item))}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPackDialogOpen(false)} className="text-xs">
+              Annuler
+            </Button>
+            <Button
+              onClick={handleCreatePack}
+              disabled={savingPack}
+              className="bg-primary text-primary-foreground font-bold text-xs gap-1.5"
+            >
+              {savingPack && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              Créer le Pack
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
-  );
-}
-
-// Helper icons
-function RefreshCw(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-      <path d="M21 3v5h-5" />
-      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-      <path d="M3 21v-5h5" />
-    </svg>
   );
 }

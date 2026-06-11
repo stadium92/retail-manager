@@ -31,6 +31,7 @@ export type WorkerModule =
   | 'services-clients'
   | 'fournisseurs'
   | 'familles'
+  | 'ingredients'
   | 'situation-client'
   | 'suivi-ventes-jour'
   | 'suivi-ventes-produit'
@@ -121,6 +122,8 @@ export function WorkerMenuBar({ activeModule, onModuleChange, className, subRole
         { labelKey: 'menu.files.clientServices', module: 'services-clients' },
         { labelKey: 'menu.files.suppliers', module: 'fournisseurs' },
         { labelKey: 'menu.files.families', module: 'familles' },
+        { separator: true },
+        { label: '🧂 Ingrédients', module: 'ingredients' },
       ],
     },
     {
