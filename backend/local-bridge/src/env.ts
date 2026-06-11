@@ -13,12 +13,12 @@ const numberFromEnv = (value: string | undefined, fallback: number) => {
 
 const getDefaultDataDir = () => {
     if (process.platform === 'win32') {
-        return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'retail-manager', 'data');
+        return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'retail-manager-stihl', 'data');
     }
     if (process.platform === 'darwin') {
-        return path.join(os.homedir(), 'Library', 'Application Support', 'Retail Manager', 'data');
+        return path.join(os.homedir(), 'Library', 'Application Support', 'Retail Manager Stihl', 'data');
     }
-    return path.join(os.homedir(), '.local', 'share', 'retail-manager', 'data');
+    return path.join(os.homedir(), '.local', 'share', 'retail-manager-stihl', 'data');
 };
 
 export const env = {

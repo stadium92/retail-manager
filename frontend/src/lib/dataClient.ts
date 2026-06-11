@@ -29,12 +29,15 @@ export const smartFetch = async (input: RequestInfo | URL, init?: RequestInit): 
   let urlStr = input.toString();
   
   // Standardize localhost to 127.0.0.1 for local bridge requests
-  if (urlStr.includes('localhost:8787')) {
-    urlStr = urlStr.replace('localhost:8787', '127.0.0.1:8787');
+  const port = localBridgeBaseUrl.split(':').pop() || '8787';
+  const localHostStr = `localhost:${port}`;
+  const localIpStr = `127.0.0.1:${port}`;
+  if (urlStr.includes(localHostStr)) {
+    urlStr = urlStr.replace(localHostStr, localIpStr);
   }
 
   const isLocal = urlStr.startsWith(localBridgeBaseUrl) || 
-                  urlStr.includes('127.0.0.1:8787');
+                  urlStr.includes(localIpStr);
 
   // Hard timeout for requests
   const controller = new AbortController();
