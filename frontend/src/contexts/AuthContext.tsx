@@ -342,8 +342,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const metadata = data.user.user_metadata || {};
         const fullName = metadata.full_name || 'Cloud User';
         const role = metadata.role || 'master';
-        const storeId = metadata.store_id;
-        const storeName = metadata.store_name || 'Cloud Store';
+        
+        let storeId = metadata.store_id;
+        let storeName = metadata.store_name || 'Cloud Store';
+
+        if (!storeId && role === 'master') {
+          // Dynamically generate a store_id for a new master user if not pre-configured
+          storeId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' 
+            ? crypto.randomUUID() 
+            : 'store-' + Math.random().toString(36).substring(2, 15);
+          storeName = 'Niamanan Dubai Store';
+          console.log('[AuthContext] Dynamically generated storeId for master:', storeId);
+        }
 
         if (!storeId) {
           toast({
