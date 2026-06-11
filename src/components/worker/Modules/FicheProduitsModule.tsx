@@ -81,6 +81,13 @@ export interface PlateFormState {
   selling_price_detail: number;
   recipeItems: RecipeIngredient[];
   recipeCost: number;
+  unit_type: string;
+  packaging: string;
+  quantity: number;
+  min_stock_alert: number;
+  prep_time_minutes: number;
+  course_type: string;
+  is_available: boolean;
 }
 
 const getInitialPlateFormState = (): PlateFormState => ({
@@ -90,7 +97,14 @@ const getInitialPlateFormState = (): PlateFormState => ({
   image_url: '',
   selling_price_detail: 0,
   recipeItems: [],
-  recipeCost: 0
+  recipeCost: 0,
+  unit_type: 'Pièce',
+  packaging: '1',
+  quantity: 0,
+  min_stock_alert: 5,
+  prep_time_minutes: 15,
+  course_type: 'Main',
+  is_available: true
 });
 
 export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
@@ -104,7 +118,7 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
   const [savingPlate, setSavingPlate] = useState(false);
   const [registrationMode, setRegistrationMode] = useState<'single' | 'multi'>('single');
   const [selectedMultiPlateIndex, setSelectedMultiPlateIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState<'informations' | 'prix' | 'composition'>('informations');
+  const [activeTab, setActiveTab] = useState<'informations' | 'prix' | 'composition' | 'logistique'>('informations');
   
   const [singlePlateForm, setSinglePlateForm] = useState<PlateFormState>(getInitialPlateFormState());
   const [multiPlates, setMultiPlates] = useState<PlateFormState[]>([getInitialPlateFormState()]);
@@ -115,6 +129,7 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
   // Pack state
   const [packDialogOpen, setPackDialogOpen] = useState(false);
   const [packForm, setPackForm] = useState<PackForm>(defaultPackForm);
+  const [packSearchTerm, setPackSearchTerm] = useState('');
   const [editingPack, setEditingPack] = useState<Pack | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -237,9 +252,13 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
             selling_price_detail: Number(item.selling_price_detail),
             image_url: item.image_url,
             item_type: 'dish',
-            unit_type: 'Pièce',
-            packaging: '1',
-            is_available: true,
+            unit_type: item.unit_type,
+            packaging: item.packaging,
+            quantity: Number(item.quantity) || 0,
+            min_stock_alert: Number(item.min_stock_alert) || 0,
+            prep_time_minutes: Number(item.prep_time_minutes) || 0,
+            course_type: item.course_type,
+            is_available: item.is_available,
             store_id: storeId,
           };
 
@@ -577,15 +596,24 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
               />
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
-                Plats inclus ({packForm.selected_items.length} sélectionné{packForm.selected_items.length !== 1 ? 's' : ''})
+            <div className="space-y-1.5 flex flex-col h-full">
+              <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex justify-between items-center">
+                <span>Plats inclus ({packForm.selected_items.length} sélectionné{packForm.selected_items.length !== 1 ? 's' : ''})</span>
               </Label>
+              <div className="relative mb-2">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Rechercher un plat..."
+                  className="pl-9 h-9 text-xs"
+                  value={packSearchTerm}
+                  onChange={(e) => setPackSearchTerm(e.target.value)}
+                />
+              </div>
               <div className="max-h-36 overflow-y-auto rounded-lg border border-border/50 bg-muted/20">
                 {menuItems.length === 0 ? (
                   <p className="text-xs text-muted-foreground p-3 text-center">Aucun plat disponible</p>
                 ) : (
-                  menuItems.map(item => {
+                  menuItems.filter(item => item.name.toLowerCase().includes(packSearchTerm.toLowerCase())).map(item => {
                     const selected = packForm.selected_items.includes(item.id);
                     return (
                       <div
@@ -733,6 +761,9 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
               <button type="button" className={cn("djati-tab-btn", activeTab === 'prix' && "active")} onClick={() => setActiveTab('prix')}>
                 Prix
               </button>
+              <button type="button" className={cn("djati-tab-btn", activeTab === 'logistique' && "active")} onClick={() => setActiveTab('logistique')}>
+                Logistique
+              </button>
               <button type="button" className={cn("djati-tab-btn", activeTab === 'composition' && "active")} onClick={() => setActiveTab('composition')}>
                 Composition
               </button>
@@ -837,6 +868,65 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
                           <div className="text-xs font-bold uppercase tracking-wider text-primary mb-1">Coût de revient estimé</div>
                           <div className="text-2xl font-black text-primary font-mono">{activeData.recipeCost.toLocaleString()} F CFA</div>
                           <div className="text-[10px] text-muted-foreground mt-1">Calculé automatiquement depuis la composition</div>
+                        </div>
+                      </div>
+
+                      <div className={cn("space-y-4", activeTab === 'logistique' ? "block" : "hidden")}>
+                        <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground mb-4">Logistique</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Unité</Label>
+                            <select 
+                              className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm" 
+                              value={activeData.unit_type} 
+                              onChange={e => updateActivePlate({ unit_type: e.target.value })}
+                            >
+                              <option value="Pièce">Pièce (Assiette)</option>
+                              <option value="Carton">Carton</option>
+                            </select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Type de plat</Label>
+                            <select 
+                              className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm" 
+                              value={activeData.course_type} 
+                              onChange={e => updateActivePlate({ course_type: e.target.value })}
+                            >
+                              <option value="Starter">Entrée</option>
+                              <option value="Main">Plat Principal</option>
+                              <option value="Dessert">Dessert</option>
+                              <option value="Drink">Boisson</option>
+                              <option value="Side">Accompagnement</option>
+                            </select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Préparation (Min)</Label>
+                            <Input 
+                              type="number" 
+                              value={activeData.prep_time_minutes} 
+                              onChange={e => updateActivePlate({ prep_time_minutes: Number(e.target.value) })}
+                              className="h-10"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Stock Actuel (Optionnel)</Label>
+                            <Input 
+                              type="number" 
+                              value={activeData.quantity} 
+                              onChange={e => updateActivePlate({ quantity: Number(e.target.value) })}
+                              className="h-10"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between p-4 border rounded-xl mt-4">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-bold">Disponible à la vente</span>
+                            <span className="text-xs text-muted-foreground">Activer pour la commande</span>
+                          </div>
+                          <div 
+                            className={cn("djati-toggle", activeData.is_available && "on")} 
+                            onClick={() => updateActivePlate({ is_available: !activeData.is_available })}
+                          />
                         </div>
                       </div>
 
