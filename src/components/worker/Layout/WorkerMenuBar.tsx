@@ -118,14 +118,14 @@ export function WorkerMenuBar({ activeModule, onModuleChange, className, subRole
     {
       triggerKey: 'menu.files.trigger',
       items: [
-        { labelKey: 'menu.files.menuModule', module: 'fiche-produits' },
-        { labelKey: 'menu.files.products', module: 'produits' },
+        { label: '🍔 Menu', module: 'fiche-produits' },
+        { label: '📦 Inventaire', module: 'listing-stock' },
+        { label: '🧂 Ingrédients', module: 'ingredients' },
+        { separator: true },
         { labelKey: 'menu.files.clients', module: 'clients' },
         { labelKey: 'menu.files.clientServices', module: 'services-clients' },
         { labelKey: 'menu.files.suppliers', module: 'fournisseurs' },
         { labelKey: 'menu.files.families', module: 'familles' },
-        { separator: true },
-        { label: '🧂 Ingrédients', module: 'ingredients' },
       ],
     },
     {

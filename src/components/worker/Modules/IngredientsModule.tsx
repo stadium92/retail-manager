@@ -321,7 +321,7 @@ export function IngredientsModule({ storeId }: IngredientsModuleProps) {
           <DialogHeader>
             <DialogTitle className="text-base font-black flex items-center gap-2">
               <FlaskConical className="h-4 w-4 text-primary" />
-              {editingId ? "Modifier l'ingrédient" : "Nouvel ingrédient"}
+              {editingId ? "Modifier l'ingrédient" : 'Nouvel ingrédient'}
             </DialogTitle>
           </DialogHeader>
 

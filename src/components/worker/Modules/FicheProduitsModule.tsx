@@ -28,6 +28,7 @@ import { toast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { getDataClient } from '@/lib/dataClient';
+import { RecipeBuilder, RecipeIngredient } from '@/components/recipe/RecipeBuilder';
 
 interface FicheProduitsModuleProps {
   storeId: string;
@@ -74,12 +75,25 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
   const { t, i18n } = useTranslation();
   const [allItems, setAllItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [savingPack, setSavingPack] = useState(false);
+
+  // ── State for Adding Plates ───────────────────────────────────────────────
+  const pendingPlateId = useRef<string>('');
+  const [plateDialogOpen, setPlateDialogOpen] = useState(false);
+  const [savingPlate, setSavingPlate] = useState(false);
+  const [plateForm, setPlateForm] = useState({
+    name: '',
+    image_url: '',
+    selling_price_detail: 0
+  });
+  const [recipeItems, setRecipeItems] = useState<RecipeIngredient[]>([]);
+  const [recipeCost, setRecipeCost] = useState(0);
+
   const [searchQuery, setSearchQuery] = useState('');
 
   // Pack state
   const [packDialogOpen, setPackDialogOpen] = useState(false);
   const [packForm, setPackForm] = useState<PackForm>(defaultPackForm);
-  const [savingPack, setSavingPack] = useState(false);
   const [editingPack, setEditingPack] = useState<Pack | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -141,6 +155,56 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
   const scrollPacks = (dir: 'left' | 'right') => {
     if (scrollRef.current) {
       scrollRef.current.scrollBy({ left: dir === 'right' ? 200 : -200, behavior: 'smooth' });
+    }
+  };
+
+  const handleOpenAddPlate = () => {
+    pendingPlateId.current = crypto.randomUUID();
+    setPlateForm({ name: '', image_url: '', selling_price_detail: 0 });
+    setRecipeItems([]);
+    setRecipeCost(0);
+    setPlateDialogOpen(true);
+  };
+
+  const handleSavePlate = async () => {
+    if (!plateForm.name.trim() || plateForm.selling_price_detail <= 0) {
+      toast({ title: 'Le nom et le prix sont obligatoires', variant: 'destructive' });
+      return;
+    }
+
+    setSavingPlate(true);
+    try {
+      const data = {
+        name: plateForm.name,
+        selling_price_detail: Number(plateForm.selling_price_detail),
+        image_url: plateForm.image_url,
+        item_type: 'dish',
+        unit_type: 'Pièce',
+        packaging: '1',
+        is_available: true,
+        store_id: storeId,
+      };
+
+      const result = await OfflineInventoryService.createItem({ ...data, id: pendingPlateId.current });
+      if (result.error) throw result.error;
+
+      // Save composition
+      await OfflineAuthService.localBridgeRequest('/rest/v1/recipes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dish_id: pendingPlateId.current,
+          items: recipeItems,
+        }),
+      });
+
+      toast({ title: `🍽️ Plat "${plateForm.name}" créé avec succès` });
+      setPlateDialogOpen(false);
+      loadItems(true);
+    } catch (err: any) {
+      toast({ title: err.message || 'Erreur', variant: 'destructive' });
+    } finally {
+      setSavingPlate(false);
     }
   };
 
@@ -328,14 +392,23 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2 flex-shrink-0">
             <UtensilsCrossed className="h-3.5 w-3.5" /> Plats Individuels
           </h3>
-          <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Rechercher..."
-              className="pl-8 h-8 text-xs bg-card border-border/60"
-            />
+          <div className="relative flex-1 max-w-xs flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Rechercher..."
+                className="pl-8 h-8 text-xs bg-card border-border/60"
+              />
+            </div>
+            <Button
+              onClick={handleOpenAddPlate}
+              className="h-8 gap-2 bg-primary text-white font-bold text-xs"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Ajouter un plat
+            </Button>
           </div>
         </div>
 
@@ -401,7 +474,7 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
           setPackForm(defaultPackForm);
         }
       }}>
-        <DialogContent className="max-w-md bg-card border-border">
+        <DialogContent className="max-w-md bg-card border-border [&>button]:hidden">
           <DialogHeader>
             <DialogTitle className="text-base font-black flex items-center gap-2">
               <Boxes className="h-4 w-4 text-primary" />
@@ -520,6 +593,109 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── Add Plate Dialog ──────────────────────────────────────────────── */}
+      <Dialog open={plateDialogOpen} onOpenChange={setPlateDialogOpen}>
+        <DialogContent className="max-w-4xl w-[90vw] h-[85vh] p-0 flex flex-col gap-0 overflow-hidden shadow-2xl rounded-xl border border-gray-200 bg-white [&>button]:hidden">
+          <div className="flex flex-col h-full bg-slate-50/50">
+            <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200 bg-white flex justify-between items-center shadow-sm z-10 relative">
+              <h2 className="text-xl font-black text-foreground">Nouvel Article (Plat)</h2>
+              <div className="absolute top-4 right-4 flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full hover:bg-red-500/10 hover:text-red-600 text-muted-foreground transition-colors"
+                  onClick={() => setPlateDialogOpen(false)}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Plate Info */}
+                <div className="space-y-4">
+                  <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground mb-4">Informations & Prix</h3>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Nom du Plat <span className="text-red-500">*</span></Label>
+                    <Input
+                      value={plateForm.name}
+                      onChange={e => setPlateForm({ ...plateForm, name: e.target.value })}
+                      placeholder="Ex: Burger Maison"
+                      className="h-10 border-gray-300 font-medium"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">URL de l'image (Optionnel)</Label>
+                    <Input
+                      value={plateForm.image_url}
+                      onChange={e => setPlateForm({ ...plateForm, image_url: e.target.value })}
+                      placeholder="https://..."
+                      className="h-10 border-gray-300 font-medium"
+                    />
+                  </div>
+
+                  <div className="space-y-2 pt-4">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-primary">Prix de Vente <span className="text-red-500">*</span></Label>
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        value={plateForm.selling_price_detail || ''}
+                        onChange={e => setPlateForm({ ...plateForm, selling_price_detail: Number(e.target.value) })}
+                        className="h-14 border-gray-300 font-black text-2xl pl-4 pr-12 text-primary bg-primary/5"
+                        placeholder="0"
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground">F</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 mt-6">
+                    <div className="text-xs font-bold uppercase tracking-wider text-primary mb-1">Coût de revient estimé</div>
+                    <div className="text-2xl font-black text-primary font-mono">{recipeCost.toLocaleString()} F CFA</div>
+                    <div className="text-[10px] text-muted-foreground mt-1">Calculé automatiquement depuis la composition</div>
+                  </div>
+                </div>
+
+                {/* Composition */}
+                <div className="space-y-4 h-full flex flex-col">
+                  <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground mb-4">Composition (Recette)</h3>
+                  <div className="flex-1 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                    <RecipeBuilder
+                      dishId={pendingPlateId.current}
+                      storeId={storeId}
+                      sellingPrice={plateForm.selling_price_detail}
+                      onChange={setRecipeItems}
+                      onCostChange={setRecipeCost}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex-shrink-0 px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 z-10 relative">
+              <Button
+                variant="outline"
+                className="h-11 px-6 font-bold"
+                onClick={() => setPlateDialogOpen(false)}
+                disabled={savingPlate}
+              >
+                Annuler
+              </Button>
+              <Button
+                onClick={handleSavePlate}
+                disabled={savingPlate || !plateForm.name.trim() || plateForm.selling_price_detail <= 0}
+                className="h-11 px-8 font-black bg-primary hover:bg-primary/90 text-white shadow-lg"
+              >
+                {savingPlate ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : 'Enregistrer le Plat'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }

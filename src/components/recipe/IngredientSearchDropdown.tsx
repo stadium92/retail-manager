@@ -43,8 +43,8 @@ export function IngredientSearchDropdown({ storeId, onSelect, excludeIds = [] }:
         setShowQuickCreate(false);
       }
     };
-    document.addEventListener('mousedown', handleMouseDown);
-    return () => document.removeEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mousedown', handleMouseDown, true);
+    return () => document.removeEventListener('mousedown', handleMouseDown, true);
   }, []);
   // ────────────────────────────────────────────────────────────────────────────
 
