@@ -14,6 +14,16 @@ const bootstrapSchema = z.object({
   store_name: z.string().optional(),
 });
 
+const bootstrapCloudSchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  password: z.string().min(1),
+  full_name: z.string().min(1),
+  role: z.enum(['master', 'worker', 'deliverer']),
+  store_id: z.string(),
+  store_name: z.string().min(1),
+});
+
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
@@ -141,6 +151,93 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       store_id: storeId,
       store_name: storeLabel,
     });
+  });
+
+  app.post('/auth/bootstrap-cloud', async (request, reply) => {
+    const existing = db.getMasterUser();
+    if (existing) {
+      return reply.status(409).send({
+        error: 'MasterAlreadyExists',
+        message: 'A master user already exists on this device.',
+      });
+    }
+
+    const parsed = bootstrapCloudSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({
+        error: 'ValidationFailed',
+        details: parsed.error.flatten(),
+      });
+    }
+
+    const { id, email, password, full_name, role, store_id, store_name } = parsed.data;
+    const password_hash = bcrypt.hashSync(password, 10);
+    const now = new Date().toISOString();
+
+    // 1. Insert User
+    db.insertUser({
+      id,
+      email,
+      password_hash,
+      full_name,
+      phone: null,
+      created_at: now,
+      updated_at: now,
+      role,
+    });
+
+    // 2. Insert Store (if not already present)
+    if (!db.getStoreById(store_id)) {
+      db.insertStore({
+        id: store_id,
+        name: store_name,
+        owner_id: role === 'master' ? id : null,
+        default_price_tier: 1,
+        created_at: now,
+        updated_at: now,
+      });
+    }
+
+    // 3. Insert Role
+    db.insertRole({
+      id: crypto.randomUUID(),
+      user_id: id,
+      role,
+      store_id,
+      created_at: now,
+    });
+
+    request.log.info('Cloud account bootstrapped locally for %s', email);
+
+    // 4. Audit Log
+    db.insertAuditLog({
+      id: crypto.randomUUID(),
+      timestamp: now,
+      user_id: id,
+      action_type: 'user_bootstrap_cloud',
+      entity_affected: 'auth',
+      entity_id: id,
+      store_id,
+    });
+
+    // 5. Issue Tokens & Create Session
+    const accessToken = issueAccessToken(id, email, role, store_id);
+    const refreshToken = crypto.randomBytes(48).toString('hex');
+    const sessionExpiry = Math.floor(Date.now() / 1000) + REFRESH_TOKEN_TTL_SECONDS;
+
+    db.deleteExpiredSessions(Math.floor(Date.now() / 1000));
+    db.createSession({
+      id: crypto.randomUUID(),
+      user_id: id,
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_at: sessionExpiry,
+      created_at: now,
+    });
+
+    return reply.status(201).send(
+      buildLoginResponse({ id, email, full_name }, role, store_id, accessToken, refreshToken)
+    );
   });
 
   app.post('/auth/login', async (request, reply) => {
