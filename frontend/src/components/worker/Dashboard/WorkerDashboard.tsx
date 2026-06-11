@@ -94,17 +94,18 @@ export function WorkerDashboard() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="sales" className="mt-6">
+          {/* Keep components mounted to persist state across tabs */}
+          <div className={activeTab === 'sales' ? 'mt-6' : 'hidden'}>
             <SalesEntryForm />
-          </TabsContent>
+          </div>
 
-          <TabsContent value="inventory" className="mt-6">
+          <div className={activeTab === 'inventory' ? 'mt-6' : 'hidden'}>
             <InventoryQuickView />
-          </TabsContent>
+          </div>
 
-          <TabsContent value="deliveries" className="mt-6">
+          <div className={activeTab === 'deliveries' ? 'mt-6' : 'hidden'}>
             <DeliveryStatusView />
-          </TabsContent>
+          </div>
         </Tabs>
       </main>
 
