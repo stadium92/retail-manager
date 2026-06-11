@@ -19,6 +19,7 @@ import { CommandeManuelleModule } from '../Modules/CommandeManuelleModule';
 import { ReglementsFournisseursModule } from '../Modules/ReglementsFournisseursModule';
 // Fichiers (Master Data) modules
 import { FichiersProduitsModule } from '../Modules/FichiersProduitsModule';
+import { FicheProduitsModule } from '../Modules/FicheProduitsModule';
 import { FichiersClientsModule } from '../Modules/FichiersClientsModule';
 import { FichiersFournisseursModule } from '../Modules/FichiersFournisseursModule';
 import { FichiersFamillesModule } from '../Modules/FichiersFamillesModule';
@@ -129,6 +130,7 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
     'commande-manuelle': t('menu.purchases.manualOrder'),
     'reglement-fournisseurs': t('menu.purchases.supplierSettlement'),
     'produits': t('menu.files.products'),
+    'fiche-produits': t('menu.files.menuModule'),
     'clients': t('menu.files.clients'),
     'services-clients': t('menu.files.clientServices'),
     'fournisseurs': t('menu.files.suppliers'),
@@ -258,6 +260,9 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
 
       case 'produits':
         return <FichiersProduitsModule storeId={storeId} />;
+
+      case 'fiche-produits':
+        return <FicheProduitsModule storeId={storeId} />;
 
       case 'ingredients':
         return <IngredientsModule storeId={storeId} />;

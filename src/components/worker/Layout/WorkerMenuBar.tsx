@@ -27,6 +27,7 @@ export type WorkerModule =
   | 'commande-manuelle'
   | 'reglement-fournisseurs'
   | 'produits'
+  | 'fiche-produits'
   | 'clients'
   | 'services-clients'
   | 'fournisseurs'
@@ -117,6 +118,7 @@ export function WorkerMenuBar({ activeModule, onModuleChange, className, subRole
     {
       triggerKey: 'menu.files.trigger',
       items: [
+        { labelKey: 'menu.files.menuModule', module: 'fiche-produits' },
         { labelKey: 'menu.files.products', module: 'produits' },
         { labelKey: 'menu.files.clients', module: 'clients' },
         { labelKey: 'menu.files.clientServices', module: 'services-clients' },
