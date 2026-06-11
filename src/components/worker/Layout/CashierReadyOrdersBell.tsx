@@ -176,11 +176,11 @@ export function CashierReadyOrdersBell({ storeId }: CashierReadyOrdersBellProps)
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'sales',
-          filter: `store_id=eq.${storeId}`,
+          table: 'orders',
+          filter: `restaurant_id=eq.${storeId}`,
         },
         (payload) => {
-          const newStatus = payload.new?.order_status;
+          const newStatus = payload.new?.status;
           if (newStatus === 'ready' || newStatus === 'served') {
             // Fetch full list so items are included
             fetchOrders();
@@ -192,11 +192,11 @@ export function CashierReadyOrdersBell({ storeId }: CashierReadyOrdersBellProps)
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'sales',
-          filter: `store_id=eq.${storeId}`,
+          table: 'orders',
+          filter: `restaurant_id=eq.${storeId}`,
         },
         (payload) => {
-          if (payload.new?.order_status === 'ready') {
+          if (payload.new?.status === 'ready') {
             fetchOrders();
           }
         }
