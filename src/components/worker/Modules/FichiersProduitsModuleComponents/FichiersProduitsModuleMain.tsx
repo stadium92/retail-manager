@@ -953,7 +953,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
       </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-[960px] w-full h-[660px] p-0 flex flex-col gap-0 overflow-hidden shadow-2xl rounded-xl border border-gray-200 bg-white">
+        <DialogContent className="max-w-[960px] w-full h-[660px] p-0 flex flex-col gap-0 overflow-hidden shadow-2xl rounded-xl border border-gray-200 bg-white [&>button]:hidden">
           <div className="djati-modal-wrapper flex flex-col h-full w-full">
             <style>{`
               .djati-modal-wrapper {
