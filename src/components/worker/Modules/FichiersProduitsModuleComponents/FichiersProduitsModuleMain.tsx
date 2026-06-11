@@ -351,7 +351,9 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
             const isBox = isBoxUnit(item.unit_type);
             
             let finalPrice = Number(item.selling_price_detail) || 0;
-            let finalCost = Number(item.purchase_price) || 0;
+            let finalCost = (itemType === 'dish' && registrationMode === 'single')
+                ? recipeCost
+                : (Number(item.purchase_price) || 0);
             let finalQty = Number(registrationMode === 'single' ? item.reorder_quantity : item.quantity) || 0;
             
             if (isBox && packSize > 1) {
@@ -362,6 +364,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
 
             const data = {
                 name: item.name,
+                item_type: registrationMode === 'single' ? itemType : 'product',
                 sku: item.sku || undefined,
                 barcode: item.barcode || undefined,
                 description: item.description || undefined,
@@ -480,6 +483,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
       setRecipeItems([]);
     }
 
+    setItemType((p as any).item_type === 'product' ? 'product' : 'dish');
     setActiveTab('informations');
     setIsDialogOpen(true);
   };
@@ -561,7 +565,8 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     return localProducts.filter(p => {
       const mSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase()));
       const mFamily = selectedFamily === 'all' || (p.family_id && p.family_id === selectedFamily);
-      return mSearch && mFamily;
+      const isNotPack = (p as any).item_type !== 'pack';
+      return mSearch && mFamily && isNotPack;
     });
   }, [localProducts, searchQuery, selectedFamily]);
 

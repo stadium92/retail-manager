@@ -111,6 +111,8 @@ export interface LocalInventory {
   allergens?: string[] | string;
   course_type?: string;
   modifiers?: any[] | string;
+  item_type?: 'product' | 'dish' | 'pack' | null;
+  pack_items?: string | string[] | null;
   updated_at: string;
   synced: boolean;
 }

@@ -22,6 +22,7 @@ import {
   Boxes,
   UtensilsCrossed,
   X,
+  Trash2,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
@@ -40,6 +41,7 @@ interface MenuItem {
   selling_price_detail?: number;
   image_url?: string;
   item_type?: string;
+  pack_items?: string[] | string;
   category_id?: string;
   quantity?: number;
   updated_at?: string;
@@ -51,7 +53,7 @@ interface Pack {
   price: number;
   image_url?: string;
   item_type: 'pack';
-  included_items?: string[];
+  pack_items?: string[];
 }
 
 interface PackForm {
@@ -78,6 +80,7 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
   const [packDialogOpen, setPackDialogOpen] = useState(false);
   const [packForm, setPackForm] = useState<PackForm>(defaultPackForm);
   const [savingPack, setSavingPack] = useState(false);
+  const [editingPack, setEditingPack] = useState<Pack | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const formatCurrency = (amount: number) =>
@@ -89,7 +92,24 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
     try {
       const { data, error } = await OfflineInventoryService.getInventory(storeId, { notify: false });
       if (error) throw error;
-      setAllItems((data as unknown as MenuItem[]) || []);
+      
+      const mapped = ((data as unknown as MenuItem[]) || []).map(item => {
+        let parsedPackItems: string[] = [];
+        if (item.pack_items) {
+          try {
+            parsedPackItems = typeof item.pack_items === 'string'
+              ? JSON.parse(item.pack_items)
+              : item.pack_items;
+          } catch (e) {
+            console.error('Failed to parse pack_items:', e);
+          }
+        }
+        return {
+          ...item,
+          pack_items: parsedPackItems
+        };
+      });
+      setAllItems(mapped);
     } catch (err) {
       console.error('[FicheProduitsModule] load error:', err);
       toast({ title: t('common.error'), variant: 'destructive' });
@@ -141,20 +161,58 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
         unit_price: Number(packForm.price) || 0,
         image_url: packForm.image_url || null,
         item_type: 'pack',
+        pack_items: packForm.selected_items,
         is_available: true,
       };
 
-      const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/products`, {
-        method: 'POST',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      let res;
+      if (editingPack) {
+        res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/products/${editingPack.id}`, {
+          method: 'PATCH',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/products`, {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
 
-      if (!res.ok) throw new Error('Échec de création du pack');
+      if (!res.ok) throw new Error('Échec de sauvegarde du pack');
 
-      toast({ title: `✅ Pack "${packForm.name}" créé !` });
+      toast({ title: editingPack ? `✅ Pack "${packForm.name}" mis à jour !` : `✅ Pack "${packForm.name}" créé !` });
       setPackDialogOpen(false);
       setPackForm(defaultPackForm);
+      setEditingPack(null);
+      loadItems(true);
+    } catch (err: any) {
+      toast({ title: err.message || 'Erreur', variant: 'destructive' });
+    } finally {
+      setSavingPack(false);
+    }
+  };
+
+  const handleDeletePack = async (id: string, name: string) => {
+    if (!confirm(`Supprimer le pack "${name}" ? Cette action est irréversible.`)) return;
+    setSavingPack(true);
+    try {
+      const dc = getDataClient();
+      const headers = await OfflineAuthService.getAuthHeaders();
+      if (!headers) throw new Error('Session requise');
+
+      const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/products/${id}`, {
+        method: 'DELETE',
+        headers: { ...headers },
+      });
+
+      if (!res.ok) throw new Error('Échec de suppression du pack');
+
+      toast({ title: `🗑️ Pack "${name}" supprimé` });
+      setPackDialogOpen(false);
+      setPackForm(defaultPackForm);
+      setEditingPack(null);
       loadItems(true);
     } catch (err: any) {
       toast({ title: err.message || 'Erreur', variant: 'destructive' });
@@ -186,7 +244,7 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
           </p>
         </div>
         <Button
-          onClick={() => setPackDialogOpen(true)}
+          onClick={() => { setEditingPack(null); setPackForm(defaultPackForm); setPackDialogOpen(true); }}
           variant="outline"
           className="gap-2 border-primary/30 text-primary hover:bg-primary/10 font-bold text-xs"
         >
@@ -228,6 +286,16 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
             {packs.map(pack => (
               <div
                 key={pack.id}
+                onClick={() => {
+                  setEditingPack(pack);
+                  setPackForm({
+                    name: pack.name,
+                    price: String(pack.price || getItemPrice(pack as any) || 0),
+                    image_url: pack.image_url || '',
+                    selected_items: pack.pack_items || [],
+                  });
+                  setPackDialogOpen(true);
+                }}
                 className="flex-shrink-0 w-36 h-44 rounded-xl border border-border/60 bg-card overflow-hidden cursor-pointer hover:scale-105 hover:shadow-lg transition-all duration-200 group"
               >
                 {/* Image area */}
@@ -243,7 +311,7 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
                 <div className="h-[40%] p-2 flex flex-col justify-between">
                   <span className="font-bold text-xs text-foreground truncate leading-tight">{pack.name}</span>
                   <span className="text-primary font-black text-sm font-mono">
-                    {formatCurrency(pack.price || 0)}
+                    {formatCurrency(pack.price || getItemPrice(pack as any) || 0)}
                   </span>
                 </div>
               </div>
@@ -326,12 +394,18 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
       </div>
 
       {/* ── Create Pack Dialog ────────────────────────────────────────────── */}
-      <Dialog open={packDialogOpen} onOpenChange={setPackDialogOpen}>
+      <Dialog open={packDialogOpen} onOpenChange={(open) => {
+        setPackDialogOpen(open);
+        if (!open) {
+          setEditingPack(null);
+          setPackForm(defaultPackForm);
+        }
+      }}>
         <DialogContent className="max-w-md bg-card border-border">
           <DialogHeader>
             <DialogTitle className="text-base font-black flex items-center gap-2">
               <Boxes className="h-4 w-4 text-primary" />
-              Créer un Pack / Combo
+              {editingPack ? 'Modifier le Pack / Combo' : 'Créer un Pack / Combo'}
             </DialogTitle>
           </DialogHeader>
 
@@ -409,18 +483,40 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPackDialogOpen(false)} className="text-xs">
-              Annuler
-            </Button>
-            <Button
-              onClick={handleCreatePack}
-              disabled={savingPack}
-              className="bg-primary text-primary-foreground font-bold text-xs gap-1.5"
-            >
-              {savingPack && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              Créer le Pack
-            </Button>
+          <DialogFooter className="flex items-center justify-between sm:justify-between w-full gap-2">
+            {editingPack && (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => handleDeletePack(editingPack.id, editingPack.name)}
+                disabled={savingPack}
+                className="text-xs mr-auto gap-1.5"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Supprimer
+              </Button>
+            )}
+            <div className="flex gap-2 ml-auto">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setPackDialogOpen(false);
+                  setEditingPack(null);
+                  setPackForm(defaultPackForm);
+                }}
+                className="text-xs"
+              >
+                Annuler
+              </Button>
+              <Button
+                onClick={handleCreatePack}
+                disabled={savingPack}
+                className="bg-primary text-primary-foreground font-bold text-xs gap-1.5"
+              >
+                {savingPack && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                {editingPack ? 'Modifier le Pack' : 'Créer le Pack'}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
