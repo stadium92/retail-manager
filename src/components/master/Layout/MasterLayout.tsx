@@ -105,7 +105,12 @@ export function MasterLayout() {
       icon: StoreIcon,
     },
     {
-      title: t('sidebar.inventory'),
+      title: 'Menu',
+      url: '/master/files',
+      icon: ScrollText,
+    },
+    {
+      title: 'Inventaire',
       url: '/master/inventory',
       icon: Package,
     },
