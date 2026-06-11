@@ -7,9 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Package, Search, Plus, Trash2, Edit3, AlertTriangle, Calendar, 
-  TrendingUp, RefreshCw, Download, FileSpreadsheet, ArrowLeftRight
+import {
+  Package, Search, Plus, Trash2, Edit3, AlertTriangle, History,
+  TrendingUp, RefreshCw, FileSpreadsheet, ArrowLeftRight, FlameKindling
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useMasterDashboardStore } from '@/stores/useMasterDashboardStore';
@@ -18,6 +18,27 @@ import { Ingredient, StockDashboard } from '@/types/ingredients';
 import { PortionsGauge } from '@/components/stock/PortionsGauge';
 import { PerishableAlertCard } from '@/components/stock/PerishableAlertCard';
 import { toast } from 'sonner';
+
+// ─── Movement type helpers ────────────────────────────────────────────────────
+interface IngredientMovement {
+  id: string;
+  ingredient_id: string;
+  movement_type: 'deduction' | 'restock' | 'waste' | 'adjustment';
+  quantity_delta: number;
+  related_dish_id?: string | null;
+  order_id?: string | null;
+  dish_name?: string | null;
+  note?: string | null;
+  created_at: string;
+}
+
+const movementTypeLabel: Record<IngredientMovement['movement_type'], { label: string; color: string }> = {
+  deduction: { label: 'Déduction vente', color: 'bg-blue-500' },
+  restock:   { label: 'Réappro.',         color: 'bg-emerald-500' },
+  waste:     { label: 'Déchet',           color: 'bg-red-500' },
+  adjustment:{ label: 'Ajustement',       color: 'bg-amber-500' },
+};
+// ─────────────────────────────────────────────────────────────────────────────
 
 export function IngredientsPage() {
   const { t } = useTranslation();
@@ -57,9 +78,17 @@ export function IngredientsPage() {
   const [restockNote, setRestockNote] = useState('');
   const [restocking, setRestocking] = useState(false);
 
-  // Movements Modal
+  // Waste Modal
+  const [isWasteOpen, setIsWasteOpen] = useState(false);
+  const [wasteTarget, setWasteTarget] = useState<Ingredient | null>(null);
+  const [wasteQty, setWasteQty] = useState(0);
+  const [wasteNote, setWasteNote] = useState('');
+  const [loggingWaste, setLoggingWaste] = useState(false);
+
+  // Movements History Modal
   const [isMovementsOpen, setIsMovementsOpen] = useState(false);
-  const [movements, setMovements] = useState<any[]>([]);
+  const [movementsTarget, setMovementsTarget] = useState<Ingredient | null>(null);
+  const [movements, setMovements] = useState<IngredientMovement[]>([]);
   const [loadingMovements, setLoadingMovements] = useState(false);
 
   const fetchDashboard = async () => {
@@ -70,9 +99,7 @@ export function IngredientsPage() {
         `/rest/v1/stock/dashboard?store_id=${storeId}`,
         { method: 'GET' }
       );
-      if (res) {
-        setDashboardData(res);
-      }
+      if (res) setDashboardData(res);
     } catch (err) {
       console.error('Failed to load dashboard:', err);
       toast.error('Erreur de chargement du tableau de bord');
@@ -134,7 +161,6 @@ export function IngredientsPage() {
 
     setSaving(true);
     try {
-      let result;
       const payload = {
         ...formState,
         store_id: storeId,
@@ -142,31 +168,20 @@ export function IngredientsPage() {
       };
 
       if (editingIngredient) {
-        result = await OfflineAuthService.localBridgeRequest<Ingredient>(
+        await OfflineAuthService.localBridgeRequest<Ingredient>(
           `/rest/v1/ingredients/${editingIngredient.id}`,
-          {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          }
+          { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
         );
         toast.success('Ingrédient mis à jour avec succès');
       } else {
-        result = await OfflineAuthService.localBridgeRequest<Ingredient>(
+        await OfflineAuthService.localBridgeRequest<Ingredient>(
           '/rest/v1/ingredients',
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          }
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
         );
         toast.success('Ingrédient créé avec succès');
       }
-
-      if (result) {
-        setIsFormOpen(false);
-        fetchDashboard();
-      }
+      setIsFormOpen(false);
+      fetchDashboard();
     } catch (err) {
       console.error('Save ingredient error:', err);
       toast.error('Une erreur est survenue lors de l\'enregistrement');
@@ -177,15 +192,9 @@ export function IngredientsPage() {
 
   // Delete ingredient
   const handleDeleteIngredient = async (id: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cet ingrédient ? Cela supprimera également ses liaisons de recette.')) {
-      return;
-    }
-
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cet ingrédient ? Cela supprimera également ses liaisons de recette.')) return;
     try {
-      await OfflineAuthService.localBridgeRequest(
-        `/rest/v1/ingredients/${id}`,
-        { method: 'DELETE' }
-      );
+      await OfflineAuthService.localBridgeRequest(`/rest/v1/ingredients/${id}`, { method: 'DELETE' });
       toast.success('Ingrédient supprimé');
       fetchDashboard();
     } catch (err) {
@@ -206,19 +215,11 @@ export function IngredientsPage() {
   const handleRestockSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!restockTarget || restockQty <= 0) return;
-
     setRestocking(true);
     try {
       await OfflineAuthService.localBridgeRequest(
         `/rest/v1/ingredients/${restockTarget.id}/restock`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            quantity: restockQty,
-            note: restockNote || undefined,
-          }),
-        }
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quantity: restockQty, note: restockNote || undefined }) }
       );
       toast.success('Réapprovisionnement enregistré');
       setIsRestockOpen(false);
@@ -231,33 +232,56 @@ export function IngredientsPage() {
     }
   };
 
-  // Fetch movements
-  const fetchMovements = async () => {
-    if (!storeId) return;
-    setLoadingMovements(true);
-    setIsMovementsOpen(true);
+  // Open waste modal
+  const handleOpenWaste = (ing: Ingredient) => {
+    setWasteTarget(ing);
+    setWasteQty(0);
+    setWasteNote('');
+    setIsWasteOpen(true);
+  };
+
+  // Submit Waste
+  const handleWasteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!wasteTarget || wasteQty <= 0) return;
+    setLoggingWaste(true);
     try {
-      const res = await OfflineAuthService.localBridgeRequest<any[]>(
-        `/rest/v1/inventory_movements?store_id=${storeId}`, // wait, let's fetch generic movements or specific?
+      await OfflineAuthService.localBridgeRequest(
+        `/rest/v1/ingredients/${wasteTarget.id}/waste`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quantity: wasteQty, note: wasteNote || undefined }) }
+      );
+      toast.success(`Déchet enregistré : -${wasteQty} ${wasteTarget.unit}`);
+      setIsWasteOpen(false);
+      fetchDashboard();
+    } catch (err) {
+      console.error('Waste log error:', err);
+      toast.error('Erreur lors de l\'enregistrement du déchet');
+    } finally {
+      setLoggingWaste(false);
+    }
+  };
+
+  // Open movements history modal and fetch
+  const handleOpenMovements = async (ing: Ingredient) => {
+    setMovementsTarget(ing);
+    setMovements([]);
+    setIsMovementsOpen(true);
+    setLoadingMovements(true);
+    try {
+      const res = await OfflineAuthService.localBridgeRequest<IngredientMovement[]>(
+        `/rest/v1/ingredients/${ing.id}/movements?limit=100`,
         { method: 'GET' }
       );
-      // Wait, standard inventory_movements table is for products. Let's make an endpoint or raw fetch
-      // For now, let's fetch movements from local-bridge database or filter them.
-      // Since we logged ingredient movements, we can query them or just display generic logs.
-      // Let's create an endpoint in routes for this or fallback.
-      // Actually we have SQLite raw query, let's see. In local-bridge backend we can fetch ingredient_movements.
-      // Let's call /rest/v1/ingredients/movements if registered? No, we didn't register it.
-      // Let's register GET /rest/v1/ingredients/movements in our routes file.
-      // Wait, let's just make a call to `/rest/v1/ingredients` to get movements. We can define a route there.
-      // Let's add GET /rest/v1/ingredients/movements to our router.
+      setMovements(res ?? []);
     } catch (err) {
       console.error('Movements fetch error:', err);
+      toast.error('Impossible de charger l\'historique');
     } finally {
       setLoadingMovements(false);
     }
   };
 
-  // Import CSV Mock / handler
+  // Import CSV placeholder
   const handleCSVImport = () => {
     toast.info('Fonctionnalité d\'importation CSV bientôt disponible');
   };
@@ -265,27 +289,18 @@ export function IngredientsPage() {
   const getStatusBadge = (ing: Ingredient) => {
     const stock = ing.current_stock;
     const threshold = ing.min_threshold;
-    if (stock <= 0) {
-      return <Badge className="bg-red-500 text-white border-none font-bold text-[9px] tracking-wider">RUPTURE</Badge>;
-    }
-    if (stock < threshold) {
-      return <Badge className="bg-amber-500 text-white border-none font-bold text-[9px] tracking-wider">FAIBLE</Badge>;
-    }
+    if (stock <= 0)         return <Badge className="bg-red-500 text-white border-none font-bold text-[9px] tracking-wider">RUPTURE</Badge>;
+    if (stock < threshold)  return <Badge className="bg-amber-500 text-white border-none font-bold text-[9px] tracking-wider">FAIBLE</Badge>;
     return <Badge variant="outline" className="text-gray-500 border-gray-200 font-bold text-[9px] tracking-wider">🟢 OK</Badge>;
   };
 
   const getCategoryBadge = (category: string) => {
     switch (category) {
-      case 'perishable':
-        return <Badge className="bg-orange-500 text-white border-none text-[8px] uppercase tracking-widest font-black">Périssable</Badge>;
-      case 'dry':
-        return <Badge className="bg-blue-500 text-white border-none text-[8px] uppercase tracking-widest font-black">Épicerie</Badge>;
-      case 'liquid':
-        return <Badge className="bg-cyan text-white border-none text-[8px] uppercase tracking-widest font-black">Liquide</Badge>;
-      case 'condiment':
-        return <Badge className="bg-purple-500 text-white border-none text-[8px] uppercase tracking-widest font-black">Condiment</Badge>;
-      default:
-        return <Badge variant="outline">{category}</Badge>;
+      case 'perishable':  return <Badge className="bg-orange-500 text-white border-none text-[8px] uppercase tracking-widest font-black">Périssable</Badge>;
+      case 'dry':         return <Badge className="bg-blue-500 text-white border-none text-[8px] uppercase tracking-widest font-black">Épicerie</Badge>;
+      case 'liquid':      return <Badge className="bg-cyan-500 text-white border-none text-[8px] uppercase tracking-widest font-black">Liquide</Badge>;
+      case 'condiment':   return <Badge className="bg-purple-500 text-white border-none text-[8px] uppercase tracking-widest font-black">Condiment</Badge>;
+      default:            return <Badge variant="outline">{category}</Badge>;
     }
   };
 
@@ -385,8 +400,8 @@ export function IngredientsPage() {
               <div className="flex items-center gap-3 w-full md:w-auto">
                 <div className="relative flex-1 md:w-64">
                   <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    placeholder="Rechercher..." 
+                  <Input
+                    placeholder="Rechercher..."
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     className="pl-9 h-9 border-none bg-muted/30 font-bold uppercase text-[10px] tracking-widest"
@@ -443,12 +458,23 @@ export function IngredientsPage() {
                         <TableCell className="text-center">{getStatusBadge(ing)}</TableCell>
                         <TableCell className="text-center">
                           <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {/* Restock */}
                             <Button variant="outline" size="icon" onClick={() => handleOpenRestock(ing)} className="h-8 w-8 text-teal border-teal/20 hover:bg-teal hover:text-white" title="Réapprovisionner">
                               <ArrowLeftRight className="h-4 w-4" />
                             </Button>
+                            {/* Log Waste */}
+                            <Button variant="outline" size="icon" onClick={() => handleOpenWaste(ing)} className="h-8 w-8 text-red-500 border-red-200 hover:bg-red-500 hover:text-white" title="Déclarer un déchet">
+                              <FlameKindling className="h-4 w-4" />
+                            </Button>
+                            {/* History */}
+                            <Button variant="outline" size="icon" onClick={() => handleOpenMovements(ing)} className="h-8 w-8 text-purple-500 border-purple-200 hover:bg-purple-500 hover:text-white" title="Historique des mouvements">
+                              <History className="h-4 w-4" />
+                            </Button>
+                            {/* Edit */}
                             <Button variant="outline" size="icon" onClick={() => handleOpenForm(ing)} className="h-8 w-8 border-primary/20 hover:bg-primary hover:text-white" title="Modifier">
                               <Edit3 className="h-4 w-4" />
                             </Button>
+                            {/* Delete */}
                             <Button variant="ghost" size="icon" onClick={() => handleDeleteIngredient(ing.id)} className="h-8 w-8 text-red-500 hover:bg-red-500/10" title="Supprimer">
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -491,7 +517,7 @@ export function IngredientsPage() {
         </div>
       </div>
 
-      {/* CREATE/EDIT INGREDIENT DIALOG */}
+      {/* ── CREATE / EDIT INGREDIENT DIALOG ─────────────────────────────────── */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="max-w-[500px] border-4 border-primary/20">
           <DialogHeader>
@@ -505,23 +531,13 @@ export function IngredientsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2 space-y-1.5">
                 <Label className="text-xs font-black uppercase">Nom de l'ingrédient *</Label>
-                <Input
-                  required
-                  value={formState.name}
-                  onChange={e => setFormState({ ...formState, name: e.target.value })}
-                  placeholder="ex: Steak Haché, Sauce Tomate"
-                />
+                <Input required value={formState.name} onChange={e => setFormState({ ...formState, name: e.target.value })} placeholder="ex: Steak Haché, Sauce Tomate" />
               </div>
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-black uppercase">Unité de mesure *</Label>
-                <Select 
-                  value={formState.unit} 
-                  onValueChange={v => setFormState({ ...formState, unit: v as any })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                <Select value={formState.unit} onValueChange={v => setFormState({ ...formState, unit: v as any })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="g">Grammes (g)</SelectItem>
                     <SelectItem value="kg">Kilogrammes (kg)</SelectItem>
@@ -534,13 +550,8 @@ export function IngredientsPage() {
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-black uppercase">Catégorie *</Label>
-                <Select 
-                  value={formState.category} 
-                  onValueChange={v => setFormState({ ...formState, category: v as any })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                <Select value={formState.category} onValueChange={v => setFormState({ ...formState, category: v as any })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="perishable">Périssable</SelectItem>
                     <SelectItem value="dry">Épicerie Sèche</SelectItem>
@@ -552,42 +563,22 @@ export function IngredientsPage() {
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-black uppercase">Stock Initial</Label>
-                <Input
-                  type="number"
-                  step="any"
-                  value={formState.current_stock}
-                  onChange={e => setFormState({ ...formState, current_stock: Number(e.target.value) })}
-                />
+                <Input type="number" step="any" value={formState.current_stock} onChange={e => setFormState({ ...formState, current_stock: Number(e.target.value) })} />
               </div>
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-black uppercase">Seuil d'alerte minimum</Label>
-                <Input
-                  type="number"
-                  step="any"
-                  value={formState.min_threshold}
-                  onChange={e => setFormState({ ...formState, min_threshold: Number(e.target.value) })}
-                />
+                <Input type="number" step="any" value={formState.min_threshold} onChange={e => setFormState({ ...formState, min_threshold: Number(e.target.value) })} />
               </div>
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-black uppercase">Coût unitaire (CFA) *</Label>
-                <Input
-                  type="number"
-                  required
-                  value={formState.cost_per_unit}
-                  onChange={e => setFormState({ ...formState, cost_per_unit: Number(e.target.value) })}
-                  className="font-mono font-bold"
-                />
+                <Input type="number" required value={formState.cost_per_unit} onChange={e => setFormState({ ...formState, cost_per_unit: Number(e.target.value) })} className="font-mono font-bold" />
               </div>
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-black uppercase">Date de Péremption</Label>
-                <Input
-                  type="date"
-                  value={formState.expiry_date}
-                  onChange={e => setFormState({ ...formState, expiry_date: e.target.value })}
-                />
+                <Input type="date" value={formState.expiry_date} onChange={e => setFormState({ ...formState, expiry_date: e.target.value })} />
               </div>
             </div>
 
@@ -601,7 +592,7 @@ export function IngredientsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* RESTOCK DIALOG */}
+      {/* ── RESTOCK DIALOG ────────────────────────────────────────────────────── */}
       <Dialog open={isRestockOpen} onOpenChange={setIsRestockOpen}>
         <DialogContent className="max-w-[400px] border-4 border-teal/20">
           <DialogHeader>
@@ -621,25 +612,16 @@ export function IngredientsPage() {
               <div className="space-y-1.5">
                 <Label className="text-xs font-black uppercase">Quantité à ajouter ({restockTarget.unit}) *</Label>
                 <Input
-                  type="number"
-                  step="any"
-                  required
+                  type="number" step="any" required
                   value={restockQty || ''}
-                  onChange={e => setFormState(prev => {
-                    setRestockQty(Number(e.target.value));
-                    return prev;
-                  })}
+                  onChange={e => setRestockQty(Number(e.target.value))}
                   className="font-mono text-lg font-bold"
                 />
               </div>
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-black uppercase">Note / Commentaire</Label>
-                <Input
-                  placeholder="ex: Livraison fournisseur, ajustement"
-                  value={restockNote}
-                  onChange={e => setRestockNote(e.target.value)}
-                />
+                <Input placeholder="ex: Livraison fournisseur, ajustement" value={restockNote} onChange={e => setRestockNote(e.target.value)} />
               </div>
 
               <DialogFooter className="pt-4 border-t">
@@ -650,6 +632,124 @@ export function IngredientsPage() {
               </DialogFooter>
             </form>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── WASTE DIALOG ──────────────────────────────────────────────────────── */}
+      <Dialog open={isWasteOpen} onOpenChange={setIsWasteOpen}>
+        <DialogContent className="max-w-[400px] border-4 border-red-300/40">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black uppercase tracking-tight text-foreground flex items-center gap-2">
+              <FlameKindling className="h-6 w-6 text-red-500" />
+              Déclarer un Déchet / Perte
+            </DialogTitle>
+          </DialogHeader>
+
+          {wasteTarget && (
+            <form onSubmit={handleWasteSubmit} className="space-y-4 pt-2">
+              <div className="bg-red-50 dark:bg-red-950/20 p-3 rounded-xl border border-red-200/40 flex justify-between items-center text-xs">
+                <span className="font-bold text-foreground">{wasteTarget.name}</span>
+                <span className="font-mono text-muted-foreground font-bold">Stock actuel : {wasteTarget.current_stock} {wasteTarget.unit}</span>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-black uppercase text-red-600">Quantité perdue ({wasteTarget.unit}) *</Label>
+                <Input
+                  type="number" step="any" required
+                  value={wasteQty || ''}
+                  onChange={e => setWasteQty(Number(e.target.value))}
+                  className="font-mono text-lg font-bold border-red-200 focus:ring-red-400"
+                  max={wasteTarget.current_stock}
+                />
+                {wasteQty > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Stock après déclaration : <span className="font-bold text-red-500">{Math.max(0, wasteTarget.current_stock - wasteQty).toFixed(2)} {wasteTarget.unit}</span>
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-black uppercase">Cause / Note</Label>
+                <Input placeholder="ex: Périmé, renversé, erreur de prep..." value={wasteNote} onChange={e => setWasteNote(e.target.value)} />
+              </div>
+
+              <DialogFooter className="pt-4 border-t">
+                <Button type="button" variant="outline" onClick={() => setIsWasteOpen(false)}>Annuler</Button>
+                <Button type="submit" disabled={loggingWaste} className="bg-red-500 text-white font-black uppercase tracking-widest text-[10px]">
+                  {loggingWaste ? 'Enregistrement...' : 'Confirmer le déchet'}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── MOVEMENTS HISTORY DIALOG ─────────────────────────────────────────── */}
+      <Dialog open={isMovementsOpen} onOpenChange={setIsMovementsOpen}>
+        <DialogContent className="max-w-[700px] max-h-[85vh] border-4 border-purple-200/40 flex flex-col">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle className="text-xl font-black uppercase tracking-tight text-foreground flex items-center gap-2">
+              <History className="h-6 w-6 text-purple-500" />
+              Historique — {movementsTarget?.name}
+            </DialogTitle>
+            {movementsTarget && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Stock actuel : <span className="font-bold">{movementsTarget.current_stock} {movementsTarget.unit}</span>
+              </p>
+            )}
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto mt-2">
+            {loadingMovements ? (
+              <div className="flex justify-center items-center py-12 text-muted-foreground text-sm">
+                <RefreshCw className="h-5 w-5 animate-spin mr-2" /> Chargement...
+              </div>
+            ) : movements.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground text-sm">
+                Aucun mouvement enregistré pour cet ingrédient.
+              </div>
+            ) : (
+              <Table>
+                <TableHeader className="sticky top-0 bg-card z-10 border-b">
+                  <TableRow>
+                    <TableHead className="text-[9px] font-black uppercase tracking-widest">Date</TableHead>
+                    <TableHead className="text-[9px] font-black uppercase tracking-widest">Type</TableHead>
+                    <TableHead className="text-right text-[9px] font-black uppercase tracking-widest">Quantité</TableHead>
+                    <TableHead className="text-[9px] font-black uppercase tracking-widest">Plat / Note</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {movements.map(mv => {
+                    const typeInfo = movementTypeLabel[mv.movement_type] ?? { label: mv.movement_type, color: 'bg-gray-400' };
+                    const isNegative = mv.quantity_delta < 0;
+                    return (
+                      <TableRow key={mv.id} className="border-b hover:bg-muted/10">
+                        <TableCell className="text-xs text-muted-foreground font-mono">
+                          {new Date(mv.created_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={`${typeInfo.color} text-white border-none text-[8px] uppercase tracking-widest font-black`}>
+                            {typeInfo.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className={`text-right font-mono font-bold text-sm ${isNegative ? 'text-red-500' : 'text-emerald-500'}`}>
+                          {isNegative ? '' : '+'}{mv.quantity_delta.toFixed(2)} {movementsTarget?.unit}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
+                          {mv.dish_name ? <span className="font-bold text-foreground mr-1">{mv.dish_name}</span> : null}
+                          {mv.note}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+
+          <DialogFooter className="flex-shrink-0 pt-4 border-t">
+            <Button variant="outline" onClick={() => setIsMovementsOpen(false)}>Fermer</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
