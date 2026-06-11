@@ -9,12 +9,13 @@ import { Users, Truck, Briefcase, FileText, WifiOff } from 'lucide-react';
 import { FichiersClientsModule } from '@/components/worker/Modules/FichiersClientsModule';
 import { FichiersFournisseursModule } from '@/components/worker/Modules/FichiersFournisseursModule';
 import { FichiersServicesClientsModule } from '@/components/worker/Modules/FichiersServicesClientsModule';
+import { FicheProduitsModule } from '@/components/worker/Modules/FicheProduitsModule';
 
 export default function FilesPage() {
   const { t } = useTranslation();
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedStore, setSelectedStore] = useState<string>('all');
-  const [activeTab, setActiveTab] = useState('clients');
+  const [activeTab, setActiveTab] = useState('menu');
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   useEffect(() => {
@@ -34,10 +35,6 @@ export default function FilesPage() {
     };
   }, []);
 
-  // Use first store if 'all' is selected, as these modules require a specific store context
-  // Or handle 'all' inside the modules? 
-  // Worker modules usually fetch for specific store. 
-  // Let's force a store selection if 'all' is chosen, or pass the first one.
   const currentStoreId = selectedStore === 'all' ? stores[0]?.id : selectedStore;
 
   return (
@@ -73,10 +70,19 @@ export default function FilesPage() {
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <TabsList>
+                <TabsTrigger value="menu" className="gap-2"><FileText className="h-4 w-4"/> Menu</TabsTrigger>
                 <TabsTrigger value="clients" className="gap-2"><Users className="h-4 w-4"/> {t('menu.files.clients')}</TabsTrigger>
                 <TabsTrigger value="suppliers" className="gap-2"><Truck className="h-4 w-4"/> {t('menu.files.suppliers')}</TabsTrigger>
                 <TabsTrigger value="services" className="gap-2"><Briefcase className="h-4 w-4"/> {t('menu.files.clientServices')}</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="menu" className="h-[600px]">
+                <Card className="h-full">
+                    <CardContent className="p-0 h-full">
+                        <FicheProduitsModule storeId={currentStoreId} />
+                    </CardContent>
+                </Card>
+            </TabsContent>
 
             <TabsContent value="clients">
                 <Card>
