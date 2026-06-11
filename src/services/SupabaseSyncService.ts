@@ -150,6 +150,11 @@ export class SupabaseSyncService {
             };
             break;
 
+          case 'user_create':
+            supabaseTable = 'edge_function_create_user';
+            mappedPayload = payload;
+            break;
+
           default:
             // Skip unknown entities for now by marking them acked
             await smartFetch(`${dataClient.localBridgeBaseUrl}/sync/outbox/status`, {
@@ -172,6 +177,20 @@ export class SupabaseSyncService {
               .update({ deleted_at: new Date().toISOString() })
               .eq('id', entry.entity_id);
             error = delErr;
+          } else if (supabaseTable === 'edge_function_create_user') {
+            // Retrieve caller's access token to authenticate with the edge function
+            const { data: sessionData } = await supabase.auth.getSession();
+            const token = sessionData?.session?.access_token;
+            
+            const { data, error: edgeErr } = await supabase.functions.invoke('create-user', {
+              body: mappedPayload,
+              headers: token ? { Authorization: `Bearer ${token}` } : undefined
+            });
+            error = edgeErr;
+            if (data?.error) {
+               // The edge function returned a 400/500 error gracefully via JSON
+               error = new Error(data.error);
+            }
           } else {
             const { error: upsErr } = await supabase
               .from(supabaseTable)
