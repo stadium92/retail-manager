@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import crypto from 'crypto';
 
-const SUPPORTED_SYNC_ENTITIES = ['product', 'sale', 'sale_item'];
+const SUPPORTED_SYNC_ENTITIES = ['product', 'sale', 'sale_item', 'store'];
 
 export const emitOutbox = (
   db: Database.Database,

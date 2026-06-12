@@ -99,10 +99,11 @@ interface SaleItemRow {
 
 type EntityRow = ProductRow | SaleRow | SaleItemRow;
 
-const TABLE_MAP: Record<EntityType, string> = {
+const TABLE_MAP: Record<EntityType | 'store', string> = {
   product: 'products',
   sale: 'sales',
   sale_item: 'sale_items',
+  store: 'stores',
 };
 
 function mapToSupabase(entityType: EntityType, raw: EntityRow): Record<string, unknown> {
@@ -140,6 +141,20 @@ function mapToSupabase(entityType: EntityType, raw: EntityRow): Record<string, u
       deleted_at: p.deleted_at ?? null,
       created_at: p.created_at ?? now,
       updated_at: p.updated_at ?? now,
+    };
+  }
+
+  if (entityType === 'store' as any) {
+    const s = raw as any;
+    return {
+      id: s.id,
+      name: s.name,
+      address: s.address ?? null,
+      phone: s.phone ?? null,
+      owner_id: s.owner_id ?? null,
+      default_price_tier: s.default_price_tier ?? 1,
+      created_at: s.created_at ?? now,
+      updated_at: s.updated_at ?? now,
     };
   }
 
@@ -320,9 +335,9 @@ export class LocalBridgeSyncService {
     if (entry.operation === 'delete') {
       const { error } = await supabase
         .from(table)
-        .update({ deleted_at: new Date().toISOString() })
+        .delete()
         .eq('id', entry.entity_id);
-      if (error) throw new Error(`Supabase delete update error on "${table}": ${error.message}`);
+      if (error) throw new Error(`Supabase delete error on "${table}": ${error.message}`);
     } else {
       const { error } = await supabase
         .from(table)

@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import { LocalStore } from '../types.js';
+import { emitOutbox } from './sync_helpers.js';
 
 export const createStoresRepo = (db: Database.Database) => ({
   getStoreById(storeId: string): LocalStore | undefined {
@@ -58,6 +59,8 @@ export const createStoresRepo = (db: Database.Database) => ({
       owner_id: store.owner_id ?? null,
       default_price_tier: store.default_price_tier ?? 1,
     });
+    
+    emitOutbox(db, store.id, 'store', store.id, 'create', store as unknown as Record<string, unknown>);
   },
 
   updateStore(
@@ -77,10 +80,14 @@ export const createStoresRepo = (db: Database.Database) => ({
     });
     
     const row = db.prepare('SELECT * FROM stores WHERE id = ? LIMIT 1').get(storeId);
+    if (row) {
+      emitOutbox(db, storeId, 'store', storeId, 'update', row as unknown as Record<string, unknown>);
+    }
     return row as LocalStore | undefined;
   },
 
   deleteStore(storeId: string) {
+    emitOutbox(db, storeId, 'store', storeId, 'delete', { id: storeId });
     db.prepare('DELETE FROM stores WHERE id = ?').run(storeId);
   },
 });
