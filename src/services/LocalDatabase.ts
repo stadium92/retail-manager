@@ -498,7 +498,20 @@ class LocalDatabaseService {
 
   async saveStore(store: LocalStore): Promise<void> {
     const db = await this.ensureDb();
-    db.transaction('stores', 'readwrite').objectStore('stores').put(store);
+    return new Promise((resolve, reject) => {
+      const request = db.transaction('stores', 'readwrite').objectStore('stores').put(store);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async deleteStore(id: string): Promise<void> {
+    const db = await this.ensureDb();
+    return new Promise((resolve, reject) => {
+      const request = db.transaction('stores', 'readwrite').objectStore('stores').delete(id);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
   }
 
   async getAllStores(): Promise<LocalStore[]> {
