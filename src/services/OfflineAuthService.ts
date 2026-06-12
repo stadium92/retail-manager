@@ -9,6 +9,7 @@ import { toast } from '@/hooks/use-toast';
 import { getDataClient } from '@/lib/dataClient';
 import { TokenManager } from '@/utils/tokenManager';
 import { smartFetch } from '@/lib/dataClient';
+import { supabase } from '@/lib/supabase';
 import i18n from '@/i18n/config';
 
 /** Minimal User type replacing @supabase/supabase-js User */
@@ -304,13 +305,39 @@ export class OfflineAuthService {
       const cache = this.saveLocalBridgeSession(response);
       return this.mapCacheToResult(cache);
     } catch (error) {
-      return {
-        user: null,
-        session: null,
-        roles: [],
-        error: error instanceof Error ? error.message : 'Failed to authenticate offline',
-        isOffline: true,
-      };
+      console.log('[OfflineAuth] Local login failed, attempting Supabase fallback...');
+      try {
+        const { data, error: supaError } = await supabase.auth.signInWithPassword({ email, password });
+        if (supaError || !data.user) throw supaError;
+
+        console.log('[OfflineAuth] Supabase fallback successful, syncing to Local Bridge...');
+        const syncResponse = await this.localBridgeRequest<LocalBridgeLoginResponse>(
+          '/auth/sync-cloud-login',
+          {
+            method: 'POST',
+            body: JSON.stringify({
+              id: data.user.id,
+              email: data.user.email,
+              password,
+              full_name: data.user.user_metadata?.full_name || 'Cloud User',
+              role: data.user.user_metadata?.role || 'worker',
+              sub_role: data.user.user_metadata?.sub_role || null,
+              store_id: data.user.user_metadata?.store_id || null,
+            }),
+          }
+        );
+
+        const cache = this.saveLocalBridgeSession(syncResponse);
+        return this.mapCacheToResult(cache);
+      } catch (fallbackError) {
+        return {
+          user: null,
+          session: null,
+          roles: [],
+          error: fallbackError instanceof Error ? fallbackError.message : 'Failed to authenticate locally and in the cloud',
+          isOffline: true,
+        };
+      }
     }
   }
 
