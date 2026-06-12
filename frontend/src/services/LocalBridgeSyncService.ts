@@ -371,20 +371,29 @@ export class LocalBridgeSyncService {
 
       console.log(`[LocalBridgeSyncService] Pulling changes since ${since}…`);
 
-      // 2. Fetch changed rows from Supabase
-      const [products, sales, saleItems] = await Promise.all([
+      // 2. Fetch changed rows from Supabase (sales includes nested sale_items)
+      const [products, sales] = await Promise.all([
         this.fetchTable('products', since, targetStoreId),
         this.fetchTable('sales', since, targetStoreId),
-        this.fetchTable('sale_items', since, targetStoreId),
       ]);
 
-      const total = products.length + sales.length + saleItems.length;
+      // Extract and flatten sale_items from the sales payload
+      const saleItems: any[] = [];
+      const cleanedSales = sales.map((sale: any) => {
+        if (sale.sale_items) {
+          saleItems.push(...sale.sale_items);
+        }
+        const { sale_items, ...rest } = sale;
+        return rest;
+      });
+
+      const total = products.length + cleanedSales.length + saleItems.length;
       if (total === 0) {
         console.log('[LocalBridgeSyncService] No remote changes found.');
         return { pulled: 0 };
       }
 
-      console.log(`[LocalBridgeSyncService] Merging ${products.length} products, ${sales.length} sales, ${saleItems.length} sale_items…`);
+      console.log(`[LocalBridgeSyncService] Merging ${products.length} products, ${cleanedSales.length} sales, ${saleItems.length} sale_items…`);
 
       // 3. Post to /sync/merge
       const mergeResp = await smartFetch(`${dataClient.localBridgeBaseUrl}/sync/merge`, {
@@ -393,7 +402,7 @@ export class LocalBridgeSyncService {
         body: JSON.stringify({
           store_id: targetStoreId,
           products,
-          sales,
+          sales: cleanedSales,
           sale_items: saleItems,
           pulled_at: pulledAt,
         }),
@@ -418,9 +427,10 @@ export class LocalBridgeSyncService {
     since: string,
     storeId: string
   ): Promise<Record<string, unknown>[]> {
-    const query = supabase.from(table).select('*').gt('updated_at', since);
+    const selectFields = table === 'sales' ? '*, sale_items(*)' : '*';
+    const query = supabase.from(table).select(selectFields).gt('updated_at', since);
 
-    // Filter by store_id or sale_id relation
+    // Filter by store_id relation
     if (table === 'products' || table === 'sales') {
       query.eq('store_id', storeId);
     }
@@ -430,14 +440,6 @@ export class LocalBridgeSyncService {
     if (error) {
       console.error(`[LocalBridgeSyncService] Pull error on "${table}":`, error.message);
       return [];
-    }
-
-    // Special client-side resolution for sale_items (filter items belonging to this store's sales)
-    if (table === 'sale_items' && data && data.length > 0) {
-      // Query active sales of this store in Supabase to verify belonging
-      const { data: sales } = await supabase.from('sales').select('id').eq('store_id', storeId);
-      const saleIds = new Set((sales || []).map(s => s.id));
-      return (data as Record<string, unknown>[]).filter(item => saleIds.has(item.sale_id as string));
     }
 
     return (data as Record<string, unknown>[]) ?? [];
