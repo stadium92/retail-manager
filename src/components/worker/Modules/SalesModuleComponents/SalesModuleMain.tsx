@@ -740,10 +740,10 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
 
       if (error) throw error;
 
-      // Deduct stock for recipe ingredients
-      for (const item of cartItems) {
-        await deduct(item.product.id, item.quantity);
-      }
+      // Deduct stock for recipe ingredients in parallel
+      await Promise.all(
+        cartItems.map(item => deduct(item.product.id, item.quantity))
+      );
 
       toast.success(t('worker.sales.saleRecorded'));
       window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'sale' } }));
@@ -806,10 +806,10 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       }, cartItems);
       if (error) throw error;
 
-      // Deduct stock for recipe ingredients
-      for (const item of cartItems) {
-        await deduct(item.product.id, item.quantity);
-      }
+      // Deduct stock for recipe ingredients in parallel
+      await Promise.all(
+        cartItems.map(item => deduct(item.product.id, item.quantity))
+      );
 
       toast.success(t('menu.program.saveSuccess'));
       window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'sale' } }));
