@@ -132,7 +132,8 @@ start().catch(e => {
 // Force restart 2026-03-07T01:53:43.453Z
 
 // Force backend restart for 100-year session fix: 2026-03-07T11:54:43.936Z
-// Force backend restart: Thu Mar 12 10:09:45 UTC 2026
+// Force backend restart: Thu Jun 11 11:03:00 UTC 2026
+// Force restart for WAL mode performance fix: 2026-06-12T09:50:30Z
 // Build retry timestamp: Thu Mar 12 10:32:48 UTC 2026
 // Force restart: 2026-06-11T10:49:15Z
 // Force restart for sync filter fix: 2026-06-12T09:27:10Z
