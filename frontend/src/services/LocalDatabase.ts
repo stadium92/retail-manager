@@ -318,6 +318,33 @@ class LocalDatabaseService {
     db.transaction('users', 'readwrite').objectStore('users').put(user);
   }
 
+  async getStore(id: string): Promise<LocalStore | undefined> {
+    const db = await this.ensureDb();
+    return new Promise((resolve, reject) => {
+      const request = db.transaction('stores', 'readonly').objectStore('stores').get(id);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async saveStore(store: LocalStore): Promise<void> {
+    const db = await this.ensureDb();
+    return new Promise((resolve, reject) => {
+      const request = db.transaction('stores', 'readwrite').objectStore('stores').put(store);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async deleteStore(id: string): Promise<void> {
+    const db = await this.ensureDb();
+    return new Promise((resolve, reject) => {
+      const request = db.transaction('stores', 'readwrite').objectStore('stores').delete(id);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
   async getUser(id: string): Promise<LocalUser | null> {
     const db = await this.ensureDb();
     return new Promise(r => {

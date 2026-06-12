@@ -9,6 +9,7 @@ import { toast } from '@/hooks/use-toast';
 import { getDataClient } from '@/lib/dataClient';
 import { TokenManager } from '@/utils/tokenManager';
 import { smartFetch } from '@/lib/dataClient';
+import { supabase } from '@/lib/supabase';
 import i18n from '@/i18n/config';
 
 /** Minimal User type replacing @supabase/supabase-js User */
@@ -301,13 +302,53 @@ export class OfflineAuthService {
       const cache = this.saveLocalBridgeSession(response);
       return this.mapCacheToResult(cache);
     } catch (error) {
-      return {
-        user: null,
-        session: null,
-        roles: [],
-        error: error instanceof Error ? error.message : 'Failed to authenticate offline',
-        isOffline: true,
-      };
+      console.log('[OfflineAuth] Local login failed, attempting Supabase fallback...');
+      try {
+        const { data, error: supaError } = await supabase.auth.signInWithPassword({ email, password });
+        if (supaError || !data.user) throw supaError;
+
+        console.log('[OfflineAuth] Supabase fallback successful, syncing to Local Bridge...');
+        
+        let store_id = data.user.user_metadata?.store_id || null;
+        let store_object = null;
+        
+        if (!store_id && (data.user.user_metadata?.role === 'master' || data.user.user_metadata?.role === undefined)) {
+            // Master users without a store_id in metadata might already have a store in the DB
+            const { data: stores } = await supabase.from('stores').select('*').eq('owner_id', data.user.id).limit(1);
+            if (stores && stores.length > 0) {
+               store_id = stores[0].id;
+               store_object = stores[0];
+               console.log('[OfflineAuth] Found existing store for master from Supabase:', store_id);
+            }
+        }
+
+        const syncResponse = await this.localBridgeRequest<LocalBridgeLoginResponse>(
+          '/auth/sync-cloud-login',
+          {
+            method: 'POST',
+            body: JSON.stringify({
+              id: data.user.id,
+              email: data.user.email,
+              password,
+              full_name: data.user.user_metadata?.full_name || 'Cloud User',
+              role: data.user.user_metadata?.role || 'worker',
+              store_id: store_id,
+              store_object: store_object,
+            }),
+          }
+        );
+
+        const cache = this.saveLocalBridgeSession(syncResponse);
+        return this.mapCacheToResult(cache);
+      } catch (fallbackError) {
+        return {
+          user: null,
+          session: null,
+          roles: [],
+          error: fallbackError instanceof Error ? fallbackError.message : 'Failed to authenticate locally and in the cloud',
+          isOffline: true,
+        };
+      }
     }
   }
 

@@ -33,7 +33,7 @@ export const createAuthRepo = (db: Database.Database) => ({
 
   insertUser(user: LocalUser) {
     db.prepare(`
-        INSERT INTO users (id, email, password_hash, full_name, phone, created_at, updated_at, role)
+        INSERT OR REPLACE INTO users (id, email, password_hash, full_name, phone, created_at, updated_at, role)
         VALUES (@id, @email, @password_hash, @full_name, @phone, @created_at, @updated_at, @role)
       `)
       .run({
@@ -67,6 +67,10 @@ export const createAuthRepo = (db: Database.Database) => ({
     return db
       .prepare('SELECT * FROM user_roles ORDER BY created_at DESC')
       .all() as LocalRole[];
+  },
+
+  deleteRolesForUser(userId: string) {
+    db.prepare('DELETE FROM user_roles WHERE user_id = ?').run(userId);
   },
 
   insertRole(role: LocalRole) {

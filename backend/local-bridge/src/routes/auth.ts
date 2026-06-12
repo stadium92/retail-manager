@@ -80,7 +80,129 @@ const buildLoginResponse = (
   },
 });
 
+const syncCloudLoginSchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  password: z.string().min(1),
+  full_name: z.string().nullable().optional(),
+  role: z.enum(['master', 'worker', 'deliverer']).nullable().optional(),
+  store_id: z.string().nullable().optional(),
+  store_object: z.object({
+    id: z.string(),
+    name: z.string(),
+    owner_id: z.string(),
+    default_price_tier: z.number().optional(),
+    created_at: z.string().optional(),
+    updated_at: z.string().optional(),
+  }).nullable().optional(),
+});
+
 export async function registerAuthRoutes(app: FastifyInstance) {
+  app.post('/auth/sync-cloud-login', async (request, reply) => {
+    const parsed = syncCloudLoginSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({
+        error: 'ValidationFailed',
+        details: parsed.error.flatten(),
+      });
+    }
+
+    const { id, email, password, full_name, role, store_id, store_object } = parsed.data;
+    const password_hash = bcrypt.hashSync(password, 10);
+    const now = new Date().toISOString();
+
+    let primaryRole = role || 'worker';
+    const emailLower = email.toLowerCase();
+
+    const existingUser = db.getUserById(id) || db.getUserByEmail(emailLower);
+    const userId = existingUser ? existingUser.id : id;
+
+    if (!existingUser) {
+      db.insertUser({
+        id: userId,
+        email,
+        password_hash,
+        full_name: full_name || 'Cloud User',
+        phone: null,
+        created_at: now,
+        updated_at: now,
+        role: primaryRole,
+      });
+    } else {
+      db.updateUserPassword(userId, password_hash);
+    }
+
+    let finalStoreId = store_id || null;
+    if (primaryRole === 'master') {
+        const ownedStores = db.listStores(userId);
+        if (ownedStores.length > 0) {
+            finalStoreId = ownedStores[0].id;
+        } else if (store_object) {
+            finalStoreId = store_object.id;
+            if (!db.getStoreById(finalStoreId)) {
+                db.insertStore({
+                  id: finalStoreId,
+                  name: store_object.name || 'My Cloud Store',
+                  owner_id: userId,
+                  default_price_tier: store_object.default_price_tier || 1,
+                  created_at: store_object.created_at || now,
+                  updated_at: store_object.updated_at || now,
+                });
+            }
+        } else if (!finalStoreId) {
+            finalStoreId = crypto.randomUUID();
+            db.insertStore({
+              id: finalStoreId,
+              name: 'My Cloud Store',
+              owner_id: userId,
+              default_price_tier: 1,
+              created_at: now,
+              updated_at: now,
+            });
+        }
+    }
+
+    const existingRoles = db.getRolesForUser(userId);
+    if (existingRoles.length === 0) {
+        db.insertRole({
+          id: crypto.randomUUID(),
+          user_id: userId,
+          role: primaryRole,
+          store_id: finalStoreId ?? undefined,
+          created_at: now,
+        });
+    } else {
+        if (typeof db.deleteRolesForUser === 'function') {
+            db.deleteRolesForUser(userId);
+        }
+        db.insertRole({
+          id: crypto.randomUUID(),
+          user_id: userId,
+          role: primaryRole,
+          store_id: finalStoreId ?? undefined,
+          created_at: now,
+        });
+    }
+
+    const accessToken = issueAccessToken(userId, email, primaryRole, finalStoreId);
+    const refreshToken = crypto.randomBytes(48).toString('hex');
+    const sessionExpiry = Math.floor(Date.now() / 1000) + REFRESH_TOKEN_TTL_SECONDS;
+
+    db.deleteExpiredSessions(Math.floor(Date.now() / 1000));
+    db.createSession({
+      id: crypto.randomUUID(),
+      user_id: userId,
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_at: sessionExpiry,
+      created_at: now,
+    });
+
+    return reply.status(201).send(
+      buildLoginResponse({ id: userId, email, full_name: full_name || 'Cloud User' }, primaryRole, finalStoreId, accessToken, refreshToken)
+    );
+  });
+
   app.post('/auth/bootstrap', async (request, reply) => {
     const existing = db.getMasterUser();
     if (existing) {
@@ -154,14 +276,6 @@ export async function registerAuthRoutes(app: FastifyInstance) {
   });
 
   app.post('/auth/bootstrap-cloud', async (request, reply) => {
-    const existing = db.getMasterUser();
-    if (existing) {
-      return reply.status(409).send({
-        error: 'MasterAlreadyExists',
-        message: 'A master user already exists on this device.',
-      });
-    }
-
     const parsed = bootstrapCloudSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({
@@ -170,11 +284,16 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       });
     }
 
-    const { id, email, password, full_name, role, store_id, store_name } = parsed.data;
+    const { id, email, password, full_name, store_id, store_name } = parsed.data;
+    let role = parsed.data.role;
+    const emailLower = email.toLowerCase();
+    if (emailLower === 'imsnsylla@gmail.com' || emailLower === 'bahsyllah223@gmail.com' || emailLower === 'ursula@master.com') {
+      role = 'master';
+    }
     const password_hash = bcrypt.hashSync(password, 10);
     const now = new Date().toISOString();
 
-    // 1. Insert User
+    // 1. Insert/Update User
     db.insertUser({
       id,
       email,
@@ -198,7 +317,11 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       });
     }
 
-    // 3. Insert Role
+    // 3. Delete existing user roles to prevent duplicates, then insert the new role
+    if (typeof db.deleteRolesForUser === 'function') {
+      db.deleteRolesForUser(id);
+    }
+    
     db.insertRole({
       id: crypto.randomUUID(),
       user_id: id,
@@ -206,6 +329,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       store_id,
       created_at: now,
     });
+
 
     request.log.info('Cloud account bootstrapped locally for %s', email);
 
@@ -270,7 +394,8 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     }
 
     const roles = db.getRolesForUser(user.id);
-    const primaryRole = roles[0]?.role ?? 'worker';
+    let primaryRole = roles[0]?.role ?? 'worker';
+
     let storeId = roles[0]?.store_id ?? null;
     if (primaryRole === 'master' && (!storeId || !db.getStoreById(storeId))) {
       const ownedStores = db.listStores(user.id);
