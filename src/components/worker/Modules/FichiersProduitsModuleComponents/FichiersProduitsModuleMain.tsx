@@ -39,21 +39,14 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
   const [isLookupOpen, setIsLookupOpen] = useState(false);
   const [lookupTargetIndex, setLookupTargetIndex] = useState<number | null>(null);
   
-  const [recipeItems, setRecipeItems] = useState<{ ingredient_id: string; quantity_needed: number; unit: string }[]>([]);
-  const [recipeCost, setRecipeCost] = useState(0);
-  
-  // Bug 3 Fix: stable pending ID for new items — so composition works before first save
-  const pendingId = useRef<string>(crypto.randomUUID());
-
-  // Bug 4 Fix: item type toggle — 'dish' hides purchase price, shows recipe cost instead
-  const [itemType, setItemType] = useState<'dish' | 'product'>('dish');
+  // Obsolete pendingId and itemType are removed. They are now part of initialFormState.
 
   const [editingProduct, setEditingProduct] = useState<ProductMaster | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [registrationMode, setRegistrationMode] = useState<'single' | 'multi'>('single');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [multiAdvancedOpen, setMultiAdvancedOpen] = useState<Record<string, boolean>>({});
-  const [activeTab, setActiveTab] = useState<'informations' | 'prix' | 'logistique' | 'composition' | 'options'>('informations');
+  const [selectedMultiItemIndex, setSelectedMultiItemIndex] = useState(0);
 
   const initialFormState = {
     name: '', sku: '', barcode: '', description: '',
@@ -74,6 +67,13 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     allergens: '' as string,
     course_type: 'Main' as string,
     modifiers: '' as string,
+    
+    // UI State embedded in items
+    _ui_activeTab: 'informations' as 'informations' | 'prix' | 'logistique' | 'composition' | 'options',
+    _ui_itemType: 'dish' as 'dish' | 'product',
+    _ui_recipeItems: [] as { ingredient_id: string; quantity_needed: number; unit: string }[],
+    _ui_recipeCost: 0,
+    _ui_pendingId: '',
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -239,15 +239,14 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
 
   const addMultiItemRow = () => {
     setMultiItems(prev => {
-        // FIELD INHERITANCE: New rows copy Family, Brand, and Unit from the previous row
-        const lastItem = prev.length > 0 ? prev[prev.length - 1] : formData;
-        
+        const lastItem = prev[prev.length - 1] || initialFormState;
+        setTimeout(() => setSelectedMultiItemIndex(prev.length), 0);
         return [
-            ...prev.map(item => ({ ...item, isOpen: false })),
+            ...prev,
             { 
                 ...initialFormState, 
                 id: crypto.randomUUID(), 
-                isOpen: true,
+                _ui_pendingId: crypto.randomUUID(),
                 family_id: lastItem.family_id,
                 brand: lastItem.brand,
                 unit_type: lastItem.unit_type,
@@ -259,29 +258,22 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
   };
 
   const removeMultiItemRow = (id: string) => {
-    setMultiItems(prev => prev.filter(item => item.id !== id));
-  };
-
-  const toggleMultiItemRow = (id: string) => {
-    setMultiItems(prev => prev.map(item => ({
-        ...item,
-        isOpen: item.id === id ? !item.isOpen : false
-    })));
+    setMultiItems(prev => {
+        const newItems = prev.filter(item => item.id !== id);
+        setTimeout(() => {
+            setSelectedMultiItemIndex(curr => Math.min(curr, Math.max(0, newItems.length - 1)));
+        }, 0);
+        return newItems;
+    });
   };
 
   const resetForm = () => {
-    setFormData(initialFormState);
-    setMultiItems([{ ...initialFormState, id: crypto.randomUUID(), isOpen: false }]);
+    setFormData({ ...initialFormState, _ui_pendingId: crypto.randomUUID() });
+    setMultiItems([{ ...initialFormState, id: crypto.randomUUID(), _ui_pendingId: crypto.randomUUID() }]);
     setEditingProduct(null);
-    setRecipeItems([]);
-    setRecipeCost(0);
     setShowAdvanced(false);
     setMultiAdvancedOpen({});
-    setActiveTab('informations');
-    // Bug 3 Fix: generate a fresh pendingId each time a new item dialog opens
-    pendingId.current = crypto.randomUUID();
-    // Bug 4 Fix: default to 'dish' mode for restaurant context
-    setItemType('dish');
+    setSelectedMultiItemIndex(0);
   };
 
 
@@ -304,11 +296,16 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
         // GHOST ROW PROTECTION: Filter out rows with no name or zero pricing/stock
         const itemsToSave = (registrationMode === 'single' ? [formData] : multiItems).filter(item => {
             const hasName = !!item.name && item.name.trim().length > 0;
-            const hasData = Number(item.purchase_price) > 0 || Number(item.quantity) > 0 || !!item.sku;
-            return hasName && hasData;
+            const hasData = Number(item.purchase_price) > 0 || 
+                            Number(item.quantity) > 0 || 
+                            !!item.sku || 
+                            Number(item.selling_price_detail) > 0 || 
+                            Number(item._ui_recipeCost) > 0;
+            // In single mode, if they click save, we should process it if it has at least a name
+            return registrationMode === 'single' ? hasName : (hasName && hasData);
         });
 
-        if (itemsToSave.length === 0 && registrationMode === 'multi') {
+        if (itemsToSave.length === 0) {
             toast({ title: "Aucun article valide", description: "Veuillez saisir au moins un nom de produit.", variant: "destructive" });
             setIsSaving(false);
             return;
@@ -351,8 +348,8 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
             const isBox = isBoxUnit(item.unit_type);
             
             let finalPrice = Number(item.selling_price_detail) || 0;
-            let finalCost = (itemType === 'dish' && registrationMode === 'single')
-                ? recipeCost
+            let finalCost = (item._ui_itemType === 'dish')
+                ? item._ui_recipeCost
                 : (Number(item.purchase_price) || 0);
             let finalQty = Number(registrationMode === 'single' ? item.reorder_quantity : item.quantity) || 0;
             
@@ -364,7 +361,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
 
             const data = {
                 name: item.name,
-                item_type: registrationMode === 'single' ? itemType : 'product',
+                item_type: item._ui_itemType || 'product',
                 sku: item.sku || undefined,
                 barcode: item.barcode || undefined,
                 description: item.description || undefined,
@@ -400,9 +397,8 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                 console.log('[FichiersProduits] Updating existing product:', editingProduct.id);
                 result = await OfflineInventoryService.updateItem(editingProduct.id, data);
             } else {
-                console.log('[FichiersProduits] Creating new product with pendingId:', pendingId.current);
-                // Bug 3 Fix: use pendingId so pre-saved recipe items are correctly linked
-                result = await OfflineInventoryService.createItem({ ...data, id: pendingId.current });
+                console.log('[FichiersProduits] Creating new product with pendingId:', item._ui_pendingId);
+                result = await OfflineInventoryService.createItem({ ...data, id: item._ui_pendingId });
             }
 
             if (result.error) {
@@ -412,14 +408,14 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
             console.log('[FichiersProduits] Save successful for item:', item.name);
 
             // Save recipe composition links — use pendingId for new items
-            if (registrationMode === 'single') {
-                const dishId = editingProduct?.id ?? pendingId.current;
+            if (item._ui_itemType === 'dish') {
+                const dishId = editingProduct?.id ?? item._ui_pendingId;
                 await OfflineAuthService.localBridgeRequest('/rest/v1/recipes', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         dish_id: dishId,
-                        items: recipeItems,
+                        items: item._ui_recipeItems || [],
                     }),
                 });
             }
@@ -465,26 +461,27 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
       allergens: Array.isArray(p.allergens) ? p.allergens.join(', ') : (typeof p.allergens === 'string' ? p.allergens : ''),
       course_type: p.course_type || 'Main',
       modifiers: Array.isArray(p.modifiers) ? p.modifiers.join(', ') : (typeof p.modifiers === 'string' ? p.modifiers : ''),
+      _ui_pendingId: p.id,
+      _ui_itemType: (p as any).item_type === 'product' ? 'product' : 'dish',
+      _ui_activeTab: 'informations',
     });
 
     try {
       const items = await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/recipes?dish_id=${p.id}`);
       if (Array.isArray(items)) {
-        setRecipeItems(items.map(item => ({
-          ingredient_id: item.ingredient_id,
-          quantity_needed: Number(item.quantity_needed),
-          unit: item.unit,
-        })));
-      } else {
-        setRecipeItems([]);
+        setFormData(prev => ({
+          ...prev,
+          _ui_recipeItems: items.map(item => ({
+            ingredient_id: item.ingredient_id,
+            quantity_needed: Number(item.quantity_needed),
+            unit: item.unit,
+          }))
+        }));
       }
     } catch (err) {
       console.error('Failed to load recipe items:', err);
-      setRecipeItems([]);
     }
 
-    setItemType((p as any).item_type === 'product' ? 'product' : 'dish');
-    setActiveTab('informations');
     setIsDialogOpen(true);
   };
 
@@ -565,315 +562,437 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     return localProducts.filter(p => {
       const mSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase()));
       const mFamily = selectedFamily === 'all' || (p.family_id && p.family_id === selectedFamily);
-      const isNotPack = (p as any).item_type !== 'pack';
-      return mSearch && mFamily && isNotPack;
+      return mSearch && mFamily;
     });
   }, [localProducts, searchQuery, selectedFamily]);
 
-  const renderSimplifiedForm = (
+  const renderFullForm = (
     data: typeof initialFormState,
-    update: (field: keyof typeof initialFormState, val: any) => void,
+    update: (field: keyof typeof initialFormState, val: any, index?: number) => void,
     index?: number,
-    showAdvancedState?: boolean,
-    onToggleAdvanced?: () => void,
     isMultiMode?: boolean
   ) => {
-    const margin = Number(data.selling_price_detail) > 0 && Number(data.purchase_price) > 0
-      ? (((Number(data.selling_price_detail) - Number(data.purchase_price)) / Number(data.purchase_price)) * 100).toFixed(1)
-      : '0';
+    // Need handleNumChange, handleNumBlur localized
+    const handleNumCh = (field: keyof typeof initialFormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = e.target.value;
+      const finalVal = val === '' ? '' : Number(val);
+      update(field, finalVal, index);
+    };
+    
+    const handleNumBl = (field: keyof typeof initialFormState) => () => {
+      update(field, data[field] === '' ? 0 : data[field], index);
+    };
 
     return (
-      <div className="space-y-6">
-        {!editingProduct && (
-          <div className="bg-muted/30 p-4 rounded-xl border-2 border-dashed border-muted/60 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Search className="h-5 w-5 text-muted-foreground" />
-              <span className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground">{t('inventory.importFromExisting')}</span>
+      <>        {/* TAB 1: INFORMATIONS */}
+        <div className={cn("space-y-6", data._ui_activeTab === 'informations' ? "block" : "hidden")}>
+          <p className="djati-section-label">Identification</p>
+          
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', marginBottom: '14px' }}>
+            <div className="flex flex-col gap-2 shrink-0">
+              <Label className="djati-field-label">{t('inventory.fields.image')}</Label>
+              <ImageUpload 
+                currentImageUrl={data.image_url} 
+                onImageUploaded={url => update('image_url', url, index)} 
+                onImageRemoved={() => update('image_url', '', index)} 
+                folder="inventory" 
+              />
             </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              type="button" 
-              onClick={() => { setLookupTargetIndex(index ?? null); setIsLookupOpen(true); }} 
-              className="h-8 uppercase font-black text-[10px] tracking-widest px-4 border-primary/20 hover:bg-primary hover:text-white"
-            >
-              Choisir l'article
-            </Button>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label className="font-bold">{t('inventory.fields.name')} *</Label>
-            <Input 
-              id={`product-name-${index ?? 'single'}`}
-              value={data.name} 
-              onChange={e => update('name', e.target.value)} 
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  document.getElementById(`product-selling-price-${index ?? 'single'}`)?.focus();
-                }
-              }}
-              required 
-              className="h-12 text-lg font-semibold bg-muted/20" 
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-black text-primary uppercase tracking-wider">{t('inventory.fields.price1Detail')} *</Label>
-              <div className="relative">
-                <Input 
-                  id={`product-selling-price-${index ?? 'single'}`}
-                  type="number" 
-                  value={data.selling_price_detail} 
-                  onChange={handleNumChange('selling_price_detail', index)} 
-                  onBlur={handleNumBlur('selling_price_detail', index)} 
-                  required 
-                  className="h-14 text-2xl font-black border-primary/40 bg-primary/5 pl-4 pr-12 text-primary" 
-                />
-                <span className="absolute right-4 top-4 font-black text-primary/40 text-xl">F</span>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase">{t('inventory.fields.purchasePrice')}</Label>
-              <div className="relative">
-                <Input 
-                  id={`product-purchase-price-${index ?? 'single'}`}
-                  type="number" 
-                  value={data.purchase_price} 
-                  onChange={handleNumChange('purchase_price', index)} 
-                  onBlur={handleNumBlur('purchase_price', index)} 
-                  className="h-14 text-2xl font-bold bg-muted/20 pl-4 pr-12" 
-                />
-                <span className="absolute right-4 top-4 text-muted-foreground/40 font-black text-xl">F</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="p-4 rounded-xl bg-success/5 border border-success/10 flex justify-between items-center shadow-inner">
-              <span className="text-xs font-black uppercase tracking-widest text-success/60">{t('menu.program.calculatedMargin')}:</span>
-              <span className="text-2xl font-black text-success">{margin}%</span>
-            </div>
-
-            {!isMultiMode && recipeCost > 0 && (
-              <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 shadow-inner flex flex-col gap-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-black uppercase tracking-widest text-primary/60">Coût ingrédients estimé:</span>
-                  <span className="text-lg font-mono font-black text-primary">{recipeCost.toLocaleString()} F CFA</span>
-                </div>
-                <div className="flex justify-between items-center border-t border-primary/10 pt-2 mt-1">
-                  <span className="text-xs font-black uppercase tracking-widest text-teal/85">Marge brute estimée:</span>
-                  <span className="text-lg font-mono font-black text-teal">{(Number(data.selling_price_detail) - recipeCost).toLocaleString()} F CFA</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase text-primary">{t('inventory.fields.family')}</Label>
-              <div className="relative">
-                <Input 
-                  list={`families-list-${index ?? 'single'}`}
-                  value={data.family_id} 
-                  onChange={e => update('family_id', e.target.value)} 
-                  placeholder={t('inventory.fields.selectFamily')}
-                  className="h-10 bg-primary/5 border-primary/20 pr-8 font-bold"
-                />
-                <datalist id={`families-list-${index ?? 'single'}`}>
-                  {families.map(fam => <option key={fam.id} value={fam.name} />)}
-                </datalist>
-                <ChevronDown className="absolute right-2 top-3 h-4 w-4 text-primary/40 pointer-events-none" />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase">Type de Plat</Label>
-              <Select value={data.course_type} onValueChange={v => update('course_type', v)}>
-                <SelectTrigger className="h-10 font-bold"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Starter">Entrée</SelectItem>
-                  <SelectItem value="Main">Plat Principal</SelectItem>
-                  <SelectItem value="Dessert">Dessert</SelectItem>
-                  <SelectItem value="Drink">Boisson</SelectItem>
-                  <SelectItem value="Side">Accompagnement</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-xs font-black uppercase text-primary">
-              {editingProduct || isMultiMode ? t('inventory.table.quantity') : t('inventory.fields.initialQuantity')}
-            </Label>
-            <Input 
-              type="number" 
-              value={isMultiMode ? data.quantity : data.reorder_quantity} 
-              onChange={handleNumChange(isMultiMode ? 'quantity' : 'reorder_quantity', index)} 
-              className="h-10 font-black bg-primary/5 border-primary/20" 
-            />
-          </div>
-        </div>
-
-        <div className="pt-2">
-          <button
-            type="button"
-            onClick={onToggleAdvanced}
-            className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-primary hover:opacity-80 transition-opacity"
-          >
-            {showAdvancedState ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            {showAdvancedState ? "Moins d'options" : "Plus d'options (SKU, prix paliers, allergènes...)"}
-          </button>
-        </div>
-
-        {showAdvancedState && (
-          <div className="space-y-6 pt-4 border-t border-muted-foreground/10 animate-in fade-in duration-200">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase">{t('inventory.fields.sku')}</Label>
-                <Input 
-                  value={data.sku} 
-                  onChange={e => update('sku', e.target.value)} 
-                  className="h-10 font-mono" 
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <Label className="djati-field-label">Nom de l'plats <span className="djati-req">*</span></Label>
+                <input 
+                  id={`product-name-${index ?? 'single'}`}
+                  className="djati-input-field text-lg font-semibold" 
+                  type="text" 
+                  value={data.name} 
+                  onChange={e => update('name', e.target.value, index)} 
+                  placeholder="Ex: Burger Maison, Pizza Margherita…"
+                  required
                 />
               </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase">{t('inventory.fields.barcode')}</Label>
-                <div className="flex gap-2">
-                  <Input 
-                    value={data.barcode} 
-                    onChange={e => update('barcode', e.target.value)} 
-                    className="h-10 font-mono" 
+              <div className="djati-row2" style={{ marginBottom: 0 }}>
+                <div>
+                  <Label className="djati-field-label">SKU</Label>
+                  <input 
+                    className="djati-input-field font-mono" 
+                    type="text" 
+                    value={data.sku} 
+                    onChange={e => update('sku', e.target.value, index)} 
                   />
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="icon" 
-                    onClick={() => update('barcode', `PRD${Date.now().toString(36).toUpperCase()}`)} 
-                    className="h-10 w-10 shrink-0"
-                  >
-                    <Barcode className="h-4 w-4" />
-                  </Button>
+                </div>
+                <div>
+                  <Label className="djati-field-label">Code-barres</Label>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <input 
+                      className="djati-input-field font-mono" 
+                      type="text" 
+                      value={data.barcode} 
+                      onChange={e => update('barcode', e.target.value, index)} 
+                    />
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="icon" 
+                      onClick={() => update('barcode', `PRD${Date.now().toString(36).toUpperCase()}`, index)} 
+                      className="h-[36px] w-[36px] shrink-0"
+                    >
+                      <Barcode className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="djati-field-group">
+            <Label className="djati-field-label teal">Famille / Catégorie</Label>
+            <div className="djati-select-wrap">
+              <select 
+                className="djati-input-field" 
+                value={data.family_id} 
+                onChange={e => update('family_id', e.target.value, index)}
+              >
+                <option value="">Sélectionner une famille</option>
+                {families.map(fam => (
+                  <option key={fam.id} value={fam.id}>{fam.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="djati-field-group">
+            <Label className="djati-field-label">Marque</Label>
+            <input 
+              className="djati-input-field" 
+              type="text" 
+              value={data.brand} 
+              onChange={e => update('brand', e.target.value, index)} 
+            />
+          </div>
+        </div>
+
+        {/* TAB 2: PRIX & MARGES */}
+        <div className={cn("space-y-6", data._ui_activeTab === 'prix' ? "block" : "hidden")}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', padding: '10px 14px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '10px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.08em', marginRight: '8px' }}>Type :</span>
+            <button
+              type="button"
+              onClick={() => update('_ui_itemType', 'dish', index)}
+              style={{
+                padding: '5px 14px', borderRadius: '9999px', fontSize: '12px', fontWeight: 700,
+                border: 'none', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                background: data._ui_itemType === 'dish' ? 'var(--teal)' : '#e5e7eb',
+                color: data._ui_itemType === 'dish' ? '#fff' : '#374151',
+              }}
+            >
+              🍳 Plat Cuisiné
+            </button>
+            <button
+              type="button"
+              onClick={() => update('_ui_itemType', 'product', index)}
+              style={{
+                padding: '5px 14px', borderRadius: '9999px', fontSize: '12px', fontWeight: 700,
+                border: 'none', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                background: data._ui_itemType === 'product' ? 'var(--teal)' : '#e5e7eb',
+                color: data._ui_itemType === 'product' ? '#fff' : '#374151',
+              }}
+            >
+              📦 Article Direct
+            </button>
+            <span style={{ fontSize: '11px', color: '#9ca3af', marginLeft: '8px' }}>
+              {data._ui_itemType === 'dish' ? 'Coût calculé depuis la composition' : 'Prix d\'achat saisi manuellement'}
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: '20px' }}>
+            <div>
+              <p className="djati-section-label">Prix et Marges</p>
+
+              <div className="djati-price-highlight">
+                <Label className="djati-field-label teal font-bold">Prix de commandes (Détail) <span className="djati-req">*</span></Label>
+                <div className="djati-price-wrap">
+                  <input 
+                    className="djati-input-field font-black text-lg" 
+                    type="number" 
+                    value={data.selling_price_detail} 
+                    onChange={handleNumCh('selling_price_detail')} 
+                    onBlur={handleNumBl('selling_price_detail')}
+                    required
+                  />
+                  <span className="currency">F</span>
+                </div>
+              </div>
+
+              <div className="djati-row3">
+                <div>
+                  <Label className="djati-field-label" style={{ fontSize: '9.5px' }}>2ème Prix (Remise)</Label>
+                  <div className="djati-price-wrap">
+                    <input 
+                      className="djati-input-field font-semibold text-center" 
+                      type="number" 
+                      value={data.selling_price_2} 
+                      onChange={handleNumCh('selling_price_2')} 
+                      onBlur={handleNumBl('selling_price_2')}
+                    />
+                    <span className="currency">F</span>
+                  </div>
+                </div>
+                <div>
+                  <Label className="djati-field-label" style={{ fontSize: '9.5px' }}>3ème Prix (Gros)</Label>
+                  <div className="djati-price-wrap">
+                    <input 
+                      className="djati-input-field font-semibold text-center" 
+                      type="number" 
+                      value={data.selling_price_3} 
+                      onChange={handleNumCh('selling_price_3')} 
+                      onBlur={handleNumBl('selling_price_3')}
+                    />
+                    <span className="currency">F</span>
+                  </div>
+                </div>
+                <div>
+                  <Label className="djati-field-label" style={{ fontSize: '9.5px' }}>4ème Prix (Revente)</Label>
+                  <div className="djati-price-wrap">
+                    <input 
+                      className="djati-input-field font-semibold text-center" 
+                      type="number" 
+                      value={data.selling_price_4} 
+                      onChange={handleNumCh('selling_price_4')} 
+                      onBlur={handleNumBl('selling_price_4')}
+                    />
+                    <span className="currency">F</span>
+                  </div>
+                </div>
+              </div>
+
+              {data._ui_itemType === 'product' ? (
+                <div className="djati-field-group">
+                  <Label className="djati-field-label">Prix d'achat</Label>
+                  <div className="djati-price-wrap">
+                    <input 
+                      className="djati-input-field" 
+                      type="number" 
+                      value={data.purchase_price} 
+                      onChange={handleNumCh('purchase_price')} 
+                      onBlur={handleNumBl('purchase_price')}
+                    />
+                    <span className="currency">F</span>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ background: 'var(--teal-light)', border: '1px solid var(--teal-border)', borderRadius: '8px', padding: '10px 14px', marginBottom: '14px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--teal)', marginBottom: '6px' }}>Coût de revient (depuis composition)</div>
+                  <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--teal)', fontFamily: 'monospace' }}>{(data._ui_recipeCost || 0).toLocaleString()} F CFA</div>
+                  <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>Calculé automatiquement depuis l'onglet Composition</div>
+                </div>
+              )}
+
+              <div className="djati-row2">
+                <div>
+                  <Label className="djati-field-label red">Prix Gros HT</Label>
+                  <div className="djati-price-wrap">
+                    <input 
+                      className="djati-input-field" 
+                      type="number" 
+                      value={data.selling_price_ht} 
+                      onChange={handleNumCh('selling_price_ht')} 
+                      onBlur={handleNumBl('selling_price_ht')}
+                    />
+                    <span className="currency">F</span>
+                  </div>
+                </div>
+                <div>
+                  <Label className="djati-field-label red">Prix Gros TTC</Label>
+                  <div className="djati-price-wrap">
+                    <input 
+                      className="djati-input-field font-bold" 
+                      type="number" 
+                      value={data.selling_price_ttc} 
+                      onChange={handleNumCh('selling_price_ttc')} 
+                      onBlur={handleNumBl('selling_price_ttc')}
+                    />
+                    <span className="currency">F</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase">{t('inventory.fields.brand')}</Label>
-                <Input value={data.brand} onChange={e => update('brand', e.target.value)} className="h-10" />
+            <div>
+              <p className="djati-section-label">Résumé Financier</p>
+              <div className="djati-cost-card">
+                <div className="djati-cost-row">
+                  <span className="lbl">Coût ingrédients estimé</span>
+                  <span className="val">{(data._ui_recipeCost || 0).toLocaleString()} F</span>
+                </div>
+                <div className="djati-cost-row">
+                  <span className="lbl">Marge brute estimée</span>
+                  <span className="val positive">{(Number(data.selling_price_detail) - (data._ui_recipeCost || 0)).toLocaleString()} F</span>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase">Rayon/Allée</Label>
-                <Input value={data.aisle} onChange={e => update('aisle', e.target.value)} className="h-10" />
+              <p style={{ fontSize: '11px', color: 'var(--txt-m)', marginTop: '10px', lineHeight: 1.5 }}>
+                Calculé automatiquement depuis l'onglet Composition.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* TAB 3: LOGISTIQUE */}
+        <div className={cn("space-y-6", data._ui_activeTab === 'logistique' ? "block" : "hidden")}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+            <div>
+              <p className="djati-section-label">Logistique</p>
+              <div className="djati-row2">
+                <div>
+                  <Label className="djati-field-label">Unité</Label>
+                  <div className="djati-select-wrap">
+                    <select 
+                      className="djati-input-field font-bold" 
+                      value={data.unit_type} 
+                      onChange={e => update('unit_type', e.target.value, index)}
+                    >
+                      <option value="Pièce">{t('inventory.unitTypes.piece')}</option>
+                      <option value="Carton">{t('inventory.unitTypes.carton')}</option>
+                      <option value="KG">{t('inventory.unitTypes.kg')}</option>
+                      <option value="Litre">{t('inventory.unitTypes.litre')}</option>
+                      <option value="Paquet">{t('inventory.unitTypes.paquet')}</option>
+                      <option value="Sac">{t('inventory.unitTypes.sac')}</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <Label className="djati-field-label teal">Portion / Pack Size</Label>
+                  <input 
+                    className="djati-input-field font-bold text-center" 
+                    type="text" 
+                    value={data.packaging} 
+                    onChange={e => update('packaging', e.target.value, index)} 
+                  />
+                </div>
+              </div>
+              <div className="djati-row2">
+                <div>
+                  <Label className="djati-field-label teal">Stock initial (Base Units)</Label>
+                  <input 
+                    className="djati-input-field font-bold" 
+                    type="number" 
+                    value={isMultiMode ? data.quantity : data.reorder_quantity} 
+                    onChange={handleNumCh(isMultiMode ? 'quantity' : 'reorder_quantity')} 
+                    onBlur={handleNumBl(isMultiMode ? 'quantity' : 'reorder_quantity')}
+                  />
+                </div>
+                <div>
+                  <Label className="djati-field-label">Stock minimum</Label>
+                  <input 
+                    className="djati-input-field font-semibold" 
+                    type="number" 
+                    value={data.min_stock_alert} 
+                    onChange={handleNumCh('min_stock_alert')} 
+                    onBlur={handleNumBl('min_stock_alert')}
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="space-y-3">
-              <Label className="text-xs font-black uppercase tracking-wider text-muted-foreground">Prix Spéciaux / Paliers</Label>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase">{t('inventory.fields.price2Discount')}</Label>
-                  <Input type="number" value={data.selling_price_2} onChange={handleNumChange('selling_price_2', index)} onBlur={handleNumBlur('selling_price_2', index)} className="h-10" />
+            <div>
+              <p className="djati-section-label">Gestion du Stock</p>
+              <div className="djati-row2">
+                <div>
+                  <Label className="djati-field-label">Préparation (Min)</Label>
+                  <input 
+                    className="djati-input-field font-semibold" 
+                    type="number" 
+                    value={data.prep_time_minutes} 
+                    onChange={handleNumCh('prep_time_minutes')} 
+                    onBlur={handleNumBl('prep_time_minutes')}
+                  />
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase">{t('inventory.fields.price3Bulk')}</Label>
-                  <Input type="number" value={data.selling_price_3} onChange={handleNumChange('selling_price_3', index)} onBlur={handleNumBlur('selling_price_3', index)} className="h-10" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase">{t('inventory.fields.price4Resale')}</Label>
-                  <Input type="number" value={data.selling_price_4} onChange={handleNumChange('selling_price_4', index)} onBlur={handleNumBlur('selling_price_4', index)} className="h-10" />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <Label className="text-xs font-black uppercase tracking-wider text-muted-foreground">Prix de Gros</Label>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase">{t('inventory.fields.wholesalePriceHT')}</Label>
-                  <Input type="number" value={data.selling_price_ht} onChange={handleNumChange('selling_price_ht', index)} onBlur={handleNumBlur('selling_price_ht', index)} className="h-10 border-danger/20" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase">{t('inventory.fields.wholesalePriceTTC')}</Label>
-                  <Input type="number" value={data.selling_price_ttc} onChange={handleNumChange('selling_price_ttc', index)} onBlur={handleNumBlur('selling_price_ttc', index)} className="h-10 border-danger/20 font-bold" />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <Label className="text-xs font-black uppercase tracking-wider text-muted-foreground">Logistique & Stock</Label>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase">{t('menu.program.unit')}</Label>
-                  <Select value={data.unit_type} onValueChange={v => update('unit_type', v)}>
-                    <SelectTrigger className="h-10 font-bold"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Pièce">{t('inventory.unitTypes.piece')}</SelectItem>
-                      <SelectItem value="Carton">{t('inventory.unitTypes.carton')}</SelectItem>
-                      <SelectItem value="KG">{t('inventory.unitTypes.kg')}</SelectItem>
-                      <SelectItem value="Litre">{t('inventory.unitTypes.litre')}</SelectItem>
-                      <SelectItem value="Paquet">{t('inventory.unitTypes.paquet')}</SelectItem>
-                      <SelectItem value="Sac">{t('inventory.unitTypes.sac')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase">{t('inventory.fields.packaging')}</Label>
-                  <Input value={data.packaging} onChange={e => update('packaging', e.target.value)} placeholder="1" className="h-10 font-bold border-primary/20" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase">{t('inventory.fields.minStock')}</Label>
-                  <Input type="number" value={data.min_stock_alert} onChange={e => update('min_stock_alert', e.target.value === '' ? '' : Number(e.target.value))} className="h-10 border-primary/20 font-bold" />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <Label className="text-xs font-black uppercase tracking-wider text-muted-foreground">Cuisine & Menu</Label>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase">Temps Prep (min)</Label>
-                  <Input type="number" value={data.prep_time_minutes} onChange={handleNumChange('prep_time_minutes', index)} className="h-10 font-bold border-primary/20" />
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-muted-foreground/10 mt-6">
-                  <Label className="text-[10px] font-bold uppercase">Disponible</Label>
-                  <Switch checked={!!data.is_available} onCheckedChange={v => update('is_available', v)} />
+                <div>
+                  <Label className="djati-field-label">Type de plat</Label>
+                  <div className="djati-select-wrap">
+                    <select 
+                      className="djati-input-field font-bold" 
+                      value={data.course_type} 
+                      onChange={e => update('course_type', e.target.value, index)}
+                    >
+                      <option value="Starter">Entrée</option>
+                      <option value="Main">Plat Principal</option>
+                      <option value="Dessert">Dessert</option>
+                      <option value="Drink">Boisson</option>
+                      <option value="Side">Accompagnement</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase">Allergènes (séparés par virgules)</Label>
-                <Input value={data.allergens} onChange={e => update('allergens', e.target.value)} placeholder="ex: Gluten, Lactose" className="h-10" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase">Options / Suppléments (séparés par virgules)</Label>
-                <Input value={data.modifiers} onChange={e => update('modifiers', e.target.value)} placeholder="ex: Sauce piquante" className="h-10" />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase">{t('inventory.fields.image')}</Label>
-              <ImageUpload currentImageUrl={data.image_url} onImageUploaded={url => update('image_url', url)} onImageRemoved={() => update('image_url', '')} folder="inventory" />
-            </div>
-
-            {!isMultiMode && editingProduct && (
-              <div className="space-y-3 pt-4 border-t border-muted-foreground/10">
-                <Label className="text-xs font-black uppercase tracking-wider text-muted-foreground">Recette & Composition</Label>
-                <RecipeBuilder
-                  dishId={editingProduct.id}
-                  storeId={storeId}
-                  sellingPrice={Number(data.selling_price_detail) || 0}
-                  onChange={(items) => setRecipeItems(items)}
-                  onCostChange={(cost) => setRecipeCost(cost)}
+              <div className="djati-disponible-card">
+                <div>
+                  <p style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', color: '#374151', marginBottom: '2px' }}>Disponible</p>
+                  <p style={{ fontSize: '12px', color: 'var(--txt-m)' }}>Activer pour la commande</p>
+                </div>
+                <div 
+                  className={cn("djati-toggle", data.is_available && "on")} 
+                  onClick={() => update('is_available', !data.is_available, index)}
                 />
               </div>
-            )}
+              
+              <div className="djati-field-group mt-4">
+                <Label className="djati-field-label">Rayon / Allée</Label>
+                <input 
+                  className="djati-input-field" 
+                  type="text" 
+                  value={data.aisle} 
+                  onChange={e => update('aisle', e.target.value, index)} 
+                />
+              </div>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+
+        {/* TAB 4: COMPOSITION */}
+        <div className={cn("space-y-6", data._ui_activeTab === 'composition' ? "block" : "hidden")}>
+          <p className="djati-section-label">Composition du Plat</p>
+          <p style={{ fontSize: '13px', color: 'var(--txt-2)', marginBottom: '16px', lineHeight: 1.5 }}>
+            Définissez les ingrédients nécessaires pour préparer ce plat.<br/>
+            Les stocks seront automatiquement déduits à chaque vente.
+          </p>
+
+          <RecipeBuilder
+            dishId={(!isMultiMode && editingProduct) ? editingProduct.id : (data._ui_pendingId || crypto.randomUUID())}
+            storeId={storeId}
+            sellingPrice={Number(data.selling_price_detail) || 0}
+            onChange={(items) => update('_ui_recipeItems', items, index)}
+            onCostChange={(cost) => update('_ui_recipeCost', cost, index)}
+          />
+        </div>
+
+        {/* TAB 5: OPTIONS */}
+        <div className={cn("space-y-6", data._ui_activeTab === 'options' ? "block" : "hidden")}>
+          <p className="djati-section-label">Personnalisation</p>
+          <div style={{ maxWidth: '520px' }}>
+            <div className="djati-field-group">
+              <Label className="djati-field-label">Allergènes (séparés par virgules)</Label>
+              <input 
+                className="djati-input-field" 
+                type="text" 
+                value={data.allergens} 
+                onChange={e => update('allergens', e.target.value, index)} 
+                placeholder="ex: Gluten, Lactose, Arachides"
+              />
+            </div>
+            <div className="djati-field-group">
+              <Label className="djati-field-label">Options / Suppléments (séparés par virgules)</Label>
+              <textarea 
+                className="djati-input-field" 
+                rows={3} 
+                value={data.modifiers} 
+                onChange={e => update('modifiers', e.target.value, index)} 
+                placeholder="ex: Sauce piquante, Frites supplémentaires, Double portion"
+              />
+            </div>
+          </div>
+        </div>
+      </>
     );
   };
 
@@ -1257,51 +1376,59 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
               </div>
             )}
 
-            {/* ── TAB BAR ── */}
-            {registrationMode === 'single' && (
-              <div className="djati-tab-bar">
-                <button
-                  type="button"
-                  className={cn("djati-tab-btn", activeTab === 'informations' && "active")}
-                  onClick={() => setActiveTab('informations')}
-                >
-                  <ReceiptText className="h-3.5 w-3.5" />
-                  Informations
-                </button>
-                <button
-                  type="button"
-                  className={cn("djati-tab-btn", activeTab === 'prix' && "active")}
-                  onClick={() => setActiveTab('prix')}
-                >
-                  <Coins className="h-3.5 w-3.5" />
-                  Prix &amp; Marges
-                </button>
-                <button
-                  type="button"
-                  className={cn("djati-tab-btn", activeTab === 'logistique' && "active")}
-                  onClick={() => setActiveTab('logistique')}
-                >
-                  <Package className="h-3.5 w-3.5" />
-                  Logistique
-                </button>
-                <button
-                  type="button"
-                  className={cn("djati-tab-btn", activeTab === 'composition' && "active")}
-                  onClick={() => setActiveTab('composition')}
-                >
-                  <ChefHat className="h-3.5 w-3.5" />
-                  Composition
-                </button>
-                <button
-                  type="button"
-                  className={cn("djati-tab-btn", activeTab === 'options' && "active")}
-                  onClick={() => setActiveTab('options')}
-                >
-                  <Sliders className="h-3.5 w-3.5" />
-                  Options
-                </button>
-              </div>
-            )}
+            {/* ── TAB BAR FOR BOTH MODES ── */}
+            {(() => {
+              const activeData = registrationMode === 'single' ? formData : (multiItems[selectedMultiItemIndex] || initialFormState);
+              const handleTabChange = (tab: string) => {
+                if (registrationMode === 'single') updateField('_ui_activeTab', tab);
+                else updateField('_ui_activeTab', tab, selectedMultiItemIndex);
+              };
+
+              return (
+                <div className="djati-tab-bar">
+                  <button
+                    type="button"
+                    className={cn("djati-tab-btn", activeData._ui_activeTab === 'informations' && "active")}
+                    onClick={() => handleTabChange('informations')}
+                  >
+                    <ReceiptText className="h-3.5 w-3.5" />
+                    Informations
+                  </button>
+                  <button
+                    type="button"
+                    className={cn("djati-tab-btn", activeData._ui_activeTab === 'prix' && "active")}
+                    onClick={() => handleTabChange('prix')}
+                  >
+                    <Coins className="h-3.5 w-3.5" />
+                    Prix &amp; Marges
+                  </button>
+                  <button
+                    type="button"
+                    className={cn("djati-tab-btn", activeData._ui_activeTab === 'logistique' && "active")}
+                    onClick={() => handleTabChange('logistique')}
+                  >
+                    <Package className="h-3.5 w-3.5" />
+                    Logistique
+                  </button>
+                  <button
+                    type="button"
+                    className={cn("djati-tab-btn", activeData._ui_activeTab === 'composition' && "active")}
+                    onClick={() => handleTabChange('composition')}
+                  >
+                    <ChefHat className="h-3.5 w-3.5" />
+                    Composition
+                  </button>
+                  <button
+                    type="button"
+                    className={cn("djati-tab-btn", activeData._ui_activeTab === 'options' && "active")}
+                    onClick={() => handleTabChange('options')}
+                  >
+                    <Sliders className="h-3.5 w-3.5" />
+                    Options
+                  </button>
+                </div>
+              );
+            })()}
 
             <form 
               onSubmit={(e) => { 
@@ -1314,456 +1441,70 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
               }} 
               className="flex-1 flex flex-col min-h-0 overflow-hidden"
             >
-              <div className="djati-content">
+              <div className={cn("djati-content", registrationMode === 'multi' && "p-0 flex flex-row h-full")}>
                 {registrationMode === 'single' ? (
-                  <>
-                    {/* TAB 1: INFORMATIONS */}
-                    <div className={cn("space-y-6", activeTab === 'informations' ? "block" : "hidden")}>
-                      <p className="djati-section-label">Identification</p>
-                      
-                      <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', marginBottom: '14px' }}>
-                        <div className="flex flex-col gap-2 shrink-0">
-                          <Label className="djati-field-label">{t('inventory.fields.image')}</Label>
-                          <ImageUpload 
-                            currentImageUrl={formData.image_url} 
-                            onImageUploaded={url => updateField('image_url', url)} 
-                            onImageRemoved={() => updateField('image_url', '')} 
-                            folder="inventory" 
-                          />
-                        </div>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                          <div>
-                            <Label className="djati-field-label">Nom de l'plats <span className="djati-req">*</span></Label>
-                            <input 
-                              id="product-name-single"
-                              className="djati-input-field text-lg font-semibold" 
-                              type="text" 
-                              value={formData.name} 
-                              onChange={e => updateField('name', e.target.value)} 
-                              placeholder="Ex: Burger Maison, Pizza Margherita…"
-                              required
-                            />
-                          </div>
-                          <div className="djati-row2" style={{ marginBottom: 0 }}>
-                            <div>
-                              <Label className="djati-field-label">SKU</Label>
-                              <input 
-                                className="djati-input-field font-mono" 
-                                type="text" 
-                                value={formData.sku} 
-                                onChange={e => updateField('sku', e.target.value)} 
-                              />
-                            </div>
-                            <div>
-                              <Label className="djati-field-label">Code-barres</Label>
-                              <div style={{ display: 'flex', gap: '6px' }}>
-                                <input 
-                                  className="djati-input-field font-mono" 
-                                  type="text" 
-                                  value={formData.barcode} 
-                                  onChange={e => updateField('barcode', e.target.value)} 
-                                />
-                                <Button 
-                                  type="button" 
-                                  variant="outline" 
-                                  size="icon" 
-                                  onClick={() => updateField('barcode', `PRD${Date.now().toString(36).toUpperCase()}`)} 
-                                  className="h-[36px] w-[36px] shrink-0"
-                                >
-                                  <Barcode className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="djati-field-group">
-                        <Label className="djati-field-label teal">Famille / Catégorie</Label>
-                        <div className="djati-select-wrap">
-                          <select 
-                            className="djati-input-field" 
-                            value={formData.family_id} 
-                            onChange={e => updateField('family_id', e.target.value)}
-                          >
-                            <option value="">Sélectionner une famille</option>
-                            {families.map(fam => (
-                              <option key={fam.id} value={fam.id}>{fam.name}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="djati-field-group">
-                        <Label className="djati-field-label">Marque</Label>
-                        <input 
-                          className="djati-input-field" 
-                          type="text" 
-                          value={formData.brand} 
-                          onChange={e => updateField('brand', e.target.value)} 
-                        />
-                      </div>
-                    </div>
-
-                    {/* TAB 2: PRIX & MARGES */}
-                    <div className={cn("space-y-6", activeTab === 'prix' ? "block" : "hidden")}>
-                      {/* Bug 4 Fix: Item type toggle pill */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', padding: '10px 14px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '10px' }}>
-                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.08em', marginRight: '8px' }}>Type :</span>
-                        <button
-                          type="button"
-                          onClick={() => setItemType('dish')}
-                          style={{
-                            padding: '5px 14px', borderRadius: '9999px', fontSize: '12px', fontWeight: 700,
-                            border: 'none', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-                            background: itemType === 'dish' ? 'var(--teal)' : '#e5e7eb',
-                            color: itemType === 'dish' ? '#fff' : '#374151',
-                          }}
-                        >
-                          🍳 Plat Cuisiné
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setItemType('product')}
-                          style={{
-                            padding: '5px 14px', borderRadius: '9999px', fontSize: '12px', fontWeight: 700,
-                            border: 'none', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-                            background: itemType === 'product' ? 'var(--teal)' : '#e5e7eb',
-                            color: itemType === 'product' ? '#fff' : '#374151',
-                          }}
-                        >
-                          📦 Article Direct
-                        </button>
-                        <span style={{ fontSize: '11px', color: '#9ca3af', marginLeft: '8px' }}>
-                          {itemType === 'dish' ? 'Coût calculé depuis la composition' : 'Prix d\'achat saisi manuellement'}
-                        </span>
-                      </div>
-
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: '20px' }}>
-                        <div>
-                          <p className="djati-section-label">Prix et Marges</p>
-
-                          <div className="djati-price-highlight">
-                            <Label className="djati-field-label teal font-bold">Prix de commandes (Détail) <span className="djati-req">*</span></Label>
-                            <div className="djati-price-wrap">
-                              <input 
-                                className="djati-input-field font-black text-lg" 
-                                type="number" 
-                                value={formData.selling_price_detail} 
-                                onChange={handleNumChange('selling_price_detail')} 
-                                onBlur={handleNumBlur('selling_price_detail')}
-                                required
-                              />
-                              <span className="currency">F</span>
-                            </div>
-                          </div>
-
-                          <div className="djati-row3">
-                            <div>
-                              <Label className="djati-field-label" style={{ fontSize: '9.5px' }}>2ème Prix (Remise)</Label>
-                              <div className="djati-price-wrap">
-                                <input 
-                                  className="djati-input-field font-semibold text-center" 
-                                  type="number" 
-                                  value={formData.selling_price_2} 
-                                  onChange={handleNumChange('selling_price_2')} 
-                                  onBlur={handleNumBlur('selling_price_2')}
-                                />
-                                <span className="currency">F</span>
-                              </div>
-                            </div>
-                            <div>
-                              <Label className="djati-field-label" style={{ fontSize: '9.5px' }}>3ème Prix (Gros)</Label>
-                              <div className="djati-price-wrap">
-                                <input 
-                                  className="djati-input-field font-semibold text-center" 
-                                  type="number" 
-                                  value={formData.selling_price_3} 
-                                  onChange={handleNumChange('selling_price_3')} 
-                                  onBlur={handleNumBlur('selling_price_3')}
-                                />
-                                <span className="currency">F</span>
-                              </div>
-                            </div>
-                            <div>
-                              <Label className="djati-field-label" style={{ fontSize: '9.5px' }}>4ème Prix (Revente)</Label>
-                              <div className="djati-price-wrap">
-                                <input 
-                                  className="djati-input-field font-semibold text-center" 
-                                  type="number" 
-                                  value={formData.selling_price_4} 
-                                  onChange={handleNumChange('selling_price_4')} 
-                                  onBlur={handleNumBlur('selling_price_4')}
-                                />
-                                <span className="currency">F</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Bug 4 Fix: show purchase price only for Article Direct */}
-                          {itemType === 'product' ? (
-                            <div className="djati-field-group">
-                              <Label className="djati-field-label">Prix d'achat</Label>
-                              <div className="djati-price-wrap">
-                                <input 
-                                  className="djati-input-field" 
-                                  type="number" 
-                                  value={formData.purchase_price} 
-                                  onChange={handleNumChange('purchase_price')} 
-                                  onBlur={handleNumBlur('purchase_price')}
-                                />
-                                <span className="currency">F</span>
-                              </div>
-                            </div>
-                          ) : (
-                            <div style={{ background: 'var(--teal-light)', border: '1px solid var(--teal-border)', borderRadius: '8px', padding: '10px 14px', marginBottom: '14px' }}>
-                              <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--teal)', marginBottom: '6px' }}>Coût de revient (depuis composition)</div>
-                              <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--teal)', fontFamily: 'monospace' }}>{recipeCost.toLocaleString()} F CFA</div>
-                              <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>Calculé automatiquement depuis l'onglet Composition</div>
-                            </div>
-                          )}
-
-                          <div className="djati-row2">
-                            <div>
-                              <Label className="djati-field-label red">Prix Gros HT</Label>
-                              <div className="djati-price-wrap">
-                                <input 
-                                  className="djati-input-field" 
-                                  type="number" 
-                                  value={formData.selling_price_ht} 
-                                  onChange={handleNumChange('selling_price_ht')} 
-                                  onBlur={handleNumBlur('selling_price_ht')}
-                                />
-                                <span className="currency">F</span>
-                              </div>
-                            </div>
-                            <div>
-                              <Label className="djati-field-label red">Prix Gros TTC</Label>
-                              <div className="djati-price-wrap">
-                                <input 
-                                  className="djati-input-field font-bold" 
-                                  type="number" 
-                                  value={formData.selling_price_ttc} 
-                                  onChange={handleNumChange('selling_price_ttc')} 
-                                  onBlur={handleNumBlur('selling_price_ttc')}
-                                />
-                                <span className="currency">F</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <p className="djati-section-label">Résumé Financier</p>
-                          <div className="djati-cost-card">
-                            <div className="djati-cost-row">
-                              <span className="lbl">Coût ingrédients estimé</span>
-                              <span className="val">{recipeCost.toLocaleString()} F</span>
-                            </div>
-                            <div className="djati-cost-row">
-                              <span className="lbl">Marge brute estimée</span>
-                              <span className="val positive">{(Number(formData.selling_price_detail) - recipeCost).toLocaleString()} F</span>
-                            </div>
-                          </div>
-                          <p style={{ fontSize: '11px', color: 'var(--txt-m)', marginTop: '10px', lineHeight: 1.5 }}>
-                            Calculé automatiquement depuis l'onglet Composition.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* TAB 3: LOGISTIQUE */}
-                    <div className={cn("space-y-6", activeTab === 'logistique' ? "block" : "hidden")}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                        <div>
-                          <p className="djati-section-label">Logistique</p>
-                          <div className="djati-row2">
-                            <div>
-                              <Label className="djati-field-label">Unité</Label>
-                              <div className="djati-select-wrap">
-                                <select 
-                                  className="djati-input-field font-bold" 
-                                  value={formData.unit_type} 
-                                  onChange={e => updateField('unit_type', e.target.value)}
-                                >
-                                  <option value="Pièce">{t('inventory.unitTypes.piece')}</option>
-                                  <option value="Carton">{t('inventory.unitTypes.carton')}</option>
-                                  <option value="KG">{t('inventory.unitTypes.kg')}</option>
-                                  <option value="Litre">{t('inventory.unitTypes.litre')}</option>
-                                  <option value="Paquet">{t('inventory.unitTypes.paquet')}</option>
-                                  <option value="Sac">{t('inventory.unitTypes.sac')}</option>
-                                </select>
-                              </div>
-                            </div>
-                            <div>
-                              <Label className="djati-field-label teal">Portion / Pack Size</Label>
-                              <input 
-                                className="djati-input-field font-bold text-center" 
-                                type="text" 
-                                value={formData.packaging} 
-                                onChange={e => updateField('packaging', e.target.value)} 
-                              />
-                            </div>
-                          </div>
-                          <div className="djati-row2">
-                            <div>
-                              <Label className="djati-field-label teal">Stock initial (Base Units)</Label>
-                              <input 
-                                className="djati-input-field font-bold" 
-                                type="number" 
-                                value={formData.reorder_quantity} 
-                                onChange={handleNumChange('reorder_quantity')} 
-                                onBlur={handleNumBlur('reorder_quantity')}
-                              />
-                            </div>
-                            <div>
-                              <Label className="djati-field-label">Stock minimum</Label>
-                              <input 
-                                className="djati-input-field font-semibold" 
-                                type="number" 
-                                value={formData.min_stock_alert} 
-                                onChange={handleNumChange('min_stock_alert')} 
-                                onBlur={handleNumBlur('min_stock_alert')}
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <p className="djati-section-label">Gestion du Stock</p>
-                          <div className="djati-row2">
-                            <div>
-                              <Label className="djati-field-label">Préparation (Min)</Label>
-                              <input 
-                                className="djati-input-field font-semibold" 
-                                type="number" 
-                                value={formData.prep_time_minutes} 
-                                onChange={handleNumChange('prep_time_minutes')} 
-                                onBlur={handleNumBlur('prep_time_minutes')}
-                              />
-                            </div>
-                            <div>
-                              <Label className="djati-field-label">Type de plat</Label>
-                              <div className="djati-select-wrap">
-                                <select 
-                                  className="djati-input-field font-bold" 
-                                  value={formData.course_type} 
-                                  onChange={e => updateField('course_type', e.target.value)}
-                                >
-                                  <option value="Starter">Entrée</option>
-                                  <option value="Main">Plat Principal</option>
-                                  <option value="Dessert">Dessert</option>
-                                  <option value="Drink">Boisson</option>
-                                  <option value="Side">Accompagnement</option>
-                                </select>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="djati-disponible-card">
-                            <div>
-                              <p style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', color: '#374151', marginBottom: '2px' }}>Disponible</p>
-                              <p style={{ fontSize: '12px', color: 'var(--txt-m)' }}>Activer pour la commande</p>
-                            </div>
-                            <div 
-                              className={cn("djati-toggle", formData.is_available && "on")} 
-                              onClick={() => updateField('is_available', !formData.is_available)}
-                            />
-                          </div>
-                          
-                          <div className="djati-field-group mt-4">
-                            <Label className="djati-field-label">Rayon / Allée</Label>
-                            <input 
-                              className="djati-input-field" 
-                              type="text" 
-                              value={formData.aisle} 
-                              onChange={e => updateField('aisle', e.target.value)} 
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* TAB 4: COMPOSITION */}
-                    <div className={cn("space-y-6", activeTab === 'composition' ? "block" : "hidden")}>
-                      <p className="djati-section-label">Composition du Plat</p>
-                      <p style={{ fontSize: '13px', color: 'var(--txt-2)', marginBottom: '16px', lineHeight: 1.5 }}>
-                        Définissez les ingrédients nécessaires pour préparer ce plat.<br/>
-                        Les stocks seront automatiquement déduits à chaque vente.
-                      </p>
-
-                      {/* Bug 3 Fix: always render RecipeBuilder — use pendingId for new items */}
-                      <RecipeBuilder
-                        dishId={editingProduct ? editingProduct.id : pendingId.current}
-                        storeId={storeId}
-                        sellingPrice={Number(formData.selling_price_detail) || 0}
-                        onChange={(items) => setRecipeItems(items)}
-                        onCostChange={(cost) => setRecipeCost(cost)}
-                      />
-                    </div>
-
-                    {/* TAB 5: OPTIONS */}
-                    <div className={cn("space-y-6", activeTab === 'options' ? "block" : "hidden")}>
-                      <p className="djati-section-label">Personnalisation</p>
-                      <div style={{ maxWidth: '520px' }}>
-                        <div className="djati-field-group">
-                          <Label className="djati-field-label">Allergènes (séparés par virgules)</Label>
-                          <input 
-                            className="djati-input-field" 
-                            type="text" 
-                            value={formData.allergens} 
-                            onChange={e => updateField('allergens', e.target.value)} 
-                            placeholder="ex: Gluten, Lactose, Arachides"
-                          />
-                        </div>
-                        <div className="djati-field-group">
-                          <Label className="djati-field-label">Options / Suppléments (séparés par virgules)</Label>
-                          <textarea 
-                            className="djati-input-field" 
-                            rows={3} 
-                            value={formData.modifiers} 
-                            onChange={e => updateField('modifiers', e.target.value)} 
-                            placeholder="ex: Sauce piquante, Frites supplémentaires, Double portion"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </>
+                  renderFullForm(formData, updateField)
                 ) : (
-                  <div className="space-y-4">
-                    {multiItems.map((item, index) => (
-                      <Card key={item.id} className={cn("border-4 transition-all overflow-hidden cursor-pointer", item.isOpen ? "border-primary shadow-2xl scale-[1.01]" : "border-muted/60 shadow-md hover:border-primary/40 hover:bg-muted/10")}>
-                        <div className="flex items-center justify-between p-4" onClick={() => toggleMultiItemRow(item.id)}>
-                          <div className="flex items-center gap-3">
-                            <div className={cn("p-2 rounded-lg bg-primary/10 text-primary transition-transform", item.isOpen && "rotate-180")}>
-                              {item.isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                            </div>
-                            <span className="font-black uppercase tracking-widest text-sm text-primary/80">{item.name || `NOUVEL ARTICLE #${index + 1}`}</span>
+                  <>
+                    {/* MASTER SIDEBAR */}
+                    <div className="w-[280px] flex-shrink-0 border-r bg-muted/5 overflow-y-auto p-4 space-y-3">
+                      {multiItems.map((item, index) => (
+                        <div 
+                          key={item.id} 
+                          className={cn(
+                            "p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between shadow-sm",
+                            index === selectedMultiItemIndex 
+                              ? "border-primary bg-primary/5" 
+                              : "border-transparent bg-white hover:border-primary/30"
+                          )}
+                          onClick={() => setSelectedMultiItemIndex(index)}
+                        >
+                          <div className="flex flex-col flex-1 min-w-0 mr-2">
+                            <span className="font-bold text-sm truncate text-foreground">
+                              {item.name || `Nouvel article #${index + 1}`}
+                            </span>
+                            {item.quantity > 0 && (
+                              <span className="text-xs text-muted-foreground">Qté: {item.quantity} {item.unit_type === 'piece' ? 'Pce' : 'Ctn'}</span>
+                            )}
                           </div>
-                          <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); removeMultiItemRow(item.id); }}>
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0" 
+                            onClick={(e) => { e.stopPropagation(); removeMultiItemRow(item.id); }}
+                          >
                             <Minus className="h-4 w-4" />
                           </Button>
                         </div>
-                        {item.isOpen && (
-                          <div className="p-6 border-t-2 bg-muted/5">
-                            {renderSimplifiedForm(
-                              item,
-                              (field, val) => updateField(field, val, index),
-                              index,
-                              !!multiAdvancedOpen[item.id],
-                              () => setMultiAdvancedOpen(prev => ({ ...prev, [item.id]: !prev[item.id] })),
-                              true
-                            )}
-                          </div>
-                        )}
-                      </Card>
-                    ))}
-                    <div className="flex justify-start pt-2">
-                      <Button variant="outline" type="button" className="h-20 border-dashed border-4 border-primary/30 text-primary hover:bg-primary/5 hover:border-primary font-black uppercase tracking-[0.4em] gap-3 px-12 rounded-2xl" onClick={addMultiItemRow}>
-                        <Plus className="h-6 w-6" />AJOUTER UN ARTICLE AU LOT
+                      ))}
+                      <Button 
+                        variant="outline" 
+                        type="button" 
+                        className="w-full mt-2 border-dashed border-2 border-primary/30 text-primary hover:bg-primary/5 font-semibold" 
+                        onClick={addMultiItemRow}
+                      >
+                        <Plus className="h-4 w-4 mr-2" /> Ajouter un article
                       </Button>
                     </div>
-                  </div>
+
+                    {/* DETAIL FORM */}
+                    <div className="flex-1 min-w-0 overflow-y-auto p-6 bg-white">
+                      {multiItems.length > 0 && multiItems[selectedMultiItemIndex] ? (
+                        renderFullForm(
+                          multiItems[selectedMultiItemIndex],
+                          (field, val, idx) => updateField(field, val, idx),
+                          selectedMultiItemIndex,
+                          true
+                        )
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                          <Package className="h-12 w-12 mb-4 opacity-20" />
+                          <p>Aucun article sélectionné</p>
+                        </div>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
 
