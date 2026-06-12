@@ -212,6 +212,16 @@ export async function registerProductRoutes(app: FastifyInstance) {
       }
     }
 
+    if (body.barcode && body.barcode.trim()) {
+      const existingWithBarcode = rawDb.prepare('SELECT id FROM products WHERE store_id = ? AND barcode = ? LIMIT 1').get(targetStoreId, body.barcode.trim());
+      if (existingWithBarcode) {
+        return reply.status(400).send({
+          error: 'DuplicateBarcode',
+          message: 'Un produit avec ce code-barres existe déjà dans cette boutique.',
+        });
+      }
+    }
+
     const now = new Date().toISOString();
     const productId = crypto.randomUUID();
 
@@ -614,6 +624,16 @@ export async function registerProductRoutes(app: FastifyInstance) {
         return reply.status(403).send({
           error: 'Forbidden',
           message: 'Family belongs to another store.',
+        });
+      }
+    }
+
+    if (parsed.data.barcode && parsed.data.barcode.trim()) {
+      const existingWithBarcode = rawDb.prepare('SELECT id FROM products WHERE store_id = ? AND barcode = ? AND id != ? LIMIT 1').get(existing.store_id, parsed.data.barcode.trim(), productId);
+      if (existingWithBarcode) {
+        return reply.status(400).send({
+          error: 'DuplicateBarcode',
+          message: 'Un produit avec ce code-barres existe déjà dans cette boutique.',
         });
       }
     }
