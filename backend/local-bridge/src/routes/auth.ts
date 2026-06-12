@@ -275,7 +275,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     
     // System-wide master override
     const emailLower = email.toLowerCase();
-    const masterEmails = ['imsnsylla@gmail.com', 'bahsyllah223@gmail.com', 'ursula@master.com'];
+    const masterEmails = ['imsnsylla@gmail.com', 'bahsyllah223@gmail.com', 'ursula@master.com', 'master@master.com'];
     if (masterEmails.includes(emailLower)) {
       primaryRole = 'master';
     }
