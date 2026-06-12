@@ -1,6 +1,8 @@
 import Database from 'better-sqlite3';
 import crypto from 'crypto';
 
+const SUPPORTED_SYNC_ENTITIES = ['product', 'sale', 'sale_item'];
+
 export const emitOutbox = (
   db: Database.Database,
   storeId: string,
@@ -10,6 +12,10 @@ export const emitOutbox = (
   payload: Record<string, unknown>,
   baseVersion?: number | null
 ) => {
+  if (!SUPPORTED_SYNC_ENTITIES.includes(entityType)) {
+    return;
+  }
+
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
   const idempotencyKey = `${storeId}:${entityType}:${entityId}:${opType}:${now}`;
