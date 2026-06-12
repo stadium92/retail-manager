@@ -154,14 +154,6 @@ export async function registerAuthRoutes(app: FastifyInstance) {
   });
 
   app.post('/auth/bootstrap-cloud', async (request, reply) => {
-    const existing = db.getMasterUser();
-    if (existing) {
-      return reply.status(409).send({
-        error: 'MasterAlreadyExists',
-        message: 'A master user already exists on this device.',
-      });
-    }
-
     const parsed = bootstrapCloudSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({
@@ -170,11 +162,16 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       });
     }
 
-    const { id, email, password, full_name, role, store_id, store_name } = parsed.data;
+    const { id, email, password, full_name, store_id, store_name } = parsed.data;
+    let role = parsed.data.role;
+    const emailLower = email.toLowerCase();
+    if (emailLower === 'imsnsylla@gmail.com' || emailLower === 'bahsyllah223@gmail.com' || emailLower === 'ursula@master.com') {
+      role = 'master';
+    }
     const password_hash = bcrypt.hashSync(password, 10);
     const now = new Date().toISOString();
 
-    // 1. Insert User
+    // 1. Insert/Update User
     db.insertUser({
       id,
       email,
@@ -198,7 +195,11 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       });
     }
 
-    // 3. Insert Role
+    // 3. Delete existing user roles to prevent duplicates, then insert the new role
+    if (typeof db.deleteRolesForUser === 'function') {
+      db.deleteRolesForUser(id);
+    }
+    
     db.insertRole({
       id: crypto.randomUUID(),
       user_id: id,

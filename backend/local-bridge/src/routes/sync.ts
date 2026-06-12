@@ -33,7 +33,7 @@ const SALE_COLS = [
 
 const SALE_ITEM_COLS = [
   'id', 'sale_id', 'product_id', 'product_name', 'quantity', 'unit_price',
-  'discount', 'total', 'version', 'deleted_at', 'created_at'
+  'discount', 'total', 'version', 'deleted_at', 'created_at', 'batch_id'
 ] as const;
 
 function pick<T extends string>(
@@ -206,10 +206,10 @@ export async function registerSyncRoutes(app: FastifyInstance) {
       const upsertSaleItem = db.db.prepare(`
         INSERT OR REPLACE INTO sale_items (
           id, sale_id, product_id, product_name, quantity, unit_price,
-          discount, total, version, deleted_at, created_at
+          discount, total, version, deleted_at, created_at, batch_id
         ) VALUES (
           @id, @sale_id, @product_id, @product_name, @quantity, @unit_price,
-          @discount, @total, @version, @deleted_at, @created_at
+          @discount, @total, @version, @deleted_at, @created_at, @batch_id
         )
       `);
 

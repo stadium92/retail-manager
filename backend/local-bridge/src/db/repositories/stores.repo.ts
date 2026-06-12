@@ -31,7 +31,7 @@ export const createStoresRepo = (db: Database.Database) => ({
   insertStore(store: LocalStore) {
     db.prepare(
       `
-      INSERT INTO stores (
+      INSERT OR REPLACE INTO stores (
         id,
         name,
         address,
