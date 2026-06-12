@@ -217,6 +217,11 @@ export function MasterLayout() {
           <LogOut className="h-4 w-4 mr-2" />
           {t('auth.signOut')}
         </Button>
+        <div className="text-center mt-2">
+          <p className="text-[10px] text-sidebar-foreground/40 font-mono">
+            v{import.meta.env.VITE_APP_VERSION || 'dev'}
+          </p>
+        </div>
       </div>
     </div>
   );

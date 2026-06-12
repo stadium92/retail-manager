@@ -293,6 +293,7 @@ export class OfflineAuthService {
     try {
       // 1. ONLINE FIRST: Try Supabase
       console.log('[OfflineAuth] Attempting online Supabase login first...');
+      toast({ title: 'Attempting cloud login...', description: 'Connecting to Supabase...' });
       const { data, error: supaError } = await supabase.auth.signInWithPassword({ email, password });
       if (supaError || !data.user) throw supaError || new Error('No user returned');
 
@@ -326,10 +327,12 @@ export class OfflineAuthService {
       );
 
       const cache = this.saveLocalBridgeSession(syncResponse);
+      toast({ title: 'Cloud sync successful', description: 'Logged in online securely.' });
       return this.mapCacheToResult(cache);
 
     } catch (onlineError) {
       console.log('[OfflineAuth] Online login failed (offline or invalid). Attempting local fallback...', onlineError);
+      toast({ title: 'Cloud unavailable', description: 'Logging in offline...', variant: 'destructive' });
       
       try {
         // 2. OFFLINE FALLBACK: Try Local Bridge
