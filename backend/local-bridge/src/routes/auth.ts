@@ -84,9 +84,9 @@ const syncCloudLoginSchema = z.object({
   id: z.string(),
   email: z.string().email(),
   password: z.string().min(1),
-  full_name: z.string().optional(),
-  role: z.enum(['master', 'worker', 'deliverer']).optional(),
-  store_id: z.string().optional(),
+  full_name: z.string().nullable().optional(),
+  role: z.enum(['master', 'worker', 'deliverer']).nullable().optional(),
+  store_id: z.string().nullable().optional(),
 });
 
 export async function registerAuthRoutes(app: FastifyInstance) {
