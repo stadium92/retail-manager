@@ -150,6 +150,20 @@ export class SupabaseSyncService {
             };
             break;
 
+          case 'store':
+            supabaseTable = 'stores';
+            mappedPayload = {
+              id: payload.id,
+              name: payload.name,
+              address: payload.address || null,
+              phone: payload.phone || null,
+              owner_id: payload.owner_id || null,
+              default_price_tier: payload.default_price_tier || 1,
+              created_at: payload.created_at || new Date().toISOString(),
+              updated_at: payload.updated_at || new Date().toISOString()
+            };
+            break;
+
           case 'user_create':
             supabaseTable = 'edge_function_create_user';
             mappedPayload = payload;
@@ -174,7 +188,7 @@ export class SupabaseSyncService {
           if (entry.op_type === 'delete') {
             const { error: delErr } = await supabase
               .from(supabaseTable)
-              .update({ deleted_at: new Date().toISOString() })
+              .delete()
               .eq('id', entry.entity_id);
             error = delErr;
           } else if (supabaseTable === 'edge_function_create_user') {
