@@ -133,6 +133,15 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     }
 
     let finalStoreId = store_id || null;
+    
+    // 1. Prevent fragmentation by prioritizing existing local store on this device
+    if (!finalStoreId) {
+        const allLocalStores = db.listStores();
+        if (allLocalStores.length > 0) {
+            finalStoreId = allLocalStores[0].id;
+        }
+    }
+
     if (primaryRole === 'master') {
         const ownedStores = db.listStores(userId);
         if (ownedStores.length > 0) {
@@ -305,11 +314,23 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       role,
     });
 
+    let finalStoreId = store_id || null;
+    
+    // Prevent fragmentation for bootstrap as well
+    if (!finalStoreId) {
+        const allLocalStores = db.listStores();
+        if (allLocalStores.length > 0) {
+            finalStoreId = allLocalStores[0].id;
+        } else {
+            finalStoreId = crypto.randomUUID();
+        }
+    }
+
     // 2. Insert Store (if not already present)
-    if (!db.getStoreById(store_id)) {
+    if (!db.getStoreById(finalStoreId)) {
       db.insertStore({
-        id: store_id,
-        name: store_name,
+        id: finalStoreId,
+        name: store_name || 'My Cloud Store',
         owner_id: role === 'master' ? id : null,
         default_price_tier: 1,
         created_at: now,
@@ -326,7 +347,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       id: crypto.randomUUID(),
       user_id: id,
       role,
-      store_id,
+      store_id: finalStoreId,
       created_at: now,
     });
 
@@ -341,11 +362,11 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       action_type: 'user_bootstrap_cloud',
       entity_affected: 'auth',
       entity_id: id,
-      store_id,
+      store_id: finalStoreId,
     });
 
     // 5. Issue Tokens & Create Session
-    const accessToken = issueAccessToken(id, email, role, store_id);
+    const accessToken = issueAccessToken(id, email, role, finalStoreId);
     const refreshToken = crypto.randomBytes(48).toString('hex');
     const sessionExpiry = Math.floor(Date.now() / 1000) + REFRESH_TOKEN_TTL_SECONDS;
 
@@ -360,7 +381,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     });
 
     return reply.status(201).send(
-      buildLoginResponse({ id, email, full_name }, role, store_id, accessToken, refreshToken)
+      buildLoginResponse({ id, email, full_name }, role, finalStoreId, accessToken, refreshToken)
     );
   });
 
