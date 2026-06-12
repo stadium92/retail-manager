@@ -41,6 +41,8 @@ function mapDbToInventoryItem(product: any): InventoryItem {
     allergens: typeof product.allergens === 'string' ? JSON.parse(product.allergens || '[]') : (product.allergens || []),
     course_type: product.course_type || '',
     modifiers: typeof product.modifiers === 'string' ? JSON.parse(product.modifiers || '[]') : (product.modifiers || []),
+    item_type: product.item_type || 'product',
+    pack_items: typeof product.pack_items === 'string' ? JSON.parse(product.pack_items || '[]') : (product.pack_items || []),
     created_at: product.created_at,
     updated_at: product.updated_at,
   };
@@ -75,6 +77,8 @@ function mapLocalInventoryToItem(local: LocalInventory): InventoryItem {
     allergens: typeof local.allergens === 'string' ? JSON.parse(local.allergens || '[]') : (local.allergens || []),
     course_type: local.course_type || '',
     modifiers: typeof local.modifiers === 'string' ? JSON.parse(local.modifiers || '[]') : (local.modifiers || []),
+    item_type: (local as any).item_type || 'product',
+    pack_items: typeof (local as any).pack_items === 'string' ? JSON.parse((local as any).pack_items || '[]') : ((local as any).pack_items || []),
     updated_at: local.updated_at,
     created_at: (local as any).created_at || local.updated_at,
   };
@@ -109,6 +113,8 @@ function mapToLocalInventory(item: InventoryItem | any, synced: boolean = true):
     allergens: typeof item.allergens === 'string' ? item.allergens : JSON.stringify(item.allergens || []),
     course_type: item.course_type || '',
     modifiers: typeof item.modifiers === 'string' ? item.modifiers : JSON.stringify(item.modifiers || []),
+    item_type: item.item_type || 'product',
+    pack_items: typeof item.pack_items === 'string' ? item.pack_items : JSON.stringify(item.pack_items || []),
     updated_at: item.updated_at || new Date().toISOString(),
     synced,
   };

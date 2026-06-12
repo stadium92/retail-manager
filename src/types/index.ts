@@ -114,6 +114,8 @@ export interface InventoryItem {
   allergens?: string[] | string;
   course_type?: string;
   modifiers?: any[] | string;
+  item_type?: 'product' | 'dish' | 'pack';
+  pack_items?: any[] | string;
   
   created_at: string;
   updated_at: string;
