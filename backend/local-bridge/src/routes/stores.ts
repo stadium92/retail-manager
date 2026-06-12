@@ -87,10 +87,6 @@ export async function registerStoreRoutes(app: FastifyInstance) {
     if (!existing) {
       return reply.status(404).send({ error: 'NotFound', message: 'Store not found.' });
     }
-    if (existing.owner_id && existing.owner_id !== claims.sub) {
-      return reply.status(403).send({ error: 'Forbidden', message: 'Cannot delete this store.' });
-    }
-
     db.deleteStore(storeId);
     return reply.send({ message: 'Store deleted.' });
   });

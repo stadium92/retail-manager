@@ -144,5 +144,8 @@ start().catch(e => {
 // Force restart for removing hardcoded emails: 2026-06-12T10:46:00Z
 // Force restart for duplicate store fix: 2026-06-12T10:52:00Z
 // Force restart for store cascading delete fix: 2026-06-12T10:58:00Z
+// Force restart for error logger: 2026-06-12T11:18:00Z
 // Force restart for foreign key correct order fix: 2026-06-12T11:13:00Z
 // Force restart for sync filter fix: 2026-06-12T09:27:10Z
+// Force restart for stores delete 403 fix: 2026-06-12T11:33:00Z
+
