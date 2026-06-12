@@ -308,6 +308,20 @@ export class OfflineAuthService {
         if (supaError || !data.user) throw supaError;
 
         console.log('[OfflineAuth] Supabase fallback successful, syncing to Local Bridge...');
+        
+        let store_id = data.user.user_metadata?.store_id || null;
+        let store_object = null;
+        
+        if (!store_id && (data.user.user_metadata?.role === 'master' || data.user.user_metadata?.role === undefined)) {
+            // Master users without a store_id in metadata might already have a store in the DB
+            const { data: stores } = await supabase.from('stores').select('*').eq('owner_id', data.user.id).limit(1);
+            if (stores && stores.length > 0) {
+               store_id = stores[0].id;
+               store_object = stores[0];
+               console.log('[OfflineAuth] Found existing store for master from Supabase:', store_id);
+            }
+        }
+
         const syncResponse = await this.localBridgeRequest<LocalBridgeLoginResponse>(
           '/auth/sync-cloud-login',
           {
@@ -318,7 +332,8 @@ export class OfflineAuthService {
               password,
               full_name: data.user.user_metadata?.full_name || 'Cloud User',
               role: data.user.user_metadata?.role || 'worker',
-              store_id: data.user.user_metadata?.store_id || null,
+              store_id: store_id,
+              store_object: store_object,
             }),
           }
         );

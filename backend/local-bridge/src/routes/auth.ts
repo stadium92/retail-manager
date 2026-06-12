@@ -87,6 +87,14 @@ const syncCloudLoginSchema = z.object({
   full_name: z.string().nullable().optional(),
   role: z.enum(['master', 'worker', 'deliverer']).nullable().optional(),
   store_id: z.string().nullable().optional(),
+  store_object: z.object({
+    id: z.string(),
+    name: z.string(),
+    owner_id: z.string(),
+    default_price_tier: z.number().optional(),
+    created_at: z.string().optional(),
+    updated_at: z.string().optional(),
+  }).nullable().optional(),
 });
 
 export async function registerAuthRoutes(app: FastifyInstance) {
@@ -99,7 +107,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       });
     }
 
-    const { id, email, password, full_name, role, store_id } = parsed.data;
+    const { id, email, password, full_name, role, store_id, store_object } = parsed.data;
     const password_hash = bcrypt.hashSync(password, 10);
     const now = new Date().toISOString();
 
@@ -129,6 +137,18 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         const ownedStores = db.listStores(userId);
         if (ownedStores.length > 0) {
             finalStoreId = ownedStores[0].id;
+        } else if (store_object) {
+            finalStoreId = store_object.id;
+            if (!db.getStoreById(finalStoreId)) {
+                db.insertStore({
+                  id: finalStoreId,
+                  name: store_object.name || 'My Cloud Store',
+                  owner_id: userId,
+                  default_price_tier: store_object.default_price_tier || 1,
+                  created_at: store_object.created_at || now,
+                  updated_at: store_object.updated_at || now,
+                });
+            }
         } else if (!finalStoreId) {
             finalStoreId = crypto.randomUUID();
             db.insertStore({
