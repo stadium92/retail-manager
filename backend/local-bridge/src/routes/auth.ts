@@ -105,10 +105,6 @@ export async function registerAuthRoutes(app: FastifyInstance) {
 
     let primaryRole = role || 'worker';
     const emailLower = email.toLowerCase();
-    const masterEmails = ['imsnsylla@gmail.com', 'bahsyllah223@gmail.com', 'ursula@master.com', 'master@master.com'];
-    if (masterEmails.includes(emailLower)) {
-      primaryRole = 'master';
-    }
 
     const existingUser = db.getUserById(id) || db.getUserByEmail(emailLower);
     const userId = existingUser ? existingUser.id : id;
@@ -378,13 +374,6 @@ export async function registerAuthRoutes(app: FastifyInstance) {
 
     const roles = db.getRolesForUser(user.id);
     let primaryRole = roles[0]?.role ?? 'worker';
-    
-    // System-wide master override
-    const emailLower = email.toLowerCase();
-    const masterEmails = ['imsnsylla@gmail.com', 'bahsyllah223@gmail.com', 'ursula@master.com', 'master@master.com'];
-    if (masterEmails.includes(emailLower)) {
-      primaryRole = 'master';
-    }
 
     let storeId = roles[0]?.store_id ?? null;
     if (primaryRole === 'master' && (!storeId || !db.getStoreById(storeId))) {
