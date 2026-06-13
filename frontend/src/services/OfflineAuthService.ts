@@ -350,7 +350,7 @@ export class OfflineAuthService {
         }
     }
       
-      const finalRole = userRole || 'worker';
+      let finalRole = userRole || undefined;
       
       if (!store_object && !store_id && finalRole === 'master') {
           const { data: stores } = await supabase.from('stores').select('*').eq('owner_id', data.user.id).limit(1);

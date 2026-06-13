@@ -112,11 +112,15 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     const password_hash = bcrypt.hashSync(password, 10);
     const now = new Date().toISOString();
 
-    let primaryRole = role || 'worker';
     const emailLower = email.toLowerCase();
-
     const existingUser = db.getUserById(id) || db.getUserByEmail(emailLower);
     const userId = existingUser ? existingUser.id : id;
+
+    // Use provided role, or fallback to their existing local role if they have one, else 'master'
+    let primaryRole = role || 'master';
+    if (!role && existingUser && existingUser.role) {
+       primaryRole = existingUser.role;
+    }
 
     if (!existingUser) {
       db.insertUser({
@@ -127,12 +131,12 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         phone: null,
         created_at: now,
         updated_at: now,
-        role: primaryRole,
+        role: primaryRole as "master" | "worker" | "deliverer",
       });
     } else {
       db.updateUserPassword(userId, password_hash);
       if (typeof db.updateUserRole === 'function') {
-        db.updateUserRole(userId, primaryRole);
+        db.updateUserRole(userId, primaryRole as "master" | "worker" | "deliverer");
       }
     }
 
@@ -163,14 +167,11 @@ export async function registerAuthRoutes(app: FastifyInstance) {
                 });
             }
         } else if (!finalStoreId) {
-            finalStoreId = crypto.randomUUID();
-            db.insertStore({
-              id: finalStoreId,
-              name: 'My Cloud Store',
-              owner_id: userId,
-              default_price_tier: 1,
-              created_at: now,
-              updated_at: now,
+            // User has no cloud store and there is no local store.
+            // They MUST go through the registration/bootstrap flow to explicitly create a store.
+            return reply.status(400).send({ 
+              error: 'NoStoreFound', 
+              message: 'No store found in your cloud account or on this device. Please register first to create a store.' 
             });
         }
     }

@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Store, Wifi, WifiOff, Cloud, AlertCircle } from 'lucide-react';
+import { Loader2, Store, Wifi, WifiOff, Cloud, AlertCircle, Info } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { z } from 'zod';
 import { InvitationService } from '@/services/InvitationService';
 import { useToast } from '@/hooks/use-toast';
@@ -298,6 +299,14 @@ export default function AuthPage() {
             </TabsContent>
 
             <TabsContent value="signup">
+              <Alert className="mb-6 bg-blue-50/50 text-blue-800 border-blue-200">
+                <Info className="h-4 w-4 text-blue-600" />
+                <AlertTitle>Création de compte</AlertTitle>
+                <AlertDescription className="text-sm mt-1">
+                  Si vous êtes un employé, veuillez demander à votre administrateur de créer votre compte depuis le tableau de bord. Si vous êtes un administrateur créant un nouveau compte Master, vous pouvez continuer ci-dessous.
+                </AlertDescription>
+              </Alert>
+
               <form onSubmit={handleSignup} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="signup-name">{t('auth.fullName')}</Label>
