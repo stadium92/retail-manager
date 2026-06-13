@@ -131,6 +131,9 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       });
     } else {
       db.updateUserPassword(userId, password_hash);
+      if (typeof db.updateUserRole === 'function') {
+        db.updateUserRole(userId, primaryRole);
+      }
     }
 
     let finalStoreId = store_id || null;
@@ -172,26 +175,23 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         }
     }
 
-    const existingRoles = db.getRolesForUser(userId);
-    if (existingRoles.length === 0) {
-        db.insertRole({
-          id: crypto.randomUUID(),
-          user_id: userId,
-          role: primaryRole,
-          store_id: finalStoreId ?? undefined,
-          created_at: now,
-        });
-    } else {
+    try {
+      const swapUserRole = db.db.transaction((uId: string, pRole: string, sId: string | null) => {
         if (typeof db.deleteRolesForUser === 'function') {
-            db.deleteRolesForUser(userId);
+          db.deleteRolesForUser(uId);
         }
         db.insertRole({
           id: crypto.randomUUID(),
-          user_id: userId,
-          role: primaryRole,
-          store_id: finalStoreId ?? undefined,
+          user_id: uId,
+          role: pRole as "master" | "worker" | "deliverer",
+          store_id: sId ?? undefined,
           created_at: now,
         });
+      });
+      swapUserRole(userId, primaryRole, finalStoreId);
+    } catch (err) {
+      console.error('[sync-cloud-login] role swap failed, rolling back:', err);
+      return reply.status(500).send({ error: 'Role sync failed' });
     }
 
     const accessToken = issueAccessToken(userId, email, primaryRole, finalStoreId);

@@ -260,7 +260,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Restore session from local storage / local bridge
       try {
         const offlineSession = await OfflineAuthService.getOfflineSession();
-        if (offlineSession && offlineSession.user) {
+        if (offlineSession?.user && !OfflineAuthService.isSessionExpired(offlineSession.session)) {
           console.log('Restored offline session');
           setUser(offlineSession.user);
           setSession(offlineSession.session);

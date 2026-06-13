@@ -159,12 +159,25 @@ export class OfflineAuthService {
   private static clearLocalBridgeSession() {
     if (typeof window === 'undefined') return;
     try {
-      // In Local-First, we prefer to keep the session even if refresh fails momentarily
-      console.warn('[OfflineAuth] Session clear requested, but ignored for Local-First stability');
+      window.localStorage.removeItem(LOCALBRIDGE_SESSION_KEY);
       TokenManager.releaseRefreshLock();
     } catch (error) {
       console.error('Failed to handle session clear', error);
     }
+  }
+
+  static async clearLocalSession(): Promise<void> {
+    this.clearLocalBridgeSession();
+    try {
+      await this.localBridgeRequest('/auth/logout', { method: 'POST' }).catch(() => {});
+    } catch (e) {
+      console.warn('Failed to notify local bridge of logout', e);
+    }
+  }
+
+  static isSessionExpired(session: { expires_at?: number } | null): boolean {
+    if (!session?.expires_at) return true;
+    return Date.now() / 1000 > session.expires_at - 60; // 60s buffer
   }
 
   private static async refreshLocalBridgeSession(refreshToken: string): Promise<LocalBridgeSessionCache | null> {
@@ -294,41 +307,48 @@ export class OfflineAuthService {
       // 1. ONLINE FIRST: Try Supabase
       console.log('[OfflineAuth] Attempting online Supabase login first...');
       toast({ title: 'Attempting cloud login...', description: 'Connecting to Supabase...' });
-      const { data, error: supaError } = await supabase.auth.signInWithPassword({ email, password });
-      if (supaError || !data.user) throw supaError || new Error('No user returned');
 
-      console.log('[OfflineAuth] Supabase login successful, syncing to Local Bridge...');
-      
-      let store_id = data.user.user_metadata?.store_id || null;
-      let store_object = null;
-      let userRole = data.user.user_metadata?.role;
-      
-      // Fetch exact role and store from Supabase user_roles
-      try {
-        const { data: rolesData } = await supabase.from('user_roles').select('role, store_id').eq('user_id', data.user.id);
-        if (rolesData && rolesData.length > 0) {
-           userRole = rolesData[0].role;
-           if (!store_id && rolesData[0].store_id) {
-               store_id = rolesData[0].store_id;
+      const { data, error: supaError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (supaError || !data.user) {
+        throw supaError;
+      }
+
+    let store_id = data.user.user_metadata?.store_id || null;
+    let userRole = data.user.user_metadata?.role;
+    let store_object = null;
+    
+    try {
+      const { data: rolesData, error: rolesError } = await supabase.from('user_roles').select('role, store_id').eq('user_id', data.user.id);
+      if (rolesError) {
+        console.error('[OfflineAuth] user_roles query failed:', rolesError);
+      } else if (rolesData && rolesData.length > 0) {
+         userRole = rolesData[0].role;
+         if (!store_id && rolesData[0].store_id) {
+           store_id = rolesData[0].store_id;
+         }
+      }
+    } catch (e) {
+      console.warn('[OfflineAuth] Exception fetching roles from supabase', e);
+    }
+    
+    if (!userRole || userRole === 'worker') {
+        try {
+           const { data: ownedStores, error: storesError } = await supabase.from('stores').select('*').eq('owner_id', data.user.id).limit(1);
+           if (storesError) {
+             console.error('[OfflineAuth] stores query failed:', storesError);
+           } else if (ownedStores && ownedStores.length > 0) {
+              userRole = 'master';
+              store_id = ownedStores[0].id;
+              store_object = ownedStores[0];
            }
+        } catch (e) {
+           console.warn('[OfflineAuth] Exception checking owned stores', e);
         }
-      } catch (e) {
-         console.warn('[OfflineAuth] Could not fetch roles from supabase', e);
-      }
-      
-      // Fallback: If no explicit master role is found, check if they own a store
-      if (!userRole || userRole === 'worker') {
-          try {
-             const { data: ownedStores } = await supabase.from('stores').select('*').eq('owner_id', data.user.id).limit(1);
-             if (ownedStores && ownedStores.length > 0) {
-                userRole = 'master';
-                store_id = ownedStores[0].id;
-                store_object = ownedStores[0];
-             }
-          } catch (e) {
-             console.warn('[OfflineAuth] Could not check owned stores', e);
-          }
-      }
+    }
       
       const finalRole = userRole || 'worker';
       

@@ -53,6 +53,15 @@ export const createAuthRepo = (db: Database.Database) => ({
       .run(passwordHash, new Date().toISOString(), userId);
   },
 
+  updateUserRole(userId: string, role: string) {
+    db.prepare(`
+        UPDATE users
+        SET role = ?, updated_at = ?
+        WHERE id = ?
+      `)
+      .run(role, new Date().toISOString(), userId);
+  },
+
   listUsers(): LocalUser[] {
     const rows = db.prepare('SELECT * FROM users ORDER BY created_at DESC').all();
     return rows as LocalUser[];
