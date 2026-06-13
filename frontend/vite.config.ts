@@ -42,6 +42,9 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       https: httpsConfig,
     },
+    define: {
+      'import.meta.env.VITE_APP_VERSION': JSON.stringify(process.env.npm_package_version || '0.5.5')
+    },
     plugins: [
       react(),
       (enableHttps && useBasicSslPlugin) && basicSsl(),

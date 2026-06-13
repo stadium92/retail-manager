@@ -146,4 +146,27 @@ export const createStoresRepo = (db: Database.Database) => ({
       throw e;
     }
   },
+
+  healFragmentedStores() {
+    const allStores = this.listStores();
+    if (allStores.length <= 1) return;
+
+    const primaryStore = allStores[0];
+    const fragmentedStores = allStores.slice(1);
+
+    for (const store of fragmentedStores) {
+      console.log(`[Auto-Heal] Migrating fragmented store ${store.id} to primary store ${primaryStore.id}`);
+      
+      const healTx = db.transaction(() => {
+        db.prepare('UPDATE user_roles SET store_id = ? WHERE store_id = ?').run(primaryStore.id, store.id);
+        db.prepare('DELETE FROM sync_outbox WHERE store_id = ?').run(store.id);
+        db.prepare('DELETE FROM sync_state WHERE store_id = ?').run(store.id);
+        db.prepare('DELETE FROM pending_mutations WHERE store_id = ?').run(store.id);
+        db.prepare('DELETE FROM stores WHERE id = ?').run(store.id);
+      });
+      
+      healTx();
+    }
+    console.log(`[Auto-Heal] Completed. Unified ${fragmentedStores.length} fragmented store(s) into ${primaryStore.id}.`);
+  },
 });

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Users, Truck, UserPlus, Loader2, Trash2, Building, WifiOff, RefreshCw, Eye } from 'lucide-react';
+import { Users, Truck, UserPlus, Loader2, Trash2, Building, WifiOff, RefreshCw, Eye, Shield } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -47,12 +47,13 @@ export default function TeamPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('workers');
-  
   const [showAddWorker, setShowAddWorker] = useState(false);
   const [showAddDeliverer, setShowAddDeliverer] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<TeamMember | null>(null);
   const [viewTarget, setViewTarget] = useState<TeamMember | null>(null);
+  const [promoteTarget, setPromoteTarget] = useState<TeamMember | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [promoting, setPromoting] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [syncing, setSyncing] = useState(false);
 
@@ -166,6 +167,38 @@ export default function TeamPage() {
     } finally {
       setDeleting(false);
       setDeleteTarget(null);
+    }
+  };
+
+  const handlePromote = async () => {
+    if (!promoteTarget) return;
+    setPromoting(true);
+
+    try {
+      const response = await OfflineTeamService.updateWorkerRole(promoteTarget.id, 'master');
+
+      if (response.error) {
+        toast({
+          title: t('common.error'),
+          description: response.error.message || 'Failed to promote member',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: t('common.success'),
+          description: 'Team member promoted to Master successfully.',
+        });
+        loadData();
+      }
+    } catch (err) {
+      toast({
+        title: t('common.error'),
+        description: 'An unexpected error occurred.',
+        variant: 'destructive',
+      });
+    } finally {
+      setPromoting(false);
+      setPromoteTarget(null);
     }
   };
 
@@ -370,6 +403,14 @@ export default function TeamPage() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              onClick={() => setPromoteTarget(worker)}
+                              title="Promouvoir en Master"
+                            >
+                              <Shield className="h-4 w-4 text-blue-500" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               onClick={() => setDeleteTarget(worker)}
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
@@ -523,12 +564,22 @@ export default function TeamPage() {
 
       {/* Delete Confirmation Dialog */}
       <ConfirmActionDialog
-        open={!!deleteTarget}
-        onOpenChange={(open) => !open && setDeleteTarget(null)}
-        onConfirm={handleDeleteMember}
-        title={t('team.deleteTitle')}
-        description={t('team.deleteDescription', { name: deleteTarget?.full_name })}
-        variant="destructive"
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title={t('team.dialogs.deleteTitle')}
+        description={t('team.dialogs.deleteDesc')}
+        loading={deleting}
+      />
+
+      <ConfirmActionDialog
+        isOpen={!!promoteTarget}
+        onClose={() => setPromoteTarget(null)}
+        onConfirm={handlePromote}
+        title="Promouvoir au rang de Master"
+        description={`Êtes-vous sûr de vouloir promouvoir ${promoteTarget?.full_name} au rôle de Master ? Ce rôle aura un accès complet au tableau de bord Master et à toutes les fonctionnalités d'administration. (Cette action nécessite une synchronisation internet ultérieure pour s'appliquer sur tous les appareils)`}
+        loading={promoting}
+        confirmText="Promouvoir"
       />
     </div>
   );

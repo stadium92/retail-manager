@@ -96,6 +96,13 @@ async function start() {
   await registerCashRoutes(app);
   await registerSystemRoutes(app);
 
+  // Auto-heal fragmented stores from old bug
+  try {
+    db.healFragmentedStores();
+  } catch (e) {
+    log(`Failed to heal fragmented stores: ${e}`);
+  }
+
   // Run Startup Scheduler
   try {
     runScheduler();

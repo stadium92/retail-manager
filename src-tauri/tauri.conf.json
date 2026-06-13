@@ -25,7 +25,7 @@
     },
     "bundle": {
         "active": true,
-        "targets": ["nsis"],
+        "targets": "all",
         "externalBin": [
             "binaries/local-bridge"
         ],
