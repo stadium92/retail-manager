@@ -10,8 +10,8 @@ const DEBOUNCE_PULL_MS = 2000;   // 2s realtime debounce
 const MAX_OUTBOX_BATCH = 100;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type EntityType = 'product' | 'sale' | 'sale_item';
-type Operation = 'create' | 'update' | 'delete';
+type EntityType = 'product' | 'sale' | 'sale_item' | 'users' | 'user_roles';
+type Operation = 'create' | 'update' | 'delete' | 'upsert';
 
 interface OutboxEntry {
   id: string;
@@ -97,13 +97,34 @@ interface SaleItemRow {
   created_at?: string;
 }
 
-type EntityRow = ProductRow | SaleRow | SaleItemRow;
+interface UserRow {
+  id: string;
+  email: string;
+  password_hash: string;
+  full_name: string;
+  phone?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  role?: string;
+}
+
+interface UserRoleRow {
+  id: string;
+  user_id: string;
+  role: string;
+  store_id?: string | null;
+  created_at?: string;
+}
+
+type EntityRow = ProductRow | SaleRow | SaleItemRow | UserRow | UserRoleRow;
 
 const TABLE_MAP: Record<EntityType | 'store', string> = {
   product: 'products',
   sale: 'sales',
   sale_item: 'sale_items',
   store: 'stores',
+  users: 'offline_users',
+  user_roles: 'user_roles',
 };
 
 function mapToSupabase(entityType: EntityType, raw: EntityRow): Record<string, unknown> {
@@ -180,6 +201,30 @@ function mapToSupabase(entityType: EntityType, raw: EntityRow): Record<string, u
       deleted_at: s.deleted_at ?? null,
       created_at: s.created_at ?? now,
       updated_at: s.updated_at ?? now,
+    };
+  }
+
+  if (entityType === 'users') {
+    const u = raw as UserRow;
+    return {
+      id: u.id,
+      email: u.email,
+      password_hash: u.password_hash,
+      full_name: u.full_name,
+      phone: u.phone ?? null,
+      created_at: u.created_at ?? now,
+      updated_at: u.updated_at ?? now,
+    };
+  }
+
+  if (entityType === 'user_roles') {
+    const ur = raw as UserRoleRow;
+    return {
+      id: ur.id,
+      user_id: ur.user_id,
+      role: ur.role,
+      store_id: ur.store_id ?? null,
+      created_at: ur.created_at ?? now,
     };
   }
 

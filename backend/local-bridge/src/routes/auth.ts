@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 import { db } from '../db/index.js';
 import { env } from '../env.js';
 import { authenticateRequest } from './utils/auth.js';
+import { emitOutbox } from '../db/repositories/sync_helpers.js';
 
 const bootstrapSchema = z.object({
   email: z.string().email(),
@@ -611,26 +612,35 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     const userId = crypto.randomUUID();
     const now = new Date().toISOString();
 
-    db.insertUser({
+    const password_hash = bcrypt.hashSync(password, 10);
+    const userToInsert = {
       id: userId,
       email,
-      password_hash: bcrypt.hashSync(password, 10),
+      password_hash,
       full_name,
       phone: null,
       created_at: now,
       updated_at: now,
       role,
-    });
+    };
+    db.insertUser(userToInsert);
 
     const roleId = crypto.randomUUID();
 
-    db.insertRole({
+    const roleToInsert = {
       id: roleId,
       user_id: userId,
       role,
       store_id: assignedStore,
       created_at: now,
-    });
+    };
+    db.insertRole(roleToInsert);
+
+    // Queue for sync to Supabase (creates the offline-resilient login)
+    if (assignedStore) {
+      emitOutbox(db.db, assignedStore, 'users', userId, 'create', userToInsert as unknown as Record<string, unknown>);
+      emitOutbox(db.db, assignedStore, 'user_roles', roleId, 'create', roleToInsert as unknown as Record<string, unknown>);
+    }
 
     request.log.info('Worker %s created by %s', email, claims.sub);
 
@@ -643,5 +653,58 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       store_id: assignedStore ?? null,
       created_at: now,
     });
+  });
+
+  const workerRoleUpdateSchema = z.object({
+    role: z.enum(['master', 'worker', 'deliverer']),
+  });
+
+  app.patch('/auth/workers/:id/role', async (request, reply) => {
+    const claims = authenticateRequest(request, reply, ['master']);
+    if (!claims) return;
+
+    const { id } = request.params as { id: string };
+    const parsed = workerRoleUpdateSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'ValidationFailed', details: parsed.error.flatten() });
+    }
+
+    const { role } = parsed.data;
+
+    // Check if user exists
+    const existingUser = db.getUserById(id);
+    if (!existingUser) {
+      return reply.status(404).send({ error: 'NotFound', message: 'User not found' });
+    }
+
+    // Update user role in users table (if role column exists, handled via insertUser replace)
+    existingUser.updated_at = new Date().toISOString();
+    (existingUser as any).role = role;
+    db.insertUser(existingUser);
+
+    // Update user_roles table
+    if (typeof db.deleteRolesForUser === 'function') {
+        db.deleteRolesForUser(id);
+    }
+
+    const roleId = crypto.randomUUID();
+    const roleToInsert = {
+      id: roleId,
+      user_id: id,
+      role,
+      store_id: claims.store_id ?? undefined,
+      created_at: new Date().toISOString(),
+    };
+    db.insertRole(roleToInsert);
+
+    // Sync changes
+    if (claims.store_id) {
+      emitOutbox(db.db, claims.store_id, 'users', id, 'update', existingUser as unknown as Record<string, unknown>);
+      emitOutbox(db.db, claims.store_id, 'user_roles', roleId, 'update', roleToInsert as unknown as Record<string, unknown>);
+    }
+
+    request.log.info('User %s promoted to %s by %s', id, role, claims.sub);
+
+    return reply.status(200).send({ message: 'Role updated successfully', role });
   });
 }
