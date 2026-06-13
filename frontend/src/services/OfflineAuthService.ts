@@ -316,9 +316,23 @@ export class OfflineAuthService {
          console.warn('[OfflineAuth] Could not fetch roles from supabase', e);
       }
       
+      // Fallback: If no explicit master role is found, check if they own a store
+      if (!userRole || userRole === 'worker') {
+          try {
+             const { data: ownedStores } = await supabase.from('stores').select('*').eq('owner_id', data.user.id).limit(1);
+             if (ownedStores && ownedStores.length > 0) {
+                userRole = 'master';
+                store_id = ownedStores[0].id;
+                store_object = ownedStores[0];
+             }
+          } catch (e) {
+             console.warn('[OfflineAuth] Could not check owned stores', e);
+          }
+      }
+      
       const finalRole = userRole || 'worker';
       
-      if (!store_id && (finalRole === 'master')) {
+      if (!store_object && !store_id && finalRole === 'master') {
           const { data: stores } = await supabase.from('stores').select('*').eq('owner_id', data.user.id).limit(1);
           if (stores && stores.length > 0) {
              store_id = stores[0].id;
