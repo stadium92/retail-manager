@@ -114,20 +114,30 @@ async function start() {
   }
 
   try {
-    log(`Attempting to clean up port ${env.port} before listening...`);
-    try {
-      const { execSync } = require('child_process');
-      if (process.platform === 'win32') {
-        execSync(`powershell -Command "Get-NetTCPConnection -LocalPort ${env.port} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }"`);
-      } else {
-        execSync(`lsof -t -i:${env.port} | xargs kill -9`);
-      }
-    } catch (killErr) {
-      log(`Port cleanup skipped or failed: ${killErr}`);
-    }
-
     log(`Attempting to listen on port ${env.port}...`);
-    await app.listen({ port: env.port, host: '0.0.0.0' });
+    try {
+      await app.listen({ port: env.port, host: '0.0.0.0' });
+    } catch (listenErr: any) {
+      if (listenErr.code === 'EADDRINUSE') {
+        log(`Port ${env.port} in use. Attempting cleanup...`);
+        try {
+          const { execSync } = require('child_process');
+          if (process.platform === 'win32') {
+            execSync(`powershell -Command "Get-NetTCPConnection -LocalPort ${env.port} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }"`);
+          } else {
+            execSync(`lsof -t -i:${env.port} | xargs kill -9`);
+          }
+          log(`Cleanup done. Retrying listen...`);
+          await app.listen({ port: env.port, host: '0.0.0.0' });
+        } catch (killErr) {
+          log(`Port cleanup failed: ${killErr}`);
+          throw listenErr;
+        }
+      } else {
+        throw listenErr;
+      }
+    }
+    
     log(`LocalBridge listening on http://localhost:${env.port}`);
     app.log.info(`LocalBridge listening on http://localhost:${env.port}`);
   } catch (err) {
