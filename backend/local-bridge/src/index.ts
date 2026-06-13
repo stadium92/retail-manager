@@ -20,8 +20,11 @@ import { registerSystemRoutes } from './routes/system.js';
 import { db } from './db/index.js';
 import { runScheduler } from './scheduler.js';
 
+import os from 'os';
+
 // Emergency logging
-const logDir = path.join(process.env.LOCALAPPDATA || '', 'retail-manager-logs');
+const baseLogDir = process.env.LOCALAPPDATA || os.tmpdir();
+const logDir = path.join(baseLogDir, 'retail-manager-logs');
 if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
 const logFile = path.join(logDir, 'backend-startup.log');
 
