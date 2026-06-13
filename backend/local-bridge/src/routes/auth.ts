@@ -638,7 +638,8 @@ export async function registerAuthRoutes(app: FastifyInstance) {
 
     // Queue for sync to Supabase (creates the offline-resilient login)
     if (assignedStore) {
-      emitOutbox(db.db, assignedStore, 'users', userId, 'create', userToInsert as unknown as Record<string, unknown>);
+      const outboxUser = { ...userToInsert, store_id: assignedStore };
+      emitOutbox(db.db, assignedStore, 'users', userId, 'create', outboxUser as unknown as Record<string, unknown>);
       emitOutbox(db.db, assignedStore, 'user_roles', roleId, 'create', roleToInsert as unknown as Record<string, unknown>);
     }
 
@@ -683,6 +684,11 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     db.insertUser(existingUser);
 
     // Update user_roles table
+    let existingRoles: any[] = [];
+    if (typeof db.getRolesForUser === 'function') {
+      existingRoles = db.getRolesForUser(id);
+    }
+
     if (typeof db.deleteRolesForUser === 'function') {
         db.deleteRolesForUser(id);
     }
@@ -699,8 +705,15 @@ export async function registerAuthRoutes(app: FastifyInstance) {
 
     // Sync changes
     if (claims.store_id) {
-      emitOutbox(db.db, claims.store_id, 'users', id, 'update', existingUser as unknown as Record<string, unknown>);
-      emitOutbox(db.db, claims.store_id, 'user_roles', roleId, 'update', roleToInsert as unknown as Record<string, unknown>);
+      // Pass store_id with existingUser to correctly sync to Supabase offline_users
+      const outboxUser = { ...existingUser, store_id: claims.store_id };
+      emitOutbox(db.db, claims.store_id, 'users', id, 'update', outboxUser as unknown as Record<string, unknown>);
+      
+      for (const oldRole of existingRoles) {
+        emitOutbox(db.db, claims.store_id, 'user_roles', oldRole.id, 'delete', { id: oldRole.id });
+      }
+
+      emitOutbox(db.db, claims.store_id, 'user_roles', roleId, 'create', roleToInsert as unknown as Record<string, unknown>);
     }
 
     request.log.info('User %s promoted to %s by %s', id, role, claims.sub);
