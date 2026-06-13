@@ -301,8 +301,24 @@ export class OfflineAuthService {
       
       let store_id = data.user.user_metadata?.store_id || null;
       let store_object = null;
+      let userRole = data.user.user_metadata?.role;
       
-      if (!store_id && (data.user.user_metadata?.role === 'master' || data.user.user_metadata?.role === undefined)) {
+      // Fetch exact role and store from Supabase user_roles
+      try {
+        const { data: rolesData } = await supabase.from('user_roles').select('role, store_id').eq('user_id', data.user.id);
+        if (rolesData && rolesData.length > 0) {
+           userRole = rolesData[0].role;
+           if (!store_id && rolesData[0].store_id) {
+               store_id = rolesData[0].store_id;
+           }
+        }
+      } catch (e) {
+         console.warn('[OfflineAuth] Could not fetch roles from supabase', e);
+      }
+      
+      const finalRole = userRole || 'worker';
+      
+      if (!store_id && (finalRole === 'master')) {
           const { data: stores } = await supabase.from('stores').select('*').eq('owner_id', data.user.id).limit(1);
           if (stores && stores.length > 0) {
              store_id = stores[0].id;
@@ -319,7 +335,7 @@ export class OfflineAuthService {
             email: data.user.email,
             password,
             full_name: data.user.user_metadata?.full_name || 'Cloud User',
-            role: data.user.user_metadata?.role || 'worker',
+            role: finalRole,
             store_id: store_id,
             store_object: store_object,
           }),
