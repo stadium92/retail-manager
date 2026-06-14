@@ -7,6 +7,7 @@ import { OfflineStoreService } from '@/services/OfflineStoreService';
 import { OfflineInventoryService } from '@/services/OfflineInventoryService';
 import { useMasterDashboardStore } from '@/stores/useMasterDashboardStore';
 import { GestionModule } from '@/components/shared/GestionModule';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 
 interface MobileDashboardProps {
     onNavigate?: (target: string) => void;
@@ -16,7 +17,16 @@ export function MobileDashboard({ onNavigate }: MobileDashboardProps) {
     const { t } = useTranslation();
     const { formatCurrency } = useFormatters();
     const navigate = useNavigate();
-    const { selectedStoreIds, isAllStoresSelected, version } = useMasterDashboardStore();
+    const { 
+        selectedStoreIds, 
+        isAllStoresSelected, 
+        version,
+        setSelectedStoreIds,
+        toggleStoreSelection,
+        setAllStoresSelected
+    } = useMasterDashboardStore();
+
+    const [isStoreSheetOpen, setIsStoreSheetOpen] = useState(false);
 
     const [metrics, setMetrics] = useState({
         todaySales: 0,
@@ -88,8 +98,17 @@ export function MobileDashboard({ onNavigate }: MobileDashboardProps) {
             {/* TopAppBar */}
             <header className="fixed top-0 w-full h-[56px] bg-rs-surface border-b border-rs-surface-container-highest flex justify-between items-center px-4 z-50">
                 <div className="flex items-center gap-2">
-                    <button className="bg-rs-surface-container-highest rounded-full px-3 py-1 flex items-center gap-1 text-rs-on-surface border border-rs-outline/50 text-xs font-medium hover:bg-rs-surface-variant transition-colors h-[32px]">
-                        <span className="truncate max-w-[120px]">{isAllStoresSelected ? "Toutes les boutiques" : "Boutique filtrée"}</span>
+                    <button 
+                        onClick={() => setIsStoreSheetOpen(true)}
+                        className="bg-rs-surface-container-highest rounded-full px-3 py-1 flex items-center gap-1 text-rs-on-surface border border-rs-outline/50 text-xs font-semibold hover:bg-rs-surface-variant transition-all h-[32px] active:scale-95"
+                    >
+                        <span className="truncate max-w-[130px]">
+                            {isAllStoresSelected 
+                                ? "Toutes les boutiques" 
+                                : selectedStoreIds.length === 1 
+                                    ? (allStores.find(s => s.id === selectedStoreIds[0])?.name || "Boutique filtrée")
+                                    : `${selectedStoreIds.length} boutiques`}
+                        </span>
                         <span className="material-symbols-outlined text-[16px]">expand_more</span>
                     </button>
                 </div>
@@ -251,6 +270,67 @@ export function MobileDashboard({ onNavigate }: MobileDashboardProps) {
                     </>
                 )}
             </main>
+
+            {/* Store Filtering Sheet */}
+            <Sheet open={isStoreSheetOpen} onOpenChange={setIsStoreSheetOpen}>
+                <SheetContent side="bottom" className="h-[75vh] bg-[#0a0a0a] border-t border-rs-surface-container-highest p-0 flex flex-col rounded-t-3xl">
+                    <SheetHeader className="px-4 pt-4 pb-2 border-b border-[#262626] text-left">
+                        <SheetTitle className="text-white text-base font-black uppercase tracking-wider">Filtrer par boutique</SheetTitle>
+                    </SheetHeader>
+                    <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+                        {/* Toutes les boutiques */}
+                        <label className="flex items-center justify-between p-4 rounded-xl bg-[#141414] border border-rs-surface-container-highest cursor-pointer active:bg-rs-surface-container transition-colors">
+                            <div className="flex items-center gap-3">
+                                <span className="material-symbols-outlined text-rs-surface-tint">storefront</span>
+                                <span className="font-bold text-white text-sm uppercase tracking-wide">Toutes les boutiques</span>
+                            </div>
+                            <input
+                                type="checkbox"
+                                checked={isAllStoresSelected}
+                                onChange={() => setAllStoresSelected(!isAllStoresSelected, allStores.map(s => s.id))}
+                                className="w-5 h-5 text-rs-surface-tint border-[#262626] rounded focus:ring-0"
+                            />
+                        </label>
+
+                        <div className="text-[10px] font-black text-rs-on-surface-variant uppercase tracking-wider pt-2 pl-2">
+                            Boutiques individuelles
+                        </div>
+
+                        {/* Individual stores */}
+                        <div className="space-y-2">
+                            {allStores.map(store => {
+                                const isChecked = isAllStoresSelected || selectedStoreIds.includes(store.id);
+                                return (
+                                    <label 
+                                        key={store.id} 
+                                        className={`flex items-center justify-between p-4 rounded-xl bg-[#141414] border border-rs-surface-container-highest cursor-pointer transition-all active:scale-[0.99] ${isAllStoresSelected ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <span className="material-symbols-outlined text-rs-on-surface-variant">store</span>
+                                            <span className="text-sm font-semibold text-white">{store.name}</span>
+                                        </div>
+                                        <input
+                                          type="checkbox"
+                                          checked={isChecked}
+                                          disabled={isAllStoresSelected}
+                                          onChange={() => toggleStoreSelection(store.id)}
+                                          className="w-5 h-5 text-rs-surface-tint border-[#262626] rounded focus:ring-0 disabled:opacity-50"
+                                        />
+                                    </label>
+                                );
+                            })}
+                        </div>
+                    </div>
+                    <div className="p-4 bg-[#141414] border-t border-[#262626]">
+                        <button
+                            onClick={() => setIsStoreSheetOpen(false)}
+                            className="w-full py-3 bg-rs-surface-tint text-rs-on-primary font-bold rounded-xl text-center active:scale-95 transition-transform uppercase tracking-wider text-xs"
+                        >
+                            Confirmer
+                        </button>
+                    </div>
+                </SheetContent>
+            </Sheet>
         </div>
     );
 };
