@@ -5,11 +5,11 @@ import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { useToast } from '@/hooks/use-toast';
 import { useProductSearch } from '@/hooks/useProductSearch';
 import { useFormatters } from '@/utils/formatting';
-import { ShoppingBag, Plus, Minus, User, Send, Save } from 'lucide-react';
+import { ShoppingBag, Plus, Minus, User, Send, Save, ArrowLeft } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 
-export function MobileCommandeManuelle() {
+export function MobileCommandeManuelle({ onBack }: { onBack?: () => void }) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { formatCurrency } = useFormatters();
@@ -104,6 +104,11 @@ export function MobileCommandeManuelle() {
     <div className="flex flex-col h-full bg-[#0a0a0a] pb-[64px] md:pb-0 font-sans">
       <header className="flex-shrink-0 bg-[#141414] border-b border-rs-surface-container-highest px-4 py-3 sticky top-0 z-10 flex flex-col gap-3">
         <div className="flex items-center gap-2">
+            {onBack && (
+                <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-rs-surface-container-highest text-white active:scale-95 transition-transform">
+                    <ArrowLeft className="w-6 h-6" />
+                </button>
+            )}
             <div className="w-8 h-8 rounded bg-rs-surface-tint/20 flex items-center justify-center">
                 <ShoppingBag className="w-4 h-4 text-rs-surface-tint" />
             </div>

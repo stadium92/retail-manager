@@ -11,6 +11,9 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
   const { t } = useTranslation();
   const { signOut } = useAuth();
 
+  const { roles, user } = useAuth();
+  const isMaster = roles?.some(r => r.role === 'master');
+
   const menuSections = [
     {
       title: 'Ventes',
@@ -18,6 +21,25 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
       items: [
         { id: 'vente-detail', label: t('menu.sales.retail') || 'Vente Détail' },
         { id: 'fermeture-caisse', label: t('menu.sales.closeCash') || 'Fermeture Caisse' },
+        { id: 'suivi-ventes-jour', label: t('menu.edition.dailySales') || 'Commandes journalières' },
+      ],
+    },
+    {
+      title: 'Fichiers',
+      icon: <FolderOpen className="w-5 h-5" />,
+      items: [
+        { id: 'fiche-produits', label: '🍔 Menu / Produits' },
+        { id: 'clients', label: t('menu.files.clients') || 'Clients' },
+        { id: 'fournisseurs', label: t('menu.files.suppliers') || 'Fournisseurs' },
+        { id: 'restaurants', label: '🏪 Restaurants' },
+      ],
+    },
+    {
+      title: 'Stock',
+      icon: <Package className="w-5 h-5" />,
+      items: [
+        { id: 'inventaire-stock', label: t('menu.stock.inventory') || 'Inventaire Physique' },
+        { id: 'ingredients', label: '🧂 Ingrédients' },
       ],
     },
     {
@@ -30,20 +52,17 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
       ],
     },
     {
-      title: 'Fichiers',
-      icon: <FolderOpen className="w-5 h-5" />,
-      items: [
-        { id: 'fiche-produits', label: '🍔 Menu / Produits' },
-        { id: 'listing-stock', label: '📦 Listing Stock' },
-        { id: 'clients', label: t('menu.files.clients') || 'Clients' },
-        { id: 'fournisseurs', label: t('menu.files.suppliers') || 'Fournisseurs' },
-      ],
-    },
-    {
       title: 'Éditions',
       icon: <FileText className="w-5 h-5" />,
       items: [
-        { id: 'suivi-ventes-jour', label: t('menu.edition.dailySales') || 'Suivi Ventes / Jour' },
+        ...(isMaster ? [
+          { id: 'audit-logs', label: '📜 Logs Système' },
+          { id: 'invitations', label: '✉️ Invitations' },
+          { id: 'situation-client', label: t('menu.edition.clientStatus') || 'Situation Client' },
+          { id: 'situation-fournisseur', label: t('menu.edition.supplierStatus') || 'Situation Fournisseur' },
+        ] : [
+          { id: 'situation-client', label: t('menu.edition.clientStatus') || 'Situation Client' },
+        ])
       ],
     },
     {
@@ -51,13 +70,6 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
       icon: <BarChart3 className="w-5 h-5" />,
       items: [
         { id: 'tableau-bord', label: t('menu.management.dashboard') || 'Tableau de Bord' },
-      ],
-    },
-    {
-      title: 'Stock',
-      icon: <Package className="w-5 h-5" />,
-      items: [
-        { id: 'inventaire-stock', label: t('menu.stock.inventory') || 'Inventaire Physique' },
       ],
     },
   ];

@@ -8,11 +8,11 @@ import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { useToast } from '@/hooks/use-toast';
 import { useProductSearch } from '@/hooks/useProductSearch';
 import { format } from 'date-fns';
-import { ChevronDown, Plus, Minus, Search, Trash2, User } from 'lucide-react';
+import { ChevronDown, Plus, Minus, Search, Trash2, User, ArrowLeft } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 
-export function MobileSalesModule({ mode }: { mode: 'vente-detail' | 'facturation-detail' | 'facturation-gros' | 'proforma' }) {
+export function MobileSalesModule({ mode, onBack }: { mode: 'vente-detail' | 'facturation-detail' | 'facturation-gros' | 'proforma', onBack?: () => void }) {
     const { t } = useTranslation();
     const { formatCurrency } = useFormatters();
     const { sessions, updateSession, clearSession } = useSalesStore();
@@ -150,6 +150,11 @@ export function MobileSalesModule({ mode }: { mode: 'vente-detail' | 'facturatio
             <header className="flex-shrink-0 bg-[#141414] border-b border-rs-surface-container-highest px-4 py-3 sticky top-0 z-10 flex flex-col gap-3">
                 <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
+                        {onBack && (
+                            <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-rs-surface-container-highest text-white active:scale-95 transition-transform">
+                                <ArrowLeft className="w-6 h-6" />
+                            </button>
+                        )}
                         <div className="w-8 h-8 rounded bg-rs-surface-tint/20 flex items-center justify-center">
                             <ShoppingCart className="w-4 h-4 text-rs-surface-tint" />
                         </div>

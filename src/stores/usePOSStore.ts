@@ -23,6 +23,9 @@ export interface POSState {
   customerId?: string;
   customerName: string;
   customerPhone: string;
+  orderNotes: string;
+  serviceType: 'table' | 'emporter' | 'livraison';
+  globalDiscount: number; // For cart-level discount
 
   // Actions
   addItem: (product: Product, quantity?: number) => void;
@@ -49,7 +52,12 @@ export interface POSState {
     grandTotal: number;
     customerName: string;
     customerPhone: string;
+    orderNotes: string;
+    serviceType: string;
   } | null;
+  setOrderNotes: (notes: string) => void;
+  setServiceType: (type: 'table' | 'emporter' | 'livraison') => void;
+  setGlobalDiscount: (discount: number) => void;
 
   // Computed
   getTotal: () => number;
@@ -79,6 +87,9 @@ export const usePOSStore = create<POSState>()(
       customerId: undefined,
       customerName: '',
       customerPhone: '',
+      orderNotes: '',
+      serviceType: 'table',
+      globalDiscount: 0,
       subtotal: 0,
       totalDiscount: 0,
       grandTotal: 0,
@@ -270,6 +281,9 @@ export const usePOSStore = create<POSState>()(
         customerId: undefined,
         customerName: '',
         customerPhone: '',
+        orderNotes: '',
+        serviceType: 'table',
+        globalDiscount: 0,
         subtotal: 0,
         totalDiscount: 0,
         grandTotal: 0,
@@ -322,8 +336,18 @@ export const usePOSStore = create<POSState>()(
         customerPhone: phone || '',
       }),
 
+      setOrderNotes: (notes) => set({ orderNotes: notes }),
+      setServiceType: (type) => set({ serviceType: type }),
+      setGlobalDiscount: (discount) => {
+        set({ globalDiscount: discount });
+        // Recalculate totals
+        const { subtotal, totalDiscount } = get();
+        // Assume global discount is an amount (not percentage) for simplicity
+        set({ grandTotal: Math.max(0, subtotal - totalDiscount - discount) });
+      },
+
       completeTransaction: (paymentMethod) => {
-        const { cart, grandTotal, customerName, customerPhone, clearCart } = get();
+        const { cart, grandTotal, customerName, customerPhone, orderNotes, serviceType, clearCart } = get();
         if (cart.length === 0) return null;
 
         const result = {
@@ -331,6 +355,8 @@ export const usePOSStore = create<POSState>()(
           grandTotal,
           customerName,
           customerPhone,
+          orderNotes,
+          serviceType,
           paymentMethod,
         };
 
@@ -350,6 +376,7 @@ export const usePOSStore = create<POSState>()(
         customerId: state.customerId,
         customerName: state.customerName,
         customerPhone: state.customerPhone,
+        serviceType: state.serviceType,
       }),
     }
   )

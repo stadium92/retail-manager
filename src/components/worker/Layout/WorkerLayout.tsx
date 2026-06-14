@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import logoUrl from '@/assets/logo.png';
 import { WorkerMenuBar, WorkerModule } from './WorkerMenuBar';
@@ -37,6 +38,13 @@ import { TableManagement } from '../Modules/TableManagement';
 import { SupabaseSyncService } from '@/services/SupabaseSyncService';
 import { CashierReadyOrdersBell } from './CashierReadyOrdersBell';
 import { IngredientsModule } from '../Modules/IngredientsModule';
+import { useDevice } from '@/contexts/DeviceContext';
+import { MobileWorkerLayout } from '@/components/mobile/MobileWorkerLayout';
+import { MobileSalesModule } from '../../mobile/Sales/MobileSalesModule';
+import { MobileFicheCaisse } from '../../mobile/Sales/MobileFicheCaisse';
+import { MobileReceptionAchats } from '../../mobile/Purchases/MobileReceptionAchats';
+import { MobileCommandeManuelle } from '../../mobile/Purchases/MobileCommandeManuelle';
+import { MobileReglementsFournisseurs } from '../../mobile/Purchases/MobileReglementsFournisseurs';
 
 interface WorkerLayoutProps {
   className?: string;
@@ -49,6 +57,10 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
   
   const workerRole = roles.find(r => r.role === 'worker');
   const subRole = workerRole?.sub_role || (user?.user_metadata?.sub_role as 'cook' | 'cashier' | 'waiter' | null | undefined);
+  const { isDesktop } = useDevice();
+  const [forceDesktopMode, setForceDesktopMode] = useState(false);
+
+
 
   // Apply dark class to document.documentElement dynamically for Radix Portals
   useEffect(() => {
@@ -245,6 +257,28 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
   }, []);
 
   const renderModule = useCallback(() => {
+    // If we are on a mobile device, we intercept the complex desktop modules
+    // and render their dedicated mobile equivalents instead.
+    if (!isDesktop) {
+      switch (activeModule) {
+        case 'vente-detail':
+        case 'facturation-detail':
+        case 'facturation-gros':
+        case 'proforma':
+          return <MobileSalesModule mode={activeModule} />;
+        case 'fermeture-caisse':
+        case 'consultation-caisse':
+          return <MobileFicheCaisse />;
+        case 'reception-achats':
+          return <MobileReceptionAchats />;
+        case 'commande-manuelle':
+        case 'commande-auto':
+          return <MobileCommandeManuelle />;
+        case 'reglement-fournisseurs':
+          return <MobileReglementsFournisseurs />;
+      }
+    }
+
     switch (activeModule) {
       case 'kds':
         return <KitchenDisplay storeId={storeId} />;
@@ -344,6 +378,13 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
     await signOut();
   };
 
+  if (!isDesktop && !forceDesktopMode) {
+    return <MobileWorkerLayout onOpenDesktopModule={(moduleId) => {
+      setActiveModule(moduleId as any);
+      setForceDesktopMode(true);
+    }} />;
+  }
+
   return (
     <div className={cn('h-full flex flex-col bg-background', subRole === 'cashier' && 'dark', className)}>
       <header className={cn(
@@ -387,17 +428,30 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
               : 'glass-card'
           )}>
             <div className={cn(
-              'h-8 border-b flex items-center px-4',
+              'h-8 border-b flex items-center px-4 justify-between',
               subRole === 'cashier'
                 ? 'bg-[#F5C518]/10 border-[#F5C518]/20'
                 : 'bg-primary/10 border-primary/30'
             )}>
-              <span className={cn(
-                'text-sm font-medium',
-                subRole === 'cashier' ? 'text-white' : 'text-primary'
-              )}>
-                {moduleLabels[activeModule]}
-              </span>
+              <div className="flex items-center gap-2">
+                {!isDesktop && forceDesktopMode && (
+                  <button
+                    onClick={() => setForceDesktopMode(false)}
+                    className={cn(
+                      "p-1 rounded-sm hover:bg-black/10",
+                      subRole === 'cashier' ? 'text-white' : 'text-primary'
+                    )}
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                )}
+                <span className={cn(
+                  'text-sm font-medium',
+                  subRole === 'cashier' ? 'text-white' : 'text-primary'
+                )}>
+                  {moduleLabels[activeModule]}
+                </span>
+              </div>
             </div>
 
             <div className="flex-1 overflow-hidden">

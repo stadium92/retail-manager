@@ -39,10 +39,13 @@ import NotFound from "./pages/NotFound";
 
 import { TermsOfServiceGate } from "@/components/license/TermsOfServiceGate";
 
+import { DeviceProvider } from '@/contexts/DeviceContext';
+
 const queryClient = new QueryClient();
 
 const App = () => (
   <ErrorBoundary>
+    <DeviceProvider>
     <QueryClientProvider client={queryClient}>
       <LicenseProvider>
         <ShortcutsProvider>
@@ -153,6 +156,7 @@ const App = () => (
         </ShortcutsProvider>
       </LicenseProvider>
     </QueryClientProvider>
+    </DeviceProvider>
   </ErrorBoundary>
 );
 

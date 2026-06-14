@@ -6,7 +6,7 @@ import { getCurrencyConfig } from '@/utils/currencyConfig';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { getDataClient } from '@/lib/dataClient';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Minus, WalletCards, Save, Loader2, ArrowRight } from 'lucide-react';
+import { Plus, Minus, WalletCards, Save, Loader2, ArrowRight, ArrowLeft } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 interface BillCount {
@@ -14,7 +14,7 @@ interface BillCount {
   count: number;
 }
 
-export function MobileFicheCaisse() {
+export function MobileFicheCaisse({ onBack }: { onBack?: () => void }) {
   const { t, i18n } = useTranslation();
   const { formatCurrency } = useFormatters();
   const { currency } = useSettingsStore();
@@ -130,6 +130,11 @@ export function MobileFicheCaisse() {
     <div className="flex flex-col h-full bg-[#0a0a0a] pb-[64px] md:pb-0 font-sans">
       <header className="flex-shrink-0 bg-[#141414] border-b border-rs-surface-container-highest px-4 py-3 sticky top-0 z-10">
         <div className="flex items-center gap-2">
+            {onBack && (
+                <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-rs-surface-container-highest text-white active:scale-95 transition-transform">
+                    <ArrowLeft className="w-6 h-6" />
+                </button>
+            )}
             <div className="w-8 h-8 rounded bg-rs-surface-tint/20 flex items-center justify-center">
                 <WalletCards className="w-4 h-4 text-rs-surface-tint" />
             </div>

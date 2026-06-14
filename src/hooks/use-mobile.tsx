@@ -1,19 +1,11 @@
-import * as React from "react";
+// Delegating to useDeviceType for consistency.
+// All existing imports of this hook continue to work with zero changes.
+import { useDeviceType } from './use-device-type';
 
-const MOBILE_BREAKPOINT = 768;
-
-export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined);
-
-  React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
-    const onChange = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
-    };
-    mql.addEventListener("change", onChange);
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
-    return () => mql.removeEventListener("change", onChange);
-  }, []);
-
-  return !!isMobile;
+/**
+ * @deprecated For new code, use useDevice() from DeviceContext instead.
+ * Kept for backward compatibility with existing desktop components.
+ */
+export function useIsMobile(): boolean {
+  return useDeviceType().isMobile;
 }

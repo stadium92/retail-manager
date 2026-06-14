@@ -6,6 +6,7 @@ import { OfflineSalesService } from '@/services/OfflineSalesService';
 import { OfflineStoreService } from '@/services/OfflineStoreService';
 import { OfflineInventoryService } from '@/services/OfflineInventoryService';
 import { useMasterDashboardStore } from '@/stores/useMasterDashboardStore';
+import { GestionModule } from '@/components/shared/GestionModule';
 
 export function MobileDashboard() {
     const { t } = useTranslation();
@@ -22,6 +23,9 @@ export function MobileDashboard() {
     });
     const [salesStatus, setSalesStatus] = useState<'good' | 'bad' | 'worse'>('good');
     const [loading, setLoading] = useState(true);
+    const [subTab, setSubTab] = useState<'overview' | 'analytics'>('overview');
+    const [activeStoreIds, setActiveStoreIds] = useState<string[]>([]);
+    const [allStores, setAllStores] = useState<any[]>([]);
 
     useEffect(() => {
         loadDashboardData();
@@ -30,17 +34,21 @@ export function MobileDashboard() {
     const loadDashboardData = async () => {
         setLoading(true);
         try {
-            const { data: allStores } = await OfflineStoreService.getStores();
-            const activeStoreIds = isAllStoresSelected 
-                ? (allStores?.map(s => s.id) || [])
+            const { data: storesList } = await OfflineStoreService.getStores();
+            const list = storesList || [];
+            setAllStores(list);
+
+            const resolvedIds = isAllStoresSelected 
+                ? (list.map(s => s.id) || [])
                 : selectedStoreIds;
+            setActiveStoreIds(resolvedIds);
 
             let combinedToday = 0;
             let combinedWeek = 0;
             let combinedLowStock = 0;
             let combinedValuation = 0;
 
-            await Promise.all(activeStoreIds.map(async (sid) => {
+            await Promise.all(resolvedIds.map(async (sid) => {
                 const [salesRes, stockRes, valRes] = await Promise.all([
                     OfflineSalesService.getSaleMetrics(sid),
                     OfflineInventoryService.getLowStockItems(10, sid),
@@ -59,7 +67,7 @@ export function MobileDashboard() {
             setMetrics({
                 todaySales: combinedToday,
                 weekSales: combinedWeek,
-                totalStores: activeStoreIds.length,
+                totalStores: resolvedIds.length,
                 lowStockItems: combinedLowStock,
                 stockValuation: combinedValuation,
             });
@@ -98,92 +106,101 @@ export function MobileDashboard() {
                 </div>
 
                 {/* View Selector Pills */}
-                <div className="flex gap-2 overflow-x-auto pb-1 snap-x scrollbar-hide -mx-4 px-4">
-                    <button className="snap-start shrink-0 h-[48px] px-5 rounded-full bg-rs-secondary text-rs-on-secondary transition-transform active:scale-95 shadow-sm font-semibold">Vue d'ensemble</button>
-                    <button className="snap-start shrink-0 h-[48px] px-5 rounded-full bg-rs-surface-container border border-rs-outline text-rs-on-surface hover:bg-rs-surface-container-highest transition-colors active:scale-95">Assistant IA</button>
-                    <button className="snap-start shrink-0 h-[48px] px-5 rounded-full bg-rs-surface-container border border-rs-outline text-rs-on-surface hover:bg-rs-surface-container-highest transition-colors active:scale-95">Analyses IA</button>
+                <div className="flex gap-2 overflow-x-auto pb-1 snap-x scrollbar-hide -mx-4 px-4 shrink-0">
+                    <button 
+                        onClick={() => setSubTab('overview')}
+                        className={`snap-start shrink-0 h-[40px] px-5 rounded-full transition-transform active:scale-95 shadow-sm font-semibold text-xs ${subTab === 'overview' ? 'bg-rs-secondary text-rs-on-secondary' : 'bg-rs-surface-container border border-rs-outline text-rs-on-surface'}`}
+                    >
+                        Vue d'ensemble
+                    </button>
+                    <button 
+                        onClick={() => setSubTab('analytics')}
+                        className={`snap-start shrink-0 h-[40px] px-5 rounded-full transition-transform active:scale-95 shadow-sm font-semibold text-xs ${subTab === 'analytics' ? 'bg-rs-secondary text-rs-on-secondary' : 'bg-rs-surface-container border border-rs-outline text-rs-on-surface'}`}
+                    >
+                        Analyses & Stats
+                    </button>
                 </div>
 
-                {/* Metric Cards Grid */}
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-rs-surface-container-low border border-rs-outline rounded-xl p-3 shadow-sm flex flex-col gap-2 min-h-[104px]">
-                        <h3 className="text-xs text-rs-on-surface-variant leading-tight">Commandes d'aujourd'hui</h3>
-                        <div className="text-xl font-bold text-rs-on-surface mt-auto">
-                            {loading ? "..." : formatCurrency(metrics.todaySales)}
+                {subTab === 'analytics' ? (
+                    <div className="flex flex-col gap-6">
+                        {loading ? (
+                            <div className="flex flex-col items-center justify-center py-20 text-rs-on-surface-variant">
+                                <span className="material-symbols-outlined animate-spin text-[32px] text-rs-surface-tint mb-2">refresh</span>
+                                <span>Chargement des analyses...</span>
+                            </div>
+                        ) : activeStoreIds.length === 0 ? (
+                            <div className="text-center py-12 text-rs-on-surface-variant">Aucune boutique disponible</div>
+                        ) : (
+                            activeStoreIds.map(sid => (
+                                <div key={`mobile-anal-${sid}`} className="bg-rs-surface-container-low border border-rs-outline rounded-2xl p-4 flex flex-col gap-3 shadow-md">
+                                    <h3 className="text-sm font-bold uppercase tracking-wider text-rs-surface-tint border-b border-rs-outline/35 pb-2">
+                                        {allStores.find(s => s.id === sid)?.name || "Restaurant"}
+                                    </h3>
+                                    <div className="h-[350px] overflow-hidden rounded-xl border border-rs-outline bg-[#141414] mt-2">
+                                        <GestionModule storeId={sid} mode="tableau-bord" />
+                                    </div>
+                                    <div className="h-[350px] overflow-hidden rounded-xl border border-rs-outline bg-[#141414] mt-2">
+                                        <GestionModule storeId={sid} mode="statistiques" />
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                ) : (
+                    <>
+                        {/* Metric Cards Grid */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-rs-surface-container-low border border-rs-outline rounded-xl p-3 shadow-sm flex flex-col gap-2 min-h-[104px]">
+                                <h3 className="text-xs text-rs-on-surface-variant leading-tight">Commandes d'aujourd'hui</h3>
+                                <div className="text-xl font-bold text-rs-on-surface mt-auto">
+                                    {loading ? "..." : formatCurrency(metrics.todaySales)}
+                                </div>
+                            </div>
+                            <div className="bg-rs-surface-container-low border border-rs-outline rounded-xl p-3 shadow-sm flex flex-col gap-2 min-h-[104px]">
+                                <h3 className="text-xs text-rs-on-surface-variant leading-tight">Commandes de la week</h3>
+                                <div className="text-xl font-bold text-rs-on-surface mt-auto">
+                                    {loading ? "..." : formatCurrency(metrics.weekSales)}
+                                </div>
+                            </div>
+                            <div className="bg-rs-surface-container-low border border-rs-outline rounded-xl p-3 shadow-sm flex flex-col gap-2 min-h-[104px]">
+                                <h3 className="text-xs text-rs-on-surface-variant leading-tight">Valeur du stock</h3>
+                                <div className="text-xl font-bold text-rs-on-surface mt-auto">
+                                    {loading ? "..." : formatCurrency(metrics.stockValuation)}
+                                </div>
+                            </div>
+                            <div className="bg-rs-surface-container-low border border-rs-outline rounded-xl p-3 shadow-sm flex flex-col gap-2 min-h-[104px]">
+                                <h3 className="text-xs text-rs-on-surface-variant leading-tight">Total des restaurants</h3>
+                                <div className="text-xl font-bold text-rs-on-surface mt-auto">{loading ? "..." : metrics.totalStores}</div>
+                            </div>
+                            <div className={`col-span-2 rounded-xl p-3 flex items-center justify-between min-h-[72px] ${metrics.lowStockItems > 0 ? 'bg-rs-error-container/20 border border-rs-error/30' : 'bg-rs-surface-container-low border border-rs-outline'}`}>
+                                <div className="flex items-center gap-2">
+                                    <span className={`material-symbols-outlined ${metrics.lowStockItems > 0 ? 'text-rs-error' : 'text-rs-on-surface-variant'}`}>warning</span>
+                                    <h3 className={`font-medium ${metrics.lowStockItems > 0 ? 'text-rs-error' : 'text-rs-on-surface-variant'}`}>Plats en rupture de stock</h3>
+                                </div>
+                                <span className={`text-2xl font-bold ${metrics.lowStockItems > 0 ? 'text-rs-error' : 'text-rs-on-surface'}`}>{loading ? "..." : metrics.lowStockItems}</span>
+                            </div>
                         </div>
-                    </div>
-                    <div className="bg-rs-surface-container-low border border-rs-outline rounded-xl p-3 shadow-sm flex flex-col gap-2 min-h-[104px]">
-                        <h3 className="text-xs text-rs-on-surface-variant leading-tight">Commandes de la semaine</h3>
-                        <div className="text-xl font-bold text-rs-on-surface mt-auto">
-                            {loading ? "..." : formatCurrency(metrics.weekSales)}
-                        </div>
-                    </div>
-                    <div className="bg-rs-surface-container-low border border-rs-outline rounded-xl p-3 shadow-sm flex flex-col gap-2 min-h-[104px]">
-                        <h3 className="text-xs text-rs-on-surface-variant leading-tight">Valeur du stock</h3>
-                        <div className="text-xl font-bold text-rs-on-surface mt-auto">
-                            {loading ? "..." : formatCurrency(metrics.stockValuation)}
-                        </div>
-                    </div>
-                    <div className="bg-rs-surface-container-low border border-rs-outline rounded-xl p-3 shadow-sm flex flex-col gap-2 min-h-[104px]">
-                        <h3 className="text-xs text-rs-on-surface-variant leading-tight">Total des restaurants</h3>
-                        <div className="text-xl font-bold text-rs-on-surface mt-auto">{loading ? "..." : metrics.totalStores}</div>
-                    </div>
-                    <div className={`col-span-2 rounded-xl p-3 flex items-center justify-between min-h-[72px] ${metrics.lowStockItems > 0 ? 'bg-rs-error-container/20 border border-rs-error/30' : 'bg-rs-surface-container-low border border-rs-outline'}`}>
-                        <div className="flex items-center gap-2">
-                            <span className={`material-symbols-outlined ${metrics.lowStockItems > 0 ? 'text-rs-error' : 'text-rs-on-surface-variant'}`}>warning</span>
-                            <h3 className={`font-medium ${metrics.lowStockItems > 0 ? 'text-rs-error' : 'text-rs-on-surface-variant'}`}>Plats en rupture de stock</h3>
-                        </div>
-                        <span className={`text-2xl font-bold ${metrics.lowStockItems > 0 ? 'text-rs-error' : 'text-rs-on-surface'}`}>{loading ? "..." : metrics.lowStockItems}</span>
-                    </div>
-                </div>
 
-                {/* Welcome Banner */}
-                <div className="bg-rs-surface-container rounded-xl border border-rs-outline overflow-hidden flex flex-col">
-                    <div className="bg-rs-surface-container-high px-4 py-2 border-b border-rs-outline">
-                        <h2 className="font-semibold text-rs-on-surface">Bienvenue dans votre Gestionnaire</h2>
-                    </div>
-                    <div className="p-4 flex flex-col gap-5">
-                        <div>
-                            <h3 className="text-rs-caption-sm text-rs-on-surface-variant mb-2 uppercase tracking-wider font-bold">Actions rapides</h3>
-                            <ul className="flex flex-col gap-1">
-                                <li className="h-[48px] flex items-center justify-between bg-rs-surface-container-low px-4 rounded-lg hover:bg-rs-surface-container-highest transition-colors border border-rs-outline/50 cursor-pointer" onClick={() => navigate('/worker/dashboard')}>
-                                    <span className="text-rs-on-surface">Nouvelle commande</span>
-                                    <span className="material-symbols-outlined text-rs-on-surface-variant">arrow_forward</span>
-                                </li>
-                                <li className="h-[48px] flex items-center justify-between bg-rs-surface-container-low px-4 rounded-lg hover:bg-rs-surface-container-highest transition-colors border border-rs-outline/50 cursor-pointer" onClick={() => navigate('/master/files')}>
-                                    <span className="text-rs-on-surface">Gérer le menu</span>
-                                    <span className="material-symbols-outlined text-rs-on-surface-variant">arrow_forward</span>
-                                </li>
-                                <li className="h-[48px] flex items-center justify-between bg-rs-surface-container-low px-4 rounded-lg hover:bg-rs-surface-container-highest transition-colors border border-rs-outline/50 cursor-pointer" onClick={() => navigate('/master/inventory')}>
-                                    <span className="text-rs-on-surface">Inventaire</span>
-                                    <span className="material-symbols-outlined text-rs-on-surface-variant">arrow_forward</span>
-                                </li>
-                                <li className="h-[48px] flex items-center justify-between bg-rs-surface-container-low px-4 rounded-lg hover:bg-rs-surface-container-highest transition-colors border border-rs-outline/50 cursor-pointer" onClick={() => navigate('/master/analytics')}>
-                                    <span className="text-rs-on-surface">Rapports</span>
-                                    <span className="material-symbols-outlined text-rs-on-surface-variant">arrow_forward</span>
-                                </li>
-                            </ul>
+                        {/* Welcome Banner */}
+                        <div className="bg-rs-surface-container rounded-xl border border-rs-outline overflow-hidden flex flex-col">
+                            <div className="bg-rs-surface-container-high px-4 py-2 border-b border-rs-outline">
+                                <h2 className="font-semibold text-rs-on-surface">Bienvenue dans votre Gestionnaire</h2>
+                            </div>
+                            <div className="p-4 flex flex-col gap-5">
+                                <div>
+                                    <h3 className="text-rs-caption-sm text-rs-on-surface-variant mb-2 uppercase tracking-wider font-bold">Actions rapides</h3>
+                                    <ul className="flex flex-col gap-1">
+                                        <li className="h-[48px] flex items-center justify-between bg-rs-surface-container-low px-4 rounded-lg hover:bg-rs-surface-container-highest transition-colors border border-rs-outline/50 cursor-pointer" onClick={() => navigate('/worker/dashboard')}>
+                                            <span className="text-rs-on-surface">Nouvelle commande</span>
+                                            <span className="material-symbols-outlined text-rs-on-surface-variant">arrow_forward</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <h3 className="text-rs-caption-sm text-rs-on-surface-variant mb-2 uppercase tracking-wider font-bold">Statut Actuel</h3>
-                            <ul className="flex flex-col gap-1">
-                                <li className="h-[48px] flex items-center justify-between bg-rs-surface-container-low px-4 rounded-lg border border-rs-outline/50">
-                                    <span className="text-rs-on-surface">Serveurs actifs</span>
-                                    <span className="text-rs-on-surface font-bold">4</span>
-                                </li>
-                                <li className="h-[48px] flex items-center justify-between bg-rs-surface-container-low px-4 rounded-lg border border-rs-outline/50">
-                                    <span className="text-rs-on-surface">Commandes en attente</span>
-                                    <span className="text-rs-on-surface font-bold">0</span>
-                                </li>
-                                <li className="h-[48px] flex items-center justify-between bg-rs-surface-container-low px-4 rounded-lg border border-rs-outline/50">
-                                    <span className="text-rs-on-surface">Dernière synchronisation</span>
-                                    <span className="text-rs-on-surface font-mono text-sm">Aujourd'hui, 08:30</span>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
+                    </>
+                )}
             </main>
         </div>
     );
-}
+};

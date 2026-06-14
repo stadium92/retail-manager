@@ -14,6 +14,8 @@ import { z } from 'zod';
 import { InvitationService } from '@/services/InvitationService';
 import { useToast } from '@/hooks/use-toast';
 import { LanguageSwitcher } from '@/components/shared/LanguageSwitcher';
+import { useDevice } from '@/contexts/DeviceContext';
+import { MobileAuthPage } from '@/components/mobile/auth/MobileAuthPage';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -40,6 +42,7 @@ export default function AuthPage() {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { user, signIn, signUp, rolesLoading, hasRole, roles, loading: authLoading, devLogin, isBackendReady } = useAuth();
+  const { isDesktop } = useDevice();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -190,6 +193,20 @@ export default function AuthPage() {
 
   // If no user and auth check is complete, show the form (handled by return below)
 
+  if (!isDesktop) {
+    return (
+      <MobileAuthPage 
+        loginData={loginData}
+        setLoginData={setLoginData}
+        signupData={signupData}
+        setSignupData={setSignupData}
+        handleLogin={handleLogin}
+        handleSignup={handleSignup}
+        loading={loading}
+        errors={errors}
+      />
+    );
+  }
 
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4">
