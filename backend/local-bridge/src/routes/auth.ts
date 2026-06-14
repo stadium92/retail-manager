@@ -167,12 +167,17 @@ export async function registerAuthRoutes(app: FastifyInstance) {
                 });
             }
         } else if (!finalStoreId) {
-            // User has no cloud store and there is no local store.
-            // They MUST go through the registration/bootstrap flow to explicitly create a store.
-            return reply.status(400).send({ 
-              error: 'NoStoreFound', 
-              message: 'No store found in your cloud account or on this device. Please register first to create a store.' 
+            // Auto-heal by creating a new default store for the master
+            finalStoreId = crypto.randomUUID();
+            db.insertStore({
+              id: finalStoreId,
+              name: 'My Store (Recovered)',
+              owner_id: userId,
+              default_price_tier: 1,
+              created_at: now,
+              updated_at: now,
             });
+            console.log('[sync-cloud-login] Auto-created recovered store for master user:', finalStoreId);
         }
     }
 
