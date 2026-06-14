@@ -30,17 +30,21 @@ export interface DeviceInfo {
 // Tauri injects window.__TAURI__ at startup. This is stable — check once.
 // In Tauri, ALWAYS show desktop UI regardless of window size.
 function checkIsTauri(): boolean {
-  return false; // TEMPORARILY DISABLED FOR TESTING
-  // return typeof window !== 'undefined' && '__TAURI__' in window;
+  if (typeof window === 'undefined') return false;
+  return (
+    (window as any).__TAURI_INTERNALS__ !== undefined ||
+    (window as any).__TAURI__ !== undefined ||
+    (typeof navigator !== 'undefined' && navigator.userAgent.includes('Tauri'))
+  );
 }
 
 // ─── Breakpoint Classification ────────────────────────────────────────────────
 // These breakpoints are intentional for a restaurant/retail context:
-//   - Tablets (768-1279px) run in kitchens and at counters — they need touch UI
-//   - Only true laptops/monitors (≥1280px) and Tauri get the dense desktop UI
+//   - Tablets (768-1023px) run in kitchens and at counters — they need touch UI
+//   - Laptops/monitors (≥1024px) and Tauri get the dense desktop UI
 function classifyWidth(width: number): 'mobile' | 'tablet' | 'desktop' {
   if (width < 768)  return 'mobile';
-  if (width < 1280) return 'tablet';
+  if (width < 1024) return 'tablet';
   return 'desktop';
 }
 
