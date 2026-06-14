@@ -214,7 +214,7 @@ export function MobileReceptionAchats({ onBack }: { onBack?: () => void }) {
                                       next[idx].unit_cost = Number(e.target.value);
                                       setReceiptItems(next);
                                   }}
-                                  className="w-24 h-8 bg-[#0a0a0a] border-rs-surface-container text-right text-sm"
+                                  className="w-24 h-8 bg-[#0a0a0a] border-rs-surface-container-highest text-white font-mono px-2 text-right text-sm"
                               />
                             </div>
                         </div>

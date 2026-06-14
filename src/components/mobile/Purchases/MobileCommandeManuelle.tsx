@@ -149,7 +149,7 @@ export function MobileCommandeManuelle({ onBack }: { onBack?: () => void }) {
                                     next[idx].unit_cost = Number(e.target.value);
                                     setItems(next);
                                 }}
-                                className="w-24 h-8 bg-[#0a0a0a] border-rs-surface-container text-right"
+                                className="w-24 h-8 bg-[#0a0a0a] border-rs-surface-container-highest text-white font-semibold font-mono text-right text-sm px-2 focus-visible:ring-rs-surface-tint focus-visible:ring-1"
                             />
                         </div>
                         <div className="flex items-center justify-between border-t border-rs-surface-container pt-3">
