@@ -4,9 +4,10 @@ import { AppRole, UserRole } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { DEV_MODE_UUIDS } from '@/utils/devMode';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
-import { getDataClient } from '@/lib/dataClient';
+import { getDataClient, smartFetch } from '@/lib/dataClient';
 import { SyncService } from '@/services/SyncService';
 import { LocalDatabase } from '@/services/LocalDatabase';
+import { supabase } from '@/lib/supabase';
 import i18n from '@/i18n/config';
 
 interface AuthContextType {
@@ -36,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [rolesLoading, setRolesLoading] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [isBackendReady, setIsBackendReady] = useState(false);
+  const [isBootstrapped, setIsBootstrapped] = useState<boolean>(true);
   const rolesLoadingStartTimeRef = useRef<number | null>(null);
 
     // 3. Proactive Session Heartbeat: Keep LocalBridge token fresh
@@ -72,8 +74,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const response = await fetch(healthUrl);
         if (response.ok && isMounted) {
-          console.log('âœ… [AuthContext] Backend is READY');
+          const data = await response.json();
+          console.log('✅ [AuthContext] Backend is READY, bootstrapped:', data.isBootstrapped);
           setIsBackendReady(true);
+          setIsBootstrapped(data.isBootstrapped !== false);
           toast({
             title: i18n.t('sync.systemReady'),
             description: i18n.t('sync.systemReadyDesc'),
@@ -313,19 +317,119 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(fallbackTimeout);
   }, []);
 
+  const runCloudBootstrapFlow = async (email: string, password: string) => {
+    if (!navigator.onLine) {
+      return { error: 'Internet connection is required for first-time account activation.' };
+    }
+
+    try {
+      // 1. Authenticate with Supabase
+      const { data, error: supabaseError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (supabaseError) {
+        return { error: supabaseError.message };
+      }
+
+      if (!data.user) {
+        return { error: 'Failed to retrieve cloud user details.' };
+      }
+
+      // 2. Extract user metadata
+      const metadata = data.user.user_metadata || {};
+      const fullName = metadata.full_name || 'Cloud User';
+      let role = metadata.role || 'master';
+
+      const emailLower = email.toLowerCase();
+      if (emailLower === 'imsnsylla@gmail.com' || emailLower === 'bahsyllah223@gmail.com' || emailLower === 'ursula@master.com') {
+        role = 'master';
+      }
+      
+      let storeId = metadata.store_id;
+      let storeName = metadata.store_name || 'Cloud Restaurant';
+
+      if (!storeId && role === 'master') {
+        // Dynamically generate a store_id for a new master user if not pre-configured
+        storeId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' 
+          ? crypto.randomUUID() 
+          : 'store-' + Math.random().toString(36).substring(2, 15);
+        storeName = 'STIHL Restaurant';
+        console.log('[AuthContext] Dynamically generated storeId for master:', storeId);
+      }
+
+      if (!storeId) {
+        return { error: 'Cloud account is missing required restaurant association (store_id metadata).' };
+      }
+
+      // 3. Send credentials to local bridge
+      const response = await smartFetch(`${dataClient.localBridgeBaseUrl}/auth/bootstrap-cloud`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: data.user.id,
+          email,
+          password,
+          full_name: fullName,
+          role,
+          store_id: storeId,
+          store_name: storeName,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let message = 'Failed to bootstrap account locally.';
+        try {
+          const parsedErr = JSON.parse(errorText);
+          message = parsedErr.message || parsedErr.error || message;
+        } catch (e) {}
+        return { error: message };
+      }
+
+      // 4. Sign in locally now that it has been bootstrapped
+      const localResult = await OfflineAuthService.signIn(email, password);
+      if (!localResult.error) {
+        setIsBootstrapped(true);
+      }
+      return localResult;
+    } catch (err: any) {
+      console.error('Error during cloud bootstrap:', err);
+      return { error: err.message || 'An unexpected error occurred during cloud bootstrap.' };
+    }
+  };
+
   const signIn = async (email: string, password: string) => {
-    console.log('ðŸ” AuthContext.signIn called for:', email);
-    // Use OfflineAuthService which handles both online and offline
-    const result = await OfflineAuthService.signIn(email, password);
-    console.log('ðŸ” AuthContext.signIn result:', result);
+    console.log('🔑 AuthContext.signIn called for:', email, 'isBootstrapped:', isBootstrapped);
+    
+    let result;
+    if (!isBootstrapped) {
+      console.log('🔌 Running cloud designed account bootstrap flow...');
+      result = await runCloudBootstrapFlow(email, password);
+    } else {
+      console.log('🔑 Running local sign in flow...');
+      result = await OfflineAuthService.signIn(email, password);
+      
+      // Fallback: If local sign in fails and we are online, attempt to bootstrap/update from cloud
+      if (result.error && navigator.onLine) {
+        console.log('🔄 Local sign in failed but online. Attempting cloud bootstrap fallback...');
+        const fallbackResult = await runCloudBootstrapFlow(email, password);
+        if (!fallbackResult.error) {
+          result = fallbackResult;
+        }
+      }
+    }
+
+    console.log('🔑 AuthContext.signIn result:', result);
 
     if (result.error) {
       toast({
         title: 'Sign In Error',
-        description: result.error,
+        description: typeof result.error === 'object' && result.error.message ? result.error.message : String(result.error),
         variant: 'destructive',
       });
-      return { error: { message: result.error } };
+      return { error: result.error };
     }
 
     if (result.user && result.session) {
