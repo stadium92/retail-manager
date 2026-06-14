@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
 import { useFormatters } from '@/utils/formatting';
@@ -115,7 +115,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
     return ['carton', 'box', 'pack', 'paquet', 'sachet', 'sac'].includes(u);
   };
 
-  const handleEdit = async (p: any) => {
+  const handleEdit = useCallback(async (p: any) => {
     setEditingProduct(p);
     setPackSearchQuery('');
     const packSize = getPackSize(p.packaging || '1');
@@ -160,9 +160,9 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
     });
     setFormTab('info');
     setIsFormOpen(true);
-  };
+  }, []);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     if (!confirm('Voulez-vous vraiment supprimer cet article ?')) return;
     try {
       const { error } = await OfflineInventoryService.deleteItem(id);
@@ -172,7 +172,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
     } catch (err: any) {
       toast({ title: t('common.error'), description: err.message, variant: 'destructive' });
     }
-  };
+  }, [t, toast]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -256,18 +256,22 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
     }
   };
 
-  const filteredProducts = Array.isArray(products) ? products.filter(p => {
-    const matchesSearch = p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.category_name || families.find(f => f.id === (p.category_id || p.category))?.name || '').toLowerCase().includes(searchQuery.toLowerCase());
-    
-    if (activeTypeFilter === 'all') return matchesSearch;
-    if (activeTypeFilter === 'dish') return matchesSearch && p.item_type === 'dish';
-    if (activeTypeFilter === 'product') return matchesSearch && (p.item_type === 'product' || !p.item_type);
-    if (activeTypeFilter === 'pack') return matchesSearch && p.item_type === 'pack';
-    return matchesSearch;
-  }) : [];
+  const filteredProducts = useMemo(() => {
+    return Array.isArray(products) ? products.filter(p => {
+      const matchesSearch = p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.category_name || families.find(f => f.id === (p.category_id || p.category))?.name || '').toLowerCase().includes(searchQuery.toLowerCase());
+      
+      if (activeTypeFilter === 'all') return matchesSearch;
+      if (activeTypeFilter === 'dish') return matchesSearch && p.item_type === 'dish';
+      if (activeTypeFilter === 'product') return matchesSearch && (p.item_type === 'product' || !p.item_type);
+      if (activeTypeFilter === 'pack') return matchesSearch && p.item_type === 'pack';
+      return matchesSearch;
+    }) : [];
+  }, [products, searchQuery, activeTypeFilter, families]);
 
-  const selectableItems = products.filter(p => p.item_type !== 'pack' && p.id !== editingProduct?.id);
+  const selectableItems = useMemo(() => {
+    return products.filter(p => p.item_type !== 'pack' && p.id !== editingProduct?.id);
+  }, [products, editingProduct?.id]);
 
   if (isFormOpen) {
     return (
@@ -691,7 +695,6 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
 
   return (
     <div className="flex flex-col h-full bg-[#0a0a0a] pb-[64px] font-sans text-white">
-      {/* List Header */}
       <header className="flex-shrink-0 bg-[#141414] border-b border-rs-surface-container-highest px-4 py-4 sticky top-0 z-10">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -777,106 +780,16 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
         ) : (
           <div className="grid grid-cols-2 gap-3 pb-8">
             {filteredProducts.map(product => {
-              const isLowStock = product.item_type !== 'pack' && product.quantity <= (product.low_stock_threshold || 10);
               const categoryName = families.find(f => f.id === (product.category_id || product.category))?.name || 'Général';
-              
-              // Custom type details
-              let typeBadgeColor = 'bg-[#1e1a0acc] text-amber-400'; // Plat
-              let typeLabel = '🍳 Plat';
-              if (product.item_type === 'pack') {
-                typeBadgeColor = 'bg-[#1b132ccc] text-purple-400';
-                typeLabel = '🎒 Pack';
-              } else if (product.item_type === 'product' || !product.item_type) {
-                typeBadgeColor = 'bg-[#0f1b22cc] text-sky-400';
-                typeLabel = '📦 Article';
-              }
-
               return (
-                <div 
+                <ProductCard 
                   key={product.id}
-                  className="bg-[#141414] border border-[#262626] rounded-2xl overflow-hidden flex flex-col relative shadow-md"
-                >
-                  {/* Visual Gallery Image Box */}
-                  <div className="relative aspect-square w-full bg-gradient-to-br from-[#1c1c1c] to-[#262626] flex items-center justify-center overflow-hidden border-b border-[#262626]">
-                    {product.image_url ? (
-                      <img 
-                        src={product.image_url} 
-                        alt={product.name} 
-                        className="object-cover w-full h-full" 
-                      />
-                    ) : (
-                      <div className="text-rs-on-surface-variant opacity-30 animate-pulse">
-                        {product.item_type === 'dish' ? (
-                          <UtensilsCrossed className="w-12 h-12 text-rs-surface-tint" />
-                        ) : product.item_type === 'pack' ? (
-                          <Boxes className="w-12 h-12 text-rs-surface-tint" />
-                        ) : (
-                          <Package className="w-12 h-12 text-rs-surface-tint" />
-                        )}
-                      </div>
-                    )}
-
-                    {/* Category Overlay Tag */}
-                    {product.item_type !== 'pack' && (
-                      <div className="absolute top-2 left-2 bg-[#0a0a0acc] backdrop-blur-sm px-2 py-0.5 rounded-full text-[9px] uppercase font-bold tracking-wider text-rs-surface-tint">
-                        {categoryName}
-                      </div>
-                    )}
-
-                    {/* Type Badge Overlay */}
-                    <div className={`absolute bottom-2 left-2 backdrop-blur-sm px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${typeBadgeColor}`}>
-                      {typeLabel}
-                    </div>
-
-                    {/* Edit/Delete Overlay Actions */}
-                    <div className="absolute top-2 right-2 flex gap-1.5 z-10">
-                      <button 
-                        onClick={() => handleEdit(product)}
-                        className="w-7 h-7 rounded-full bg-[#0a0a0acc] backdrop-blur-sm flex items-center justify-center hover:bg-rs-surface-container-highest text-emerald-400 active:scale-90 transition-transform"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(product.id)}
-                        className="w-7 h-7 rounded-full bg-[#0a0a0acc] backdrop-blur-sm flex items-center justify-center hover:bg-rs-surface-container-highest text-red-400 active:scale-90 transition-transform"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Details */}
-                  <div className="p-3 flex flex-col flex-1 justify-between gap-2">
-                    <div className="min-w-0">
-                      <h3 className="font-bold text-white text-xs leading-tight line-clamp-2">{product.name}</h3>
-                    </div>
-
-                    <div className="space-y-1">
-                      {/* Price */}
-                      <div className="font-mono text-sm font-black text-rs-surface-tint">
-                        {formatCurrency(product.price || product.unit_price || 0)}
-                      </div>
-
-                      {/* Stock or Pack Components indicator */}
-                      <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-[#262626] text-rs-on-surface-variant">
-                        {product.item_type === 'pack' ? (
-                          <div className="flex items-center gap-1 font-semibold text-purple-400">
-                            <Boxes className="w-3.5 h-3.5" />
-                            <span>{product.pack_items?.length || 0} articles</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1 font-mono">
-                            <span className={`w-1.5 h-1.5 rounded-full ${isLowStock ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
-                            <span className={isLowStock ? 'text-amber-400 font-bold' : 'text-emerald-400 font-semibold'}>
-                              {product.quantity} {product.unit_type || 'pcs'}
-                            </span>
-                          </div>
-                        )}
-                        {isLowStock && <AlertTriangle className="w-3 h-3 text-amber-400" />}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                  product={product}
+                  categoryName={categoryName}
+                  formatCurrency={formatCurrency}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                />
               );
             })}
           </div>
@@ -885,3 +798,109 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
     </div>
   );
 }
+
+interface ProductCardProps {
+  product: any;
+  categoryName: string;
+  formatCurrency: (val: any) => string;
+  onEdit: (p: any) => void;
+  onDelete: (id: string) => void;
+}
+
+const ProductCard = React.memo(function ProductCard({
+  product,
+  categoryName,
+  formatCurrency,
+  onEdit,
+  onDelete
+}: ProductCardProps) {
+  const isLowStock = product.item_type !== 'pack' && product.quantity <= (product.low_stock_threshold || 10);
+  
+  let typeBadgeColor = 'bg-[#1e1a0acc] text-amber-400'; // Plat
+  let typeLabel = '🍳 Plat';
+  if (product.item_type === 'pack') {
+    typeBadgeColor = 'bg-[#1b132ccc] text-purple-400';
+    typeLabel = '🎒 Pack';
+  } else if (product.item_type === 'product' || !product.item_type) {
+    typeBadgeColor = 'bg-[#0f1b22cc] text-sky-400';
+    typeLabel = '📦 Article';
+  }
+
+  return (
+    <div className="bg-[#141414] border border-[#262626] rounded-2xl overflow-hidden flex flex-col relative shadow-md">
+      <div className="relative aspect-square w-full bg-gradient-to-br from-[#1c1c1c] to-[#262626] flex items-center justify-center overflow-hidden border-b border-[#262626]">
+        {product.image_url ? (
+          <img 
+            src={product.image_url} 
+            alt={product.name} 
+            className="object-cover w-full h-full" 
+          />
+        ) : (
+          <div className="text-rs-on-surface-variant opacity-30 animate-pulse">
+            {product.item_type === 'dish' ? (
+              <UtensilsCrossed className="w-12 h-12 text-rs-surface-tint" />
+            ) : product.item_type === 'pack' ? (
+              <Boxes className="w-12 h-12 text-rs-surface-tint" />
+            ) : (
+              <Package className="w-12 h-12 text-rs-surface-tint" />
+            )}
+          </div>
+        )}
+
+        {product.item_type !== 'pack' && (
+          <div className="absolute top-2 left-2 bg-[#0a0a0acc] backdrop-blur-sm px-2 py-0.5 rounded-full text-[9px] uppercase font-bold tracking-wider text-rs-surface-tint">
+            {categoryName}
+          </div>
+        )}
+
+        <div className={`absolute bottom-2 left-2 backdrop-blur-sm px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${typeBadgeColor}`}>
+          {typeLabel}
+        </div>
+
+        <div className="absolute top-2 right-2 flex gap-1.5 z-10">
+          <button 
+            onClick={() => onEdit(product)}
+            className="w-7 h-7 rounded-full bg-[#0a0a0acc] backdrop-blur-sm flex items-center justify-center hover:bg-rs-surface-container-highest text-emerald-400 active:scale-90 transition-transform"
+          >
+            <Edit2 className="w-3.5 h-3.5" />
+          </button>
+          <button 
+            onClick={() => onDelete(product.id)}
+            className="w-7 h-7 rounded-full bg-[#0a0a0acc] backdrop-blur-sm flex items-center justify-center hover:bg-rs-surface-container-highest text-red-400 active:scale-90 transition-transform"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      <div className="p-3 flex flex-col flex-1 justify-between gap-2">
+        <div className="min-w-0">
+          <h3 className="font-bold text-white text-xs leading-tight line-clamp-2">{product.name}</h3>
+        </div>
+
+        <div className="space-y-1">
+          <div className="font-mono text-sm font-black text-rs-surface-tint">
+            {formatCurrency(product.price || product.unit_price || 0)}
+          </div>
+
+          <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-[#262626] text-rs-on-surface-variant">
+            {product.item_type === 'pack' ? (
+              <div className="flex items-center gap-1 font-semibold text-purple-400">
+                <Boxes className="w-3.5 h-3.5" />
+                <span>{product.pack_items?.length || 0} articles</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 font-mono">
+                <span className={`w-1.5 h-1.5 rounded-full ${isLowStock ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
+                <span className={isLowStock ? 'text-amber-400 font-bold' : 'text-emerald-400 font-semibold'}>
+                  {product.quantity} {product.unit_type || 'pcs'}
+                </span>
+              </div>
+            )}
+            {isLowStock && <AlertTriangle className="w-3 h-3 text-amber-400" />}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});

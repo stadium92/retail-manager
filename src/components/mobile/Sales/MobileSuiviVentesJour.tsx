@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
 import { useFormatters } from '@/utils/formatting';
@@ -47,13 +47,17 @@ export function MobileSuiviVentesJour({ onBack }: MobileSuiviVentesJourProps) {
     }
   };
 
-  const filteredSales = sales.filter(s => 
-    s.invoice_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.customer_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.payment_method?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredSales = useMemo(() => {
+    return sales.filter(s => 
+      s.invoice_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.customer_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.payment_method?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [sales, searchQuery]);
 
-  const totalRevenue = filteredSales.reduce((sum, s) => sum + (s.total_price || 0), 0);
+  const totalRevenue = useMemo(() => {
+    return filteredSales.reduce((sum, s) => sum + (s.total_price || 0), 0);
+  }, [filteredSales]);
 
   return (
     <div className="flex flex-col h-full bg-[#0a0a0a] pb-[64px] font-sans text-white">

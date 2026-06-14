@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
 import { useFormatters } from '@/utils/formatting';
@@ -49,6 +49,12 @@ export function MobileRestaurants({ onBack }: MobileRestaurantsProps) {
   const [storeDetails, setStoreDetails] = useState<any | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [inventorySearch, setInventorySearch] = useState('');
+
+  const filteredInventory = useMemo(() => {
+    return (storeDetails?.inventory || []).filter((item: any) =>
+      item.name?.toLowerCase().includes(inventorySearch.toLowerCase())
+    );
+  }, [storeDetails?.inventory, inventorySearch]);
 
   // Form states
   const [formOpen, setFormOpen] = useState(false);
@@ -349,9 +355,7 @@ export function MobileRestaurants({ onBack }: MobileRestaurantsProps) {
                   <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-rs-on-surface-variant/60" />
                 </div>
                 <div className="space-y-2 max-h-[350px] overflow-y-auto">
-                  {(storeDetails.inventory || [])
-                    .filter((item: any) => item.name?.toLowerCase().includes(inventorySearch.toLowerCase()))
-                    .map((item: any) => {
+                  {filteredInventory.map((item: any) => {
                       const isLowStock = item.quantity <= (item.low_stock_threshold || 10);
                       const itemVal = (item.price || item.unit_price || 0) * (item.quantity || 0);
                       return (

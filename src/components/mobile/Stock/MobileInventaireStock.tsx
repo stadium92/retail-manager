@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
 import { useFormatters } from '@/utils/formatting';
@@ -47,10 +47,12 @@ export function MobileInventaireStock({ onBack }: MobileInventaireStockProps) {
     }
   };
 
-  const filteredProducts = Array.isArray(products) ? products.filter(p => 
-    p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.category?.toLowerCase().includes(searchQuery.toLowerCase())
-  ) : [];
+  const filteredProducts = useMemo(() => {
+    return Array.isArray(products) ? products.filter(p => 
+      p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.category?.toLowerCase().includes(searchQuery.toLowerCase())
+    ) : [];
+  }, [products, searchQuery]);
 
   const updatePhysicalStock = (productId: string, val: number) => {
     setInventoryChanges(prev => ({

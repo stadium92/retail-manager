@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
 import { useFormatters } from '@/utils/formatting';
@@ -67,11 +67,13 @@ export function MobileFournisseurs({ onBack }: MobileFournisseursProps) {
     }
   };
 
-  const filteredSuppliers = suppliers.filter(s => 
-    s.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.code?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredSuppliers = useMemo(() => {
+    return suppliers.filter(s => 
+      s.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.code?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [suppliers, searchQuery]);
 
   const handleOpenForm = (supplier?: any) => {
     if (!supplier) {

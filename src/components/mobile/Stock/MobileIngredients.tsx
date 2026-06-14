@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
 import { useFormatters } from '@/utils/formatting';
@@ -69,10 +69,12 @@ export function MobileIngredients({ onBack }: MobileIngredientsProps) {
     }
   };
 
-  const filteredIngredients = ingredients.filter(ing => 
-    ing.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    ing.category?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredIngredients = useMemo(() => {
+    return ingredients.filter(ing => 
+      ing.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      ing.category?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [ingredients, searchQuery]);
 
   const handleOpenAction = (type: 'restock' | 'waste', ing: any) => {
     setActionType(type);

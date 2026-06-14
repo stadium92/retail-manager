@@ -8,7 +8,7 @@ import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { useToast } from '@/hooks/use-toast';
 import { useProductSearch } from '@/hooks/useProductSearch';
 import { format } from 'date-fns';
-import { ChevronDown, Plus, Minus, Search, Trash2, User, ArrowLeft } from 'lucide-react';
+import { ChevronDown, Plus, Minus, Search, Trash2, User, ArrowLeft, ShoppingCart } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 
@@ -97,12 +97,12 @@ export function MobileSalesModule({ mode, onBack }: { mode: 'vente-detail' | 'fa
         updateSession(mode, { lineItems: newItems });
     };
 
-    const getTotal = () => {
+    const total = useMemo(() => {
         return lineItems.reduce((acc, item) => {
             const multiplier = item.isBox ? (item.packSize || 1) : 1;
             return acc + (item.unitPrice * item.quantity * multiplier) - item.discountAmount;
         }, 0);
-    };
+    }, [lineItems]);
 
     const handleCheckout = async (paymentMethod: 'cash' | 'card' | 'mobile') => {
         setIsProcessing(true);
@@ -126,7 +126,7 @@ export function MobileSalesModule({ mode, onBack }: { mode: 'vente-detail' | 'fa
                     quantity: item.quantity,
                     price: item.unitPrice,
                 })),
-                total_price: getTotal(),
+                total_price: total,
                 payment_method: paymentMethod,
                 sale_type: saleType,
                 customer_name: customerName,
@@ -135,7 +135,7 @@ export function MobileSalesModule({ mode, onBack }: { mode: 'vente-detail' | 'fa
 
             if (error) throw error;
 
-            toast({ title: t('worker.sales.saleRecorded'), description: `${t('worker.sales.total')}: ${formatCurrency(getTotal())}` });
+            toast({ title: t('worker.sales.saleRecorded'), description: `${t('worker.sales.total')}: ${formatCurrency(total)}` });
             clearSession(mode);
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Erreur', description: err.message });
@@ -232,7 +232,7 @@ export function MobileSalesModule({ mode, onBack }: { mode: 'vente-detail' | 'fa
                 <div className="flex justify-between items-end">
                     <span className="font-bold tracking-tight text-rs-on-surface text-xl">NET À PAYER</span>
                     <div className="bg-[#0C0C0C] px-5 py-2 rounded border border-rs-surface-container-highest">
-                        <span className="font-mono text-2xl font-bold leading-none text-rs-surface-tint tracking-tight">{formatCurrency(getTotal())}</span>
+                        <span className="font-mono text-2xl font-bold leading-none text-rs-surface-tint tracking-tight">{formatCurrency(total)}</span>
                     </div>
                 </div>
                 <div className="flex gap-3">

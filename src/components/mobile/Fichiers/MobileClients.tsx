@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
 import { useFormatters } from '@/utils/formatting';
@@ -66,11 +66,13 @@ export function MobileClients({ onBack }: MobileClientsProps) {
     }
   };
 
-  const filteredClients = clients.filter(c => 
-    c.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.code?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredClients = useMemo(() => {
+    return clients.filter(c => 
+      c.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.code?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [clients, searchQuery]);
 
   const handleOpenForm = (client?: any) => {
     if (!client) {

@@ -513,3 +513,18 @@
     box-shadow: 0 0 8px hsl(var(--danger) / 0.5);
   }
 }
+
+/* Fluid active touch feedback and GPU acceleration */
+button, [role="button"] {
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+}
+
+button:active:not(:disabled), [role="button"]:active:not(:disabled) {
+  transform: scale(0.96) !important;
+}
+
+.will-change-gpu {
+  will-change: transform, opacity;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+}
