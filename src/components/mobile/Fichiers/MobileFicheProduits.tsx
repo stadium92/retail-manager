@@ -271,9 +271,9 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
 
   if (isFormOpen) {
     return (
-      <div className="flex flex-col h-full bg-[#0a0a0a] pb-[64px] font-sans text-white overflow-y-auto animate-in fade-in-50 duration-200">
+      <div className="flex flex-col h-full bg-[#0a0a0a] pb-[64px] font-sans text-white overflow-hidden animate-in fade-in-50 duration-200">
         {/* Form Header */}
-        <header className="flex-shrink-0 bg-[#141414] border-b border-rs-surface-container-highest px-4 py-4 sticky top-0 z-30 flex items-center justify-between">
+        <header className="flex-shrink-0 bg-[#141414] border-b border-rs-surface-container-highest px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button 
               onClick={() => {
@@ -301,7 +301,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
         </header>
 
         {/* Tab Selector */}
-        <div className="flex gap-2 p-4 bg-[#141414]/50 border-b border-[#262626] sticky top-[69px] z-20 overflow-x-auto scrollbar-hide">
+        <div className="flex-shrink-0 flex gap-2 p-4 bg-[#141414]/50 border-b border-[#262626] overflow-x-auto scrollbar-hide">
           <button
             type="button"
             onClick={() => setFormTab('info')}
@@ -337,7 +337,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSave} className="flex-1 p-4 space-y-6">
+        <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-4 space-y-6">
           {formTab === 'info' && (
             <div className="space-y-4">
               <div className="flex flex-col gap-2 shrink-0 items-center justify-center bg-[#141414] border border-[#262626] rounded-2xl p-4">
