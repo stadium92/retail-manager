@@ -65,6 +65,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (storeId) {
       console.log('[AuthContext] Auto-starting LocalBridgeSyncService for store:', storeId);
       LocalBridgeSyncService.start(storeId);
+
+      // Proactively check and update Supabase user_metadata if it is out of sync
+      if (navigator.onLine) {
+        (async () => {
+          try {
+            const { data: { session: supaSession } } = await supabase.auth.getSession();
+            if (supaSession && supaSession.user) {
+              const currentMeta = supaSession.user.user_metadata || {};
+              const role = activeRole.role;
+              if (!currentMeta.store_id || currentMeta.store_id !== storeId || currentMeta.role !== role) {
+                console.log('[AuthContext] Supabase metadata out of sync on startup. Updating...', { storeId, role });
+                await supabase.auth.updateUser({
+                  data: {
+                    store_id: storeId,
+                    role: role
+                  }
+                });
+                console.log('[AuthContext] Supabase metadata successfully updated on startup.');
+              }
+            }
+          } catch (e) {
+            console.warn('[AuthContext] Failed to check/update Supabase metadata on startup:', e);
+          }
+        })();
+      }
+
       return () => {
         console.log('[AuthContext] Stopping LocalBridgeSyncService');
         LocalBridgeSyncService.stop();

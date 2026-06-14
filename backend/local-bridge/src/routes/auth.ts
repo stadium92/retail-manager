@@ -305,16 +305,26 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     const now = new Date().toISOString();
 
     // 1. Insert/Update User
-    db.insertUser({
-      id,
-      email,
-      password_hash,
-      full_name,
-      phone: null,
-      created_at: now,
-      updated_at: now,
-      role,
-    });
+    const existingUser = db.getUserById(id) || db.getUserByEmail(emailLower);
+    const userId = existingUser ? existingUser.id : id;
+
+    if (!existingUser) {
+      db.insertUser({
+        id: userId,
+        email,
+        password_hash,
+        full_name,
+        phone: null,
+        created_at: now,
+        updated_at: now,
+        role,
+      });
+    } else {
+      db.updateUserPassword(userId, password_hash);
+      if (typeof db.updateUserRole === 'function') {
+        db.updateUserRole(userId, role as "master" | "worker" | "deliverer");
+      }
+    }
 
     let finalStoreId = store_id || null;
     
@@ -333,7 +343,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       db.insertStore({
         id: finalStoreId,
         name: store_name || 'My Cloud Store',
-        owner_id: role === 'master' ? id : null,
+        owner_id: role === 'master' ? userId : null,
         default_price_tier: 1,
         created_at: now,
         updated_at: now,
@@ -342,12 +352,12 @@ export async function registerAuthRoutes(app: FastifyInstance) {
 
     // 3. Delete existing user roles to prevent duplicates, then insert the new role
     if (typeof db.deleteRolesForUser === 'function') {
-      db.deleteRolesForUser(id);
+      db.deleteRolesForUser(userId);
     }
     
     db.insertRole({
       id: crypto.randomUUID(),
-      user_id: id,
+      user_id: userId,
       role,
       store_id: finalStoreId,
       created_at: now,
@@ -360,30 +370,32 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     db.insertAuditLog({
       id: crypto.randomUUID(),
       timestamp: now,
-      user_id: id,
+      user_id: userId,
       action_type: 'user_bootstrap_cloud',
       entity_affected: 'auth',
-      entity_id: id,
+      entity_id: userId,
       store_id: finalStoreId,
     });
 
     // 5. Issue Tokens & Create Session
-    const accessToken = issueAccessToken(id, email, role, finalStoreId);
+    const accessToken = issueAccessToken(userId, email, role, finalStoreId);
     const refreshToken = crypto.randomBytes(48).toString('hex');
     const sessionExpiry = Math.floor(Date.now() / 1000) + REFRESH_TOKEN_TTL_SECONDS;
 
     db.deleteExpiredSessions(Math.floor(Date.now() / 1000));
     db.createSession({
       id: crypto.randomUUID(),
-      user_id: id,
+      user_id: userId,
       access_token: accessToken,
       refresh_token: refreshToken,
       expires_at: sessionExpiry,
       created_at: now,
     });
 
+    const userObj = db.getUserById(userId);
+
     return reply.status(201).send(
-      buildLoginResponse({ id, email, full_name }, role, finalStoreId, accessToken, refreshToken)
+      buildLoginResponse({ id: userId, email, full_name: userObj?.full_name || full_name }, role, finalStoreId, accessToken, refreshToken)
     );
   });
 

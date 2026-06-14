@@ -360,6 +360,22 @@ export class OfflineAuthService {
           }
       }
 
+      // If store_id or role on Supabase user_metadata is missing or different, update it
+      const currentMeta = data.user.user_metadata || {};
+      if (store_id && (currentMeta.store_id !== store_id || currentMeta.role !== finalRole)) {
+        console.log('[OfflineAuth] Updating Supabase user metadata with store_id:', store_id, 'role:', finalRole);
+        try {
+          await supabase.auth.updateUser({
+            data: {
+              store_id: store_id,
+              role: finalRole || 'master'
+            }
+          });
+        } catch (metaErr) {
+          console.error('[OfflineAuth] Failed to update user metadata on Supabase:', metaErr);
+        }
+      }
+
       const syncResponse = await this.localBridgeRequest<LocalBridgeLoginResponse>(
         '/auth/sync-cloud-login',
         {
@@ -377,6 +393,25 @@ export class OfflineAuthService {
       );
 
       const cache = this.saveLocalBridgeSession(syncResponse);
+
+      // Post-sync update: If store_id was resolved locally but is missing or different on Supabase, update it now
+      const resolvedStoreId = syncResponse.user?.store_id;
+      const resolvedRole = syncResponse.user?.role || finalRole || 'master';
+      if (resolvedStoreId && (!currentMeta.store_id || currentMeta.store_id !== resolvedStoreId || currentMeta.role !== resolvedRole)) {
+        console.log('[OfflineAuth] Post-sync: Updating Supabase user metadata with resolved store_id:', resolvedStoreId, 'role:', resolvedRole);
+        try {
+          await supabase.auth.updateUser({
+            data: {
+              store_id: resolvedStoreId,
+              role: resolvedRole
+            }
+          });
+          console.log('[OfflineAuth] Supabase user metadata successfully updated post-sync.');
+        } catch (metaErr) {
+          console.error('[OfflineAuth] Failed to update user metadata on Supabase post-sync:', metaErr);
+        }
+      }
+
       toast({ title: 'Cloud sync successful', description: 'Logged in online securely.' });
       return this.mapCacheToResult(cache);
 
