@@ -201,25 +201,16 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
 
-  /* Custom scrollbar - Terminal style */
+  /* Hide scrollbars globally but preserve scrollability */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
 
-  ::-webkit-scrollbar-track {
-    background: hsl(var(--muted));
-    border-radius: 4px;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: hsl(var(--primary) / 0.5);
-    border-radius: 4px;
-    transition: background 0.2s;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--primary) / 0.7);
+  * {
+    -ms-overflow-style: none !important; /* IE and Edge */
+    scrollbar-width: none !important; /* Firefox */
   }
 }
 
