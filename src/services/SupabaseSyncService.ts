@@ -155,6 +155,46 @@ export class SupabaseSyncService {
             mappedPayload = payload;
             break;
 
+          case 'ingredient':
+            supabaseTable = 'ingredients';
+            mappedPayload = {
+              id: payload.id,
+              restaurant_id: payload.store_id || storeId,
+              name: payload.name,
+              unit: payload.unit,
+              category: payload.category,
+              current_stock: payload.current_stock || 0,
+              min_threshold: payload.min_threshold || 0,
+              cost_per_unit: payload.cost_per_unit || 0,
+              expiry_date: payload.expiry_date || null,
+              created_at: payload.created_at,
+              updated_at: payload.updated_at,
+              deleted_at: payload.deleted_at || null
+            };
+            break;
+
+          case 'dish_recipe_save':
+            supabaseTable = 'dish_recipe_save';
+            break;
+
+          case 'dish_recipe_remove':
+            supabaseTable = 'dish_recipe_remove';
+            break;
+
+          case 'ingredient_movement':
+            supabaseTable = 'ingredient_movements';
+            mappedPayload = {
+              id: payload.id,
+              ingredient_id: payload.ingredient_id,
+              movement_type: payload.movement_type,
+              quantity_delta: payload.quantity_delta,
+              related_dish_id: payload.related_dish_id || null,
+              order_id: payload.order_id || null,
+              note: payload.note || null,
+              created_at: payload.created_at
+            };
+            break;
+
           default:
             // Skip unknown entities for now by marking them acked
             await smartFetch(`${dataClient.localBridgeBaseUrl}/sync/outbox/status`, {
@@ -171,7 +211,37 @@ export class SupabaseSyncService {
         try {
           let error = null;
 
-          if (entry.op_type === 'delete') {
+          if (supabaseTable === 'dish_recipe_save') {
+            const { error: delErr } = await supabase
+              .from('dish_recipes')
+              .delete()
+              .eq('dish_id', payload.dish_id);
+            
+            if (delErr) {
+              error = delErr;
+            } else if (payload.items && payload.items.length > 0) {
+              const rows = payload.items.map((item: any) => ({
+                id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36),
+                dish_id: payload.dish_id,
+                ingredient_id: item.ingredient_id,
+                quantity_needed: item.quantity_needed,
+                unit: item.unit,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }));
+              const { error: insErr } = await supabase
+                .from('dish_recipes')
+                .insert(rows);
+              error = insErr;
+            }
+          } else if (supabaseTable === 'dish_recipe_remove') {
+            const { error: delErr } = await supabase
+              .from('dish_recipes')
+              .delete()
+              .eq('dish_id', payload.dish_id)
+              .eq('ingredient_id', payload.ingredient_id);
+            error = delErr;
+          } else if (entry.op_type === 'delete') {
             const { error: delErr } = await supabase
               .from(supabaseTable)
               .update({ deleted_at: new Date().toISOString() })
@@ -279,9 +349,34 @@ export class SupabaseSyncService {
         .eq('restaurant_id', storeId)
         .gt('updated_at', lastCursor);
 
+      const { data: remoteIngredients } = await supabase
+        .from('ingredients')
+        .select('*')
+        .eq('restaurant_id', storeId)
+        .gt('updated_at', lastCursor);
+
+      const { data: remoteRecipes } = await supabase
+        .from('dish_recipes')
+        .select('*, ingredients!inner(restaurant_id)')
+        .eq('ingredients.restaurant_id', storeId)
+        .gt('updated_at', lastCursor);
+
+      const { data: remoteMovements } = await supabase
+        .from('ingredient_movements')
+        .select('*, ingredients!inner(restaurant_id)')
+        .eq('ingredients.restaurant_id', storeId)
+        .gt('created_at', lastCursor);
+
+      // Clean joined fields
+      const cleanRecipes = (remoteRecipes || []).map(({ ingredients, ...rest }: any) => rest);
+      const cleanMovements = (remoteMovements || []).map(({ ingredients, ...rest }: any) => rest);
+
       const hasUpdates = (remoteOrders && remoteOrders.length > 0) ||
                          (remoteProducts && remoteProducts.length > 0) ||
-                         (remoteTables && remoteTables.length > 0);
+                         (remoteTables && remoteTables.length > 0) ||
+                         (remoteIngredients && remoteIngredients.length > 0) ||
+                         (cleanRecipes && cleanRecipes.length > 0) ||
+                         (cleanMovements && cleanMovements.length > 0);
 
       if (hasUpdates) {
         // Send pulled data to localFastify backend /sync/merge route to insert into SQLite
@@ -294,18 +389,33 @@ export class SupabaseSyncService {
           body: JSON.stringify({
             sales: remoteOrders || [],
             products: remoteProducts || [],
-            tables_layout: remoteTables || []
+            tables_layout: remoteTables || [],
+            ingredients: remoteIngredients || [],
+            dish_recipes: cleanRecipes || [],
+            ingredient_movements: cleanMovements || []
           })
         });
 
         if (mergeRes.ok) {
           const mergeResult = await mergeRes.json();
-          pulledCount = (mergeResult.merged?.sales || 0) + (mergeResult.merged?.products || 0) + (mergeResult.merged?.tables_layout || 0);
+          pulledCount = (mergeResult.merged?.sales || 0) + 
+                        (mergeResult.merged?.products || 0) + 
+                        (mergeResult.merged?.tables_layout || 0) +
+                        (mergeResult.merged?.ingredients || 0) +
+                        (mergeResult.merged?.dish_recipes || 0) +
+                        (mergeResult.merged?.ingredient_movements || 0);
           console.log(`✅ [SupabaseSync] Merged ${pulledCount} cloud items into local SQLite database.`);
           
           // Compute new cursor based on highest updated_at
           let maxUpdatedAt = lastCursor;
-          const allItems = [...(remoteOrders || []), ...(remoteProducts || []), ...(remoteTables || [])];
+          const allItems = [
+            ...(remoteOrders || []), 
+            ...(remoteProducts || []), 
+            ...(remoteTables || []),
+            ...(remoteIngredients || []),
+            ...(cleanRecipes || []),
+            ...(cleanMovements || []).map((m: any) => ({ ...m, updated_at: m.created_at }))
+          ];
           for (const item of allItems) {
             if (item.updated_at && item.updated_at > maxUpdatedAt) {
               maxUpdatedAt = item.updated_at;
@@ -360,6 +470,15 @@ export class SupabaseSyncService {
         filter: `restaurant_id=eq.${storeId}`
       }, () => {
         console.log('⚡ [SupabaseSync] Realtime menu item change detected, pulling...');
+        this.pullRemoteChanges(storeId);
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'ingredients',
+        filter: `restaurant_id=eq.${storeId}`
+      }, () => {
+        console.log('⚡ [SupabaseSync] Realtime ingredients change detected, pulling...');
         this.pullRemoteChanges(storeId);
       })
       .subscribe();
