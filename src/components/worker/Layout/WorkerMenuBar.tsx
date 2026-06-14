@@ -82,6 +82,7 @@ interface MenuSection {
 export function WorkerMenuBar({ activeModule, onModuleChange, className, subRole }: WorkerMenuBarProps) {
   const { t } = useTranslation();
   const isCashier = subRole === 'cashier';
+  const isCook = subRole === 'cook';
 
   const menuStructure: MenuSection[] = [
     {
@@ -288,11 +289,11 @@ export function WorkerMenuBar({ activeModule, onModuleChange, className, subRole
     if (item.submenu) {
       return (
         <MenubarSub key={key}>
-          <MenubarSubTrigger className={cn('flex items-center justify-between', isCashier && '!text-zinc-300 focus:!text-[#F5C518] focus:!bg-[#F5C518]/15')}>
+          <MenubarSubTrigger className={cn('flex items-center justify-between', (isCashier || isCook) && '!text-zinc-300 focus:!text-white focus:!bg-white/10')}>
             {label}
             <ChevronRight className="h-4 w-4 ml-2" />
           </MenubarSubTrigger>
-          <MenubarSubContent className={cn('bg-popover border-slate-200 shadow-md min-w-[180px] z-[100]', isCashier && '!bg-[#111111] !border-[#F5C518]/20 !text-zinc-300')}>
+          <MenubarSubContent className={cn('bg-popover border-slate-200 shadow-md min-w-[180px] z-[100]', (isCashier || isCook) && '!bg-[#111111] !border-neutral-800 !text-zinc-300')}>
             {item.submenu.map((subItem, subKey) => {
               const subLabel = subItem.labelKey ? t(subItem.labelKey) : subItem.label;
               return (
@@ -301,8 +302,8 @@ export function WorkerMenuBar({ activeModule, onModuleChange, className, subRole
                   onClick={() => subItem.module && onModuleChange(subItem.module)}
                   className={cn(
                     'cursor-pointer transition-colors',
-                    isCashier && '!text-zinc-300 focus:!bg-[#F5C518]/15 focus:!text-[#F5C518]',
-                    subItem.module === activeModule && (isCashier ? '!bg-[#F5C518]/20 !text-[#F5C518] font-bold' : 'bg-primary/20 text-primary')
+                    (isCashier || isCook) && '!text-zinc-300 focus:!bg-white/10 focus:!text-white',
+                    subItem.module === activeModule && (isCashier ? '!bg-[#F5C518]/20 !text-[#F5C518] font-bold' : isCook ? 'bg-white/15 text-white font-bold' : 'bg-primary/20 text-primary')
                   )}
                 >
                   {subLabel}
@@ -323,8 +324,8 @@ export function WorkerMenuBar({ activeModule, onModuleChange, className, subRole
         onClick={() => item.module && onModuleChange(item.module)}
         className={cn(
           'cursor-pointer transition-colors',
-          isCashier && '!text-zinc-300 focus:!bg-[#F5C518]/15 focus:!text-[#F5C518]',
-          item.module === activeModule && (isCashier ? '!bg-[#F5C518]/20 !text-[#F5C518] font-bold' : 'bg-primary/20 text-primary')
+          (isCashier || isCook) && '!text-zinc-300 focus:!bg-white/10 focus:!text-white',
+          item.module === activeModule && (isCashier ? '!bg-[#F5C518]/20 !text-[#F5C518] font-bold' : isCook ? 'bg-white/15 text-white font-bold' : 'bg-primary/20 text-primary')
         )}
       >
         <span>{label}</span>
@@ -347,10 +348,12 @@ export function WorkerMenuBar({ activeModule, onModuleChange, className, subRole
                 'px-4 py-2 text-sm font-medium rounded-none transition-all cursor-pointer',
                 isCashier
                   ? 'text-zinc-300 data-[state=open]:bg-[#F5C518]/20 data-[state=open]:text-[#F5C518] hover:bg-white/10 hover:text-white'
-                  : 'data-[state=open]:bg-primary data-[state=open]:text-primary-foreground',
-                section.highlight && !isActive && (isCashier ? 'bg-[#F5C518]/10 text-[#F5C518]' : 'bg-danger text-danger-foreground'),
-                isActive && (isCashier ? 'bg-[#F5C518]/20 text-[#F5C518] font-bold' : 'bg-primary text-primary-foreground'),
-                !section.highlight && !isActive && !isCashier && 'hover:bg-muted'
+                  : isCook
+                    ? 'text-white/80 data-[state=open]:bg-white/10 data-[state=open]:text-white hover:bg-white/10 hover:text-white'
+                    : 'data-[state=open]:bg-primary data-[state=open]:text-primary-foreground',
+                section.highlight && !isActive && (isCashier ? 'bg-[#F5C518]/10 text-[#F5C518]' : isCook ? 'text-white' : 'bg-danger text-danger-foreground'),
+                isActive && (isCashier ? 'bg-[#F5C518]/20 text-[#F5C518] font-bold' : isCook ? 'bg-white/15 text-white font-bold' : 'bg-primary text-primary-foreground'),
+                !section.highlight && !isActive && !isCashier && !isCook && 'hover:bg-muted'
               )}
             >
               {t(section.triggerKey)}
@@ -358,7 +361,8 @@ export function WorkerMenuBar({ activeModule, onModuleChange, className, subRole
             <MenubarContent
               className={cn(
                 'glass-card border-primary/20 min-w-[220px] animate-spring-in',
-                isCashier && '!bg-[#111111] !border-[#F5C518]/20 !text-zinc-300'
+                isCashier && '!bg-[#111111] !border-[#F5C518]/20 !text-zinc-300',
+                isCook && '!bg-[#111111] !border-neutral-800 !text-zinc-300'
               )}
               align="start"
               sideOffset={0}

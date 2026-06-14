@@ -264,7 +264,7 @@ export function KitchenDisplay({ storeId }: KitchenDisplayProps) {
   return (
     <div className="h-full flex flex-col bg-slate-950 p-4 gap-4 select-none">
       {/* Title Header */}
-      <div className="flex items-center justify-between border-b border-white/10 pb-3">
+      <div className="flex items-center justify-between bg-black border-b border-white/10 px-4 py-3 -mx-4 -mt-4 mb-2">
         <div className="flex items-center gap-2.5">
           <div className="p-2 rounded bg-primary/20 border border-primary/30">
             <ChefHat className="h-6 w-6 text-primary animate-bounce" />

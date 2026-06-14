@@ -391,7 +391,9 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
         'h-10 flex items-center shrink-0 px-2',
         subRole === 'cashier'
           ? 'bg-[#0D0D0D] border-b border-[#F5C518]/20'
-          : 'bg-[hsl(160,70%,35%)]'
+          : subRole === 'cook'
+            ? 'bg-black border-b border-white/10'
+            : 'bg-[hsl(160,70%,35%)]'
       )}>
         <div className="h-7 w-7 shrink-0 overflow-hidden rounded bg-white/10 p-0.5 mr-2">
           <img src={logoUrl} alt="Djati" className="h-full w-full object-contain" />

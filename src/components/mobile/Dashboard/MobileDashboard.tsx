@@ -8,6 +8,7 @@ import { OfflineInventoryService } from '@/services/OfflineInventoryService';
 import { useMasterDashboardStore } from '@/stores/useMasterDashboardStore';
 import { GestionModule } from '@/components/shared/GestionModule';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { NotificationCenter } from '@/components/shared/NotificationCenter';
 
 interface MobileDashboardProps {
     onNavigate?: (target: string) => void;
@@ -113,9 +114,7 @@ export function MobileDashboard({ onNavigate }: MobileDashboardProps) {
                     </button>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button className="text-rs-on-surface-variant hover:text-rs-on-surface transition-colors w-[48px] h-[48px] flex items-center justify-center rounded-full hover:bg-rs-surface-container-high">
-                        <span className="material-symbols-outlined">notifications</span>
-                    </button>
+                    <NotificationCenter />
                 </div>
             </header>
 

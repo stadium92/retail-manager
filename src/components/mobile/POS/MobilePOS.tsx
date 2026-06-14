@@ -7,6 +7,7 @@ import { OfflineSalesService } from '@/services/OfflineSalesService';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { useToast } from '@/hooks/use-toast';
 import { useProductSearch } from '@/hooks/useProductSearch';
+import { NotificationCenter } from '@/components/shared/NotificationCenter';
 
 export function MobilePOS() {
     const { t } = useTranslation();
@@ -80,7 +81,6 @@ export function MobilePOS() {
                 items: cart,
                 total_price: data.amountData.total,
                 payment_method: dbPaymentMethod,
-                sale_type: data.saleType,
                 sale_type: data.saleType,
                 customer_name: customerName || data.customerName,
                 customer_phone: customerPhone || data.customerPhone,
@@ -172,10 +172,7 @@ export function MobilePOS() {
                     <button className="active:scale-95 transition-transform duration-150 p-2 rounded-full hover:bg-rs-surface-container-highest text-rs-on-surface-variant" onClick={() => window.print()}>
                         <span className="material-symbols-outlined">print</span>
                     </button>
-                    <button className="active:scale-95 transition-transform duration-150 p-2 rounded-full hover:bg-rs-surface-container-highest text-rs-on-surface-variant relative">
-                        <span className="material-symbols-outlined">notifications</span>
-                        <span className="absolute top-1 right-2 w-2 h-2 bg-rs-surface-tint rounded-full"></span>
-                    </button>
+                    <NotificationCenter />
                 </div>
             </header>
 
