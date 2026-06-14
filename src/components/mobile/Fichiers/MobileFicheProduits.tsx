@@ -11,6 +11,7 @@ import {
 import { ImageUpload } from '@/components/shared/ImageUpload';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RecipeBuilder } from '@/components/recipe/RecipeBuilder';
 
 interface MobileFicheProduitsProps {
   onBack: () => void;
@@ -24,6 +25,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
   const [products, setProducts] = useState<any[]>([]);
   const [families, setFamilies] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [packSearchQuery, setPackSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [storeId, setStoreId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -34,7 +36,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
   // Form State
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
-  const [formTab, setFormTab] = useState<'info' | 'prices' | 'stock'>('info');
+  const [formTab, setFormTab] = useState<'info' | 'prices' | 'stock' | 'composition'>('info');
 
   const initialFormState = {
     name: '',
@@ -52,6 +54,9 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
     prep_time_minutes: '0' as string | number,
     image_url: '',
     pack_items: [] as string[],
+    recipe_items: [] as { ingredient_id: string; quantity_needed: number; unit: string }[],
+    recipe_cost: 0,
+    pending_id: '',
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -110,11 +115,28 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
     return ['carton', 'box', 'pack', 'paquet', 'sachet', 'sac'].includes(u);
   };
 
-  const handleEdit = (p: any) => {
+  const handleEdit = async (p: any) => {
     setEditingProduct(p);
+    setPackSearchQuery('');
     const packSize = getPackSize(p.packaging || '1');
     const isBox = isBoxUnit(p.unit_type || 'Pièce');
     const scale = (val: any) => isBox && packSize > 1 ? (Number(val) * packSize) : Number(val);
+
+    let recipeItems: any[] = [];
+    if (p.item_type === 'dish') {
+      try {
+        const items = await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/recipes?dish_id=${p.id}`);
+        if (Array.isArray(items)) {
+          recipeItems = items.map(item => ({
+            ingredient_id: item.ingredient_id,
+            quantity_needed: Number(item.quantity_needed),
+            unit: item.unit,
+          }));
+        }
+      } catch (err) {
+        console.error('Failed to load recipe items:', err);
+      }
+    }
 
     setFormData({
       name: p.name || '',
@@ -132,6 +154,9 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
       prep_time_minutes: p.prep_time_minutes || 0,
       image_url: p.image_url || '',
       pack_items: p.pack_items || [],
+      recipe_items: recipeItems,
+      recipe_cost: 0, // calculated dynamically by RecipeBuilder on render
+      pending_id: p.id,
     });
     setFormTab('info');
     setIsFormOpen(true);
@@ -166,7 +191,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
       const isBox = isBoxUnit(formData.unit_type);
 
       let finalPrice = Number(formData.unit_price) || 0;
-      let finalCost = Number(formData.cost_price) || 0;
+      let finalCost = formData.item_type === 'dish' ? (formData.recipe_cost || 0) : (Number(formData.cost_price) || 0);
       let finalQty = Number(formData.quantity) || 0;
 
       if (formData.item_type !== 'pack' && isBox && packSize > 1) {
@@ -197,13 +222,26 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
       };
 
       let result;
+      const itemId = editingProduct?.id ?? (formData.pending_id || crypto.randomUUID());
       if (editingProduct) {
         result = await OfflineInventoryService.updateItem(editingProduct.id, payload);
       } else {
-        result = await OfflineInventoryService.createItem(payload);
+        result = await OfflineInventoryService.createItem({ ...payload, id: itemId });
       }
 
       if (result.error) throw result.error;
+
+      // Save recipe items if it is a dish
+      if (formData.item_type === 'dish') {
+        await OfflineAuthService.localBridgeRequest('/rest/v1/recipes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dish_id: itemId,
+            items: formData.recipe_items || [],
+          }),
+        });
+      }
 
       toast({ title: t('common.success'), description: 'Enregistrement réussi' });
       window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'product' } }));
@@ -263,18 +301,18 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
         </header>
 
         {/* Tab Selector */}
-        <div className="flex gap-2 p-4 bg-[#141414]/50 border-b border-[#262626] sticky top-[69px] z-20">
+        <div className="flex gap-2 p-4 bg-[#141414]/50 border-b border-[#262626] sticky top-[69px] z-20 overflow-x-auto scrollbar-hide">
           <button
             type="button"
             onClick={() => setFormTab('info')}
-            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wide ${formTab === 'info' ? 'bg-rs-secondary text-rs-on-secondary shadow-md' : 'bg-rs-surface-container border border-[#262626] text-rs-on-surface'}`}
+            className={`flex-grow-0 shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wide ${formTab === 'info' ? 'bg-rs-secondary text-rs-on-secondary shadow-md' : 'bg-rs-surface-container border border-[#262626] text-rs-on-surface'}`}
           >
             Général
           </button>
           <button
             type="button"
             onClick={() => setFormTab('prices')}
-            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wide ${formTab === 'prices' ? 'bg-rs-secondary text-rs-on-secondary shadow-md' : 'bg-rs-surface-container border border-[#262626] text-rs-on-surface'}`}
+            className={`flex-grow-0 shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wide ${formTab === 'prices' ? 'bg-rs-secondary text-rs-on-secondary shadow-md' : 'bg-rs-surface-container border border-[#262626] text-rs-on-surface'}`}
           >
             Prix & Marges
           </button>
@@ -282,9 +320,18 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
             <button
               type="button"
               onClick={() => setFormTab('stock')}
-              className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wide ${formTab === 'stock' ? 'bg-rs-secondary text-rs-on-secondary shadow-md' : 'bg-rs-surface-container border border-[#262626] text-rs-on-surface'}`}
+              className={`flex-grow-0 shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wide ${formTab === 'stock' ? 'bg-rs-secondary text-rs-on-secondary shadow-md' : 'bg-rs-surface-container border border-[#262626] text-rs-on-surface'}`}
             >
               Stock & Logistique
+            </button>
+          )}
+          {formData.item_type === 'dish' && (
+            <button
+              type="button"
+              onClick={() => setFormTab('composition')}
+              className={`flex-grow-0 shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wide ${formTab === 'composition' ? 'bg-rs-secondary text-rs-on-secondary shadow-md' : 'bg-rs-surface-container border border-[#262626] text-rs-on-surface'}`}
+            >
+              Composition
             </button>
           )}
         </div>
@@ -311,6 +358,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
                     type="button"
                     onClick={() => {
                       setFormData(prev => ({ ...prev, item_type: 'product' }));
+                      if (formTab === 'composition') setFormTab('info');
                     }}
                     className={`py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all ${formData.item_type === 'product' ? 'bg-rs-surface-tint text-white shadow-md' : 'text-rs-on-surface-variant'}`}
                   >
@@ -329,7 +377,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
                     type="button"
                     onClick={() => {
                       setFormData(prev => ({ ...prev, item_type: 'pack' }));
-                      if (formTab === 'stock') setFormTab('info');
+                      if (formTab === 'stock' || formTab === 'composition') setFormTab('info');
                     }}
                     className={`py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all ${formData.item_type === 'pack' ? 'bg-rs-surface-tint text-white shadow-md' : 'text-rs-on-surface-variant'}`}
                   >
@@ -371,15 +419,36 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
               {/* Items List inside Pack Form */}
               {formData.item_type === 'pack' && (
                 <div className="space-y-2 pt-2">
-                  <Label className="text-sm font-bold text-rs-on-surface-variant flex items-center gap-1.5">
-                    <Boxes className="w-4 h-4 text-rs-surface-tint" />
-                    <span>Contenu du Pack ({formData.pack_items.length} article{formData.pack_items.length !== 1 ? 's' : ''})</span>
+                  <Label className="text-sm font-bold text-rs-on-surface-variant flex items-center gap-1.5 justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Boxes className="w-4 h-4 text-rs-surface-tint" />
+                      <span>Contenu du Pack ({formData.pack_items.length} article{formData.pack_items.length !== 1 ? 's' : ''})</span>
+                    </div>
                   </Label>
+                  
+                  {/* Search Bar for Selectable Items */}
+                  <div className="relative mb-2">
+                    <input
+                      type="text"
+                      value={packSearchQuery}
+                      onChange={e => setPackSearchQuery(e.target.value)}
+                      placeholder="Rechercher un plat ou article..."
+                      className="w-full h-9 bg-rs-surface-container border border-[#262626] rounded-xl pl-9 pr-3 text-xs focus:outline-none focus:border-rs-surface-tint text-white placeholder-rs-on-surface-variant/50"
+                    />
+                    <Search className="w-4 h-4 absolute left-3 top-2.5 text-rs-on-surface-variant/60" />
+                  </div>
+
                   <div className="max-h-60 overflow-y-auto border border-[#262626] rounded-xl p-3 bg-[#141414] space-y-2">
                     {selectableItems.length === 0 ? (
                       <p className="text-center text-xs text-rs-on-surface-variant py-4">Aucun article disponible.</p>
-                    ) : (
-                      selectableItems.map(item => {
+                    ) : (() => {
+                      const filteredList = selectableItems.filter(item =>
+                        item.name?.toLowerCase().includes(packSearchQuery.toLowerCase())
+                      );
+                      if (filteredList.length === 0) {
+                        return <p className="text-center text-xs text-rs-on-surface-variant py-4">Aucun article ne correspond à votre recherche.</p>;
+                      }
+                      return filteredList.map(item => {
                         const isChecked = formData.pack_items.includes(item.id);
                         return (
                           <label key={item.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-rs-surface-container/50 cursor-pointer transition-colors">
@@ -405,8 +474,8 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
                             </span>
                           </label>
                         );
-                      })
-                    )}
+                      });
+                    })()}
                   </div>
                 </div>
               )}
@@ -432,7 +501,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
                   </div>
                 </div>
 
-                {formData.item_type !== 'pack' && (
+                {formData.item_type === 'product' && (
                   <div className="space-y-2">
                     <Label htmlFor="cost-price">Coût d'achat (Revient)</Label>
                     <div className="relative">
@@ -448,49 +517,59 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
                     </div>
                   </div>
                 )}
+
+                {formData.item_type === 'dish' && (
+                  <div className="bg-[#1e1e1e] border border-[#262626] rounded-xl p-4 mt-2">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-rs-surface-tint mb-1">Coût de revient estimé</div>
+                    <div className="text-xl font-black text-white font-mono">{Number(formData.recipe_cost || 0).toLocaleString()} F</div>
+                    <div className="text-[9px] text-rs-on-surface-variant mt-1">Calculé automatiquement depuis la composition</div>
+                  </div>
+                )}
               </div>
 
-              <div className="bg-[#141414]/50 border border-[#262626] p-4 rounded-xl space-y-4">
-                <Label className="text-xs uppercase font-bold text-rs-on-surface-variant">Tarifs secondaires</Label>
-                
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="selling-price-2" className="text-[10px] text-rs-on-surface-variant uppercase">Remise (P2)</Label>
-                    <Input
-                      id="selling-price-2"
-                      type="number"
-                      value={formData.selling_price_2}
-                      onChange={e => setFormData(prev => ({ ...prev, selling_price_2: e.target.value }))}
-                      className="bg-rs-surface-container border-[#262626] text-white text-xs font-mono text-center opacity-80"
-                      placeholder="0"
-                    />
-                  </div>
+              {formData.item_type !== 'pack' && (
+                <div className="bg-[#141414]/50 border border-[#262626] p-4 rounded-xl space-y-4">
+                  <Label className="text-xs uppercase font-bold text-rs-on-surface-variant">Tarifs secondaires</Label>
+                  
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="selling-price-2" className="text-[10px] text-rs-on-surface-variant uppercase">Remise (P2)</Label>
+                      <Input
+                        id="selling-price-2"
+                        type="number"
+                        value={formData.selling_price_2}
+                        onChange={e => setFormData(prev => ({ ...prev, selling_price_2: e.target.value }))}
+                        className="bg-rs-surface-container border-[#262626] text-white text-xs font-mono text-center opacity-80"
+                        placeholder="0"
+                      />
+                    </div>
 
-                  <div className="space-y-1">
-                    <Label htmlFor="selling-price-3" className="text-[10px] text-rs-on-surface-variant uppercase">Gros (P3)</Label>
-                    <Input
-                      id="selling-price-3"
-                      type="number"
-                      value={formData.selling_price_3}
-                      onChange={e => setFormData(prev => ({ ...prev, selling_price_3: e.target.value }))}
-                      className="bg-rs-surface-container border-[#262626] text-white text-xs font-mono text-center opacity-80"
-                      placeholder="0"
-                    />
-                  </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="selling-price-3" className="text-[10px] text-rs-on-surface-variant uppercase">Gros (P3)</Label>
+                      <Input
+                        id="selling-price-3"
+                        type="number"
+                        value={formData.selling_price_3}
+                        onChange={e => setFormData(prev => ({ ...prev, selling_price_3: e.target.value }))}
+                        className="bg-rs-surface-container border-[#262626] text-white text-xs font-mono text-center opacity-80"
+                        placeholder="0"
+                      />
+                    </div>
 
-                  <div className="space-y-1">
-                    <Label htmlFor="selling-price-4" className="text-[10px] text-rs-on-surface-variant uppercase">Revente (P4)</Label>
-                    <Input
-                      id="selling-price-4"
-                      type="number"
-                      value={formData.selling_price_4}
-                      onChange={e => setFormData(prev => ({ ...prev, selling_price_4: e.target.value }))}
-                      className="bg-rs-surface-container border-[#262626] text-white text-xs font-mono text-center opacity-80"
-                      placeholder="0"
-                    />
+                    <div className="space-y-1">
+                      <Label htmlFor="selling-price-4" className="text-[10px] text-rs-on-surface-variant uppercase">Revente (P4)</Label>
+                      <Input
+                        id="selling-price-4"
+                        type="number"
+                        value={formData.selling_price_4}
+                        onChange={e => setFormData(prev => ({ ...prev, selling_price_4: e.target.value }))}
+                        className="bg-rs-surface-container border-[#262626] text-white text-xs font-mono text-center opacity-80"
+                        placeholder="0"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -573,6 +652,29 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
               )}
             </div>
           )}
+
+          {formTab === 'composition' && formData.item_type === 'dish' && (
+            <div className="space-y-4">
+              <div className="bg-[#141414] border border-[#262626] p-4 rounded-xl space-y-4">
+                <Label className="text-sm font-bold text-rs-on-surface-variant flex items-center gap-1.5">
+                  <UtensilsCrossed className="w-4 h-4 text-rs-surface-tint" />
+                  <span>Composition du Plat (Recette)</span>
+                </Label>
+                <p className="text-xs text-rs-on-surface-variant leading-relaxed">
+                  Définissez les ingrédients nécessaires pour préparer ce plat. Les stocks seront automatiquement déduits à chaque vente.
+                </p>
+                <div className="bg-[#1a1a1a] rounded-xl border border-[#262626] overflow-x-auto text-black p-1">
+                  <RecipeBuilder
+                    dishId={editingProduct ? editingProduct.id : formData.pending_id}
+                    storeId={storeId}
+                    sellingPrice={Number(formData.unit_price) || 0}
+                    onChange={(items) => setFormData(prev => ({ ...prev, recipe_items: items }))}
+                    onCostChange={(cost) => setFormData(prev => ({ ...prev, recipe_cost: cost }))}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </form>
       </div>
     );
@@ -594,8 +696,12 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
           </div>
           <button
             onClick={() => {
-              setFormData(initialFormState);
+              setFormData({
+                ...initialFormState,
+                pending_id: crypto.randomUUID()
+              });
               setEditingProduct(null);
+              setPackSearchQuery('');
               setFormTab('info');
               setIsFormOpen(true);
             }}
