@@ -103,13 +103,16 @@ export default function StoreDetailsPage() {
       const recentSales = sales.slice(0, 10);
 
       // Calculate metrics
-      const metrics = await OfflineSalesService.getSalesMetrics(storeId);
+      const salesMetrics = await OfflineSalesService.getSaleMetrics(storeId);
       const lowStockCount = inventory?.filter(item => 
         item.quantity <= (item.low_stock_threshold || 10)
       ).length || 0;
-      const totalInventoryValue = inventory?.reduce((sum, item) => 
-        sum + (item.price * item.quantity), 0
+      
+      const valuation = await OfflineInventoryService.getStockValuation(storeId);
+      const fallbackValuation = inventory?.reduce((sum, item) => 
+        sum + ((item.cost || item.price || 0) * item.quantity), 0
       ) || 0;
+      const totalInventoryValue = valuation?.total_cost || fallbackValuation;
 
       setData({
         store,
@@ -117,7 +120,8 @@ export default function StoreDetailsPage() {
         inventory: inventory || [],
         recentSales: recentSales || [],
         metrics: {
-          ...metrics,
+          todaySales: salesMetrics?.todaySales || 0,
+          weekSales: salesMetrics?.weekSales || 0,
           lowStockCount,
           totalInventoryValue,
         },
@@ -210,40 +214,40 @@ export default function StoreDetailsPage() {
 
       {/* Metrics */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
+        <Card className="transition-all hover:border-emerald-500/20 hover:shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('storeDetails.metrics.todaySales')}</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <TrendingUp className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(metrics.todaySales)}</div>
+            <div className="text-2xl font-bold font-mono">{formatCurrency(metrics.todaySales)}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="transition-all hover:border-teal-500/20 hover:shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('storeDetails.metrics.weekSales')}</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+            <ShoppingCart className="h-5 w-5 text-teal-500 dark:text-teal-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(metrics.weekSales)}</div>
+            <div className="text-2xl font-bold font-mono">{formatCurrency(metrics.weekSales)}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="transition-all hover:border-blue-500/20 hover:shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('storeDetails.metrics.inventoryValue')}</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <Package className="h-5 w-5 text-blue-500 dark:text-blue-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(metrics.totalInventoryValue)}</div>
+            <div className="text-2xl font-bold font-mono">{formatCurrency(metrics.totalInventoryValue)}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={`transition-all hover:shadow-sm ${metrics.lowStockCount > 0 ? 'hover:border-destructive/30 border-destructive/20 bg-destructive/5' : 'hover:border-emerald-500/20'}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('storeDetails.metrics.lowStockItems')}</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+            <AlertTriangle className={`h-5 w-5 ${metrics.lowStockCount > 0 ? 'text-destructive animate-pulse' : 'text-emerald-500 dark:text-emerald-400'}`} />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics.lowStockCount}</div>
+            <div className={`text-2xl font-bold font-mono ${metrics.lowStockCount > 0 ? 'text-destructive' : ''}`}>{metrics.lowStockCount}</div>
           </CardContent>
         </Card>
       </div>

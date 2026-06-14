@@ -550,10 +550,10 @@
       "loadDetails": "Échec du chargement des détails du restaurants"
     },
     "metrics": {
-      "todaySales": "Commandes du jour",
-      "weekSales": "Commandes de la semaine",
-      "inventoryValue": "Valeur de l'menu",
-      "lowStockItems": "Plats en rupture de menu / stock"
+      "todaySales": "Ventes Aujourd'hui",
+      "weekSales": "Ventes de la Semaine",
+      "inventoryValue": "Valeur de l'Inventaire",
+      "lowStockItems": "Alertes Stock"
     },
     "tabs": {
       "inventory": "Menu ({{count}})",

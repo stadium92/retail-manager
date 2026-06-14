@@ -476,10 +476,10 @@
       "loadDetails": "Failed to load restaurants details"
     },
     "metrics": {
-      "todaySales": "Today's Orders",
-      "weekSales": "Week Orders",
-      "inventoryValue": "Menu Value",
-      "lowStockItems": "Low Menu Dishes"
+      "todaySales": "Today's Sales",
+      "weekSales": "Weekly Sales",
+      "inventoryValue": "Inventory Value",
+      "lowStockItems": "Stock Alerts"
     },
     "tabs": {
       "inventory": "Menu ({{count}})",

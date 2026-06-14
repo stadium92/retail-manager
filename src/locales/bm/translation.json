@@ -558,10 +558,10 @@
       "loadDetails": "Restaurantw kunnafoni kɛli tɛ ɲɛ"
     },
     "metrics": {
-      "todaySales": "Tɔn commandew ni",
-      "weekSales": "Dɔgɔkun commandew ni",
-      "inventoryValue": "Menuw sɔngɔ",
-      "lowStockItems": "Menuw caman tɛ"
+      "todaySales": "Ventes Kelo (Aujourd'hui)",
+      "weekSales": "Dɔgɔkun Ventes",
+      "inventoryValue": "Inventaire Sɔngɔ",
+      "lowStockItems": "Alertes Stock"
     },
     "tabs": {
       "inventory": "Menuw ({{count}})",
