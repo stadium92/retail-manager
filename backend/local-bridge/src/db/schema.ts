@@ -388,6 +388,13 @@ export const initializeSchema = (db: Database.Database) => {
     CREATE INDEX IF NOT EXISTS idx_inventory_movements_product ON inventory_movements(product_id);
     CREATE INDEX IF NOT EXISTS idx_pending_mutations_status ON pending_mutations(status);
     CREATE INDEX IF NOT EXISTS idx_pending_mutations_store ON pending_mutations(store_id);
+ 
+    CREATE INDEX IF NOT EXISTS idx_clients_store ON clients(store_id);
+    CREATE INDEX IF NOT EXISTS idx_client_services_store ON client_services(store_id);
+    CREATE INDEX IF NOT EXISTS idx_scheduled_orders_store ON scheduled_orders(store_id);
+    CREATE INDEX IF NOT EXISTS idx_scheduled_order_items_order ON scheduled_order_items(scheduled_order_id);
+    CREATE INDEX IF NOT EXISTS idx_sale_items_product ON sale_items(product_id);
+    CREATE INDEX IF NOT EXISTS idx_purchase_items_product ON purchase_items(product_id);
 
     CREATE TABLE IF NOT EXISTS sync_outbox (
       id TEXT PRIMARY KEY,
