@@ -380,7 +380,7 @@ export class OfflineAuthService {
       toast({ title: 'Cloud sync successful', description: 'Logged in online securely.' });
       return this.mapCacheToResult(cache);
 
-    } catch (onlineError) {
+    } catch (onlineError: any) {
       console.log('[OfflineAuth] Online login failed (offline or invalid). Attempting local fallback...', onlineError);
       toast({ title: 'Cloud unavailable', description: 'Logging in offline...', variant: 'destructive' });
       
@@ -397,11 +397,13 @@ export class OfflineAuthService {
         const cache = this.saveLocalBridgeSession(response);
         return this.mapCacheToResult(cache);
       } catch (localError: any) {
+        const cloudMsg = onlineError?.message || onlineError?.error_description || 'Network error';
+        const localMsg = localError?.message || localError?.error || 'Database error';
         return {
           user: null,
           session: null,
           roles: [],
-          error: localError instanceof Error ? localError.message : 'Failed to authenticate locally and in the cloud',
+          error: `Cloud: ${cloudMsg}. Local: ${localMsg}`,
           isOffline: true,
         };
       }
