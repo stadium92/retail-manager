@@ -301,7 +301,16 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
         </header>
 
         {/* Tab Selector */}
-        <div className="flex-shrink-0 flex gap-2 p-4 bg-[#141414]/50 border-b border-[#262626] overflow-x-auto scrollbar-hide">
+        <style>{`
+          .no-scrollbar::-webkit-scrollbar {
+            display: none !important;
+          }
+          .no-scrollbar {
+            -ms-overflow-style: none !important;
+            scrollbar-width: none !important;
+          }
+        `}</style>
+        <div className="flex-shrink-0 flex gap-2 p-4 bg-[#141414]/50 border-b border-[#262626] overflow-x-auto no-scrollbar">
           <button
             type="button"
             onClick={() => setFormTab('info')}
