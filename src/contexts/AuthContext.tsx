@@ -378,6 +378,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: 'Cloud account is missing required restaurant association (store_id metadata).' };
       }
 
+      if (!metadata.store_id || metadata.role !== role) {
+        console.log('[AuthContext] Updating Supabase user metadata during bootstrap with store_id:', storeId);
+        try {
+          await supabase.auth.updateUser({
+            data: {
+              store_id: storeId,
+              role: role
+            }
+          });
+        } catch (metaErr) {
+          console.error('[AuthContext] Failed to update user metadata on Supabase during bootstrap:', metaErr);
+        }
+      }
+
       // 3. Send credentials to local bridge
       const response = await smartFetch(`${dataClient.localBridgeBaseUrl}/auth/bootstrap-cloud`, {
         method: 'POST',

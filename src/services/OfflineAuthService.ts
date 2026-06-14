@@ -364,6 +364,22 @@ export class OfflineAuthService {
           }
       }
 
+      // If store_id or role on Supabase user_metadata is missing or different, update it
+      const currentMeta = data.user.user_metadata || {};
+      if (store_id && (currentMeta.store_id !== store_id || currentMeta.role !== finalRole)) {
+        console.log('[OfflineAuth] Updating Supabase user metadata with store_id:', store_id, 'role:', finalRole);
+        try {
+          await supabase.auth.updateUser({
+            data: {
+              store_id: store_id,
+              role: finalRole || 'master'
+            }
+          });
+        } catch (metaErr) {
+          console.error('[OfflineAuth] Failed to update user metadata on Supabase:', metaErr);
+        }
+      }
+
       const syncResponse = await this.localBridgeRequest<LocalBridgeLoginResponse>(
         '/auth/sync-cloud-login',
         {
