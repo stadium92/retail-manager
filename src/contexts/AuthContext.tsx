@@ -8,6 +8,7 @@ import { getDataClient, smartFetch } from '@/lib/dataClient';
 import { SyncService } from '@/services/SyncService';
 import { LocalDatabase } from '@/services/LocalDatabase';
 import { supabase } from '@/lib/supabase';
+import { SupabaseSyncService } from '@/services/SupabaseSyncService';
 import i18n from '@/i18n/config';
 
 interface AuthContextType {
@@ -55,6 +56,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => clearInterval(heartbeat);
   }, [user]);
+
+  useEffect(() => {
+    const activeRole = roles[0];
+    const storeId = activeRole?.store_id;
+
+    if (storeId) {
+      console.log('[AuthContext] Auto-starting SupabaseSyncService for store:', storeId);
+      SupabaseSyncService.startSyncCycle(storeId);
+      return () => {
+        console.log('[AuthContext] Stopping SupabaseSyncService');
+        SupabaseSyncService.stopSyncCycle();
+      };
+    }
+  }, [roles]);
 
   // Poll Backend Readiness
   useEffect(() => {
