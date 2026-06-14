@@ -38,7 +38,7 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
       title: 'Stock',
       icon: <Package className="w-5 h-5" />,
       items: [
-        { id: 'inventaire-stock', label: t('menu.stock.inventory') || 'Inventaire Physique' },
+        { id: 'inventaire-stock', label: 'Inventaire' },
         { id: 'ingredients', label: '🧂 Ingrédients' },
       ],
     },
@@ -49,20 +49,18 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
         { id: 'reception-achats', label: t('menu.purchases.reception') || 'Réception Achats' },
         { id: 'commande-manuelle', label: t('menu.purchases.manualOrder') || 'Commande Manuelle' },
         { id: 'reglement-fournisseurs', label: t('menu.purchases.supplierSettlement') || 'Règlement Fournisseurs' },
+        { id: 'besoins-achats', label: t('menu.purchases.replenishmentNeeds') || 'Besoins en réapprovisionnement' },
+        { id: 'historique-achats', label: 'Historique des Achats' },
       ],
     },
     {
-      title: 'Éditions',
+      title: 'Settings',
       icon: <FileText className="w-5 h-5" />,
       items: [
         ...(isMaster ? [
           { id: 'audit-logs', label: '📜 Logs Système' },
-          { id: 'invitations', label: '✉️ Invitations' },
-          { id: 'situation-client', label: t('menu.edition.clientStatus') || 'Situation Client' },
-          { id: 'situation-fournisseur', label: t('menu.edition.supplierStatus') || 'Situation Fournisseur' },
-        ] : [
-          { id: 'situation-client', label: t('menu.edition.clientStatus') || 'Situation Client' },
-        ])
+          { id: 'invitations', label: '✉️ Invitations' }
+        ] : [])
       ],
     },
     {
@@ -80,7 +78,7 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
         <h1 className="text-xl font-bold tracking-tight text-white flex-1">Modules DJATI</h1>
       </header>
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
-        {menuSections.map((section, idx) => (
+        {menuSections.filter(s => s.items.length > 0).map((section, idx) => (
           <div key={idx} className="space-y-3">
             <div className="flex items-center gap-2 text-rs-surface-tint font-bold text-sm tracking-wider uppercase pl-2">
               {section.icon}

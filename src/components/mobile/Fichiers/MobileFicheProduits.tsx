@@ -32,8 +32,8 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
   const loadProducts = async (sid: string) => {
     setLoading(true);
     try {
-      const data = await OfflineInventoryService.getInventory(sid);
-      setProducts(data || []);
+      const res = await OfflineInventoryService.getInventory(sid);
+      setProducts(res?.data || []);
     } catch (err) {
       console.error(err);
       toast({ title: t('common.error'), description: 'Erreur lors du chargement du menu', variant: 'destructive' });
@@ -42,10 +42,10 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
     }
   };
 
-  const filteredProducts = products.filter(p => 
+  const filteredProducts = Array.isArray(products) ? products.filter(p => 
     p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.category?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ) : [];
 
   return (
     <div className="flex flex-col h-full bg-[#0a0a0a] pb-[64px] font-sans text-white">

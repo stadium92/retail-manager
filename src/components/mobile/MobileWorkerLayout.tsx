@@ -39,6 +39,8 @@ import { MobileReceptionAchats } from './Purchases/MobileReceptionAchats';
 import { MobileCommandeManuelle } from './Purchases/MobileCommandeManuelle';
 import { MobileReglementsFournisseurs } from './Purchases/MobileReglementsFournisseurs';
 import { MobileSalesModule } from './Sales/MobileSalesModule';
+import { MobileHistoriqueAchats } from './Purchases/MobileHistoriqueAchats';
+import { ReplenishmentNeeds } from '@/components/master/Purchases/ReplenishmentNeeds';
 
 // Shared / Desktop wrapper modules for mobile
 import { EditionModule } from '@/components/worker/Modules/EditionModule';
@@ -159,6 +161,23 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
     );
   };
 
+  // Wrapper for ReplenishmentNeeds
+  const renderBesoinsWrapper = () => {
+    return (
+      <div className="flex flex-col h-full bg-[#0a0a0a] pb-[64px] md:pb-0 font-sans text-white">
+        <header className="flex-shrink-0 bg-[#141414] border-b border-rs-surface-container-highest px-4 py-3 sticky top-0 z-10 flex items-center gap-2">
+          <button onClick={() => setActiveMobileModule(null)} className="p-2 -ml-2 rounded-full hover:bg-rs-surface-container-highest text-white active:scale-95 transition-transform">
+            <span className="material-symbols-outlined">arrow_back</span>
+          </button>
+          <h1 className="text-lg font-bold text-white uppercase tracking-wider">Besoins réappro.</h1>
+        </header>
+        <div className="flex-1 overflow-y-auto p-4 bg-[#0a0a0a] dark">
+          <ReplenishmentNeeds storeId={storeId} />
+        </div>
+      </div>
+    );
+  };
+
   // Wrapper for audit logs / invitations master pages
   const renderMasterPageWrapper = (title: string, PageComponent: React.ComponentType) => {
     return (
@@ -203,6 +222,10 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
           return <MobileCommandeManuelle onBack={() => setActiveMobileModule(null)} />;
         case 'reglement-fournisseurs':
           return <MobileReglementsFournisseurs onBack={() => setActiveMobileModule(null)} />;
+        case 'besoins-achats':
+          return renderBesoinsWrapper();
+        case 'historique-achats':
+          return <MobileHistoriqueAchats onBack={() => setActiveMobileModule(null)} />;
         case 'situation-client':
           return renderEditionWrapper('Situation Client', 'situation-client');
         case 'situation-fournisseur':
