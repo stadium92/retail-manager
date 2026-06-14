@@ -300,7 +300,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
                   onImageUploaded={url => setFormData(prev => ({ ...prev, image_url: url }))} 
                   onImageRemoved={() => setFormData(prev => ({ ...prev, image_url: '' }))} 
                   folder="inventory" 
-                  className="w-32 h-32"
+                  className="w-full flex flex-col items-center justify-center"
                 />
               </div>
 

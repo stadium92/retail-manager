@@ -89,18 +89,17 @@ export function MobileIngredients({ onBack }: MobileIngredientsProps) {
     try {
       const qty = parseFloat(actionQty);
       const endpoint = actionType === 'restock' 
-        ? `/rest/v1/stock/restock` 
-        : `/rest/v1/stock/waste`;
+        ? `/rest/v1/ingredients/${selectedIngredient.id}/restock` 
+        : `/rest/v1/ingredients/${selectedIngredient.id}/waste`;
       
       const payload = {
-        ingredient_id: selectedIngredient.id,
         quantity: qty,
-        note: actionNote,
-        store_id: storeId
+        note: actionNote || undefined
       };
 
       await OfflineAuthService.localBridgeRequest(endpoint, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
