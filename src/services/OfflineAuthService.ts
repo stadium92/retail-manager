@@ -10,6 +10,7 @@ import { getDataClient } from '@/lib/dataClient';
 import { TokenManager } from '@/utils/tokenManager';
 import { smartFetch } from '@/lib/dataClient';
 import i18n from '@/i18n/config';
+import { supabase } from '../lib/supabase';
 
 /** Minimal User type replacing @supabase/supabase-js User */
 export interface User {
@@ -293,24 +294,123 @@ export class OfflineAuthService {
 
   private static async localBridgeSignIn(email: string, password: string): Promise<OfflineAuthResult> {
     try {
-      const response = await this.localBridgeRequest<LocalBridgeLoginResponse>(
-        '/auth/login',
+      // 1. ONLINE FIRST: Try Supabase
+      console.log('[OfflineAuth] Attempting online Supabase login first...');
+      toast({ title: 'Attempting cloud login...', description: 'Connecting to Supabase...' });
+
+      const { data, error: supaError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (supaError || !data.user) {
+        throw supaError;
+      }
+
+      let store_id = data.user.user_metadata?.store_id || null;
+      let userRole = data.user.user_metadata?.role;
+      let store_object = null;
+      
+      try {
+        const { data: rolesData, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('role, store_id')
+          .eq('user_id', data.user.id);
+        
+        if (rolesError) {
+          console.error('[OfflineAuth] user_roles query failed:', rolesError);
+        } else if (rolesData && rolesData.length > 0) {
+           userRole = rolesData[0].role;
+           if (!store_id && rolesData[0].store_id) {
+             store_id = rolesData[0].store_id;
+           }
+        }
+      } catch (e) {
+        console.warn('[OfflineAuth] Exception fetching roles from supabase', e);
+      }
+      
+      if (!userRole || userRole === 'worker') {
+          try {
+             const { data: ownedStores, error: storesError } = await supabase
+               .from('restaurants')
+               .select('*')
+               .eq('owner_id', data.user.id)
+               .limit(1);
+             
+             if (storesError) {
+               console.error('[OfflineAuth] restaurants query failed:', storesError);
+             } else if (ownedStores && ownedStores.length > 0) {
+                userRole = 'master';
+                store_id = ownedStores[0].id;
+                store_object = ownedStores[0];
+             }
+          } catch (e) {
+             console.warn('[OfflineAuth] Exception checking owned restaurants', e);
+          }
+      }
+        
+      let finalRole = userRole || undefined;
+      
+      if (!store_object && !store_id && finalRole === 'master') {
+          const { data: stores } = await supabase
+            .from('restaurants')
+            .select('*')
+            .eq('owner_id', data.user.id)
+            .limit(1);
+          
+          if (stores && stores.length > 0) {
+             store_id = stores[0].id;
+             store_object = stores[0];
+          }
+      }
+
+      const syncResponse = await this.localBridgeRequest<LocalBridgeLoginResponse>(
+        '/auth/sync-cloud-login',
         {
           method: 'POST',
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({
+            id: data.user.id,
+            email: data.user.email,
+            password,
+            full_name: data.user.user_metadata?.full_name || 'Cloud User',
+            role: finalRole,
+            store_id: store_id,
+            store_object: store_object,
+          }),
         }
       );
 
-      const cache = this.saveLocalBridgeSession(response);
+      const cache = this.saveLocalBridgeSession(syncResponse);
+      toast({ title: 'Cloud sync successful', description: 'Logged in online securely.' });
       return this.mapCacheToResult(cache);
-    } catch (error) {
-      return {
-        user: null,
-        session: null,
-        roles: [],
-        error: error instanceof Error ? error.message : 'Failed to authenticate offline',
-        isOffline: true,
-      };
+
+    } catch (onlineError: any) {
+      console.log('[OfflineAuth] Online login failed (offline or invalid). Attempting local fallback...', onlineError);
+      toast({ title: 'Cloud unavailable', description: 'Logging in offline...', variant: 'destructive' });
+      
+      try {
+        // 2. OFFLINE FALLBACK: Try Local Bridge
+        const response = await this.localBridgeRequest<LocalBridgeLoginResponse>(
+          '/auth/login',
+          {
+            method: 'POST',
+            body: JSON.stringify({ email, password }),
+          }
+        );
+
+        const cache = this.saveLocalBridgeSession(response);
+        return this.mapCacheToResult(cache);
+      } catch (localError: any) {
+        const cloudMsg = onlineError?.message || onlineError?.error_description || 'Network error';
+        const localMsg = localError?.message || localError?.error || 'Database error';
+        return {
+          user: null,
+          session: null,
+          roles: [],
+          error: `Cloud: ${cloudMsg}. Local: ${localMsg}`,
+          isOffline: true,
+        };
+      }
     }
   }
 

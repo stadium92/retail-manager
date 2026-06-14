@@ -195,6 +195,22 @@ export class SupabaseSyncService {
             };
             break;
 
+          case 'store':
+            supabaseTable = 'restaurants';
+            mappedPayload = {
+              id: payload.id,
+              name: payload.name,
+              address: payload.address || null,
+              phone: payload.phone || null,
+              owner_id: payload.owner_id || null,
+              default_price_tier: payload.default_price_tier || 1,
+              version: payload.version || 1,
+              created_at: payload.created_at,
+              updated_at: payload.updated_at,
+              deleted_at: payload.deleted_at || null
+            };
+            break;
+
           default:
             // Skip unknown entities for now by marking them acked
             await smartFetch(`${dataClient.localBridgeBaseUrl}/sync/outbox/status`, {
@@ -367,16 +383,32 @@ export class SupabaseSyncService {
         .eq('ingredients.restaurant_id', storeId)
         .gt('created_at', lastCursor);
 
+      const { data: remoteStores } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('id', storeId)
+        .gt('updated_at', lastCursor);
+
       // Clean joined fields
       const cleanRecipes = (remoteRecipes || []).map(({ ingredients, ...rest }: any) => rest);
       const cleanMovements = (remoteMovements || []).map(({ ingredients, ...rest }: any) => rest);
 
-      const hasUpdates = (remoteOrders && remoteOrders.length > 0) ||
+      // Map nested order_items to items inside remoteOrders
+      const mappedOrders = (remoteOrders || []).map((order: any) => {
+        const { order_items, ...rest } = order;
+        return {
+          ...rest,
+          items: order_items || []
+        };
+      });
+
+      const hasUpdates = (mappedOrders && mappedOrders.length > 0) ||
                          (remoteProducts && remoteProducts.length > 0) ||
                          (remoteTables && remoteTables.length > 0) ||
                          (remoteIngredients && remoteIngredients.length > 0) ||
                          (cleanRecipes && cleanRecipes.length > 0) ||
-                         (cleanMovements && cleanMovements.length > 0);
+                         (cleanMovements && cleanMovements.length > 0) ||
+                         (remoteStores && remoteStores.length > 0);
 
       if (hasUpdates) {
         // Send pulled data to localFastify backend /sync/merge route to insert into SQLite
@@ -387,12 +419,13 @@ export class SupabaseSyncService {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            sales: remoteOrders || [],
+            sales: mappedOrders,
             products: remoteProducts || [],
             tables_layout: remoteTables || [],
             ingredients: remoteIngredients || [],
             dish_recipes: cleanRecipes || [],
-            ingredient_movements: cleanMovements || []
+            ingredient_movements: cleanMovements || [],
+            stores: remoteStores || []
           })
         });
 
@@ -403,17 +436,19 @@ export class SupabaseSyncService {
                         (mergeResult.merged?.tables_layout || 0) +
                         (mergeResult.merged?.ingredients || 0) +
                         (mergeResult.merged?.dish_recipes || 0) +
-                        (mergeResult.merged?.ingredient_movements || 0);
+                        (mergeResult.merged?.ingredient_movements || 0) +
+                        (mergeResult.merged?.stores || 0);
           console.log(`✅ [SupabaseSync] Merged ${pulledCount} cloud items into local SQLite database.`);
           
           // Compute new cursor based on highest updated_at
           let maxUpdatedAt = lastCursor;
           const allItems = [
-            ...(remoteOrders || []), 
+            ...mappedOrders, 
             ...(remoteProducts || []), 
             ...(remoteTables || []),
             ...(remoteIngredients || []),
             ...(cleanRecipes || []),
+            ...(remoteStores || []),
             ...(cleanMovements || []).map((m: any) => ({ ...m, updated_at: m.created_at }))
           ];
           for (const item of allItems) {
@@ -479,6 +514,15 @@ export class SupabaseSyncService {
         filter: `restaurant_id=eq.${storeId}`
       }, () => {
         console.log('⚡ [SupabaseSync] Realtime ingredients change detected, pulling...');
+        this.pullRemoteChanges(storeId);
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'restaurants',
+        filter: `id=eq.${storeId}`
+      }, () => {
+        console.log('⚡ [SupabaseSync] Realtime restaurant details change detected, pulling...');
         this.pullRemoteChanges(storeId);
       })
       .subscribe();
