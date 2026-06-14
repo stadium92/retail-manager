@@ -23,7 +23,8 @@ import {
   Check, 
   ChevronRight,
   Search,
-  ShoppingCart
+  ShoppingCart,
+  AlertTriangle
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';

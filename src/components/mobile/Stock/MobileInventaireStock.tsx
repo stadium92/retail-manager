@@ -37,8 +37,8 @@ export function MobileInventaireStock({ onBack }: MobileInventaireStockProps) {
   const loadInventory = async (sid: string) => {
     setLoading(true);
     try {
-      const data = await OfflineInventoryService.getInventory(sid);
-      setProducts(data || []);
+      const res = await OfflineInventoryService.getInventory(sid);
+      setProducts(res?.data || []);
     } catch (err) {
       console.error(err);
       toast({ title: t('common.error'), description: 'Erreur lors du chargement de l\'inventaire', variant: 'destructive' });
@@ -47,10 +47,10 @@ export function MobileInventaireStock({ onBack }: MobileInventaireStockProps) {
     }
   };
 
-  const filteredProducts = products.filter(p => 
+  const filteredProducts = Array.isArray(products) ? products.filter(p => 
     p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.category?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ) : [];
 
   const updatePhysicalStock = (productId: string, val: number) => {
     setInventoryChanges(prev => ({

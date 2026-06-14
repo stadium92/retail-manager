@@ -8,7 +8,11 @@ import { OfflineInventoryService } from '@/services/OfflineInventoryService';
 import { useMasterDashboardStore } from '@/stores/useMasterDashboardStore';
 import { GestionModule } from '@/components/shared/GestionModule';
 
-export function MobileDashboard() {
+interface MobileDashboardProps {
+    onNavigate?: (target: string) => void;
+}
+
+export function MobileDashboard({ onNavigate }: MobileDashboardProps) {
     const { t } = useTranslation();
     const { formatCurrency } = useFormatters();
     const navigate = useNavigate();
@@ -189,10 +193,56 @@ export function MobileDashboard() {
                             <div className="p-4 flex flex-col gap-5">
                                 <div>
                                     <h3 className="text-rs-caption-sm text-rs-on-surface-variant mb-2 uppercase tracking-wider font-bold">Actions rapides</h3>
-                                    <ul className="flex flex-col gap-1">
-                                        <li className="h-[48px] flex items-center justify-between bg-rs-surface-container-low px-4 rounded-lg hover:bg-rs-surface-container-highest transition-colors border border-rs-outline/50 cursor-pointer" onClick={() => navigate('/worker/dashboard')}>
-                                            <span className="text-rs-on-surface">Nouvelle commande</span>
-                                            <span className="material-symbols-outlined text-rs-on-surface-variant">arrow_forward</span>
+                                    <ul className="flex flex-col gap-2">
+                                        <li 
+                                            className="h-[48px] flex items-center justify-between bg-rs-surface-container-low px-4 rounded-lg hover:bg-rs-surface-container-highest transition-colors border border-rs-outline/50 cursor-pointer active:scale-[0.98] transition-transform" 
+                                            onClick={() => onNavigate?.('pos')}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-rs-surface-tint">point_of_sale</span>
+                                                <span className="text-rs-on-surface font-medium">Nouvelle Caisse / Vente</span>
+                                            </div>
+                                            <span className="material-symbols-outlined text-rs-on-surface-variant text-sm">arrow_forward</span>
+                                        </li>
+                                        <li 
+                                            className="h-[48px] flex items-center justify-between bg-rs-surface-container-low px-4 rounded-lg hover:bg-rs-surface-container-highest transition-colors border border-rs-outline/50 cursor-pointer active:scale-[0.98] transition-transform" 
+                                            onClick={() => onNavigate?.('fiche-produits')}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-rs-surface-tint">restaurant_menu</span>
+                                                <span className="text-rs-on-surface font-medium">Consulter le Menu / Produits</span>
+                                            </div>
+                                            <span className="material-symbols-outlined text-rs-on-surface-variant text-sm">arrow_forward</span>
+                                        </li>
+                                        <li 
+                                            className="h-[48px] flex items-center justify-between bg-rs-surface-container-low px-4 rounded-lg hover:bg-rs-surface-container-highest transition-colors border border-rs-outline/50 cursor-pointer active:scale-[0.98] transition-transform" 
+                                            onClick={() => onNavigate?.('inventaire-stock')}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-rs-surface-tint">inventory_2</span>
+                                                <span className="text-rs-on-surface font-medium">Inventaire Physique</span>
+                                            </div>
+                                            <span className="material-symbols-outlined text-rs-on-surface-variant text-sm">arrow_forward</span>
+                                        </li>
+                                        <li 
+                                            className="h-[48px] flex items-center justify-between bg-rs-surface-container-low px-4 rounded-lg hover:bg-rs-surface-container-highest transition-colors border border-rs-outline/50 cursor-pointer active:scale-[0.98] transition-transform" 
+                                            onClick={() => onNavigate?.('ingredients')}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-rs-surface-tint">science</span>
+                                                <span className="text-rs-on-surface font-medium">Gérer les Ingrédients</span>
+                                            </div>
+                                            <span className="material-symbols-outlined text-rs-on-surface-variant text-sm">arrow_forward</span>
+                                        </li>
+                                        <li 
+                                            className="h-[48px] flex items-center justify-between bg-rs-surface-container-low px-4 rounded-lg hover:bg-rs-surface-container-highest transition-colors border border-rs-outline/50 cursor-pointer active:scale-[0.98] transition-transform" 
+                                            onClick={() => onNavigate?.('reception-achats')}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-rs-surface-tint">local_shipping</span>
+                                                <span className="text-rs-on-surface font-medium">Réceptionner un Achat</span>
+                                            </div>
+                                            <span className="material-symbols-outlined text-rs-on-surface-variant text-sm">arrow_forward</span>
                                         </li>
                                     </ul>
                                 </div>

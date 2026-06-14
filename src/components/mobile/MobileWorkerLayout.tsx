@@ -242,14 +242,26 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
     switch (activeTab) {
       case 'pos':       return <MobilePOS />;
       case 'kds':       return <MobileKDS />;
-      case 'dashboard': return <MobileDashboard />;
+      case 'dashboard': 
+        return (
+          <MobileDashboard 
+            onNavigate={(target) => {
+              if (target === 'pos' || target === 'kds' || target === 'menu') {
+                setActiveTab(target as any);
+                setActiveMobileModule(null);
+              } else {
+                setActiveMobileModule(target);
+              }
+            }} 
+          />
+        );
       case 'menu':      return <MobileMenuScreen onSelect={handleSelectModule} />;
       default:          return <MobileKDS />;
     }
   };
 
   // Cooks land on a single screen — no navigation bar needed
-  const showTabBar = visibleTabs.length > 1;
+  const showTabBar = visibleTabs.length > 1 && !activeMobileModule;
 
   // ── JSX ──────────────────────────────────────────────────────────────────
 
