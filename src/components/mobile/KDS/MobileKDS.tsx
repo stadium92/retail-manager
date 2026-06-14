@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { OfflineSalesService } from '@/services/OfflineSalesService';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
 interface OrderItem {
   id: string;
@@ -26,11 +28,21 @@ interface Order {
 export function MobileKDS() {
     const { t } = useTranslation();
     const { toast } = useToast();
+    const { signOut, user, roles } = useAuth();
+    
+    // Resolve sub-role
+    const workerRole = roles?.find(r => r.role === 'worker');
+    const subRole = (
+        workerRole?.sub_role ??
+        (user?.user_metadata?.sub_role as 'cook' | 'cashier' | 'waiter' | null | undefined)
+    );
+
     const [activeTab, setActiveTab] = useState<'pending' | 'preparing' | 'ready'>('pending');
     const [orders, setOrders] = useState<Order[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [currentTime, setCurrentTime] = useState(Date.now());
     const [storeId, setStoreId] = useState<string | null>(null);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     // Get Store ID
     useEffect(() => {
@@ -121,9 +133,51 @@ export function MobileKDS() {
         <div className="bg-rs-surface text-rs-on-surface antialiased min-h-screen flex flex-col pt-[56px] pb-[64px] dark">
             {/* TopAppBar */}
             <header className="fixed top-0 w-full h-[56px] flex justify-between items-center px-4 z-50 bg-rs-surface border-b border-rs-surface-container-highest">
-                <button className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-rs-surface-container-highest text-rs-on-surface-variant">
-                    <span className="material-symbols-outlined">menu</span>
-                </button>
+                <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+                    <SheetTrigger asChild>
+                        <button className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-rs-surface-container-highest text-rs-on-surface-variant active:scale-95 transition-transform">
+                            <span className="material-symbols-outlined">menu</span>
+                        </button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="w-[280px] bg-[#141414] border-r border-rs-surface-container-highest text-white p-6 flex flex-col justify-between dark">
+                        <div className="space-y-6">
+                            <SheetHeader className="text-left">
+                                <SheetTitle className="text-xl font-bold text-rs-surface-tint">CUISINE DJATI</SheetTitle>
+                            </SheetHeader>
+                            
+                            <div className="flex items-center gap-3 p-3 bg-rs-surface-container-lowest rounded-xl border border-rs-surface-container-highest">
+                                <div className="w-10 h-10 rounded-full bg-rs-surface-tint flex items-center justify-center text-white font-bold select-none">
+                                    {user?.email?.charAt(0).toUpperCase() || 'C'}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-semibold truncate">{user?.email || 'Cooking Staff'}</p>
+                                    <p className="text-xs text-rs-on-surface-variant uppercase">{subRole || 'cook'}</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <p className="text-xs text-rs-on-surface-variant uppercase tracking-wider font-bold">Options</p>
+                                <button 
+                                    onClick={() => { fetchOrders(); setIsMenuOpen(false); }}
+                                    className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-rs-surface-container-highest text-left transition-colors"
+                                >
+                                    <span className="material-symbols-outlined">refresh</span>
+                                    <span>Actualiser</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="pt-4">
+                            <button 
+                                onClick={() => signOut()}
+                                className="w-full flex items-center justify-center gap-2 p-4 rounded-xl bg-rs-error-container text-rs-on-error-container font-bold hover:opacity-90 active:scale-95 transition-all"
+                            >
+                                <span className="material-symbols-outlined">logout</span>
+                                <span>{t('auth.signOut') || 'Déconnexion'}</span>
+                            </button>
+                        </div>
+                    </SheetContent>
+                </Sheet>
                 <h1 className="font-bold text-rs-surface-tint text-lg">ÉCRAN CUISINE (KDS)</h1>
                 <button onClick={fetchOrders} className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-rs-surface-container-highest text-rs-on-surface-variant active:scale-95 transition-transform">
                     <span className="material-symbols-outlined">refresh</span>
