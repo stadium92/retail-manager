@@ -119,6 +119,11 @@ export function MobileKDS() {
         return `${minutes}m ${seconds}s`;
     };
 
+    const isCriticalTime = (createdAt: string) => {
+        const elapsedMs = currentTime - new Date(createdAt).getTime();
+        return elapsedMs >= 15 * 60 * 1000;
+    };
+
     const pendingOrders = useMemo(() => orders.filter((o) => o.order_status === 'pending'), [orders]);
     const preparingOrders = useMemo(() => orders.filter((o) => o.order_status === 'preparing'), [orders]);
     const readyOrders = useMemo(() => orders.filter((o) => o.order_status === 'ready'), [orders]);
@@ -229,7 +234,7 @@ export function MobileKDS() {
                                         </span>
                                         <span className="font-mono text-rs-on-surface">#{order.invoice_number}</span>
                                     </div>
-                                    <div className={`font-mono text-rs-caption-sm px-2 py-1 rounded ${getElapsedTime(order.created_at).includes('15m') ? 'bg-rs-error text-rs-error-container animate-pulse' : 'bg-rs-secondary-container text-rs-on-secondary-container'}`}>
+                                    <div className={`font-mono text-rs-caption-sm px-2 py-1 rounded ${isCriticalTime(order.created_at) ? 'bg-rs-error text-rs-error-container animate-pulse' : 'bg-rs-secondary-container text-rs-on-secondary-container'}`}>
                                         {getElapsedTime(order.created_at)}
                                     </div>
                                 </div>

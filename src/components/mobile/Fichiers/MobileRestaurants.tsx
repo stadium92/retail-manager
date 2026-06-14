@@ -108,9 +108,11 @@ export function MobileRestaurants({ onBack }: MobileRestaurantsProps) {
       const metrics = await OfflineSalesService.getSaleMetrics(storeId);
       
       const lowStockCount = inventory?.filter(item => item.quantity <= (item.low_stock_threshold || 10)).length || 0;
-      const totalInventoryValue = inventory?.reduce((sum, item) => 
-        sum + ((item.price || item.unit_price || 0) * (item.quantity || 0)), 0
+      const valuation = await OfflineInventoryService.getStockValuation(storeId);
+      const fallbackValuation = inventory?.reduce((sum, item) => 
+        sum + ((item.cost || item.price || 0) * (item.quantity || 0)), 0
       ) || 0;
+      const totalInventoryValue = valuation?.total_cost || fallbackValuation;
       
       setStoreDetails({
         store,

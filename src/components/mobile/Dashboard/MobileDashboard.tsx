@@ -72,7 +72,7 @@ export function MobileDashboard({ onNavigate }: MobileDashboardProps) {
                 combinedToday += salesRes.todaySales || 0;
                 combinedWeek += salesRes.weekSales || 0;
                 combinedLowStock += stockRes.data?.length || 0;
-                combinedValuation += valRes.total_retail || 0;
+                combinedValuation += valRes.total_cost || 0;
             }));
 
             let status: 'good' | 'bad' | 'worse' = 'good';
@@ -173,25 +173,25 @@ export function MobileDashboard({ onNavigate }: MobileDashboardProps) {
                         {/* Metric Cards Grid */}
                         <div className="grid grid-cols-2 gap-3">
                             <div className="bg-rs-surface-container-low border border-rs-outline rounded-xl p-3 shadow-sm flex flex-col gap-2 min-h-[104px]">
-                                <h3 className="text-xs text-rs-on-surface-variant leading-tight">Commandes d'aujourd'hui</h3>
+                                <h3 className="text-xs text-rs-on-surface-variant leading-tight">{t('dashboard.todaySales')}</h3>
                                 <div className="text-xl font-bold text-rs-on-surface mt-auto">
                                     {loading ? "..." : formatCurrency(metrics.todaySales)}
                                 </div>
                             </div>
                             <div className="bg-rs-surface-container-low border border-rs-outline rounded-xl p-3 shadow-sm flex flex-col gap-2 min-h-[104px]">
-                                <h3 className="text-xs text-rs-on-surface-variant leading-tight">Commandes de la week</h3>
+                                <h3 className="text-xs text-rs-on-surface-variant leading-tight">{t('dashboard.weekSales')}</h3>
                                 <div className="text-xl font-bold text-rs-on-surface mt-auto">
                                     {loading ? "..." : formatCurrency(metrics.weekSales)}
                                 </div>
                             </div>
                             <div className="bg-rs-surface-container-low border border-rs-outline rounded-xl p-3 shadow-sm flex flex-col gap-2 min-h-[104px]">
-                                <h3 className="text-xs text-rs-on-surface-variant leading-tight">Valeur du stock</h3>
+                                <h3 className="text-xs text-rs-on-surface-variant leading-tight">Valeur du stock (Coût)</h3>
                                 <div className="text-xl font-bold text-rs-on-surface mt-auto">
                                     {loading ? "..." : formatCurrency(metrics.stockValuation)}
                                 </div>
                             </div>
                             <div className="bg-rs-surface-container-low border border-rs-outline rounded-xl p-3 shadow-sm flex flex-col gap-2 min-h-[104px]">
-                                <h3 className="text-xs text-rs-on-surface-variant leading-tight">Total des restaurants</h3>
+                                <h3 className="text-xs text-rs-on-surface-variant leading-tight">{t('dashboard.totalStores')}</h3>
                                 <div className="text-xl font-bold text-rs-on-surface mt-auto">{loading ? "..." : metrics.totalStores}</div>
                             </div>
                             <div className={`col-span-2 rounded-xl p-3 flex items-center justify-between min-h-[72px] ${metrics.lowStockItems > 0 ? 'bg-rs-error-container/20 border border-rs-error/30' : 'bg-rs-surface-container-low border border-rs-outline'}`}>
