@@ -17,11 +17,7 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
       icon: <ShoppingCart className="w-5 h-5" />,
       items: [
         { id: 'vente-detail', label: t('menu.sales.retail') || 'Vente Détail' },
-        { id: 'facturation-detail', label: t('menu.sales.billingRetail') || 'Facturation Détail' },
-        { id: 'facturation-gros', label: t('menu.sales.billingWholesale') || 'Facturation Gros' },
-        { id: 'proforma', label: t('menu.sales.proforma') || 'Proforma' },
         { id: 'fermeture-caisse', label: t('menu.sales.closeCash') || 'Fermeture Caisse' },
-        { id: 'reglements-bons', label: t('menu.sales.settlement') || 'Règlements & Bons' },
       ],
     },
     {
@@ -29,7 +25,6 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
       icon: <ShoppingBag className="w-5 h-5" />,
       items: [
         { id: 'reception-achats', label: t('menu.purchases.reception') || 'Réception Achats' },
-        { id: 'commande-auto', label: t('menu.purchases.autoOrder') || 'Générer Commandes' },
         { id: 'commande-manuelle', label: t('menu.purchases.manualOrder') || 'Commande Manuelle' },
         { id: 'reglement-fournisseurs', label: t('menu.purchases.supplierSettlement') || 'Règlement Fournisseurs' },
       ],
@@ -40,10 +35,8 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
       items: [
         { id: 'fiche-produits', label: '🍔 Menu / Produits' },
         { id: 'listing-stock', label: '📦 Listing Stock' },
-        { id: 'ingredients', label: '🧂 Ingrédients' },
         { id: 'clients', label: t('menu.files.clients') || 'Clients' },
         { id: 'fournisseurs', label: t('menu.files.suppliers') || 'Fournisseurs' },
-        { id: 'familles', label: t('menu.files.families') || 'Familles' },
       ],
     },
     {
@@ -51,32 +44,20 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
       icon: <FileText className="w-5 h-5" />,
       items: [
         { id: 'suivi-ventes-jour', label: t('menu.edition.dailySales') || 'Suivi Ventes / Jour' },
-        { id: 'suivi-ventes-produit', label: t('menu.edition.salesByProduct') || 'Suivi Ventes / Produit' },
-        { id: 'situation-client', label: t('menu.edition.clientStatus') || 'Situation Client' },
-        { id: 'situation-fournisseur', label: t('menu.edition.supplierStatus') || 'Situation Fournisseur' },
-        { id: 'suivi-achats-periode', label: t('menu.edition.periodPurchases') || 'Suivi Achats Période' },
       ],
     },
     {
       title: 'Gestion',
       icon: <BarChart3 className="w-5 h-5" />,
       items: [
-        { id: 'consultation-caisse', label: t('menu.management.cashConsultation') || 'Consultation Caisse' },
-        { id: 'journal-caisse', label: t('menu.management.cashJournal') || 'Journal de Caisse' },
         { id: 'tableau-bord', label: t('menu.management.dashboard') || 'Tableau de Bord' },
-        { id: 'statistiques', label: t('menu.management.statistics') || 'Statistiques' },
-        { id: 'sorties-pertes', label: t('menu.management.lossExit') || 'Sorties et Pertes' },
       ],
     },
     {
       title: 'Stock',
       icon: <Package className="w-5 h-5" />,
       items: [
-        { id: 'fiche-stock', label: t('menu.stock.productSheet') || 'Fiche de Stock' },
-        { id: 'mouvements-stock', label: t('menu.stock.movements') || 'Mouvements de Stock' },
         { id: 'inventaire-stock', label: t('menu.stock.inventory') || 'Inventaire Physique' },
-        { id: 'regularisation-stock', label: t('menu.stock.regularization') || 'Régularisation' },
-        { id: 'valorisation-stock', label: t('menu.stock.valorization') || 'Valorisation' },
       ],
     },
   ];
