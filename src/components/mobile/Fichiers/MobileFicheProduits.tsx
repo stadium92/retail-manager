@@ -6,12 +6,11 @@ import { OfflineInventoryService } from '@/services/OfflineInventoryService';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { 
   ArrowLeft, Search, UtensilsCrossed, Package, Edit2, Trash2, 
-  AlertTriangle, Plus, RefreshCw, Check, Image as ImageIcon, Tag, Clock, Layers, Save 
+  AlertTriangle, Plus, RefreshCw, Check, Image as ImageIcon, Tag, Clock, Layers, Save, Boxes 
 } from 'lucide-react';
 import { ImageUpload } from '@/components/shared/ImageUpload';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
 
 interface MobileFicheProduitsProps {
   onBack: () => void;
@@ -29,6 +28,9 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
   const [storeId, setStoreId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  // Gallery view filter
+  const [activeTypeFilter, setActiveTypeFilter] = useState<'all' | 'dish' | 'product' | 'pack'>('all');
+
   // Form State
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
@@ -36,7 +38,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
 
   const initialFormState = {
     name: '',
-    item_type: 'product' as 'product' | 'dish',
+    item_type: 'product' as 'product' | 'dish' | 'pack',
     family_id: '',
     unit_price: '' as string | number,
     selling_price_2: '' as string | number,
@@ -49,6 +51,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
     packaging: '1',
     prep_time_minutes: '0' as string | number,
     image_url: '',
+    pack_items: [] as string[],
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -67,7 +70,18 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
     setLoading(true);
     try {
       const res = await OfflineInventoryService.getInventory(sid);
-      setProducts(res?.data || []);
+      const mapped = (res?.data || []).map(item => {
+        let parsed = [];
+        if (item.pack_items) {
+          try {
+            parsed = typeof item.pack_items === 'string' ? JSON.parse(item.pack_items) : item.pack_items;
+          } catch(e) {
+            console.error('Failed to parse pack_items', e);
+          }
+        }
+        return { ...item, pack_items: parsed };
+      });
+      setProducts(mapped);
     } catch (err) {
       console.error(err);
       toast({ title: t('common.error'), description: 'Erreur lors du chargement du menu', variant: 'destructive' });
@@ -117,6 +131,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
       packaging: p.packaging || '1',
       prep_time_minutes: p.prep_time_minutes || 0,
       image_url: p.image_url || '',
+      pack_items: p.pack_items || [],
     });
     setFormTab('info');
     setIsFormOpen(true);
@@ -140,6 +155,10 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
       toast({ title: 'Erreur', description: 'Le nom du produit est requis.', variant: 'destructive' });
       return;
     }
+    if (formData.item_type === 'pack' && formData.pack_items.length === 0) {
+      toast({ title: 'Erreur', description: 'Veuillez sélectionner au moins un article pour le pack.', variant: 'destructive' });
+      return;
+    }
     setIsSaving(true);
 
     try {
@@ -150,7 +169,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
       let finalCost = Number(formData.cost_price) || 0;
       let finalQty = Number(formData.quantity) || 0;
 
-      if (isBox && packSize > 1) {
+      if (formData.item_type !== 'pack' && isBox && packSize > 1) {
         finalPrice = finalPrice / packSize;
         finalCost = finalCost / packSize;
         finalQty = finalQty * packSize;
@@ -160,19 +179,20 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
         name: formData.name,
         item_type: formData.item_type,
         unit_price: finalPrice,
-        cost_price: finalCost,
+        cost_price: formData.item_type === 'pack' ? 0 : finalCost,
         selling_price_2: formData.selling_price_2 ? Number(formData.selling_price_2) / (isBox ? packSize : 1) : undefined,
         selling_price_3: formData.selling_price_3 ? Number(formData.selling_price_3) / (isBox ? packSize : 1) : undefined,
         selling_price_4: formData.selling_price_4 ? Number(formData.selling_price_4) / (isBox ? packSize : 1) : undefined,
-        quantity: finalQty,
-        min_quantity: Number(formData.min_quantity) || 0,
-        low_stock_threshold: Number(formData.min_quantity) || 0,
-        unit_type: formData.unit_type,
-        packaging: formData.packaging,
+        quantity: formData.item_type === 'pack' ? 0 : finalQty,
+        min_quantity: formData.item_type === 'pack' ? 0 : (Number(formData.min_quantity) || 0),
+        low_stock_threshold: formData.item_type === 'pack' ? 0 : (Number(formData.min_quantity) || 0),
+        unit_type: formData.item_type === 'pack' ? 'Pièce' : formData.unit_type,
+        packaging: formData.item_type === 'pack' ? '1' : formData.packaging,
         category: formData.family_id || undefined,
         image_url: formData.image_url || undefined,
         prep_time_minutes: formData.item_type === 'dish' ? (Number(formData.prep_time_minutes) || 0) : 0,
         is_available: true,
+        pack_items: formData.item_type === 'pack' ? formData.pack_items : [],
         store_id: storeId,
       };
 
@@ -185,7 +205,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
 
       if (result.error) throw result.error;
 
-      toast({ title: t('common.success'), description: 'Produit enregistré avec succès' });
+      toast({ title: t('common.success'), description: 'Enregistrement réussi' });
       window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'product' } }));
       setIsFormOpen(false);
       setEditingProduct(null);
@@ -198,14 +218,22 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
     }
   };
 
-  const filteredProducts = Array.isArray(products) ? products.filter(p => 
-    p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (p.category_name || families.find(f => f.id === (p.category_id || p.category))?.name || '').toLowerCase().includes(searchQuery.toLowerCase())
-  ) : [];
+  const filteredProducts = Array.isArray(products) ? products.filter(p => {
+    const matchesSearch = p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.category_name || families.find(f => f.id === (p.category_id || p.category))?.name || '').toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (activeTypeFilter === 'all') return matchesSearch;
+    if (activeTypeFilter === 'dish') return matchesSearch && p.item_type === 'dish';
+    if (activeTypeFilter === 'product') return matchesSearch && (p.item_type === 'product' || !p.item_type);
+    if (activeTypeFilter === 'pack') return matchesSearch && p.item_type === 'pack';
+    return matchesSearch;
+  }) : [];
+
+  const selectableItems = products.filter(p => p.item_type !== 'pack' && p.id !== editingProduct?.id);
 
   if (isFormOpen) {
     return (
-      <div className="flex flex-col h-full bg-[#0a0a0a] pb-[64px] font-sans text-white overflow-y-auto">
+      <div className="flex flex-col h-full bg-[#0a0a0a] pb-[64px] font-sans text-white overflow-y-auto animate-in fade-in-50 duration-200">
         {/* Form Header */}
         <header className="flex-shrink-0 bg-[#141414] border-b border-rs-surface-container-highest px-4 py-4 sticky top-0 z-30 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -220,7 +248,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
               <ArrowLeft className="w-6 h-6" />
             </button>
             <h1 className="text-lg font-bold text-white uppercase tracking-wider">
-              {editingProduct ? 'Modifier Produit' : 'Ajouter Produit'}
+              {editingProduct ? 'Modifier' : 'Ajouter'} {formData.item_type === 'pack' ? 'Pack' : formData.item_type === 'dish' ? 'Plat' : 'Produit'}
             </h1>
           </div>
           <button
@@ -250,13 +278,15 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
           >
             Prix & Marges
           </button>
-          <button
-            type="button"
-            onClick={() => setFormTab('stock')}
-            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wide ${formTab === 'stock' ? 'bg-rs-secondary text-rs-on-secondary shadow-md' : 'bg-rs-surface-container border border-[#262626] text-rs-on-surface'}`}
-          >
-            Stock & Logistique
-          </button>
+          {formData.item_type !== 'pack' && (
+            <button
+              type="button"
+              onClick={() => setFormTab('stock')}
+              className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wide ${formTab === 'stock' ? 'bg-rs-secondary text-rs-on-secondary shadow-md' : 'bg-rs-surface-container border border-[#262626] text-rs-on-surface'}`}
+            >
+              Stock & Logistique
+            </button>
+          )}
         </div>
 
         {/* Form Body */}
@@ -264,7 +294,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
           {formTab === 'info' && (
             <div className="space-y-4">
               <div className="flex flex-col gap-2 shrink-0 items-center justify-center bg-[#141414] border border-[#262626] rounded-2xl p-4">
-                <Label className="text-xs font-bold uppercase tracking-wider text-rs-on-surface-variant">Image du produit</Label>
+                <Label className="text-xs font-bold uppercase tracking-wider text-rs-on-surface-variant">Image</Label>
                 <ImageUpload 
                   currentImageUrl={formData.image_url} 
                   onImageUploaded={url => setFormData(prev => ({ ...prev, image_url: url }))} 
@@ -275,52 +305,111 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="item-type">Type de produit</Label>
-                <div className="grid grid-cols-2 gap-2 bg-[#141414] p-1 border border-[#262626] rounded-xl">
+                <Label htmlFor="item-type">Type</Label>
+                <div className="grid grid-cols-3 gap-2 bg-[#141414] p-1 border border-[#262626] rounded-xl">
                   <button
                     type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, item_type: 'product' }))}
-                    className={`py-2 rounded-lg text-xs font-bold uppercase tracking-wide ${formData.item_type === 'product' ? 'bg-rs-surface-tint text-white shadow-md' : 'text-rs-on-surface-variant'}`}
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, item_type: 'product' }));
+                    }}
+                    className={`py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all ${formData.item_type === 'product' ? 'bg-rs-surface-tint text-white shadow-md' : 'text-rs-on-surface-variant'}`}
                   >
-                    📦 Article Direct
+                    📦 Article
                   </button>
                   <button
                     type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, item_type: 'dish' }))}
-                    className={`py-2 rounded-lg text-xs font-bold uppercase tracking-wide ${formData.item_type === 'dish' ? 'bg-rs-surface-tint text-white shadow-md' : 'text-rs-on-surface-variant'}`}
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, item_type: 'dish' }));
+                    }}
+                    className={`py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all ${formData.item_type === 'dish' ? 'bg-rs-surface-tint text-white shadow-md' : 'text-rs-on-surface-variant'}`}
                   >
-                    🍳 Plat Cuisiné
+                    🍳 Plat
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, item_type: 'pack' }));
+                      if (formTab === 'stock') setFormTab('info');
+                    }}
+                    className={`py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all ${formData.item_type === 'pack' ? 'bg-rs-surface-tint text-white shadow-md' : 'text-rs-on-surface-variant'}`}
+                  >
+                    🎒 Pack
                   </button>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="product-name">Nom du produit <span className="text-rs-surface-tint">*</span></Label>
+                <Label htmlFor="product-name">Nom <span className="text-rs-surface-tint">*</span></Label>
                 <Input
                   id="product-name"
                   type="text"
                   value={formData.name}
                   onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Ex: Burger Maison, Coca Cola..."
+                  placeholder={formData.item_type === 'pack' ? "Ex: Pack Famille, Combo Midi..." : "Ex: Burger Maison, Coca Cola..."}
                   className="bg-rs-surface-container border-[#262626] text-white"
                   required
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="family-select">Famille / Catégorie</Label>
-                <select
-                  id="family-select"
-                  value={formData.family_id}
-                  onChange={e => setFormData(prev => ({ ...prev, family_id: e.target.value }))}
-                  className="w-full h-10 px-3 bg-rs-surface-container border border-[#262626] rounded-md text-sm text-white focus:outline-none focus:ring-1 focus:ring-rs-surface-tint"
-                >
-                  <option value="">Sélectionner une catégorie</option>
-                  {families.map(fam => (
-                    <option key={fam.id} value={fam.id}>{fam.name}</option>
-                  ))}
-                </select>
-              </div>
+              {formData.item_type !== 'pack' && (
+                <div className="space-y-2">
+                  <Label htmlFor="family-select">Famille / Catégorie</Label>
+                  <select
+                    id="family-select"
+                    value={formData.family_id}
+                    onChange={e => setFormData(prev => ({ ...prev, family_id: e.target.value }))}
+                    className="w-full h-10 px-3 bg-rs-surface-container border border-[#262626] rounded-md text-sm text-white focus:outline-none focus:ring-1 focus:ring-rs-surface-tint"
+                  >
+                    <option value="">Sélectionner une catégorie</option>
+                    {families.map(fam => (
+                      <option key={fam.id} value={fam.id}>{fam.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Items List inside Pack Form */}
+              {formData.item_type === 'pack' && (
+                <div className="space-y-2 pt-2">
+                  <Label className="text-sm font-bold text-rs-on-surface-variant flex items-center gap-1.5">
+                    <Boxes className="w-4 h-4 text-rs-surface-tint" />
+                    <span>Contenu du Pack ({formData.pack_items.length} article{formData.pack_items.length !== 1 ? 's' : ''})</span>
+                  </Label>
+                  <div className="max-h-60 overflow-y-auto border border-[#262626] rounded-xl p-3 bg-[#141414] space-y-2">
+                    {selectableItems.length === 0 ? (
+                      <p className="text-center text-xs text-rs-on-surface-variant py-4">Aucun article disponible.</p>
+                    ) : (
+                      selectableItems.map(item => {
+                        const isChecked = formData.pack_items.includes(item.id);
+                        return (
+                          <label key={item.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-rs-surface-container/50 cursor-pointer transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                const nextItems = isChecked
+                                  ? formData.pack_items.filter(id => id !== item.id)
+                                  : [...formData.pack_items, item.id];
+                                setFormData(prev => ({ ...prev, pack_items: nextItems }));
+                              }}
+                              className="w-4 h-4 text-rs-surface-tint border-[#262626] rounded focus:ring-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-white truncate">{item.name}</p>
+                              <p className="text-[10px] text-rs-on-surface-variant uppercase font-mono">
+                                {item.item_type === 'dish' ? '🍳 Plat' : '📦 Article'}
+                              </p>
+                            </div>
+                            <span className="text-xs text-rs-surface-tint font-mono font-bold">
+                              {formatCurrency(item.price || item.unit_price || 0)}
+                            </span>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -328,7 +417,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
             <div className="space-y-4">
               <div className="bg-[#141414] border border-[#262626] p-4 rounded-xl space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="unit-price" className="text-rs-surface-tint font-bold">Prix de vente (Détail) *</Label>
+                  <Label htmlFor="unit-price" className="text-rs-surface-tint font-bold">Prix du Pack / Article (Détail) *</Label>
                   <div className="relative">
                     <Input
                       id="unit-price"
@@ -343,20 +432,22 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="cost-price">Coût d'achat (Revient)</Label>
-                  <div className="relative">
-                    <Input
-                      id="cost-price"
-                      type="number"
-                      value={formData.cost_price}
-                      onChange={e => setFormData(prev => ({ ...prev, cost_price: e.target.value }))}
-                      className="bg-rs-surface-container border-[#262626] text-white font-mono pr-12"
-                      placeholder="0"
-                    />
-                    <span className="absolute right-4 top-2 text-rs-on-surface-variant">F</span>
+                {formData.item_type !== 'pack' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="cost-price">Coût d'achat (Revient)</Label>
+                    <div className="relative">
+                      <Input
+                        id="cost-price"
+                        type="number"
+                        value={formData.cost_price}
+                        onChange={e => setFormData(prev => ({ ...prev, cost_price: e.target.value }))}
+                        className="bg-rs-surface-container border-[#262626] text-white font-mono pr-12"
+                        placeholder="0"
+                      />
+                      <span className="absolute right-4 top-2 text-rs-on-surface-variant">F</span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               <div className="bg-[#141414]/50 border border-[#262626] p-4 rounded-xl space-y-4">
@@ -403,7 +494,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
             </div>
           )}
 
-          {formTab === 'stock' && (
+          {formTab === 'stock' && formData.item_type !== 'pack' && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -521,10 +612,38 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Rechercher un plat ou article..."
+            placeholder="Rechercher un plat, article ou pack..."
             className="w-full h-11 bg-rs-surface-container border border-rs-surface-container-highest rounded-xl pl-10 pr-4 text-sm focus:outline-none focus:border-rs-surface-tint text-white placeholder-rs-on-surface-variant/50"
           />
           <Search className="w-5 h-5 absolute left-3.5 top-3 text-rs-on-surface-variant/60" />
+        </div>
+
+        {/* Type Category Switcher (Tabs) */}
+        <div className="flex gap-1.5 mt-3 pt-1 overflow-x-auto scrollbar-hide">
+          <button
+            onClick={() => setActiveTypeFilter('all')}
+            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all uppercase shrink-0 ${activeTypeFilter === 'all' ? 'bg-rs-surface-tint text-white shadow-sm' : 'bg-rs-surface-container border border-[#262626] text-rs-on-surface-variant'}`}
+          >
+            Tout ({products.length})
+          </button>
+          <button
+            onClick={() => setActiveTypeFilter('dish')}
+            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all uppercase shrink-0 flex items-center gap-1 ${activeTypeFilter === 'dish' ? 'bg-rs-surface-tint text-white shadow-sm' : 'bg-rs-surface-container border border-[#262626] text-rs-on-surface-variant'}`}
+          >
+            🍳 Plats ({products.filter(p => p.item_type === 'dish').length})
+          </button>
+          <button
+            onClick={() => setActiveTypeFilter('product')}
+            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all uppercase shrink-0 flex items-center gap-1 ${activeTypeFilter === 'product' ? 'bg-rs-surface-tint text-white shadow-sm' : 'bg-rs-surface-container border border-[#262626] text-rs-on-surface-variant'}`}
+          >
+            📦 Articles ({products.filter(p => p.item_type === 'product' || !p.item_type).length})
+          </button>
+          <button
+            onClick={() => setActiveTypeFilter('pack')}
+            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all uppercase shrink-0 flex items-center gap-1 ${activeTypeFilter === 'pack' ? 'bg-rs-surface-tint text-white shadow-sm' : 'bg-rs-surface-container border border-[#262626] text-rs-on-surface-variant'}`}
+          >
+            🎒 Packs ({products.filter(p => p.item_type === 'pack').length})
+          </button>
         </div>
       </header>
 
@@ -543,9 +662,20 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
         ) : (
           <div className="grid grid-cols-2 gap-3 pb-8">
             {filteredProducts.map(product => {
-              const isLowStock = product.quantity <= (product.low_stock_threshold || 10);
+              const isLowStock = product.item_type !== 'pack' && product.quantity <= (product.low_stock_threshold || 10);
               const categoryName = families.find(f => f.id === (product.category_id || product.category))?.name || 'Général';
               
+              // Custom type details
+              let typeBadgeColor = 'bg-[#1e1a0acc] text-amber-400'; // Plat
+              let typeLabel = '🍳 Plat';
+              if (product.item_type === 'pack') {
+                typeBadgeColor = 'bg-[#1b132ccc] text-purple-400';
+                typeLabel = '🎒 Pack';
+              } else if (product.item_type === 'product' || !product.item_type) {
+                typeBadgeColor = 'bg-[#0f1b22cc] text-sky-400';
+                typeLabel = '📦 Article';
+              }
+
               return (
                 <div 
                   key={product.id}
@@ -560,9 +690,11 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
                         className="object-cover w-full h-full" 
                       />
                     ) : (
-                      <div className="text-rs-on-surface-variant opacity-30">
+                      <div className="text-rs-on-surface-variant opacity-30 animate-pulse">
                         {product.item_type === 'dish' ? (
                           <UtensilsCrossed className="w-12 h-12 text-rs-surface-tint" />
+                        ) : product.item_type === 'pack' ? (
+                          <Boxes className="w-12 h-12 text-rs-surface-tint" />
                         ) : (
                           <Package className="w-12 h-12 text-rs-surface-tint" />
                         )}
@@ -570,8 +702,15 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
                     )}
 
                     {/* Category Overlay Tag */}
-                    <div className="absolute top-2 left-2 bg-[#0a0a0acc] backdrop-blur-sm px-2 py-0.5 rounded-full text-[9px] uppercase font-bold tracking-wider text-rs-surface-tint">
-                      {categoryName}
+                    {product.item_type !== 'pack' && (
+                      <div className="absolute top-2 left-2 bg-[#0a0a0acc] backdrop-blur-sm px-2 py-0.5 rounded-full text-[9px] uppercase font-bold tracking-wider text-rs-surface-tint">
+                        {categoryName}
+                      </div>
+                    )}
+
+                    {/* Type Badge Overlay */}
+                    <div className={`absolute bottom-2 left-2 backdrop-blur-sm px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${typeBadgeColor}`}>
+                      {typeLabel}
                     </div>
 
                     {/* Edit/Delete Overlay Actions */}
@@ -603,14 +742,21 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
                         {formatCurrency(product.price || product.unit_price || 0)}
                       </div>
 
-                      {/* Stock indicator */}
+                      {/* Stock or Pack Components indicator */}
                       <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-[#262626] text-rs-on-surface-variant">
-                        <div className="flex items-center gap-1 font-mono">
-                          <span className={`w-1.5 h-1.5 rounded-full ${isLowStock ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
-                          <span className={isLowStock ? 'text-amber-400 font-bold' : 'text-emerald-400 font-semibold'}>
-                            {product.quantity} {product.unit_type || 'pcs'}
-                          </span>
-                        </div>
+                        {product.item_type === 'pack' ? (
+                          <div className="flex items-center gap-1 font-semibold text-purple-400">
+                            <Boxes className="w-3.5 h-3.5" />
+                            <span>{product.pack_items?.length || 0} articles</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 font-mono">
+                            <span className={`w-1.5 h-1.5 rounded-full ${isLowStock ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
+                            <span className={isLowStock ? 'text-amber-400 font-bold' : 'text-emerald-400 font-semibold'}>
+                              {product.quantity} {product.unit_type || 'pcs'}
+                            </span>
+                          </div>
+                        )}
                         {isLowStock && <AlertTriangle className="w-3 h-3 text-amber-400" />}
                       </div>
                     </div>
