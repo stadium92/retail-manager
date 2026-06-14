@@ -6,6 +6,7 @@ import { Play, CheckCircle, Clock, Utensils, ChefHat, AlertCircle, RefreshCw } f
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
+import { supabase } from '@/lib/supabase';
 
 interface KitchenDisplayProps {
   storeId: string;
@@ -90,6 +91,33 @@ export function KitchenDisplay({ storeId }: KitchenDisplayProps) {
     const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Subscribe to real-time order updates via Supabase
+  useEffect(() => {
+    if (!storeId) return;
+
+    console.log('[KDS] Subscribing to Supabase Realtime for orders in store:', storeId);
+    const channel = supabase
+      .channel(`kds-orders:${storeId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `restaurant_id=eq.${storeId}`,
+        },
+        () => {
+          console.log('[KDS] Realtime change detected, refreshing orders...');
+          fetchOrders();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [storeId, fetchOrders]);
 
   const handleStatusChange = async (orderId: string, nextStatus: Order['order_status']) => {
     try {

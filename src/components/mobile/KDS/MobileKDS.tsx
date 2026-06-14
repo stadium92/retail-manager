@@ -5,6 +5,7 @@ import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { supabase } from '@/lib/supabase';
 
 interface OrderItem {
   id: string;
@@ -100,6 +101,33 @@ export function MobileKDS() {
         const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
         return () => clearInterval(timer);
     }, []);
+
+    // Subscribe to real-time order updates via Supabase
+    useEffect(() => {
+        if (!storeId) return;
+
+        console.log('[MobileKDS] Subscribing to Supabase Realtime for orders in store:', storeId);
+        const channel = supabase
+            .channel(`mobile-kds-orders:${storeId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'orders',
+                    filter: `restaurant_id=eq.${storeId}`,
+                },
+                () => {
+                    console.log('[MobileKDS] Realtime change detected, refreshing orders...');
+                    fetchOrders();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [storeId, fetchOrders]);
 
     const handleStatusChange = async (orderId: string, nextStatus: Order['order_status']) => {
         try {
