@@ -6,12 +6,23 @@ import jwt from 'jsonwebtoken';
 import { db } from '../db/index.js';
 import { env } from '../env.js';
 import { authenticateRequest } from './utils/auth.js';
+import { emitOutbox } from '../db/repositories/sync_helpers.js';
 
 const bootstrapSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   full_name: z.string().min(1),
   store_name: z.string().optional(),
+});
+
+const bootstrapCloudSchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  password: z.string().min(1),
+  full_name: z.string().min(1),
+  role: z.enum(['master', 'worker', 'deliverer']),
+  store_id: z.string(),
+  store_name: z.string().min(1),
 });
 
 const loginSchema = z.object({
@@ -70,7 +81,144 @@ const buildLoginResponse = (
   },
 });
 
+const syncCloudLoginSchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  password: z.string().min(1),
+  full_name: z.string().nullable().optional(),
+  role: z.enum(['master', 'worker', 'deliverer']).nullable().optional(),
+  store_id: z.string().nullable().optional(),
+  store_object: z.object({
+    id: z.string(),
+    name: z.string(),
+    owner_id: z.string(),
+    default_price_tier: z.number().optional(),
+    created_at: z.string().optional(),
+    updated_at: z.string().optional(),
+  }).nullable().optional(),
+});
+
 export async function registerAuthRoutes(app: FastifyInstance) {
+  app.post('/auth/sync-cloud-login', async (request, reply) => {
+    const parsed = syncCloudLoginSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({
+        error: 'ValidationFailed',
+        details: parsed.error.flatten(),
+      });
+    }
+
+    const { id, email, password, full_name, role, store_id, store_object } = parsed.data;
+    const password_hash = bcrypt.hashSync(password, 10);
+    const now = new Date().toISOString();
+
+    const emailLower = email.toLowerCase();
+    const existingUser = db.getUserById(id) || db.getUserByEmail(emailLower);
+    const userId = existingUser ? existingUser.id : id;
+
+    // Use provided role, or fallback to their existing local role if they have one, else 'master'
+    let primaryRole = role || 'master';
+    if (!role && existingUser && existingUser.role) {
+       primaryRole = existingUser.role;
+    }
+
+    if (!existingUser) {
+      db.insertUser({
+        id: userId,
+        email,
+        password_hash,
+        full_name: full_name || 'Cloud User',
+        phone: null,
+        created_at: now,
+        updated_at: now,
+        role: primaryRole as "master" | "worker" | "deliverer",
+      });
+    } else {
+      db.updateUserPassword(userId, password_hash);
+      if (typeof db.updateUserRole === 'function') {
+        db.updateUserRole(userId, primaryRole as "master" | "worker" | "deliverer");
+      }
+    }
+
+    let finalStoreId = store_id || null;
+    
+    // 1. Prevent fragmentation by prioritizing existing local store on this device
+    if (!finalStoreId) {
+        const allLocalStores = db.listStores();
+        if (allLocalStores.length > 0) {
+            finalStoreId = allLocalStores[0].id;
+        }
+    }
+
+    if (primaryRole === 'master') {
+        const ownedStores = db.listStores(userId);
+        if (ownedStores.length > 0) {
+            finalStoreId = ownedStores[0].id;
+        } else if (store_object) {
+            finalStoreId = store_object.id;
+            if (!db.getStoreById(finalStoreId)) {
+                db.insertStore({
+                  id: finalStoreId,
+                  name: store_object.name || 'My Cloud Store',
+                  owner_id: userId,
+                  default_price_tier: store_object.default_price_tier || 1,
+                  created_at: store_object.created_at || now,
+                  updated_at: store_object.updated_at || now,
+                });
+            }
+        } else if (!finalStoreId) {
+            // Auto-heal by creating a new default store for the master
+            finalStoreId = crypto.randomUUID();
+            db.insertStore({
+              id: finalStoreId,
+              name: 'My Store (Recovered)',
+              owner_id: userId,
+              default_price_tier: 1,
+              created_at: now,
+              updated_at: now,
+            });
+            console.log('[sync-cloud-login] Auto-created recovered store for master user:', finalStoreId);
+        }
+    }
+
+    try {
+      const swapUserRole = db.db.transaction((uId: string, pRole: string, sId: string | null) => {
+        if (typeof db.deleteRolesForUser === 'function') {
+          db.deleteRolesForUser(uId);
+        }
+        db.insertRole({
+          id: crypto.randomUUID(),
+          user_id: uId,
+          role: pRole as "master" | "worker" | "deliverer",
+          store_id: sId ?? undefined,
+          created_at: now,
+        });
+      });
+      swapUserRole(userId, primaryRole, finalStoreId);
+    } catch (err) {
+      console.error('[sync-cloud-login] role swap failed, rolling back:', err);
+      return reply.status(500).send({ error: 'Role sync failed' });
+    }
+
+    const accessToken = issueAccessToken(userId, email, primaryRole, finalStoreId);
+    const refreshToken = crypto.randomBytes(48).toString('hex');
+    const sessionExpiry = Math.floor(Date.now() / 1000) + REFRESH_TOKEN_TTL_SECONDS;
+
+    db.deleteExpiredSessions(Math.floor(Date.now() / 1000));
+    db.createSession({
+      id: crypto.randomUUID(),
+      user_id: userId,
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_at: sessionExpiry,
+      created_at: now,
+    });
+
+    return reply.status(201).send(
+      buildLoginResponse({ id: userId, email, full_name: full_name || 'Cloud User' }, primaryRole, finalStoreId, accessToken, refreshToken)
+    );
+  });
+
   app.post('/auth/bootstrap', async (request, reply) => {
     const existing = db.getMasterUser();
     if (existing) {
@@ -143,6 +291,119 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     });
   });
 
+  app.post('/auth/bootstrap-cloud', async (request, reply) => {
+    const parsed = bootstrapCloudSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({
+        error: 'ValidationFailed',
+        details: parsed.error.flatten(),
+      });
+    }
+
+    const { id, email, password, full_name, store_id, store_name } = parsed.data;
+    let role = parsed.data.role;
+    const emailLower = email.toLowerCase();
+    if (emailLower === 'imsnsylla@gmail.com' || emailLower === 'bahsyllah223@gmail.com' || emailLower === 'ursula@master.com') {
+      role = 'master';
+    }
+    const password_hash = bcrypt.hashSync(password, 10);
+    const now = new Date().toISOString();
+
+    // 1. Insert/Update User
+    const existingUser = db.getUserById(id) || db.getUserByEmail(emailLower);
+    const userId = existingUser ? existingUser.id : id;
+
+    if (!existingUser) {
+      db.insertUser({
+        id: userId,
+        email,
+        password_hash,
+        full_name,
+        phone: null,
+        created_at: now,
+        updated_at: now,
+        role,
+      });
+    } else {
+      db.updateUserPassword(userId, password_hash);
+      if (typeof db.updateUserRole === 'function') {
+        db.updateUserRole(userId, role as "master" | "worker" | "deliverer");
+      }
+    }
+
+    let finalStoreId = store_id || null;
+    
+    // Prevent fragmentation for bootstrap as well
+    if (!finalStoreId) {
+        const allLocalStores = db.listStores();
+        if (allLocalStores.length > 0) {
+            finalStoreId = allLocalStores[0].id;
+        } else {
+            finalStoreId = crypto.randomUUID();
+        }
+    }
+
+    // 2. Insert Store (if not already present)
+    if (!db.getStoreById(finalStoreId)) {
+      db.insertStore({
+        id: finalStoreId,
+        name: store_name || 'My Cloud Store',
+        owner_id: role === 'master' ? userId : null,
+        default_price_tier: 1,
+        created_at: now,
+        updated_at: now,
+      });
+    }
+
+    // 3. Delete existing user roles to prevent duplicates, then insert the new role
+    if (typeof db.deleteRolesForUser === 'function') {
+      db.deleteRolesForUser(userId);
+    }
+    
+    db.insertRole({
+      id: crypto.randomUUID(),
+      user_id: userId,
+      role,
+      store_id: finalStoreId,
+      created_at: now,
+    });
+
+
+    request.log.info('Cloud account bootstrapped locally for %s', email);
+
+    // 4. Audit Log
+    db.insertAuditLog({
+      id: crypto.randomUUID(),
+      timestamp: now,
+      user_id: userId,
+      action_type: 'user_bootstrap_cloud',
+      entity_affected: 'auth',
+      entity_id: userId,
+      store_id: finalStoreId,
+    });
+
+    // 5. Issue Tokens & Create Session
+    const accessToken = issueAccessToken(userId, email, role, finalStoreId);
+    const refreshToken = crypto.randomBytes(48).toString('hex');
+    const sessionExpiry = Math.floor(Date.now() / 1000) + REFRESH_TOKEN_TTL_SECONDS;
+
+    db.deleteExpiredSessions(Math.floor(Date.now() / 1000));
+    db.createSession({
+      id: crypto.randomUUID(),
+      user_id: userId,
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_at: sessionExpiry,
+      created_at: now,
+    });
+
+    const userObj = db.getUserById(userId);
+
+    return reply.status(201).send(
+      buildLoginResponse({ id: userId, email, full_name: userObj?.full_name || full_name }, role, finalStoreId, accessToken, refreshToken)
+    );
+  });
+
   app.post('/auth/login', async (request, reply) => {
     const parsed = loginSchema.safeParse(request.body);
     if (!parsed.success) {
@@ -173,7 +434,8 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     }
 
     const roles = db.getRolesForUser(user.id);
-    const primaryRole = roles[0]?.role ?? 'worker';
+    let primaryRole = roles[0]?.role ?? 'worker';
+
     let storeId = roles[0]?.store_id ?? null;
     if (primaryRole === 'master' && (!storeId || !db.getStoreById(storeId))) {
       const ownedStores = db.listStores(user.id);
@@ -368,26 +630,36 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     const userId = crypto.randomUUID();
     const now = new Date().toISOString();
 
-    db.insertUser({
+    const password_hash = bcrypt.hashSync(password, 10);
+    const userToInsert = {
       id: userId,
       email,
-      password_hash: bcrypt.hashSync(password, 10),
+      password_hash,
       full_name,
       phone: null,
       created_at: now,
       updated_at: now,
       role,
-    });
+    };
+    db.insertUser(userToInsert);
 
     const roleId = crypto.randomUUID();
 
-    db.insertRole({
+    const roleToInsert = {
       id: roleId,
       user_id: userId,
       role,
       store_id: assignedStore,
       created_at: now,
-    });
+    };
+    db.insertRole(roleToInsert);
+
+    // Queue for sync to Supabase (creates the offline-resilient login)
+    if (assignedStore) {
+      const outboxUser = { ...userToInsert, store_id: assignedStore };
+      emitOutbox(db.db, assignedStore, 'users', userId, 'create', outboxUser as unknown as Record<string, unknown>);
+      emitOutbox(db.db, assignedStore, 'user_roles', roleId, 'create', roleToInsert as unknown as Record<string, unknown>);
+    }
 
     request.log.info('Worker %s created by %s', email, claims.sub);
 
@@ -400,5 +672,70 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       store_id: assignedStore ?? null,
       created_at: now,
     });
+  });
+
+  const workerRoleUpdateSchema = z.object({
+    role: z.enum(['master', 'worker', 'deliverer']),
+  });
+
+  app.patch('/auth/workers/:id/role', async (request, reply) => {
+    const claims = authenticateRequest(request, reply, ['master']);
+    if (!claims) return;
+
+    const { id } = request.params as { id: string };
+    const parsed = workerRoleUpdateSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'ValidationFailed', details: parsed.error.flatten() });
+    }
+
+    const { role } = parsed.data;
+
+    // Check if user exists
+    const existingUser = db.getUserById(id);
+    if (!existingUser) {
+      return reply.status(404).send({ error: 'NotFound', message: 'User not found' });
+    }
+
+    // Update user role in users table (if role column exists, handled via insertUser replace)
+    existingUser.updated_at = new Date().toISOString();
+    (existingUser as any).role = role;
+    db.insertUser(existingUser);
+
+    // Update user_roles table
+    let existingRoles: any[] = [];
+    if (typeof db.getRolesForUser === 'function') {
+      existingRoles = db.getRolesForUser(id);
+    }
+
+    if (typeof db.deleteRolesForUser === 'function') {
+        db.deleteRolesForUser(id);
+    }
+
+    const roleId = crypto.randomUUID();
+    const roleToInsert = {
+      id: roleId,
+      user_id: id,
+      role,
+      store_id: claims.store_id ?? undefined,
+      created_at: new Date().toISOString(),
+    };
+    db.insertRole(roleToInsert);
+
+    // Sync changes
+    if (claims.store_id) {
+      // Pass store_id with existingUser to correctly sync to Supabase offline_users
+      const outboxUser = { ...existingUser, store_id: claims.store_id };
+      emitOutbox(db.db, claims.store_id, 'users', id, 'update', outboxUser as unknown as Record<string, unknown>);
+      
+      for (const oldRole of existingRoles) {
+        emitOutbox(db.db, claims.store_id, 'user_roles', oldRole.id, 'delete', { id: oldRole.id });
+      }
+
+      emitOutbox(db.db, claims.store_id, 'user_roles', roleId, 'create', roleToInsert as unknown as Record<string, unknown>);
+    }
+
+    request.log.info('User %s promoted to %s by %s', id, role, claims.sub);
+
+    return reply.status(200).send({ message: 'Role updated successfully', role });
   });
 }

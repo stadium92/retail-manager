@@ -7,12 +7,17 @@ export const OfflineSalesService = {
      * Create a sale with items atomically on the local bridge
      */
     async createSaleWithItems(sale: any, items: any[]): Promise<{ data?: any; error?: any }> {
+        return this.createSale(sale, items);
+    },
+
+    async createSale(sale: any, items?: any[]): Promise<{ data?: any; error?: any }> {
         const { isLocalFirst } = getDataClient();
+        const saleItems = items || sale.items || [];
         
         if (isLocalFirst) {
             try {
                 // Map cart items to the shape the backend expects (product_id, product_name, unit_price)
-                const mappedItems = items.map((item: any) => ({
+                const mappedItems = saleItems.map((item: any) => ({
                     id: item.id || crypto.randomUUID(),
                     // Try all possible variations of product ID and Name
                     product_id: item.product_id || item.productId || item.product?.id || null,
@@ -47,7 +52,7 @@ export const OfflineSalesService = {
         try {
             await LocalDatabase.init();
             const saleId = sale.id || crypto.randomUUID();
-            const newSale = { ...sale, id: saleId, items, synced: false };
+            const newSale = { ...sale, id: saleId, items: saleItems, synced: false };
             await LocalDatabase.saveSale(newSale);
             return { data: newSale };
         } catch (error) {

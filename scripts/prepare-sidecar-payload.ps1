@@ -71,7 +71,20 @@ foreach ($item in $architectures) {
     }
     
     Copy-Item "$BACKEND_DIR\dist" -Destination $staging -Recurse
-    Copy-Item "$BACKEND_DIR\node_modules" -Destination $staging -Recurse
+    
+    # Install only production dependencies in staging to prevent devDependencies from bloating the sidecar
+    Write-Host "Installing production dependencies in staging..."
+    Copy-Item "$BACKEND_DIR\package.json" -Destination $staging
+    if (Test-Path "$BACKEND_DIR\package-lock.json") {
+        Copy-Item "$BACKEND_DIR\package-lock.json" -Destination $staging
+    }
+    Push-Location $staging
+    npm install --omit=dev --ignore-scripts --no-audit --no-fund
+    Pop-Location
+    Remove-Item "$staging\package.json" -Force
+    if (Test-Path "$staging\package-lock.json") {
+        Remove-Item "$staging\package-lock.json" -Force
+    }
     
     # NEW: Add version file to payload
     $timestamp = Get-Date -Format "yyyyMMddHHmmss"

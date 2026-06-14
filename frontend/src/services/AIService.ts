@@ -12,7 +12,7 @@ export interface Suggestion {
 
 export class AIService {
   private static resolveUrl(path: string): string | null {
-    const base = import.meta.env.VITE_SUPABASE_URL;
+    const base = import.meta.env.VITE_SUPABASE_URL || "https://fpvrbxmbrotowdlyebqv.supabase.co";
     if (!base) return null;
     return `${base.replace(/\/$/, '')}${path}`;
   }
@@ -39,7 +39,7 @@ export class AIService {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwdnJieG1icm90b3dkbHllYnF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNzE1MjMsImV4cCI6MjA5NjY0NzUyM30.8_mjBGr1FpYE20cc22iehEf0Xi9Fix2M0d_SSHIDQuI"}`,
       },
       body: JSON.stringify({ messages }),
     });
@@ -123,7 +123,7 @@ export class AIService {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwdnJieG1icm90b3dkbHllYnF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNzE1MjMsImV4cCI6MjA5NjY0NzUyM30.8_mjBGr1FpYE20cc22iehEf0Xi9Fix2M0d_SSHIDQuI"}`,
         },
         body: JSON.stringify({ salesData, inventoryData, storeId }),
       });

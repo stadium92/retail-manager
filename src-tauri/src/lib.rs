@@ -78,7 +78,9 @@ pub fn run() {
             Ok((mut rx, _child)) => {
               let _ = writeln!(file, "Sidecar spawn command successful.");
               // Create a background task to pipe sidecar logs to Tauri logs
+              // We must move _child into the async block to prevent it from dropping and killing the sidecar!
               tauri::async_runtime::spawn(async move {
+                let _keep_alive = _child;
                 while let Some(event) = rx.recv().await {
                   match event {
                     CommandEvent::Stdout(line) => {

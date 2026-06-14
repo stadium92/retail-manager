@@ -33,7 +33,7 @@ export const createAuthRepo = (db: Database.Database) => ({
 
   insertUser(user: LocalUser) {
     db.prepare(`
-        INSERT INTO users (id, email, password_hash, full_name, phone, created_at, updated_at, role)
+        INSERT OR REPLACE INTO users (id, email, password_hash, full_name, phone, created_at, updated_at, role)
         VALUES (@id, @email, @password_hash, @full_name, @phone, @created_at, @updated_at, @role)
       `)
       .run({
@@ -42,6 +42,24 @@ export const createAuthRepo = (db: Database.Database) => ({
         role: (user as LocalUser & { role?: string }).role ?? 'worker',
         phone: user.phone ?? null,
       });
+  },
+
+  updateUserPassword(userId: string, passwordHash: string) {
+    db.prepare(`
+        UPDATE users
+        SET password_hash = ?, updated_at = ?
+        WHERE id = ?
+      `)
+      .run(passwordHash, new Date().toISOString(), userId);
+  },
+
+  updateUserRole(userId: string, role: string) {
+    db.prepare(`
+        UPDATE users
+        SET role = ?, updated_at = ?
+        WHERE id = ?
+      `)
+      .run(role, new Date().toISOString(), userId);
   },
 
   listUsers(): LocalUser[] {
@@ -58,6 +76,10 @@ export const createAuthRepo = (db: Database.Database) => ({
     return db
       .prepare('SELECT * FROM user_roles ORDER BY created_at DESC')
       .all() as LocalRole[];
+  },
+
+  deleteRolesForUser(userId: string) {
+    db.prepare('DELETE FROM user_roles WHERE user_id = ?').run(userId);
   },
 
   insertRole(role: LocalRole) {
@@ -92,10 +114,6 @@ export const createAuthRepo = (db: Database.Database) => ({
       .run(accessToken, refreshToken, expiresAt, new Date().toISOString(), sessionId);
   },
 
-  updateUserPassword(userId: string, passwordHash: string) {
-    db.prepare('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?')
-      .run(passwordHash, new Date().toISOString(), userId);
-  },
 
   deleteSession(sessionId: string) {
     db.prepare('DELETE FROM sessions WHERE id = ?').run(sessionId);

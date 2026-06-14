@@ -9,6 +9,7 @@ import { toast } from '@/hooks/use-toast';
 import { getDataClient } from '@/lib/dataClient';
 import { TokenManager } from '@/utils/tokenManager';
 import { smartFetch } from '@/lib/dataClient';
+import { supabase } from '@/lib/supabase';
 import i18n from '@/i18n/config';
 
 /** Minimal User type replacing @supabase/supabase-js User */
@@ -158,12 +159,25 @@ export class OfflineAuthService {
   private static clearLocalBridgeSession() {
     if (typeof window === 'undefined') return;
     try {
-      // In Local-First, we prefer to keep the session even if refresh fails momentarily
-      console.warn('[OfflineAuth] Session clear requested, but ignored for Local-First stability');
+      window.localStorage.removeItem(LOCALBRIDGE_SESSION_KEY);
       TokenManager.releaseRefreshLock();
     } catch (error) {
       console.error('Failed to handle session clear', error);
     }
+  }
+
+  static async clearLocalSession(): Promise<void> {
+    this.clearLocalBridgeSession();
+    try {
+      await this.localBridgeRequest('/auth/logout', { method: 'POST' }).catch(() => {});
+    } catch (e) {
+      console.warn('Failed to notify local bridge of logout', e);
+    }
+  }
+
+  static isSessionExpired(session: { expires_at?: number } | null): boolean {
+    if (!session?.expires_at) return true;
+    return Date.now() / 1000 > session.expires_at - 60; // 60s buffer
   }
 
   private static async refreshLocalBridgeSession(refreshToken: string): Promise<LocalBridgeSessionCache | null> {
@@ -202,7 +216,7 @@ export class OfflineAuthService {
     } catch (error) {
       console.error('Failed to refresh LocalBridge session', error);
       TokenManager.releaseRefreshLock();
-      return null;
+      return this.getLocalBridgeSession(); // Fallback to expired cache to maintain offline capability
     }
   }
 
@@ -290,24 +304,144 @@ export class OfflineAuthService {
 
   private static async localBridgeSignIn(email: string, password: string): Promise<OfflineAuthResult> {
     try {
-      const response = await this.localBridgeRequest<LocalBridgeLoginResponse>(
-        '/auth/login',
+      // 1. ONLINE FIRST: Try Supabase
+      console.log('[OfflineAuth] Attempting online Supabase login first...');
+      toast({ title: 'Attempting cloud login...', description: 'Connecting to Supabase...' });
+
+      const { data, error: supaError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (supaError || !data.user) {
+        throw supaError;
+      }
+
+    let store_id = data.user.user_metadata?.store_id || null;
+    let userRole = data.user.user_metadata?.role;
+    let store_object = null;
+    
+    try {
+      const { data: rolesData, error: rolesError } = await supabase.from('user_roles').select('role, store_id').eq('user_id', data.user.id);
+      if (rolesError) {
+        console.error('[OfflineAuth] user_roles query failed:', rolesError);
+      } else if (rolesData && rolesData.length > 0) {
+         userRole = rolesData[0].role;
+         if (!store_id && rolesData[0].store_id) {
+           store_id = rolesData[0].store_id;
+         }
+      }
+    } catch (e) {
+      console.warn('[OfflineAuth] Exception fetching roles from supabase', e);
+    }
+    
+    if (!userRole || userRole === 'worker') {
+        try {
+           const { data: ownedStores, error: storesError } = await supabase.from('stores').select('*').eq('owner_id', data.user.id).limit(1);
+           if (storesError) {
+             console.error('[OfflineAuth] stores query failed:', storesError);
+           } else if (ownedStores && ownedStores.length > 0) {
+              userRole = 'master';
+              store_id = ownedStores[0].id;
+              store_object = ownedStores[0];
+           }
+        } catch (e) {
+           console.warn('[OfflineAuth] Exception checking owned stores', e);
+        }
+    }
+      
+      let finalRole = userRole || undefined;
+      
+      if (!store_object && !store_id && finalRole === 'master') {
+          const { data: stores } = await supabase.from('stores').select('*').eq('owner_id', data.user.id).limit(1);
+          if (stores && stores.length > 0) {
+             store_id = stores[0].id;
+             store_object = stores[0];
+          }
+      }
+
+      // If store_id or role on Supabase user_metadata is missing or different, update it
+      const currentMeta = data.user.user_metadata || {};
+      if (store_id && (currentMeta.store_id !== store_id || currentMeta.role !== finalRole)) {
+        console.log('[OfflineAuth] Updating Supabase user metadata with store_id:', store_id, 'role:', finalRole);
+        try {
+          await supabase.auth.updateUser({
+            data: {
+              store_id: store_id,
+              role: finalRole || 'master'
+            }
+          });
+        } catch (metaErr) {
+          console.error('[OfflineAuth] Failed to update user metadata on Supabase:', metaErr);
+        }
+      }
+
+      const syncResponse = await this.localBridgeRequest<LocalBridgeLoginResponse>(
+        '/auth/sync-cloud-login',
         {
           method: 'POST',
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({
+            id: data.user.id,
+            email: data.user.email,
+            password,
+            full_name: data.user.user_metadata?.full_name || 'Cloud User',
+            role: finalRole,
+            store_id: store_id,
+            store_object: store_object,
+          }),
         }
       );
 
-      const cache = this.saveLocalBridgeSession(response);
+      const cache = this.saveLocalBridgeSession(syncResponse);
+
+      // Post-sync update: If store_id was resolved locally but is missing or different on Supabase, update it now
+      const resolvedStoreId = syncResponse.user?.store_id;
+      const resolvedRole = syncResponse.user?.role || finalRole || 'master';
+      if (resolvedStoreId && (!currentMeta.store_id || currentMeta.store_id !== resolvedStoreId || currentMeta.role !== resolvedRole)) {
+        console.log('[OfflineAuth] Post-sync: Updating Supabase user metadata with resolved store_id:', resolvedStoreId, 'role:', resolvedRole);
+        try {
+          await supabase.auth.updateUser({
+            data: {
+              store_id: resolvedStoreId,
+              role: resolvedRole
+            }
+          });
+          console.log('[OfflineAuth] Supabase user metadata successfully updated post-sync.');
+        } catch (metaErr) {
+          console.error('[OfflineAuth] Failed to update user metadata on Supabase post-sync:', metaErr);
+        }
+      }
+
+      toast({ title: 'Cloud sync successful', description: 'Logged in online securely.' });
       return this.mapCacheToResult(cache);
-    } catch (error) {
-      return {
-        user: null,
-        session: null,
-        roles: [],
-        error: error instanceof Error ? error.message : 'Failed to authenticate offline',
-        isOffline: true,
-      };
+
+    } catch (onlineError: any) {
+      console.log('[OfflineAuth] Online login failed (offline or invalid). Attempting local fallback...', onlineError);
+      toast({ title: 'Cloud unavailable', description: 'Logging in offline...', variant: 'destructive' });
+      
+      try {
+        // 2. OFFLINE FALLBACK: Try Local Bridge
+        const response = await this.localBridgeRequest<LocalBridgeLoginResponse>(
+          '/auth/login',
+          {
+            method: 'POST',
+            body: JSON.stringify({ email, password }),
+          }
+        );
+
+        const cache = this.saveLocalBridgeSession(response);
+        return this.mapCacheToResult(cache);
+      } catch (localError: any) {
+        const cloudMsg = onlineError?.message || onlineError?.error_description || 'Network error';
+        const localMsg = localError?.message || localError?.error || 'Database error';
+        return {
+          user: null,
+          session: null,
+          roles: [],
+          error: `Cloud: ${cloudMsg}. Local: ${localMsg}`,
+          isOffline: true,
+        };
+      }
     }
   }
 

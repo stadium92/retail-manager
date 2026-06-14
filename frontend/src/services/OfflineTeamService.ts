@@ -845,4 +845,35 @@ export class OfflineTeamService {
       return { error };
     }
   }
+
+  static async updateWorkerRole(id: string, role: string): Promise<{ success: boolean; error?: any }> {
+    try {
+      const dataClient = getDataClient();
+      if (!dataClient.isLocalFirst) {
+        return { success: false, error: new Error('Cannot update role directly via Supabase API from offline service yet.') };
+      }
+
+      const headers = await OfflineAuthService.getAuthHeaders();
+      if (!headers) throw new Error('Not authenticated');
+
+      const response = await smartFetch(
+        `${dataClient.localBridgeBaseUrl}/auth/workers/${id}/role`,
+        {
+          method: 'PATCH',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update role');
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Update worker role error:', error);
+      return { success: false, error };
+    }
+  }
 }

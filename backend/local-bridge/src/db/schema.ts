@@ -414,6 +414,13 @@ export const initializeSchema = (db: Database.Database) => {
       last_success_at TEXT,
       last_error TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS sync_meta (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    );
+
+    INSERT OR IGNORE INTO sync_meta (key, value) VALUES ('is_merging', '0');
     CREATE INDEX IF NOT EXISTS idx_replenishment_requests_store ON replenishment_requests(store_id);
     CREATE INDEX IF NOT EXISTS idx_replenishment_requests_status ON replenishment_requests(status);
     CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp);

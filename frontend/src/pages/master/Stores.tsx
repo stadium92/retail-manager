@@ -195,28 +195,7 @@ export default function StoresPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!selectedStore) return;
 
-    const { error } = await OfflineStoreService.deleteStore(selectedStore.id);
-    if (error) {
-      toast({
-        title: t('common.error'),
-        description: t('stores.errors.deleteStore'),
-        variant: 'destructive',
-      });
-    } else {
-      toast({ title: t('common.success'), description: t('stores.success.deleteStore') });
-      loadStores();
-    }
-    setDeleteDialogOpen(false);
-    setSelectedStore(null);
-  };
-
-  const openDeleteDialog = (store: Store) => {
-    setSelectedStore(store);
-    setDeleteDialogOpen(true);
-  };
 
   if (loading) {
     return (
@@ -309,13 +288,6 @@ export default function StoresPage() {
                           onClick={() => handleOpenForm(store)}
                         >
                           <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openDeleteDialog(store)}
-                        >
-                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -416,21 +388,7 @@ export default function StoresPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('stores.deleteTitle')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('stores.deleteDescription', { name: selectedStore?.name ?? '' })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>{t('common.delete')}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
     </div>
   );
 }

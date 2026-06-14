@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Store } from 'lucide-react';
+import { Loader2, Store, Wifi, WifiOff, Cloud, AlertCircle, Info } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { z } from 'zod';
 import { InvitationService } from '@/services/InvitationService';
 import { useToast } from '@/hooks/use-toast';
@@ -39,7 +40,7 @@ export default function AuthPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const { user, signIn, signUp, rolesLoading, hasRole, roles, loading: authLoading, devLogin, isBackendReady } = useAuth();
+  const { user, signIn, signUp, rolesLoading, hasRole, roles, loading: authLoading, devLogin, isBackendReady, isBootstrapped, isOffline } = useAuth();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -208,13 +209,46 @@ export default function AuthPage() {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">{t('auth.login')}</TabsTrigger>
-              <TabsTrigger value="signup">{t('auth.signup')}</TabsTrigger>
-            </TabsList>
+            {!isBootstrapped ? (
+              <div className="flex items-center justify-between border-b pb-2 mb-4">
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Activation de Compte</span>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary">
+                  <Cloud className="h-3.5 w-3.5 animate-pulse" />
+                  Internet Requis
+                </div>
+              </div>
+            ) : (
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login">{t('auth.login')}</TabsTrigger>
+                <TabsTrigger value="signup">{t('auth.signup')}</TabsTrigger>
+              </TabsList>
+            )}
 
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-600 dark:text-amber-400 space-y-2 mb-4">
+                  <div className="flex items-center gap-2 font-bold">
+                    <AlertCircle className="h-4.5 w-4.5" />
+                    <span>{!isBootstrapped ? "Configuration de Premier Démarrage" : "État du Système (Mode Hors-ligne)"}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {!isBootstrapped 
+                      ? "L'application a besoin d'Internet pour se lier à votre compte pré-configuré (\"Designed Account\") et charger les données de votre magasin."
+                      : "Vos identifiants sont sauvegardés localement. Vous pouvez vous connecter même sans connexion Internet."}
+                  </p>
+                  <div className="flex items-center gap-2 pt-1 border-t border-amber-500/10 mt-2">
+                    {!isOffline ? (
+                      <span className="flex items-center gap-1 text-xs text-emerald-500 font-semibold">
+                        <Wifi className="h-3.5 w-3.5" /> Connecté à Internet
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-xs text-destructive font-bold animate-pulse">
+                        <WifiOff className="h-3.5 w-3.5" /> Hors ligne (Mode Local Actif)
+                      </span>
+                    )}
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="login-email">{t('auth.email')}</Label>
                   <Input
@@ -251,20 +285,28 @@ export default function AuthPage() {
                   <p className="text-sm text-destructive">{errors.form}</p>
                 )}
 
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full font-bold uppercase tracking-wide" disabled={loading}>
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {t('auth.signingIn')}
+                      {!isBootstrapped ? "Activation en cours..." : t('auth.signingIn')}
                     </>
                   ) : (
-                    t('auth.signIn')
+                    !isBootstrapped ? "Activer & Synchroniser" : t('auth.signIn')
                   )}
                 </Button>
               </form>
             </TabsContent>
 
             <TabsContent value="signup">
+              <Alert className="mb-6 bg-blue-50/50 text-blue-800 border-blue-200">
+                <Info className="h-4 w-4 text-blue-600" />
+                <AlertTitle>Création de compte</AlertTitle>
+                <AlertDescription className="text-sm mt-1">
+                  Si vous êtes un employé, veuillez demander à votre administrateur de créer votre compte depuis le tableau de bord. Si vous êtes un administrateur créant un nouveau compte Master, vous pouvez continuer ci-dessous.
+                </AlertDescription>
+              </Alert>
+
               <form onSubmit={handleSignup} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="signup-name">{t('auth.fullName')}</Label>

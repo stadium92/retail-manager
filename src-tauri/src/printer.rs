@@ -177,7 +177,7 @@ pub async fn print_receipt(app_handle: AppHandle, data: ReceiptData) -> Result<b
     raw.extend_from_slice(&[GS, 0x21, 0x00]); // Reset size
 
     // 4. Address & Phone
-    raw.extend(data.store_address.as_bytes());
+    raw.extend("Niamakoro près de SONEF".as_bytes());
     raw.push(LF);
     raw.extend(format!("Tel: {}", data.phone).as_bytes());
     raw.push(LF);
@@ -272,8 +272,8 @@ pub async fn print_receipt(app_handle: AppHandle, data: ReceiptData) -> Result<b
     {
         // Unix fallback (CUPS)
         let temp_path = std::env::temp_dir().join("receipt.bin");
-        fs::write(&temp_path, &raw).map_err(|e| e.to_string())?;
-        Command::new("lpr").arg(temp_path.to_str().unwrap()).output().map_err(|e| e.to_string())?;
+        std::fs::write(&temp_path, &raw).map_err(|e| e.to_string())?;
+        std::process::Command::new("lpr").arg(temp_path.to_str().unwrap()).output().map_err(|e| e.to_string())?;
         Ok(true)
     }
 }

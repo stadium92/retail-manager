@@ -99,6 +99,7 @@ export function WorkerStatusBar({ storeName, userEmail, activeModule, onLogout, 
         <HardDrive className="h-3.5 w-3.5 text-primary-foreground/70 dark:text-primary" />
         <span className="font-medium text-primary-foreground dark:text-foreground truncate">
           {storeName || t('index.title')}
+          <span className="font-mono opacity-50 ml-2 text-[10px]">v{import.meta.env.VITE_APP_VERSION || 'dev'}</span>
         </span>
       </div>
 

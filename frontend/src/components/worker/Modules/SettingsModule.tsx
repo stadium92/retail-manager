@@ -108,7 +108,7 @@ export function SettingsModule({ storeId, mode }: SettingsModuleProps) {
     }
     setIsSyncing(true);
     try {
-      const result = await LocalBridgeSyncService.pushPendingMutations();
+      const result = await LocalBridgeSyncService.pushPendingMutations(storeId);
       if (result.failed > 0) {
         toast.warning(`${result.pushed} items synced, ${result.failed} failed`);
       } else if (result.pushed > 0) {
@@ -131,7 +131,7 @@ export function SettingsModule({ storeId, mode }: SettingsModuleProps) {
     }
     setIsSyncing(true);
     try {
-      const result = await LocalBridgeSyncService.pullData();
+      const result = await LocalBridgeSyncService.pullData(storeId);
       if (result) {
         toast.success("Cloud data synchronization complete");
       } else {
