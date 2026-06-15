@@ -8,6 +8,7 @@ import { InventoryItem, Product } from '@/types';
 import { getDataClient, smartFetch } from '@/lib/dataClient';
 import { OfflineAuthService } from './OfflineAuthService';
 import { SyncService } from './SyncService';
+import { supabase } from '../lib/supabase';
 
 // --- MAPPING HELPERS ---
 
@@ -204,24 +205,63 @@ export const OfflineInventoryService = {
           if (!res.ok) {
             const err = await res.json().catch(() => ({ message: 'Bridge write failed' }));
             await LocalDatabase.deleteInventoryItem(id);
-      window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
+            window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
             throw new Error(err.message || 'Failed to create product in local bridge');
           }
           
-          // 2. Successful bridge write -> update local cache as "synced"
           await LocalDatabase.saveInventoryItem(mapToLocalInventory(newItem, true));
           
           window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
           return { data: mapDbToInventoryItem(newItem) };
         }
-      }
+      } else {
+        await LocalDatabase.saveInventoryItem(mapToLocalInventory(newItem, true));
 
-      // Fallback for true offline or non-local-first
-      await LocalDatabase.saveInventoryItem(mapToLocalInventory(newItem, false));
-      if (!dc.isLocalFirst) {
-          await SyncService.addToQueue({ type: 'inventory_update', data: newItem });
+        if (navigator.onLine) {
+          try {
+            const mapped = {
+              id: newItem.id,
+              restaurant_id: newItem.store_id || newItem.storeId,
+              name: newItem.name || newItem.product_name,
+              sku: newItem.sku || null,
+              barcode: newItem.barcode || null,
+              description: newItem.description || null,
+              cost_price: Number(newItem.cost_price ?? newItem.cost ?? 0),
+              unit_price: Number(newItem.unit_price ?? newItem.price ?? 0),
+              selling_price_2: Number(newItem.selling_price_2 ?? 0),
+              selling_price_3: Number(newItem.selling_price_3 ?? 0),
+              selling_price_4: Number(newItem.selling_price_4 ?? 0),
+              wholesale_price_ht: Number(newItem.wholesale_price_ht ?? 0),
+              wholesale_price_ttc: Number(newItem.wholesale_price_ttc ?? 0),
+              quantity: Number(newItem.quantity ?? 0),
+              category: newItem.category || null,
+              image_url: newItem.image_url || null,
+              unit_type: newItem.unit_type || null,
+              packaging: newItem.packaging || null,
+              prep_time_minutes: Number(newItem.prep_time_minutes ?? 0),
+              is_available: newItem.is_available !== false && newItem.is_available !== 0,
+              allergens: Array.isArray(newItem.allergens) ? newItem.allergens : (newItem.allergens ? [newItem.allergens] : []),
+              course_type: newItem.course_type || null,
+              modifiers: Array.isArray(newItem.modifiers) ? newItem.modifiers : (newItem.modifiers ? [newItem.modifiers] : []),
+              version: Number(newItem.version ?? 1),
+              created_at: newItem.created_at || new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            };
+
+            const { error: supaErr } = await supabase
+              .from('menu_items')
+              .upsert(mapped);
+
+            if (supaErr) {
+              console.error('[OfflineInventory] Supabase product creation failed:', supaErr);
+            }
+          } catch (supaErr) {
+            console.error('[OfflineInventory] Supabase product creation exception:', supaErr);
+          }
+        }
       }
       
+      window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
       return { data: mapDbToInventoryItem(newItem) };
     } catch (error) {
       console.error('[OfflineInventory] Create item error:', error);
@@ -234,7 +274,6 @@ export const OfflineInventoryService = {
       await LocalDatabase.init();
       const local = await LocalDatabase.getInventoryItem(id);
       
-      // Ensure we merge with local data to not lose fields
       const baseItem = local ? mapLocalInventoryToItem(local) : { id } as any;
       const updated = { 
         ...baseItem, 
@@ -243,11 +282,10 @@ export const OfflineInventoryService = {
         updated_at: new Date().toISOString() 
       };
       
-      await LocalDatabase.saveInventoryItem(mapToLocalInventory(updated, false));
-
       const dc = getDataClient();
       if (dc.isLocalFirst) {
-        // Forward update to local bridge
+        await LocalDatabase.saveInventoryItem(mapToLocalInventory(updated, false));
+
         const headers = await OfflineAuthService.getAuthHeaders();
         if (headers) {
           const res = await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/products/${id}`, {
@@ -261,14 +299,51 @@ export const OfflineInventoryService = {
           }
         }
       } else {
-        // Online mode: sync directly to Supabase
-        await SyncService.addToQueue({
-          type: 'inventory_update',
-          data: updated
-        });
+        await LocalDatabase.saveInventoryItem(mapToLocalInventory(updated, true));
+
+        if (navigator.onLine) {
+          try {
+            const mapped = {
+              id: updated.id,
+              restaurant_id: updated.store_id || baseItem.store_id,
+              name: updated.name || baseItem.name,
+              sku: updated.sku !== undefined ? updated.sku : (baseItem.sku || null),
+              barcode: updated.barcode !== undefined ? updated.barcode : (baseItem.barcode || null),
+              description: updated.description !== undefined ? updated.description : (baseItem.description || null),
+              cost_price: Number(updated.cost_price ?? updated.cost ?? baseItem.cost_price ?? baseItem.cost ?? 0),
+              unit_price: Number(updated.unit_price ?? updated.price ?? baseItem.unit_price ?? baseItem.price ?? 0),
+              selling_price_2: Number(updated.selling_price_2 ?? baseItem.selling_price_2 ?? 0),
+              selling_price_3: Number(updated.selling_price_3 ?? baseItem.selling_price_3 ?? 0),
+              selling_price_4: Number(updated.selling_price_4 ?? baseItem.selling_price_4 ?? 0),
+              wholesale_price_ht: Number(updated.wholesale_price_ht ?? baseItem.wholesale_price_ht ?? 0),
+              wholesale_price_ttc: Number(updated.wholesale_price_ttc ?? baseItem.wholesale_price_ttc ?? 0),
+              quantity: Number(updated.quantity ?? baseItem.quantity ?? 0),
+              category: updated.category !== undefined ? updated.category : (baseItem.category || null),
+              image_url: updated.image_url !== undefined ? updated.image_url : (baseItem.image_url || null),
+              unit_type: updated.unit_type !== undefined ? updated.unit_type : (baseItem.unit_type || null),
+              packaging: updated.packaging !== undefined ? updated.packaging : (baseItem.packaging || null),
+              prep_time_minutes: Number(updated.prep_time_minutes ?? baseItem.prep_time_minutes ?? 0),
+              is_available: updated.is_available !== false && updated.is_available !== 0,
+              allergens: Array.isArray(updated.allergens) ? updated.allergens : (updated.allergens ? [updated.allergens] : (baseItem.allergens || [])),
+              course_type: updated.course_type !== undefined ? updated.course_type : (baseItem.course_type || null),
+              modifiers: Array.isArray(updated.modifiers) ? updated.modifiers : (updated.modifiers ? [updated.modifiers] : (baseItem.modifiers || [])),
+              version: Number(updated.version ?? baseItem.version ?? 1),
+              updated_at: new Date().toISOString(),
+            };
+
+            const { error: supaErr } = await supabase
+              .from('menu_items')
+              .upsert(mapped);
+
+            if (supaErr) {
+              console.error('[OfflineInventory] Supabase product update failed:', supaErr);
+            }
+          } catch (supaErr) {
+            console.error('[OfflineInventory] Supabase product update exception:', supaErr);
+          }
+        }
       }
 
-      // Centralized event dispatch
       window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
       return { data: updated as InventoryItem };
     } catch (error) {
@@ -284,7 +359,6 @@ export const OfflineInventoryService = {
 
       const dc = getDataClient();
       if (dc.isLocalFirst) {
-        // Forward deletion to local bridge
         const headers = await OfflineAuthService.getAuthHeaders();
         if (headers) {
           const res = await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/products/${id}`, {
@@ -297,13 +371,23 @@ export const OfflineInventoryService = {
           }
         }
       } else {
-        // Online mode: sync directly to Supabase
-        await SyncService.addToQueue({
-          type: 'inventory_delete',
-          data: { id }
-        });
+        if (navigator.onLine) {
+          try {
+            const { error: supaErr } = await supabase
+              .from('menu_items')
+              .delete()
+              .eq('id', id);
+
+            if (supaErr) {
+              console.error('[OfflineInventory] Supabase product deletion failed:', supaErr);
+            }
+          } catch (supaErr) {
+            console.error('[OfflineInventory] Supabase product deletion exception:', supaErr);
+          }
+        }
       }
 
+      window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
       return {};
     } catch (error) {
       return { error };

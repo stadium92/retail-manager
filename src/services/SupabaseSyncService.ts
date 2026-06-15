@@ -21,6 +21,10 @@ export class SupabaseSyncService {
 
     try {
       const dataClient = getDataClient();
+      if (!dataClient.isLocalFirst) {
+        this.syncInProgress = false;
+        return { pushed: 0, failed: 0 };
+      }
       const headers = await OfflineAuthService.getAuthHeaders();
       if (!headers) {
         this.syncInProgress = false;
@@ -337,8 +341,8 @@ export class SupabaseSyncService {
     let pulledCount = 0;
     try {
       const dataClient = getDataClient();
-      const headers = await OfflineAuthService.getAuthHeaders();
-      if (!headers) return { pulled: 0 };
+      const headers = dataClient.isLocalFirst ? await OfflineAuthService.getAuthHeaders() : {};
+      if (dataClient.isLocalFirst && !headers) return { pulled: 0 };
 
       // Load last pull time cursor from localStorage
       const cursorKey = `supabase_sync_cursor:${storeId}`;
@@ -411,56 +415,172 @@ export class SupabaseSyncService {
                          (remoteStores && remoteStores.length > 0);
 
       if (hasUpdates) {
-        // Send pulled data to localFastify backend /sync/merge route to insert into SQLite
-        const mergeRes = await smartFetch(`${dataClient.localBridgeBaseUrl}/sync/merge`, {
-          method: 'POST',
-          headers: {
-            ...headers,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            sales: mappedOrders,
-            products: remoteProducts || [],
-            tables_layout: remoteTables || [],
-            ingredients: remoteIngredients || [],
-            dish_recipes: cleanRecipes || [],
-            ingredient_movements: cleanMovements || [],
-            stores: remoteStores || []
-          })
-        });
+        if (dataClient.isLocalFirst) {
+          // Send pulled data to localFastify backend /sync/merge route to insert into SQLite
+          const mergeRes = await smartFetch(`${dataClient.localBridgeBaseUrl}/sync/merge`, {
+            method: 'POST',
+            headers: {
+              ...headers,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              sales: mappedOrders,
+              products: remoteProducts || [],
+              tables_layout: remoteTables || [],
+              ingredients: remoteIngredients || [],
+              dish_recipes: cleanRecipes || [],
+              ingredient_movements: cleanMovements || [],
+              stores: remoteStores || []
+            })
+          });
 
-        if (mergeRes.ok) {
-          const mergeResult = await mergeRes.json();
-          pulledCount = (mergeResult.merged?.sales || 0) + 
-                        (mergeResult.merged?.products || 0) + 
-                        (mergeResult.merged?.tables_layout || 0) +
-                        (mergeResult.merged?.ingredients || 0) +
-                        (mergeResult.merged?.dish_recipes || 0) +
-                        (mergeResult.merged?.ingredient_movements || 0) +
-                        (mergeResult.merged?.stores || 0);
-          console.log(`✅ [SupabaseSync] Merged ${pulledCount} cloud items into local SQLite database.`);
-          
-          // Compute new cursor based on highest updated_at
-          let maxUpdatedAt = lastCursor;
-          const allItems = [
-            ...mappedOrders, 
-            ...(remoteProducts || []), 
-            ...(remoteTables || []),
-            ...(remoteIngredients || []),
-            ...(cleanRecipes || []),
-            ...(remoteStores || []),
-            ...(cleanMovements || []).map((m: any) => ({ ...m, updated_at: m.created_at }))
-          ];
-          for (const item of allItems) {
-            if (item.updated_at && item.updated_at > maxUpdatedAt) {
-              maxUpdatedAt = item.updated_at;
+          if (mergeRes.ok) {
+            const mergeResult = await mergeRes.json();
+            pulledCount = (mergeResult.merged?.sales || 0) + 
+                          (mergeResult.merged?.products || 0) + 
+                          (mergeResult.merged?.tables_layout || 0) +
+                          (mergeResult.merged?.ingredients || 0) +
+                          (mergeResult.merged?.dish_recipes || 0) +
+                          (mergeResult.merged?.ingredient_movements || 0) +
+                          (mergeResult.merged?.stores || 0);
+            console.log(`✅ [SupabaseSync] Merged ${pulledCount} cloud items into local SQLite database.`);
+          } else {
+            console.error(`🚫 [SupabaseSync] Local SQLite merge failed: ${mergeRes.statusText}`);
+            return { pulled: 0 };
+          }
+        } else {
+          // Pure Cloud mode: Merge pulled data directly to browser IndexedDB LocalDatabase
+          const { LocalDatabase } = await import('./LocalDatabase');
+          await LocalDatabase.init();
+
+          // 1. Save sales
+          if (mappedOrders) {
+            for (const sale of mappedOrders) {
+              const mappedSale = {
+                ...sale,
+                order_status: sale.status,
+                store_id: sale.restaurant_id,
+                items: (sale.items || []).map((item: any) => ({
+                  id: item.id,
+                  sale_id: item.order_id,
+                  product_id: item.product_id,
+                  product_name: item.product_name,
+                  quantity: Number(item.quantity),
+                  unit_price: Number(item.unit_price),
+                  discount: Number(item.discount),
+                  total: Number(item.total),
+                  modifiers: item.modifiers,
+                  status: item.status,
+                }))
+              };
+              await LocalDatabase.saveSale(mappedSale);
+              pulledCount++;
             }
           }
-          localStorage.setItem(cursorKey, maxUpdatedAt);
-          window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'sale' } }));
-        } else {
-          console.error(`🚫 [SupabaseSync] Local SQLite merge failed: ${mergeRes.statusText}`);
+
+          // 2. Save products (menu_items)
+          if (remoteProducts) {
+            for (const p of remoteProducts) {
+              await LocalDatabase.saveInventoryItem({
+                id: p.id,
+                store_id: p.restaurant_id || storeId,
+                product_name: p.name,
+                sku: p.sku || undefined,
+                barcode: p.barcode || undefined,
+                quantity: p.quantity || 0,
+                unit_price: p.unit_price || p.price || 0,
+                wholesale_price: p.selling_price_3 || p.wholesale_price_ttc || 0,
+                wholesale_price_ht: p.wholesale_price_ht || 0,
+                wholesale_price_ttc: p.wholesale_price_ttc || 0,
+                cost: p.cost_price || 0,
+                category: p.category || undefined,
+                unit_type: p.unit_type || undefined,
+                packaging: p.packaging || undefined,
+                prep_time_minutes: p.prep_time_minutes || 0,
+                is_available: p.is_available,
+                allergens: p.allergens,
+                course_type: p.course_type || undefined,
+                modifiers: p.modifiers,
+                updated_at: p.updated_at || new Date().toISOString(),
+                synced: true
+              });
+              pulledCount++;
+            }
+          }
+
+          // 3. Save tables_layout
+          if (remoteTables) {
+            for (const t of remoteTables) {
+              await LocalDatabase.saveSystemSetting(`table_layout:${t.id}`, t);
+              pulledCount++;
+            }
+          }
+
+          // 4. Save ingredients
+          if (remoteIngredients) {
+            for (const ing of remoteIngredients) {
+              await LocalDatabase.saveSystemSetting(`ingredient:${ing.id}`, ing);
+              pulledCount++;
+            }
+          }
+
+          // 5. Save dish_recipes
+          if (cleanRecipes) {
+            for (const r of cleanRecipes) {
+              await LocalDatabase.saveSystemSetting(`recipe:${r.id}`, r);
+              pulledCount++;
+            }
+          }
+
+          // 6. Save ingredient_movements
+          if (cleanMovements) {
+            for (const m of cleanMovements) {
+              await LocalDatabase.saveSystemSetting(`movement:${m.id}`, m);
+              pulledCount++;
+            }
+          }
+
+          // 7. Save stores
+          if (remoteStores) {
+            for (const st of remoteStores) {
+              await LocalDatabase.saveStore({
+                id: st.id,
+                name: st.name,
+                address: st.address || undefined,
+                city: st.city || undefined,
+                phone: st.phone || undefined,
+                email: st.email || undefined,
+                default_price_tier: st.default_price_tier || 1,
+                is_active: st.is_active !== false,
+                created_at: st.created_at || new Date().toISOString(),
+                updated_at: st.updated_at || new Date().toISOString(),
+                synced: true
+              });
+              pulledCount++;
+            }
+          }
+          console.log(`✅ [SupabaseSync] Merged ${pulledCount} cloud items directly into IndexedDB.`);
         }
+
+        // Compute new cursor based on highest updated_at
+        let maxUpdatedAt = lastCursor;
+        const allItems = [
+          ...mappedOrders, 
+          ...(remoteProducts || []), 
+          ...(remoteTables || []),
+          ...(remoteIngredients || []),
+          ...(cleanRecipes || []),
+          ...(remoteStores || []),
+          ...(cleanMovements || []).map((m: any) => ({ ...m, updated_at: m.created_at }))
+        ];
+        for (const item of allItems) {
+          if (item.updated_at && item.updated_at > maxUpdatedAt) {
+            maxUpdatedAt = item.updated_at;
+          }
+        }
+        localStorage.setItem(cursorKey, maxUpdatedAt);
+        window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'sale' } }));
+        window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
       }
     } catch (err) {
       console.error('🚫 [SupabaseSync] pullRemoteChanges failed:', err);

@@ -35,11 +35,15 @@ function isTauriDesktop(): boolean {
 
 export function getDataClient(): DataClient {
   const android = isAndroid();
+  const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
+  const tauri = isTauriDesktop();
+  
   // On Android there is no local-bridge sidecar — use IndexedDB fallback (isLocalFirst = false)
-  const localFirst = !android;
+  // On HTTPS/browser (Vercel), Mixed Content rules block HTTP local-bridge requests, so use pure cloud
+  const localFirst = !android && (!isHttps || tauri);
 
   console.log(
-    `🔑 [DataClient] mode: offline, isLocalFirst: ${localFirst}, android: ${android}, baseUrl: ${localBridgeBaseUrl}`
+    `🔑 [DataClient] mode: offline, isLocalFirst: ${localFirst}, android: ${android}, isHttps: ${isHttps}, tauri: ${tauri}, baseUrl: ${localBridgeBaseUrl}`
   );
   return {
     mode: 'offline',

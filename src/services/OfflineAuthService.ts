@@ -479,6 +479,70 @@ export class OfflineAuthService {
     }
   }
 
+  static async saveOfflineSession(
+    user: any,
+    session: any,
+    role: string,
+    storeId: string,
+    fullName: string,
+    password?: string
+  ): Promise<void> {
+    try {
+      await LocalDatabase.init();
+      
+      const passwordHash = password ? LocalDatabase.hashPassword(password) : '';
+
+      // 1. Save user
+      await LocalDatabase.saveUser({
+        id: user.id,
+        email: user.email || '',
+        password_hash: passwordHash,
+        full_name: fullName,
+        created_at: user.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        synced: true,
+        is_active: true,
+      });
+
+      // 2. Save role
+      await LocalDatabase.saveRole({
+        id: `${user.id}-${role}`,
+        user_id: user.id,
+        role: role as any,
+        store_id: storeId,
+        created_at: new Date().toISOString(),
+        synced: true,
+      });
+
+      // 3. Save session
+      await LocalDatabase.saveSession({
+        user: {
+          id: user.id,
+          email: user.email,
+          app_metadata: user.app_metadata || {},
+          user_metadata: {
+            ...user.user_metadata,
+            full_name: fullName,
+            store_id: storeId,
+            role: role,
+          },
+          aud: user.aud || 'authenticated',
+          created_at: user.created_at || new Date().toISOString(),
+        },
+        session: {
+          access_token: session?.access_token || '',
+          refresh_token: session?.refresh_token || '',
+          expires_in: session?.expires_in || 3600,
+          token_type: session?.token_type || 'bearer',
+        },
+        timestamp: Date.now(),
+      });
+      console.log('[OfflineAuthService] Saved offline session successfully.');
+    } catch (e) {
+      console.error('[OfflineAuthService] Failed to save offline session:', e);
+    }
+  }
+
   private static async restoreLocalBridgeSession(): Promise<OfflineAuthResult | null> {
     const cache = await this.getValidLocalBridgeSession();
     if (!cache) return null;

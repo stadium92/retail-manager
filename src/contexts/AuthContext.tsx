@@ -418,29 +418,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // 3. Send credentials to local bridge
-      const response = await smartFetch(`${dataClient.localBridgeBaseUrl}/auth/bootstrap-cloud`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: data.user.id,
-          email,
-          password,
-          full_name: fullName,
-          role,
-          store_id: storeId,
-          store_name: storeName,
-        }),
-      });
+      if (dataClient.isLocalFirst) {
+        // 3. Send credentials to local bridge
+        const response = await smartFetch(`${dataClient.localBridgeBaseUrl}/auth/bootstrap-cloud`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: data.user.id,
+            email,
+            password,
+            full_name: fullName,
+            role,
+            store_id: storeId,
+            store_name: storeName,
+          }),
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        let message = 'Failed to bootstrap account locally.';
-        try {
-          const parsedErr = JSON.parse(errorText);
-          message = parsedErr.message || parsedErr.error || message;
-        } catch (e) {}
-        return { error: message };
+        if (!response.ok) {
+          const errorText = await response.text();
+          let message = 'Failed to bootstrap account locally.';
+          try {
+            const parsedErr = JSON.parse(errorText);
+            message = parsedErr.message || parsedErr.error || message;
+          } catch (e) {}
+          return { error: message };
+        }
+      } else {
+        // Pure Cloud: Save session to LocalDatabase (IndexedDB) directly
+        await OfflineAuthService.saveOfflineSession(data.user, data.session, role, storeId, fullName, password);
       }
 
       // 4. Sign in locally now that it has been bootstrapped
