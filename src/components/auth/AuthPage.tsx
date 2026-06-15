@@ -15,7 +15,7 @@ import { InvitationService } from '@/services/InvitationService';
 import { useToast } from '@/hooks/use-toast';
 import { LanguageSwitcher } from '@/components/shared/LanguageSwitcher';
 import { useDevice } from '@/contexts/DeviceContext';
-import { MobileAuthPage } from '@/components/mobile/auth/MobileAuthPage';
+import { MobileAuthPage } from '@/components/mobile/Auth/MobileAuthPage';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
