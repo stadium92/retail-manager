@@ -37,6 +37,16 @@ const SALE_ITEM_COLS = [
   'discount', 'total', 'version', 'deleted_at', 'created_at', 'batch_id'
 ] as const;
 
+const CASHIER_CREDIT_COLS = [
+  'id', 'store_id', 'worker_id', 'client_name', 'amount', 'status',
+  'notes', 'version', 'deleted_at', 'created_at', 'updated_at'
+] as const;
+
+const STOCK_ADJUSTMENT_COLS = [
+  'id', 'store_id', 'worker_id', 'product_id', 'adjustment_type',
+  'quantity_adjusted', 'reason', 'version', 'deleted_at', 'created_at'
+] as const;
+
 function pick<T extends string>(
   row: Record<string, any>,
   keys: readonly T[]
@@ -199,17 +209,21 @@ export async function registerSyncRoutes(app: FastifyInstance) {
       products = [],
       sales = [],
       sale_items = [],
+      cashier_credits = [],
+      stock_adjustments = [],
       pulled_at,
-      store_id
+      store_id: req_store_id
     } = request.body as {
       products?: Record<string, any>[];
       sales?: Record<string, any>[];
       sale_items?: Record<string, any>[];
+      cashier_credits?: Record<string, any>[];
+      stock_adjustments?: Record<string, any>[];
       pulled_at?: string;
       store_id?: string;
     };
 
-    const actualStoreId = store_id || claims.store_id;
+    const actualStoreId = req_store_id || claims.store_id;
     if (!actualStoreId) {
       return reply.status(400).send({ error: 'MissingStoreId', message: 'store_id parameter is required.' });
     }
@@ -253,6 +267,26 @@ export async function registerSyncRoutes(app: FastifyInstance) {
         )
       `);
 
+      const upsertCashierCredit = db.db.prepare(`
+        INSERT OR REPLACE INTO cashier_credits (
+          id, store_id, worker_id, client_name, amount, status,
+          notes, version, deleted_at, created_at, updated_at
+        ) VALUES (
+          @id, @store_id, @worker_id, @client_name, @amount, @status,
+          @notes, @version, @deleted_at, @created_at, @updated_at
+        )
+      `);
+
+      const upsertStockAdjustment = db.db.prepare(`
+        INSERT OR REPLACE INTO stock_adjustments (
+          id, store_id, worker_id, product_id, adjustment_type,
+          quantity_adjusted, reason, version, deleted_at, created_at
+        ) VALUES (
+          @id, @store_id, @worker_id, @product_id, @adjustment_type,
+          @quantity_adjusted, @reason, @version, @deleted_at, @created_at
+        )
+      `);
+
       const checkCategory = db.db.prepare(`SELECT id FROM product_families WHERE id = ?`);
 
       db.db.transaction(() => {
@@ -272,6 +306,12 @@ export async function registerSyncRoutes(app: FastifyInstance) {
         for (const row of sale_items) {
           upsertSaleItem.run(pick(row, SALE_ITEM_COLS));
         }
+        for (const row of cashier_credits) {
+          upsertCashierCredit.run(pick(row, CASHIER_CREDIT_COLS));
+        }
+        for (const row of stock_adjustments) {
+          upsertStockAdjustment.run(pick(row, STOCK_ADJUSTMENT_COLS));
+        }
 
         // Advance pull cursor
         db.upsertSyncState(actualStoreId, {
@@ -283,7 +323,9 @@ export async function registerSyncRoutes(app: FastifyInstance) {
       const merged = {
         products: products.length,
         sales: sales.length,
-        sale_items: sale_items.length
+        sale_items: sale_items.length,
+        cashier_credits: cashier_credits.length,
+        stock_adjustments: stock_adjustments.length
       };
 
       request.log.info(
