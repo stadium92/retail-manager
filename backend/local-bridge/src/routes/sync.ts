@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { db } from '../db/index.js';
 import { authenticateRequest } from './utils/auth.js';
+import { env } from '../env.js';
 
 interface OutboxEntry {
   id: string;
@@ -57,6 +58,45 @@ function pick<T extends string>(
 }
 
 export async function registerSyncRoutes(app: FastifyInstance) {
+  // Network Health Diagnostic Endpoint
+  app.get('/sync/health', async (_request, reply) => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      // Fallback Supabase URL if not defined in env (matches frontend lib/supabase.ts)
+      const supabaseUrl = process.env.VITE_SUPABASE_URL || "https://fpvrbxmbrotowdlyebqv.supabase.co";
+      
+      const res = await fetch(`${supabaseUrl}/rest/v1/`, { 
+        signal: controller.signal 
+      });
+      clearTimeout(timeoutId);
+
+      if (res.status === 429) {
+        return reply.send({ status: 'RATE_LIMITED', message: 'Too many requests to cloud' });
+      }
+
+      return reply.send({ status: 'ONLINE', message: 'Connected to cloud' });
+    } catch (err: any) {
+      const errMsg = err.message || '';
+      const code = err.cause?.code || err.code || '';
+      
+      if (errMsg.includes('abort') || code === 'UND_ERR_CONNECT_TIMEOUT') {
+         return reply.send({ status: 'FIREWALL_BLOCKED', message: 'Connection timed out. Firewall suspected.' });
+      }
+      if (code === 'ECONNREFUSED') {
+         return reply.send({ status: 'FIREWALL_BLOCKED', message: 'Connection refused. Firewall suspected.' });
+      }
+      if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') {
+         return reply.send({ status: 'ISP_BLOCKED', message: 'DNS resolution failed. ISP block or no internet.' });
+      }
+      if (code.includes('CERT') || errMsg.includes('certificate')) {
+         return reply.send({ status: 'CLOCK_SKEW', message: 'SSL certificate error. System clock is likely incorrect.' });
+      }
+
+      return reply.send({ status: 'OFFLINE', message: `Unknown network error: ${code || errMsg}` });
+    }
+  });
   // Handshake / capabilities endpoint
   app.get('/sync/handshake', async (_request, reply) => {
     return reply.send({

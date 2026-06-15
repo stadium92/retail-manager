@@ -4,12 +4,15 @@ import { OfflineAuthService } from './OfflineAuthService';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 // ─── Configuration ────────────────────────────────────────────────────────────
-const PUSH_INTERVAL_MS = 5000;   // 5s outbox polling
-const PULL_INTERVAL_MS = 30000;  // 30s incremental pull fallback
+const PUSH_INTERVAL_MS = 5000;   // 5s outbox polling (Base)
+const PULL_INTERVAL_MS = 30000;  // 30s incremental pull fallback (Base)
+const MAX_BACKOFF_MS = 120000;   // 2 minutes max backoff
 const DEBOUNCE_PULL_MS = 2000;   // 2s realtime debounce
 const MAX_OUTBOX_BATCH = 100;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+export type NetworkHealthStatus = 'ONLINE' | 'OFFLINE' | 'CLOCK_SKEW' | 'FIREWALL_BLOCKED' | 'ISP_BLOCKED' | 'RATE_LIMITED';
+
 type EntityType = 'product' | 'sale' | 'sale_item' | 'users' | 'user_roles';
 type Operation = 'create' | 'update' | 'delete' | 'upsert';
 
@@ -248,11 +251,49 @@ function mapToSupabase(entityType: EntityType, raw: EntityRow): Record<string, u
 export class LocalBridgeSyncService {
   private static running = false;
   private static pushing = false;
-  private static pushTimer: ReturnType<typeof setInterval> | null = null;
-  private static pullTimer: ReturnType<typeof setInterval> | null = null;
+  private static pushTimer: ReturnType<typeof setTimeout> | null = null;
+  private static pullTimer: ReturnType<typeof setTimeout> | null = null;
   private static debounceId: ReturnType<typeof setTimeout> | null = null;
   private static channels: RealtimeChannel[] = [];
   private static currentStoreId: string | null = null;
+
+  // Diagnostics & Backoff
+  private static currentHealth: NetworkHealthStatus = 'ONLINE';
+  private static currentHealthMessage: string = 'Connected to cloud';
+  private static healthListeners: Array<(status: NetworkHealthStatus, message: string) => void> = [];
+  private static currentPullInterval = PULL_INTERVAL_MS;
+  private static currentPushInterval = PUSH_INTERVAL_MS;
+
+  static onHealthChange(cb: (status: NetworkHealthStatus, message: string) => void) {
+    this.healthListeners.push(cb);
+    cb(this.currentHealth, this.currentHealthMessage);
+    return () => {
+      this.healthListeners = this.healthListeners.filter(l => l !== cb);
+    };
+  }
+
+  private static updateHealth(status: NetworkHealthStatus, message: string) {
+    if (this.currentHealth !== status || this.currentHealthMessage !== message) {
+      this.currentHealth = status;
+      this.currentHealthMessage = message;
+      this.healthListeners.forEach(cb => cb(status, message));
+    }
+  }
+
+  static async checkNetworkHealth(): Promise<void> {
+    const dataClient = getDataClient();
+    try {
+      const resp = await smartFetch(`${dataClient.localBridgeBaseUrl}/sync/health`);
+      if (resp.ok) {
+        const data = await resp.json();
+        this.updateHealth(data.status, data.message);
+      } else {
+        this.updateHealth('OFFLINE', 'Local bridge is unreachable.');
+      }
+    } catch (e) {
+      this.updateHealth('OFFLINE', 'Local bridge is unreachable.');
+    }
+  }
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
   static start(storeId: string): void {
@@ -261,13 +302,30 @@ export class LocalBridgeSyncService {
 
     this.currentStoreId = storeId;
     this.running = true;
+    this.currentPullInterval = PULL_INTERVAL_MS;
+    this.currentPushInterval = PUSH_INTERVAL_MS;
 
-    // Run sync cycles
+    // Run initial sync cycle and health check
+    void this.checkNetworkHealth();
     void this.pushPendingMutations(storeId);
     void this.pullData(storeId);
 
-    this.pushTimer = setInterval(() => void this.pushPendingMutations(storeId), PUSH_INTERVAL_MS);
-    this.pullTimer = setInterval(() => void this.pullData(storeId), PULL_INTERVAL_MS);
+    const schedulePush = () => {
+      if (!this.running) return;
+      this.pushTimer = setTimeout(() => {
+        void this.pushPendingMutations(storeId).finally(schedulePush);
+      }, this.currentPushInterval);
+    };
+
+    const schedulePull = () => {
+      if (!this.running) return;
+      this.pullTimer = setTimeout(() => {
+        void this.pullData(storeId).finally(schedulePull);
+      }, this.currentPullInterval);
+    };
+
+    schedulePush();
+    schedulePull();
 
     this.subscribeRealtime(storeId);
     console.log(`[LocalBridgeSyncService] Started for store ${storeId}.`);
@@ -277,8 +335,8 @@ export class LocalBridgeSyncService {
     if (!this.running) return;
     this.running = false;
 
-    if (this.pushTimer) clearInterval(this.pushTimer);
-    if (this.pullTimer) clearInterval(this.pullTimer);
+    if (this.pushTimer) clearTimeout(this.pushTimer);
+    if (this.pullTimer) clearTimeout(this.pullTimer);
     if (this.debounceId) clearTimeout(this.debounceId);
 
     this.channels.forEach((ch) => void supabase.removeChannel(ch));
@@ -342,12 +400,14 @@ export class LocalBridgeSyncService {
         }
       });
 
-      // Report outcomes back to local bridge
+      // Report outcomes      // Post completion status
       const statusRes = await smartFetch(`${dataClient.localBridgeBaseUrl}/sync/outbox/status`, {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify(update),
       });
+
+      if (!statusRes.ok) throw new Error(`Status update failed: HTTP ${statusRes.ok}`);
 
       const diagnosticRes = await smartFetch(`${dataClient.localBridgeBaseUrl}/sync/diagnostics?store_id=${targetStoreId}`, {
         headers
@@ -358,6 +418,11 @@ export class LocalBridgeSyncService {
       console.log(`[LocalBridgeSyncService] Push complete — synced: ${update.synced.length}, failed: ${update.failed.length}`);
 
       this.pushing = false;
+      this.currentPushInterval = PUSH_INTERVAL_MS; // Reset backoff on success
+      if (this.currentHealth !== 'ONLINE') {
+        void this.checkNetworkHealth();
+      }
+
       return {
         pushed: update.synced.length,
         failed: update.failed.length,
@@ -366,6 +431,8 @@ export class LocalBridgeSyncService {
     } catch (err) {
       console.error('[LocalBridgeSyncService] pushPendingMutations error:', err);
       this.pushing = false;
+      this.currentPushInterval = Math.min(this.currentPushInterval * 1.5, MAX_BACKOFF_MS); // Exponential backoff
+      void this.checkNetworkHealth();
       return { pushed: 0, failed: 0, pending: 0 };
     }
   }
@@ -460,9 +527,17 @@ export class LocalBridgeSyncService {
 
       const mergeResult = await mergeResp.json();
       console.log('[LocalBridgeSyncService] Merge complete:', mergeResult.merged);
+      
+      this.currentPullInterval = PULL_INTERVAL_MS; // Reset backoff on success
+      if (this.currentHealth !== 'ONLINE') {
+        void this.checkNetworkHealth();
+      }
+
       return { pulled: (mergeResult.merged?.products || 0) + (mergeResult.merged?.sales || 0) + (mergeResult.merged?.sale_items || 0) };
     } catch (err) {
       console.error('[LocalBridgeSyncService] pullData error:', err);
+      this.currentPullInterval = Math.min(this.currentPullInterval * 1.5, MAX_BACKOFF_MS); // Exponential backoff
+      void this.checkNetworkHealth();
       return null;
     }
   }

@@ -18,13 +18,21 @@ import {
   ScrollText,
   HelpCircle,
   Cloud,
-  KeyRound
+  KeyRound,
+  Wifi,
+  WifiOff,
+  Clock,
+  ShieldAlert,
+  CloudOff,
+  AlertTriangle
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { cn } from '@/lib/utils';
+import { LocalBridgeSyncService, type NetworkHealthStatus } from '@/services/LocalBridgeSyncService';
 import { useNavigate } from 'react-router-dom';
 import { NotificationCenter } from '@/components/shared/NotificationCenter';
 import { LanguageSwitcher } from '@/components/shared/LanguageSwitcher';
@@ -46,6 +54,29 @@ export function MasterLayout() {
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [networkHealth, setNetworkHealth] = useState<NetworkHealthStatus>('ONLINE');
+  const [networkMessage, setNetworkMessage] = useState('Connected to cloud');
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    const unsubscribeHealth = LocalBridgeSyncService.onHealthChange((status, message) => {
+      setNetworkHealth(status);
+      setNetworkMessage(message);
+    });
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      unsubscribeHealth();
+    };
+  }, []);
 
   const handleSignOut = async () => {
     await signOut();
@@ -250,6 +281,33 @@ export function MasterLayout() {
       <main className="flex-1 overflow-y-auto">
         <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
           <div className="flex items-center justify-end gap-4 px-6 py-3">
+            <div 
+              className={cn(
+                'flex items-center gap-1 px-2 py-1 rounded-md text-xs cursor-help transition-colors mr-auto',
+                isOnline && networkHealth === 'ONLINE' 
+                  ? 'bg-success/20 text-success-foreground' 
+                  : networkHealth === 'CLOCK_SKEW' || networkHealth === 'FIREWALL_BLOCKED' || networkHealth === 'ISP_BLOCKED'
+                    ? 'bg-danger/20 text-danger-foreground font-bold border border-danger/50 shadow-[0_0_8px_rgba(239,68,68,0.5)]'
+                    : 'bg-warning/20 text-warning-foreground'
+              )}
+              title={!isOnline ? "No WiFi connection detected" : networkMessage}
+            >
+              {!isOnline ? (
+                <><WifiOff className="h-3.5 w-3.5" /> <span className="font-medium hidden sm:inline">{t('common.offline')}</span></>
+              ) : networkHealth === 'ONLINE' ? (
+                <><Wifi className="h-3.5 w-3.5" /> <span className="font-medium hidden sm:inline">{t('common.online')}</span></>
+              ) : networkHealth === 'CLOCK_SKEW' ? (
+                <><Clock className="h-3.5 w-3.5" /> <span className="font-bold hidden sm:inline">Check Clock</span></>
+              ) : networkHealth === 'FIREWALL_BLOCKED' ? (
+                <><ShieldAlert className="h-3.5 w-3.5" /> <span className="font-bold hidden sm:inline">Firewall Blocked</span></>
+              ) : networkHealth === 'ISP_BLOCKED' ? (
+                <><CloudOff className="h-3.5 w-3.5" /> <span className="font-bold hidden sm:inline">ISP Blocked</span></>
+              ) : networkHealth === 'RATE_LIMITED' ? (
+                <><AlertTriangle className="h-3.5 w-3.5" /> <span className="font-bold hidden sm:inline">Rate Limited</span></>
+              ) : (
+                <><WifiOff className="h-3.5 w-3.5" /> <span className="font-medium hidden sm:inline">Cloud Unreachable</span></>
+              )}
+            </div>
             <StoreMultiSelector />
             <HardwareStatus />
             <CurrencySwitcher />

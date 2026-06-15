@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LogOut, Wifi, WifiOff, HardDrive, RefreshCw } from 'lucide-react';
+import { LogOut, Wifi, WifiOff, HardDrive, RefreshCw, Clock, ShieldAlert, CloudOff, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { WorkerModule } from './WorkerMenuBar';
@@ -11,6 +11,7 @@ import { useSettingsStore } from '@/stores/useSettingsStore';
 import { getDataClient, smartFetch } from '@/lib/dataClient';
 import { LocalDatabase } from '@/services/LocalDatabase';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
+import { LocalBridgeSyncService, type NetworkHealthStatus } from '@/services/LocalBridgeSyncService';
 import { toast } from 'sonner';
 
 interface WorkerStatusBarProps {
@@ -26,6 +27,8 @@ export function WorkerStatusBar({ storeName, userEmail, activeModule, onLogout, 
   const { getKeyForAction } = useSettingsStore();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [networkHealth, setNetworkHealth] = useState<NetworkHealthStatus>('ONLINE');
+  const [networkMessage, setNetworkMessage] = useState('Connected to cloud');
   const [isSyncing, setIsSyncing] = useState(false);
 
   const keyValidate = getKeyForAction('ACTION_VALIDATE') || 'F2';
@@ -43,9 +46,15 @@ export function WorkerStatusBar({ storeName, userEmail, activeModule, onLogout, 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     
+    const unsubscribeHealth = LocalBridgeSyncService.onHealthChange((status, message) => {
+      setNetworkHealth(status);
+      setNetworkMessage(message);
+    });
+
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      unsubscribeHealth();
     };
   }, []);
 
@@ -127,15 +136,33 @@ export function WorkerStatusBar({ storeName, userEmail, activeModule, onLogout, 
           {!isSyncing && <span className="text-[10px] font-bold uppercase tracking-tighter hidden md:inline">Reset Cache</span>}
         </Button>
 
-        {/* Connection Status */}
-        <div className={cn(
-          'flex items-center gap-1 px-2 py-0.5 rounded',
-          isOnline 
-            ? 'bg-success/20 text-success-foreground' 
-            : 'bg-danger/20 text-danger-foreground'
-        )}>
-          {isOnline ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-          <span className="font-medium">{isOnline ? t('common.online') : t('common.offline')}</span>
+        {/* Connection Status & Diagnostics */}
+        <div 
+          className={cn(
+            'flex items-center gap-1 px-2 py-0.5 rounded cursor-help transition-colors',
+            isOnline && networkHealth === 'ONLINE' 
+              ? 'bg-success/20 text-success-foreground' 
+              : networkHealth === 'CLOCK_SKEW' || networkHealth === 'FIREWALL_BLOCKED' || networkHealth === 'ISP_BLOCKED'
+                ? 'bg-danger/20 text-danger-foreground font-bold border border-danger/50 shadow-[0_0_8px_rgba(239,68,68,0.5)]'
+                : 'bg-warning/20 text-warning-foreground'
+          )}
+          title={!isOnline ? "No WiFi connection detected" : networkMessage}
+        >
+          {!isOnline ? (
+            <><WifiOff className="h-3 w-3" /> <span className="font-medium">{t('common.offline')}</span></>
+          ) : networkHealth === 'ONLINE' ? (
+            <><Wifi className="h-3 w-3" /> <span className="font-medium">{t('common.online')}</span></>
+          ) : networkHealth === 'CLOCK_SKEW' ? (
+            <><Clock className="h-3.5 w-3.5" /> <span className="font-bold">Check Clock</span></>
+          ) : networkHealth === 'FIREWALL_BLOCKED' ? (
+            <><ShieldAlert className="h-3.5 w-3.5" /> <span className="font-bold">Firewall Blocked</span></>
+          ) : networkHealth === 'ISP_BLOCKED' ? (
+            <><CloudOff className="h-3.5 w-3.5" /> <span className="font-bold">ISP Blocked</span></>
+          ) : networkHealth === 'RATE_LIMITED' ? (
+            <><AlertTriangle className="h-3.5 w-3.5" /> <span className="font-bold">Rate Limited</span></>
+          ) : (
+            <><WifiOff className="h-3 w-3" /> <span className="font-medium">Cloud Unreachable</span></>
+          )}
         </div>
 
         {/* User */}
