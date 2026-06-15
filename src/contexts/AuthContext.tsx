@@ -378,18 +378,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: 'Failed to retrieve cloud user details.' };
       }
 
-      // 2. Extract user metadata
+      // 2. Extract user metadata and query cloud tables for role & store Resolution
       const metadata = data.user.user_metadata || {};
       const fullName = metadata.full_name || 'Cloud User';
       let role = metadata.role || 'master';
+      let storeId = metadata.store_id || null;
+      let storeName = metadata.store_name || 'Cloud Restaurant';
 
       const emailLower = email.toLowerCase();
       if (emailLower === 'imsnsylla@gmail.com' || emailLower === 'bahsyllah223@gmail.com' || emailLower === 'ursula@master.com') {
         role = 'master';
       }
-      
-      let storeId = metadata.store_id;
-      let storeName = metadata.store_name || 'Cloud Restaurant';
+
+      // Check user_roles table on Supabase
+      try {
+        const { data: rolesData, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('role, store_id')
+          .eq('user_id', data.user.id);
+        
+        if (rolesError) {
+          console.error('[AuthContext] user_roles query failed:', rolesError);
+        } else if (rolesData && rolesData.length > 0) {
+          role = rolesData[0].role || role;
+          if (!storeId && rolesData[0].store_id) {
+            storeId = rolesData[0].store_id;
+          }
+        }
+      } catch (e) {
+        console.warn('[AuthContext] Exception fetching roles from supabase', e);
+      }
+
+      // Check owned restaurants if worker has no store or role is not set
+      if (!role || role === 'worker') {
+        try {
+          const { data: ownedStores, error: storesError } = await supabase
+            .from('restaurants')
+            .select('*')
+            .eq('owner_id', data.user.id)
+            .limit(1);
+          
+          if (storesError) {
+            console.error('[AuthContext] restaurants query failed:', storesError);
+          } else if (ownedStores && ownedStores.length > 0) {
+            role = 'master';
+            storeId = ownedStores[0].id;
+            storeName = ownedStores[0].name || storeName;
+          }
+        } catch (e) {
+          console.warn('[AuthContext] Exception checking owned restaurants', e);
+        }
+      }
+
+      // Fallback for master role
+      if (!storeId && role === 'master') {
+        try {
+          const { data: stores } = await supabase
+            .from('restaurants')
+            .select('*')
+            .eq('owner_id', data.user.id)
+            .limit(1);
+          
+          if (stores && stores.length > 0) {
+            storeId = stores[0].id;
+            storeName = stores[0].name || storeName;
+          }
+        } catch (e) {
+          console.warn('[AuthContext] Exception checking restaurants for master fallback', e);
+        }
+      }
 
       if (!storeId && role === 'master') {
         // Dynamically generate a store_id for a new master user if not pre-configured
@@ -405,7 +462,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (!metadata.store_id || metadata.role !== role) {
-        console.log('[AuthContext] Updating Supabase user metadata during bootstrap with store_id:', storeId);
+        console.log('[AuthContext] Updating Supabase user metadata during bootstrap with store_id:', storeId, 'role:', role);
         try {
           await supabase.auth.updateUser({
             data: {
