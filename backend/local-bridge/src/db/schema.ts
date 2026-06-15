@@ -371,6 +371,29 @@ export const initializeSchema = (db: Database.Database) => {
       FOREIGN KEY (service_id) REFERENCES client_services(id)
     );
 
+    CREATE TABLE IF NOT EXISTS cashier_credits (
+      id TEXT PRIMARY KEY,
+      store_id TEXT NOT NULL,
+      worker_id TEXT NOT NULL,
+      client_name TEXT NOT NULL,
+      amount REAL NOT NULL,
+      status TEXT NOT NULL DEFAULT 'unpaid',
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS stock_adjustments (
+      id TEXT PRIMARY KEY,
+      store_id TEXT NOT NULL,
+      worker_id TEXT NOT NULL,
+      product_id TEXT NOT NULL,
+      adjustment_type TEXT NOT NULL,
+      quantity_adjusted REAL NOT NULL,
+      reason TEXT,
+      created_at TEXT NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_worker_invitations_status ON worker_invitations(status);
     CREATE INDEX IF NOT EXISTS idx_worker_invitations_store ON worker_invitations(store_id);
     CREATE INDEX IF NOT EXISTS idx_products_store ON products(store_id);
@@ -530,4 +553,10 @@ export const initializeSchema = (db: Database.Database) => {
 
   ensureColumn('stores', 'version', `ALTER TABLE stores ADD COLUMN version INTEGER NOT NULL DEFAULT 1`);
   ensureColumn('stores', 'deleted_at', `ALTER TABLE stores ADD COLUMN deleted_at TEXT`);
+
+  ensureColumn('cashier_credits', 'version', `ALTER TABLE cashier_credits ADD COLUMN version INTEGER NOT NULL DEFAULT 1`);
+  ensureColumn('cashier_credits', 'deleted_at', `ALTER TABLE cashier_credits ADD COLUMN deleted_at TEXT`);
+
+  ensureColumn('stock_adjustments', 'version', `ALTER TABLE stock_adjustments ADD COLUMN version INTEGER NOT NULL DEFAULT 1`);
+  ensureColumn('stock_adjustments', 'deleted_at', `ALTER TABLE stock_adjustments ADD COLUMN deleted_at TEXT`);
 };
