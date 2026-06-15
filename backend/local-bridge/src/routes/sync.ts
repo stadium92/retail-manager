@@ -253,9 +253,17 @@ export async function registerSyncRoutes(app: FastifyInstance) {
         )
       `);
 
+      const checkCategory = db.db.prepare(`SELECT id FROM product_families WHERE id = ?`);
+
       db.db.transaction(() => {
         // Direct database writes will not fire repository event emitters, preventing sync loops
         for (const row of products) {
+          if (row.category) {
+            const family = checkCategory.get(row.category);
+            if (!family) {
+              row.category = null; // Auto-heal: sanitize invalid FK to prevent transaction crash
+            }
+          }
           upsertProduct.run(pick(row, PRODUCT_COLS));
         }
         for (const row of sales) {
