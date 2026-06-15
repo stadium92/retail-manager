@@ -516,6 +516,56 @@ export class OfflineAuthService {
         }
       }
 
+      if (!getDataClient().isLocalFirst) {
+        // Pure Cloud: Save session to LocalDatabase (IndexedDB) directly
+        await this.saveOfflineSession(
+          data.user,
+          data.session,
+          finalRole || 'master',
+          store_id || '',
+          data.user.user_metadata?.full_name || 'Cloud User',
+          password
+        );
+
+        const mockUser: User = {
+          id: data.user.id,
+          email: data.user.email,
+          app_metadata: data.user.app_metadata || {},
+          user_metadata: {
+            ...data.user.user_metadata,
+            full_name: data.user.user_metadata?.full_name || 'Cloud User',
+            store_id: store_id,
+            role: finalRole,
+          },
+          aud: data.user.aud || 'authenticated',
+          created_at: data.user.created_at || new Date().toISOString(),
+        } as User;
+
+        const mockSession: Session = {
+          access_token: data.session?.access_token || '',
+          refresh_token: data.session?.refresh_token || '',
+          expires_in: data.session?.expires_in || 3600,
+          token_type: data.session?.token_type || 'bearer',
+          user: mockUser,
+        } as Session;
+
+        const mockRoles: UserRole[] = [{
+          id: `${data.user.id}-${finalRole || 'master'}`,
+          user_id: data.user.id,
+          role: (finalRole || 'master') as any,
+          store_id: store_id || undefined,
+          created_at: new Date().toISOString(),
+        }];
+
+        toast({ title: 'Cloud login successful', description: 'Logged in online securely.' });
+        return {
+          user: mockUser,
+          session: mockSession,
+          roles: mockRoles,
+          isOffline: false
+        };
+      }
+
       const syncResponse = await this.localBridgeRequest<LocalBridgeLoginResponse>(
         '/auth/sync-cloud-login',
         {
@@ -559,6 +609,11 @@ export class OfflineAuthService {
       console.log('[OfflineAuth] Online login failed (offline or invalid). Attempting local fallback...', onlineError);
       toast({ title: 'Cloud unavailable', description: 'Logging in offline...', variant: 'destructive' });
       
+      if (!getDataClient().isLocalFirst) {
+        // Pure Cloud: Call legacy offline sign-in directly using IndexedDB cached session
+        return this.legacyOfflineSignIn(email, password);
+      }
+
       try {
         // 2. OFFLINE FALLBACK: Try Local Bridge
         const response = await this.localBridgeRequest<LocalBridgeLoginResponse>(
