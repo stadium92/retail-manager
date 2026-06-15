@@ -532,9 +532,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (result.error && navigator.onLine) {
         console.log('🔄 Local sign in failed but online. Attempting cloud bootstrap fallback...');
         const fallbackResult = await runCloudBootstrapFlow(email, password);
-        if (!fallbackResult.error) {
-          result = fallbackResult;
-        }
+        result = fallbackResult;
       }
     }
 
