@@ -30,7 +30,7 @@ export function FichiersServicesClientsModule({ storeId }: FichiersServicesClien
     default_discount_percent: 0,
   });
   const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
-  const useLocalBridge = isLocalFirst;
+  const useLocalBridge = true;
 
   const localBridgeRequest = useCallback(async <T,>(path: string, init: RequestInit = {}) => {
     if (!useLocalBridge) {

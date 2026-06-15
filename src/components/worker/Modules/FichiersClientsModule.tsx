@@ -37,7 +37,7 @@ export function FichiersClientsModule({ storeId }: FichiersClientsModuleProps) {
     service_id: '',
   });
 
-  const useLocalBridge = isLocalFirst;
+  const useLocalBridge = true;
 
   const localBridgeRequest = useCallback(async <T,>(path: string, init: RequestInit = {}) => {
     if (!useLocalBridge) {

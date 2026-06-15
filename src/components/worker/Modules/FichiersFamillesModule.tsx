@@ -36,7 +36,7 @@ export function FichiersFamillesModule({ storeId }: FichiersFamillesModuleProps)
     parent_id: '',
   });
 
-  const useLocalBridge = isLocalFirst;
+  const useLocalBridge = true;
 
   const localBridgeRequest = async <T,>(path: string, init: RequestInit = {}) => {
     if (!useLocalBridge) {

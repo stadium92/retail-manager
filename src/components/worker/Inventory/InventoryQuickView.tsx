@@ -27,7 +27,7 @@ export function InventoryQuickView() {
   const [loading, setLoading] = useState(true);
   const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
 
-  const useLocalBridge = isLocalFirst;
+  const useLocalBridge = true;
 
   const localBridgeRequest = async <T,>(path: string, init: RequestInit = {}) => {
     if (!useLocalBridge) {

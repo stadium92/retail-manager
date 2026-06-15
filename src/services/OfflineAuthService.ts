@@ -251,6 +251,138 @@ export class OfflineAuthService {
     const baseUrl = this.getLocalBridgeBaseUrl();
     const headers = await this.getAuthHeaders();
 
+    if (!getDataClient().isLocalFirst) {
+      try {
+        if (path.startsWith('/rest/v1/recipes')) {
+          const urlObj = new URL(`http://localhost${path}`);
+          const dishId = urlObj.searchParams.get('dish_id');
+          
+          if (init.method === 'POST') {
+            const body = JSON.parse(init.body as string);
+            await supabase.from('dish_recipes').delete().eq('dish_id', body.dish_id);
+            if (body.items && body.items.length > 0) {
+              const rows = body.items.map((it: any) => ({
+                id: crypto.randomUUID(),
+                dish_id: body.dish_id,
+                ingredient_id: it.ingredient_id,
+                quantity_needed: Number(it.quantity_needed || it.quantity_required || 0),
+                unit: it.unit || 'pcs'
+              }));
+              const { error } = await supabase.from('dish_recipes').insert(rows);
+              if (error) throw error;
+            }
+            return { success: true } as any;
+          } else if (init.method === 'DELETE') {
+            const parts = path.split('/');
+            const dishId = parts[4];
+            const ingredientId = parts[5];
+            await supabase.from('dish_recipes').delete().eq('dish_id', dishId).eq('ingredient_id', ingredientId);
+            return { success: true } as any;
+          } else {
+            const { data, error } = await supabase
+              .from('dish_recipes')
+              .select('*, ingredients:ingredient_id(*)')
+              .eq('dish_id', dishId);
+            if (error) throw error;
+            
+            return (data || []).map((dr: any) => ({
+              id: dr.id,
+              dish_id: dr.dish_id,
+              ingredient_id: dr.ingredient_id,
+              quantity_needed: dr.quantity_needed,
+              unit: dr.unit,
+              name: dr.ingredients?.name || 'Unknown',
+              unit_cost: dr.ingredients?.cost_per_unit || 0
+            })) as any;
+          }
+        }
+
+        if (path.startsWith('/rest/v1/sales')) {
+          const urlObj = new URL(`http://localhost${path}`);
+          const storeId = urlObj.searchParams.get('store_id');
+          
+          const { data, error } = await supabase
+            .from('orders')
+            .select('*, order_items(*)')
+            .eq('restaurant_id', storeId)
+            .is('deleted_at', null)
+            .order('created_at', { ascending: false });
+          if (error) throw error;
+
+          return (data || []).map((sale: any) => ({
+            ...sale,
+            order_status: sale.status,
+            store_id: sale.restaurant_id,
+            items: (sale.order_items || []).map((item: any) => ({
+              id: item.id,
+              sale_id: item.order_id,
+              product_id: item.product_id,
+              product_name: item.product_name,
+              quantity: Number(item.quantity),
+              unit_price: Number(item.unit_price),
+              discount: Number(item.discount),
+              total: Number(item.total),
+              modifiers: item.modifiers,
+              status: item.status,
+            })),
+          })) as any;
+        }
+
+        if (path.startsWith('/rest/v1/cash_register_closures')) {
+          if (init.method === 'POST') {
+            const body = JSON.parse(init.body as string);
+            const userRes = await supabase.auth.getUser();
+            const mapped = {
+              id: crypto.randomUUID(),
+              restaurant_id: body.store_id,
+              worker_id: userRes.data.user?.id || null,
+              opening_balance: Number(body.fonds_caisse || 0),
+              expected_balance: Number(body.total_informatique || 0),
+              actual_balance: Number(body.total_billetage || 0),
+              difference: Number(body.ecart || 0),
+              bill_details_json: JSON.stringify(body.billets_details || []),
+              observations: body.observations || null,
+              status: 'submitted',
+              created_at: body.date || new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            };
+            const { error } = await supabase.from('cash_closings').insert(mapped);
+            if (error) throw error;
+            return { success: true } as any;
+          }
+        }
+
+        if (path.includes('/analytics/stock-valuation')) {
+          const urlObj = new URL(`http://localhost${path}`);
+          const storeId = urlObj.searchParams.get('store_id');
+          
+          let query = supabase.from('menu_items').select('cost_price, unit_price, quantity');
+          if (storeId) {
+            query = query.eq('restaurant_id', storeId);
+          }
+          
+          const { data, error } = await query;
+          if (error) throw error;
+          
+          let total_cost = 0;
+          let total_retail = 0;
+          let item_count = 0;
+          if (data) {
+            for (const p of data) {
+              const qty = Number(p.quantity) || 0;
+              total_cost += (Number(p.cost_price) || 0) * qty;
+              total_retail += (Number(p.unit_price) || 0) * qty;
+              if (qty > 0) item_count++;
+            }
+          }
+          return { total_cost, total_retail, item_count } as any;
+        }
+      } catch (err) {
+        console.error('🚫 [OfflineAuth] Supabase direct client request failed:', err);
+        throw err;
+      }
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
 

@@ -41,14 +41,17 @@ export function getDataClient(): DataClient {
   // On Android there is no local-bridge sidecar — use IndexedDB fallback (isLocalFirst = false)
   // On HTTPS/browser (Vercel), Mixed Content rules block HTTP local-bridge requests, so use pure cloud
   const localFirst = !android && (!isHttps || tauri);
+  const baseUrl = localFirst 
+    ? localBridgeBaseUrl 
+    : (import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-project.supabase.co').replace(/\/$/, '');
 
   console.log(
-    `🔑 [DataClient] mode: offline, isLocalFirst: ${localFirst}, android: ${android}, isHttps: ${isHttps}, tauri: ${tauri}, baseUrl: ${localBridgeBaseUrl}`
+    `🔑 [DataClient] mode: offline, isLocalFirst: ${localFirst}, android: ${android}, isHttps: ${isHttps}, tauri: ${tauri}, baseUrl: ${baseUrl}`
   );
   return {
     mode: 'offline',
     isLocalFirst: localFirst,
-    localBridgeBaseUrl,
+    localBridgeBaseUrl: baseUrl,
   };
 }
 
@@ -132,3 +135,141 @@ export const smartFetch = async (input: RequestInfo | URL, init?: RequestInit): 
     throw err;
   }
 };
+
+// Global Fetch Monkey Patch for Cloud Mode
+if (typeof window !== 'undefined' && !(window as any).__fetch_patched__) {
+  (window as any).__fetch_patched__ = true;
+  const originalFetch = window.fetch;
+  window.fetch = async function (input, init) {
+    const dc = getDataClient();
+    if (!dc.isLocalFirst) {
+      let urlStr = typeof input === 'string' ? input : (input instanceof URL ? input.href : (input as any).url);
+      const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-project.supabase.co').replace(/\/$/, '');
+      
+      if (urlStr.startsWith(supabaseUrl)) {
+        let modified = false;
+        
+        // 1. Rewrite /rest/v1/products -> /rest/v1/menu_items
+        if (urlStr.includes('/rest/v1/products')) {
+          urlStr = urlStr.replace('/rest/v1/products', '/rest/v1/menu_items');
+          modified = true;
+        }
+        
+        // 2. Rewrite /rest/v1/stores -> /rest/v1/restaurants
+        if (urlStr.includes('/rest/v1/stores')) {
+          urlStr = urlStr.replace('/rest/v1/stores', '/rest/v1/restaurants');
+          modified = true;
+        }
+        
+        // 3. Rewrite query params: store_id -> restaurant_id
+        if (urlStr.includes('/rest/v1/')) {
+          try {
+            const urlObj = new URL(urlStr);
+            let paramModified = false;
+            if (urlObj.searchParams.has('store_id')) {
+              const val = urlObj.searchParams.get('store_id');
+              urlObj.searchParams.delete('store_id');
+              urlObj.searchParams.set('restaurant_id', val!);
+              paramModified = true;
+            }
+            if (paramModified) {
+              urlStr = urlObj.toString();
+              modified = true;
+            }
+          } catch(e) {}
+        }
+        
+        let newInit = init;
+        // 4. Rewrite body parameters (store_id -> restaurant_id)
+        if (init && init.body && typeof init.body === 'string') {
+          try {
+            const bodyJson = JSON.parse(init.body);
+            let bodyModified = false;
+            
+            if (bodyJson.store_id !== undefined) {
+              bodyJson.restaurant_id = bodyJson.store_id;
+              delete bodyJson.store_id;
+              bodyModified = true;
+            }
+            if (bodyJson.selling_price_detail !== undefined) {
+              bodyJson.unit_price = bodyJson.selling_price_detail;
+              delete bodyJson.selling_price_detail;
+              bodyModified = true;
+            }
+            // Parse JSON strings for array columns in Supabase
+            if (bodyJson.allergens && typeof bodyJson.allergens === 'string') {
+              try {
+                bodyJson.allergens = JSON.parse(bodyJson.allergens);
+                bodyModified = true;
+              } catch(e){}
+            }
+            if (bodyJson.modifiers && typeof bodyJson.modifiers === 'string') {
+              try {
+                bodyJson.modifiers = JSON.parse(bodyJson.modifiers);
+                bodyModified = true;
+              } catch(e){}
+            }
+            if (bodyJson.pack_items && typeof bodyJson.pack_items === 'string') {
+              try {
+                bodyJson.pack_items = JSON.parse(bodyJson.pack_items);
+                bodyModified = true;
+              } catch(e){}
+            }
+            
+            if (bodyModified) {
+              newInit = {
+                ...init,
+                body: JSON.stringify(bodyJson)
+              };
+              modified = true;
+            }
+          } catch (e) {}
+        }
+        
+        if (modified) {
+          console.log(`🔄 [fetch patch] Rewriting ${input.toString()} -> ${urlStr}`);
+          const response = await originalFetch(urlStr, newInit);
+          
+          if (response.ok && response.status !== 204) {
+            try {
+              const clone = response.clone();
+              const json = await clone.json();
+              
+              const mapObj = (obj: any) => {
+                if (obj && typeof obj === 'object') {
+                  if (Array.isArray(obj)) {
+                    obj.forEach(mapObj);
+                  } else {
+                    if (obj.restaurant_id !== undefined && obj.store_id === undefined) {
+                      obj.store_id = obj.restaurant_id;
+                    }
+                    if (obj.unit_price !== undefined && obj.selling_price_detail === undefined) {
+                      obj.selling_price_detail = obj.unit_price;
+                    }
+                    Object.keys(obj).forEach(key => {
+                      mapObj(obj[key]);
+                    });
+                  }
+                }
+              };
+              
+              mapObj(json);
+              
+              const jsonStr = JSON.stringify(json);
+              return new Response(jsonStr, {
+                status: response.status,
+                statusText: response.statusText,
+                headers: response.headers
+              });
+            } catch (e) {
+              return response;
+            }
+          }
+          return response;
+        }
+      }
+    }
+    return originalFetch(input, init);
+  };
+}
+

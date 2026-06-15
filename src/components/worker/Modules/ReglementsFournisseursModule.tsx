@@ -57,7 +57,7 @@ export function ReglementsFournisseursModule({ storeId, isMasterView }: Reglemen
 
   const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
 
-  const useLocalBridge = isLocalFirst;
+  const useLocalBridge = true;
 
   const { formatCurrency } = useFormatters();
 

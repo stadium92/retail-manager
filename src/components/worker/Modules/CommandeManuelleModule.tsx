@@ -41,7 +41,7 @@ export function CommandeManuelleModule({ storeId }: CommandeManuelleModuleProps)
   const searchRef = useRef<HTMLInputElement>(null);
   const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
 
-  const useLocalBridge = isLocalFirst;
+  const useLocalBridge = true;
 
   const { formatCurrency } = useFormatters();
 

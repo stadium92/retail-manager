@@ -46,7 +46,7 @@ export function SalesEntryForm() {
     return amount.toLocaleString(i18n.language === 'bm' ? 'fr-ML' : i18n.language) + ' XAF';
   };
 
-  const useLocalBridge = isLocalFirst;
+  const useLocalBridge = true;
 
   const localBridgeRequest = useCallback(async <T,>(path: string, init: RequestInit = {}) => {
     if (!useLocalBridge) {

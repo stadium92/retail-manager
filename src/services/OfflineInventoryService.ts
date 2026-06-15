@@ -410,11 +410,26 @@ export const OfflineInventoryService = {
               const res = await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/product_families`, { headers });
               if (res.ok) remote = await res.json();
             }
+          } else {
+            const { data, error } = await supabase
+              .from('product_families')
+              .select('*')
+              .eq('restaurant_id', storeId);
+            if (!error && data) remote = data;
           }
           
           if (remote.length > 0) {
             for (const f of remote) {
-              await LocalDatabase.saveProductFamily({ ...f, synced: true });
+              await LocalDatabase.saveProductFamily({
+                id: f.id,
+                store_id: f.restaurant_id || f.store_id || storeId || '',
+                name: f.name,
+                description: f.description || undefined,
+                parent_id: f.parent_id || undefined,
+                created_at: f.created_at || new Date().toISOString(),
+                updated_at: f.updated_at || new Date().toISOString(),
+                synced: true
+              });
             }
           }
         } catch (e) {}

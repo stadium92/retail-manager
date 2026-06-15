@@ -56,7 +56,7 @@ export function ReglementsBonsModule({ storeId }: ReglementsBonsModuleProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
-  const useLocalBridge = isLocalFirst;
+  const useLocalBridge = true;
   
   // Settlement modal state
   const [selectedSale, setSelectedSale] = useState<CreditSale | null>(null);

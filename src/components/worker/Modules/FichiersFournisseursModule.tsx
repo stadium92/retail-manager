@@ -35,7 +35,7 @@ export function FichiersFournisseursModule({ storeId }: FichiersFournisseursModu
   const [transactions, setTransactions] = useState<any[]>([]);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
 
-  const useLocalBridge = isLocalFirst;
+  const useLocalBridge = true;
 
   const formatCurrency = (amount: number) => {
     return amount.toLocaleString(i18n.language === 'bm' ? 'fr-ML' : i18n.language) + ' XAF';

@@ -393,6 +393,50 @@ export class SupabaseSyncService {
         .eq('id', storeId)
         .gt('updated_at', lastCursor);
 
+      // Additional tables fetched only in Pure Cloud mode
+      let remoteProductFamilies: any[] = [];
+      let remoteSuppliers: any[] = [];
+      let remoteSupplierPayments: any[] = [];
+      let remotePurchaseOrders: any[] = [];
+      let remoteCashClosings: any[] = [];
+
+      if (!dataClient.isLocalFirst) {
+        const { data: pf } = await supabase
+          .from('product_families')
+          .select('*')
+          .eq('restaurant_id', storeId)
+          .gt('updated_at', lastCursor);
+        remoteProductFamilies = pf || [];
+
+        const { data: sup } = await supabase
+          .from('suppliers')
+          .select('*')
+          .eq('restaurant_id', storeId)
+          .gt('updated_at', lastCursor);
+        remoteSuppliers = sup || [];
+
+        const { data: pay } = await supabase
+          .from('supplier_payments')
+          .select('*')
+          .eq('restaurant_id', storeId)
+          .gt('created_at', lastCursor);
+        remoteSupplierPayments = pay || [];
+
+        const { data: po } = await supabase
+          .from('purchase_orders')
+          .select('*, purchase_items(*)')
+          .eq('restaurant_id', storeId)
+          .gt('updated_at', lastCursor);
+        remotePurchaseOrders = po || [];
+
+        const { data: cc } = await supabase
+          .from('cash_closings')
+          .select('*')
+          .eq('restaurant_id', storeId)
+          .gt('updated_at', lastCursor);
+        remoteCashClosings = cc || [];
+      }
+
       // Clean joined fields
       const cleanRecipes = (remoteRecipes || []).map(({ ingredients, ...rest }: any) => rest);
       const cleanMovements = (remoteMovements || []).map(({ ingredients, ...rest }: any) => rest);
@@ -412,7 +456,12 @@ export class SupabaseSyncService {
                          (remoteIngredients && remoteIngredients.length > 0) ||
                          (cleanRecipes && cleanRecipes.length > 0) ||
                          (cleanMovements && cleanMovements.length > 0) ||
-                         (remoteStores && remoteStores.length > 0);
+                         (remoteStores && remoteStores.length > 0) ||
+                         (remoteProductFamilies.length > 0) ||
+                         (remoteSuppliers.length > 0) ||
+                         (remoteSupplierPayments.length > 0) ||
+                         (remotePurchaseOrders.length > 0) ||
+                         (remoteCashClosings.length > 0);
 
       if (hasUpdates) {
         if (dataClient.isLocalFirst) {
@@ -559,6 +608,106 @@ export class SupabaseSyncService {
               pulledCount++;
             }
           }
+
+          // 8. Save product_families
+          if (remoteProductFamilies && remoteProductFamilies.length > 0) {
+            for (const f of remoteProductFamilies) {
+              await LocalDatabase.saveProductFamily({
+                id: f.id,
+                store_id: f.restaurant_id,
+                name: f.name,
+                description: f.description || undefined,
+                parent_id: f.parent_id || undefined,
+                created_at: f.created_at,
+                updated_at: f.updated_at,
+                synced: true
+              });
+              pulledCount++;
+            }
+          }
+
+          // 9. Save suppliers
+          if (remoteSuppliers && remoteSuppliers.length > 0) {
+            for (const s of remoteSuppliers) {
+              await LocalDatabase.saveSupplier({
+                id: s.id,
+                store_id: s.restaurant_id,
+                name: s.name,
+                phone: s.phone || undefined,
+                email: s.email || undefined,
+                address: s.address || undefined,
+                balance: Number(s.balance) || 0,
+                created_at: s.created_at,
+                updated_at: s.updated_at,
+                synced: true
+              });
+              pulledCount++;
+            }
+          }
+
+          // 10. Save supplier_payments
+          if (remoteSupplierPayments && remoteSupplierPayments.length > 0) {
+            for (const p of remoteSupplierPayments) {
+              await LocalDatabase.saveSupplierPayment({
+                id: p.id,
+                store_id: p.restaurant_id,
+                supplier_id: p.supplier_id,
+                amount: Number(p.amount) || 0,
+                payment_method: p.payment_method || 'cash',
+                reference: p.reference || undefined,
+                notes: p.notes || undefined,
+                created_at: p.created_at,
+                synced: true
+              });
+              pulledCount++;
+            }
+          }
+
+          // 11. Save purchase_orders and purchase_items
+          if (remotePurchaseOrders && remotePurchaseOrders.length > 0) {
+            for (const o of remotePurchaseOrders) {
+              await LocalDatabase.savePurchaseOrder({
+                id: o.id,
+                store_id: o.restaurant_id,
+                supplier_id: o.supplier_id,
+                status: o.status,
+                total_amount: Number(o.total_amount) || 0,
+                notes: o.notes || undefined,
+                created_at: o.created_at,
+                updated_at: o.updated_at,
+                synced: true
+              });
+              
+              if (o.purchase_items) {
+                for (const item of o.purchase_items) {
+                  await LocalDatabase.saveSystemSetting(`purchase_item:${item.id}`, item);
+                }
+              }
+              pulledCount++;
+            }
+          }
+
+          // 12. Save cash_closings
+          if (remoteCashClosings && remoteCashClosings.length > 0) {
+            for (const cc of remoteCashClosings) {
+              await LocalDatabase.saveCashClosing({
+                id: cc.id,
+                store_id: cc.restaurant_id,
+                worker_id: cc.worker_id,
+                opening_balance: Number(cc.opening_balance) || 0,
+                expected_balance: Number(cc.expected_balance) || 0,
+                actual_balance: Number(cc.actual_balance) || 0,
+                difference: Number(cc.difference) || 0,
+                bill_details_json: cc.bill_details_json,
+                observations: cc.observations || null,
+                status: cc.status || 'submitted',
+                created_at: cc.created_at,
+                updated_at: cc.updated_at,
+                synced: true
+              });
+              pulledCount++;
+            }
+          }
           console.log(`✅ [SupabaseSync] Merged ${pulledCount} cloud items directly into IndexedDB.`);
         }
 
@@ -571,6 +720,11 @@ export class SupabaseSyncService {
           ...(remoteIngredients || []),
           ...(cleanRecipes || []),
           ...(remoteStores || []),
+          ...remoteProductFamilies,
+          ...remoteSuppliers,
+          ...remoteSupplierPayments,
+          ...remotePurchaseOrders,
+          ...remoteCashClosings,
           ...(cleanMovements || []).map((m: any) => ({ ...m, updated_at: m.created_at }))
         ];
         for (const item of allItems) {
