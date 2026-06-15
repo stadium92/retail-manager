@@ -74,7 +74,11 @@ export class OfflineAuthService {
   }
 
   private static getLocalBridgeBaseUrl(): string {
-    return getDataClient().localBridgeBaseUrl;
+    const dc = getDataClient();
+    if (!dc.isLocalFirst) {
+      return (import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-project.supabase.co').replace(/\/$/, '');
+    }
+    return dc.localBridgeBaseUrl;
   }
 
   private static toSupabaseUser(payload: LocalBridgeUserPayload): User {
@@ -263,7 +267,7 @@ export class OfflineAuthService {
       clearTimeout(timeoutId);
 
       // Handle 401 Unauthorized - Silent Refresh & Retry
-      if (response.status === 401 && retry) {
+      if (response.status === 401 && retry && getDataClient().isLocalFirst) {
         console.warn('[OfflineAuth] 401 detected, attempting silent recovery...');
         const session = this.getLocalBridgeSession();
         if (session?.refreshToken) {
@@ -550,7 +554,15 @@ export class OfflineAuthService {
   }
 
   static async getAuthHeaders(): Promise<Record<string, string> | null> {
-    if (!this.isLocalBridgeMode()) return null;
+    const dc = getDataClient();
+    if (!dc.isLocalFirst) {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+      return {
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+        'Authorization': `Bearer ${token}`
+      };
+    }
     const cache = await this.getValidLocalBridgeSession();
     if (!cache) return null;
     return { Authorization: `Bearer ${cache.accessToken}` };
@@ -575,18 +587,36 @@ export class OfflineAuthService {
   }
   
   static async verifyMasterPassword(password: string): Promise<boolean> {
-    if (!this.isLocalBridgeMode()) {
-      return false; // Not supported in legacy offline mode for now
+    if (this.isLocalBridgeMode()) {
+      try {
+        const res = await fetch(`${this.getLocalBridgeBaseUrl()}/rest/v1/auth/verify-master`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password }),
+        });
+        return res.ok;
+      } catch (e) {
+        console.error('[OfflineAuth] verifyMasterPassword error:', e);
+        return false;
+      }
     }
+
+    // Pure Cloud mode: Verify against master password cached in browser IndexedDB
     try {
-      const res = await fetch(`${this.getLocalBridgeBaseUrl()}/rest/v1/auth/verify-master`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-      });
-      return res.ok;
+      await LocalDatabase.init();
+      const users = await LocalDatabase.getAllUsers();
+      for (const u of users) {
+        const roles = await LocalDatabase.getRolesByUserId(u.id);
+        const isMaster = roles.some(r => r.role === 'master');
+        if (isMaster && u.password_hash) {
+          if (LocalDatabase.verifyPassword(password, u.password_hash)) {
+            return true;
+          }
+        }
+      }
+      return false;
     } catch (e) {
-      console.error('[OfflineAuth] verifyMasterPassword error:', e);
+      console.error('[OfflineAuth] verifyMasterPassword cloud fallback error:', e);
       return false;
     }
   }
