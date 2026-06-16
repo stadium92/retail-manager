@@ -532,6 +532,8 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                         <TableHead className="text-xs text-center">{t('pos.grid.headers.qty')}</TableHead>
                         <TableHead className="text-xs text-right">{t('pos.grid.headers.price')}</TableHead>
                         <TableHead className="text-xs text-right">{t('common.total')}</TableHead>
+                        <TableHead className="text-xs text-right">{t('menu.program.amount', 'Payé')}</TableHead>
+                        <TableHead className="text-xs text-right">{t('menu.program.remaining', 'Reste')}</TableHead>
                         <TableHead className="text-xs">{t('edition.seller')}</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -550,14 +552,40 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              <Badge variant={(sale.payment_status === 'paid' && sale.sale_type !== 'proforma') ? 'success' : 'warning'} className={cn("text-[9px] uppercase font-bold px-1", (sale.payment_status === 'paid' && sale.sale_type !== 'proforma') && "bg-success text-white")}>
-                                {(sale.payment_status === 'paid' && sale.sale_type !== 'proforma') ? t('edition.paid') : t('edition.pending')}
-                              </Badge>
+                              {sale.payment_status === 'partial' ? (
+                                <Badge variant="warning" className="text-[9px] uppercase font-bold px-1 bg-orange-500 text-white">
+                                  {t('menu.program.partial', 'Partiel')}
+                                </Badge>
+                              ) : sale.payment_status === 'pending' ? (
+                                <Badge variant="destructive" className="text-[9px] uppercase font-bold px-1">
+                                  {t('menu.program.unpaid', 'Impayé')}
+                                </Badge>
+                              ) : (sale.payment_status === 'paid' && sale.sale_type !== 'proforma') ? (
+                                <Badge variant="success" className="text-[9px] uppercase font-bold px-1 bg-success text-white">
+                                  {t('edition.paid')}
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="text-[9px] uppercase font-bold px-1">
+                                  {t('edition.pending')}
+                                </Badge>
+                              )}
                             </TableCell>
                             <TableCell className="text-xs font-medium uppercase">{getProductName(item)}</TableCell>
                             <TableCell className="text-xs text-center font-mono">{item.quantity}</TableCell>
                             <TableCell className="text-xs text-right font-mono">{formatCurrency(item.unit_price)}</TableCell>
                             <TableCell className="text-xs text-right font-bold font-mono">{formatCurrency(item.total)}</TableCell>
+                            {idx === 0 ? (
+                              <>
+                                <TableCell className="text-xs text-right font-mono text-green-600" rowSpan={(sale.items?.length || sale.sale_items?.length || 1)}>
+                                  {(sale as any).amount_paid != null ? formatCurrency(Number((sale as any).amount_paid)) : '—'}
+                                </TableCell>
+                                <TableCell className="text-xs text-right font-bold font-mono text-red-500" rowSpan={(sale.items?.length || sale.sale_items?.length || 1)}>
+                                  {(sale as any).amount_paid != null
+                                    ? formatCurrency(Math.max(0, Number(sale.total_price) - Number((sale as any).amount_paid)))
+                                    : '—'}
+                                </TableCell>
+                              </>
+                            ) : null}
                             <TableCell className="text-xs font-medium">{workerMap[sale.worker_id || ''] || ((isLoading && !workerMap[sale.worker_id || '']) ? '...' : (sale.worker_id ? (sale.worker_id.length < 15 ? sale.worker_id : `ID: ${sale.worker_id.slice(0,8)}`) : '—'))}</TableCell>
                           </TableRow>
                         ))

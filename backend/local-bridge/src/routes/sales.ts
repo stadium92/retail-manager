@@ -187,6 +187,87 @@ export async function registerSalesRoutes(app: FastifyInstance) {
     return reply.send(updated);
   });
 
+  // Dedicated partial/full settlement endpoint for credit sales
+  app.patch('/rest/v1/sales/:id/settle', async (request, reply) => {
+    const claims = authenticateRequest(request, reply, ['master', 'worker']);
+    if (!claims) return;
+
+    const settleSchema = z.object({
+      amount: z.number().positive(),
+      notes: z.string().nullable().optional(),
+    });
+
+    const parsed = settleSchema.safeParse(request.body ?? {});
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'ValidationFailed', details: parsed.error.flatten() });
+    }
+
+    const saleId = (request.params as { id: string }).id;
+    const existing = db.getSaleById(saleId);
+    if (!existing) {
+      return reply.status(404).send({ error: 'NotFound', message: 'Sale not found.' });
+    }
+    if (claims.store_id && claims.store_id !== existing.store_id && claims.role !== 'master') {
+      return reply.status(403).send({ error: 'Forbidden', message: 'Cannot settle this sale.' });
+    }
+
+    const existingAmountPaid = Number((existing as any).amount_paid) || 0;
+    const totalPrice = Number(existing.total_price) || 0;
+    const settlementAmount = parsed.data.amount;
+
+    // Guard: cannot pay more than what is owed
+    const remaining = totalPrice - existingAmountPaid;
+    if (settlementAmount > remaining + 0.01) {
+      return reply.status(400).send({
+        error: 'OverPayment',
+        message: `Settlement amount (${settlementAmount}) exceeds remaining balance (${remaining}).`,
+      });
+    }
+
+    const newAmountPaid = existingAmountPaid + settlementAmount;
+    const newStatus = newAmountPaid >= totalPrice ? 'paid' : 'partial';
+    const now = new Date().toISOString();
+
+    // Update sale with new amount_paid and status
+    const updated = db.updateSale(saleId, {
+      amount_paid: newAmountPaid,
+      payment_status: newStatus,
+      updated_at: now,
+      ...(parsed.data.notes ? { notes: parsed.data.notes } : {}),
+    } as any);
+
+    // Deduct the settlement amount from the client's current_balance (if applicable)
+    const clientId = (existing as any).client_id;
+    if (clientId) {
+      try {
+        (db as any).db.prepare(
+          'UPDATE clients SET current_balance = MAX(0, current_balance - ?) WHERE id = ?'
+        ).run(settlementAmount, clientId);
+      } catch (err) {
+        // Non-fatal: client balance update failure should not block the settlement
+        request.log.warn('[Sales/settle] Failed to update client balance for client %s: %s', clientId, err);
+      }
+    }
+
+    // Log settlement in audit
+    db.insertAuditLog({
+      id: crypto.randomUUID(),
+      timestamp: now,
+      user_id: claims.sub,
+      action_type: 'credit_settlement',
+      entity_affected: 'sale',
+      entity_id: saleId,
+      old_value: JSON.stringify({ amount_paid: existingAmountPaid, payment_status: (existing as any).payment_status }),
+      store_id: existing.store_id,
+    });
+
+    return reply.send({
+      ...updated,
+      settled: settlementAmount,
+      remaining: totalPrice - newAmountPaid,
+    });
+  });
+
   app.delete('/rest/v1/sales/:id', async (request, reply) => {
     const claims = authenticateRequest(request, reply, ['master']);
     if (!claims) return;

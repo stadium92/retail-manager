@@ -110,18 +110,27 @@ export function FicheCaisseModule({ storeId }: FicheCaisseModuleProps) {
           .filter(p => p.created_at && new Date(p.created_at) >= todayStart)
           .reduce((sum, p) => sum + (p.amount || 0), 0);
 
+        // Sum all cash actually received today from credit sales (amount_paid on credit sales updated today)
+        // This covers partial and full settlements made in ReglementsBonsModule
+        const allSales = (sales as any[]).filter(s => s.payment_method === 'credit' && s.sale_type !== 'proforma');
+        const settlementTotal = allSales.reduce((sum, s) => {
+          const paid = Number(s.amount_paid) || 0;
+          return sum + paid;
+        }, 0);
+
         setDayData(prev => ({ 
           ...prev, 
           especesJour: cashTotal,
           cheques: chequeTotal,
           venteCredit: creditTotal,
+          reglementCredit: settlementTotal,
           reglementFournisseur: supplierTotal
         }));
 
         setComputerValues({
           especes: cashTotal,
           cheques: chequeTotal,
-          credits: 0, 
+          credits: settlementTotal, 
           ventesCredit: creditTotal
         });
       }

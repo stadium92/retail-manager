@@ -183,14 +183,15 @@ export function ReglementsBonsModule({ storeId }: ReglementsBonsModuleProps) {
 
     setIsSaving(true);
     try {
-      const newAmountPaid = selectedSale.amount_paid + paymentAmount;
-      const newStatus = newAmountPaid >= selectedSale.total_price ? 'paid' : 'partial';
-
       if (useLocalBridge) {
-        await localBridgeRequest(`/rest/v1/sales/${selectedSale.id}`, {
+        // Use the dedicated settle endpoint which:
+        // 1. Adds `amount` to existing amount_paid (never overwrites)
+        // 2. Deducts from client's current_balance
+        // 3. Emits outbox event for Supabase sync
+        await localBridgeRequest(`/rest/v1/sales/${selectedSale.id}/settle`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ payment_status: newStatus, amount_paid: newAmountPaid }),
+          body: JSON.stringify({ amount: paymentAmount }),
         });
       } else {
         // No remote client available; settlement requires local bridge
@@ -199,23 +200,29 @@ export function ReglementsBonsModule({ storeId }: ReglementsBonsModuleProps) {
         return;
       }
 
+      const newAmountPaid = selectedSale.amount_paid + paymentAmount;
+      const newStatus = newAmountPaid >= selectedSale.total_price ? 'paid' : 'partial';
+
       toast.success(t('common.success'));
       
-      // Update local state
+      // Update local state — remove if fully paid, otherwise update remaining
       setCreditSales(sales => 
         sales.map(s => {
           if (s.id === selectedSale.id) {
             return { ...s, amount_paid: newAmountPaid, payment_status: newStatus as any };
           }
           return s;
-        }).filter(s => s.payment_status !== 'paid') // Remove fully paid
+        }).filter(s => s.payment_status !== 'paid') // Remove fully paid from the list
       );
+
+      // Notify other modules (EditionModule, FicheCaisseModule, etc.) to refresh
+      window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'sale' } }));
       
       setIsDialogOpen(false);
       setSelectedSale(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Settlement error:', error);
-      toast.error(t('common.error'));
+      toast.error(error?.message || t('common.error'));
     } finally {
       setIsSaving(false);
     }
