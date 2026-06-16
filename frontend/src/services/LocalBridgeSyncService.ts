@@ -233,22 +233,22 @@ function mapToSupabase(entityType: EntityType, raw: EntityRow): Record<string, u
     };
   }
 
-  // sale_item
-  const si = raw as SaleItemRow;
-  return {
-    id: si.id,
-    sale_id: si.sale_id,
-    product_id: si.product_id ?? null,
-    product_name: si.product_name,
-    quantity: si.quantity ?? 1,
-    unit_price: si.unit_price ?? 0,
-    discount: si.discount ?? 0,
-    total: si.total ?? 0,
-    version: si.version ?? 1,
-    deleted_at: si.deleted_at ?? null,
-    created_at: si.created_at ?? now,
-  };
-}
+  if (entityType === 'sale_item') {
+    const si = raw as SaleItemRow;
+    return {
+      id: si.id,
+      sale_id: si.sale_id,
+      product_id: si.product_id ?? null,
+      product_name: si.product_name,
+      quantity: si.quantity ?? 1,
+      unit_price: si.unit_price ?? 0,
+      discount: si.discount ?? 0,
+      total: si.total ?? 0,
+      version: si.version ?? 1,
+      deleted_at: si.deleted_at ?? null,
+      created_at: si.created_at ?? now,
+    };
+  }
 
   if (entityType === 'cashier_credit') {
     const c = raw as any;

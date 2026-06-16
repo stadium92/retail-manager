@@ -32,7 +32,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
-import { ProductLookupDialog } from '../worker/Sales/ProductLookupDialog';
+import { ProductLookupDialog } from '@/components/worker/Sales/ProductLookupDialog';
 
 
 export interface DashboardViewProps {

@@ -500,12 +500,6 @@ class LocalDatabaseService {
     });
   }
 
-  // ==================== STORES ====================
-
-  async saveStore(store: LocalStore): Promise<void> {
-    const db = await this.ensureDb();
-    db.transaction('stores', 'readwrite').objectStore('stores').put(store);
-  }
 
   async getAllStores(): Promise<LocalStore[]> {
     const db = await this.ensureDb();
