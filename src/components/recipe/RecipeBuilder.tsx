@@ -7,6 +7,8 @@ import { useTranslation } from 'react-i18next';
 import { Ingredient, RecipeIngredient } from '@/types/ingredients';
 import { IngredientSearchDropdown } from './IngredientSearchDropdown';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
+import { supabase } from '@/lib/supabase';
+import { getDataClient } from '@/lib/dataClient';
 import {
   DndContext,
   closestCenter,
@@ -184,22 +186,45 @@ export function RecipeBuilder({ dishId, storeId, sellingPrice, onChange, onCostC
       }
       setLoading(true);
       try {
-        const res = await OfflineAuthService.localBridgeRequest<RecipeIngredient[]>(
-          `/rest/v1/recipes?dish_id=${dishId}`,
-          { method: 'GET' }
-        );
-        const mapped = (res || []).map(r => ({
-          tempId: crypto.randomUUID(),
-          ingredient_id: r.ingredient_id,
-          ingredient_name: r.ingredient_name,
-          quantity_needed: r.quantity_needed,
-          unit: r.unit,
-          current_stock: r.current_stock,
-          cost_per_unit: r.cost_per_unit,
-          min_threshold: r.min_threshold,
-          default_unit: r.default_unit || r.unit,
-        }));
-        setItems(mapped);
+        const dc = getDataClient();
+        if (dc.isLocalFirst) {
+          const res = await OfflineAuthService.localBridgeRequest<RecipeIngredient[]>(
+            `/rest/v1/recipes?dish_id=${dishId}`,
+            { method: 'GET' }
+          );
+          const mapped = (res || []).map(r => ({
+            tempId: crypto.randomUUID(),
+            ingredient_id: r.ingredient_id,
+            ingredient_name: r.ingredient_name,
+            quantity_needed: r.quantity_needed,
+            unit: r.unit,
+            current_stock: r.current_stock,
+            cost_per_unit: r.cost_per_unit,
+            min_threshold: r.min_threshold,
+            default_unit: r.default_unit || r.unit,
+          }));
+          setItems(mapped);
+        } else {
+          const { data, error } = await supabase
+            .from('dish_recipes')
+            .select('*, ingredients(*)')
+            .eq('dish_id', dishId);
+          
+          if (error) throw error;
+          
+          const mapped = (data || []).map((r: any) => ({
+            tempId: crypto.randomUUID(),
+            ingredient_id: r.ingredient_id,
+            ingredient_name: r.ingredients?.name || '—',
+            quantity_needed: r.quantity_needed,
+            unit: r.unit,
+            current_stock: r.ingredients?.current_stock || 0,
+            cost_per_unit: r.ingredients?.cost_per_unit || 0,
+            min_threshold: r.ingredients?.min_threshold || 0,
+            default_unit: r.ingredients?.unit || r.unit,
+          }));
+          setItems(mapped);
+        }
       } catch (err) {
         console.error('Failed to load recipe:', err);
       } finally {

@@ -522,11 +522,6 @@ class LocalDatabaseService {
     });
   }
 
-  async deleteStore(id: string): Promise<void> {
-    const db = await this.ensureDb();
-    db.transaction('stores', 'readwrite').objectStore('stores').delete(id);
-  }
-
   // ==================== PRODUCT FAMILIES ====================
 
   async saveProductFamily(family: LocalProductFamily): Promise<void> {

@@ -18,6 +18,8 @@ import { Ingredient, StockDashboard } from '@/types/ingredients';
 import { PortionsGauge } from '@/components/stock/PortionsGauge';
 import { PerishableAlertCard } from '@/components/stock/PerishableAlertCard';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
+import { getDataClient } from '@/lib/dataClient';
 
 // ─── Movement type helpers ────────────────────────────────────────────────────
 interface IngredientMovement {
@@ -95,11 +97,107 @@ export function IngredientsPage() {
     if (!storeId) return;
     setLoading(true);
     try {
-      const res = await OfflineAuthService.localBridgeRequest<StockDashboard>(
-        `/rest/v1/stock/dashboard?store_id=${storeId}`,
-        { method: 'GET' }
-      );
-      if (res) setDashboardData(res);
+      const dc = getDataClient();
+      if (dc.isLocalFirst) {
+        const res = await OfflineAuthService.localBridgeRequest<StockDashboard>(
+          `/rest/v1/stock/dashboard?store_id=${storeId}`,
+          { method: 'GET' }
+        );
+        if (res) setDashboardData(res);
+      } else {
+        const { data: ingData, error: ingErr } = await supabase
+          .from('ingredients')
+          .select('*')
+          .eq('restaurant_id', storeId)
+          .order('name', { ascending: true });
+        
+        if (ingErr) throw ingErr;
+
+        const ingredients = (ingData || []).map((i: any) => ({
+          ...i,
+          store_id: i.restaurant_id
+        })) as Ingredient[];
+
+        const low_stock = ingredients.filter(i => i.current_stock < i.min_threshold);
+        
+        const expiring_soon: Ingredient[] = [];
+        const today = new Date();
+        for (const i of ingredients) {
+          if (i.expiry_date) {
+            const exp = new Date(i.expiry_date);
+            const daysLeft = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            if (daysLeft >= 0 && daysLeft <= 3) {
+              expiring_soon.push(i);
+            }
+          }
+        }
+
+        const { data: menuData, error: menuErr } = await supabase
+          .from('menu_items')
+          .select('id, name')
+          .eq('restaurant_id', storeId);
+        
+        if (menuErr) throw menuErr;
+
+        const { data: recipeData, error: recipeErr } = await supabase
+          .from('dish_recipes')
+          .select('*, ingredients(*)');
+        
+        if (recipeErr) throw recipeErr;
+
+        const portions_remaining: any[] = [];
+        const recipesByDish = (recipeData || []).reduce((acc: any, row: any) => {
+          if (!acc[row.dish_id]) acc[row.dish_id] = [];
+          acc[row.dish_id].push({
+            ...row,
+            ingredient_name: row.ingredients?.name || '—',
+            current_stock: row.ingredients?.current_stock || 0,
+            cost_per_unit: row.ingredients?.cost_per_unit || 0,
+            min_threshold: row.ingredients?.min_threshold || 0,
+            default_unit: row.ingredients?.unit || 'g'
+          });
+          return acc;
+        }, {});
+
+        for (const dish of (menuData || [])) {
+          const recipe = recipesByDish[dish.id] || [];
+          if (recipe.length > 0) {
+            let maxPortions = Infinity;
+            let limitingIngredientName = '—';
+
+            for (const item of recipe) {
+              const convertQuantity = (qty: number, from: string, to: string) => {
+                if (from === to) return qty;
+                if (from === 'kg' && to === 'g') return qty * 1000;
+                if (from === 'g' && to === 'kg') return qty / 1000;
+                if (from === 'L' && to === 'ml') return qty * 1000;
+                if (from === 'ml' && to === 'L') return qty / 1000;
+                return qty;
+              };
+              const currentStockInRecipeUnit = convertQuantity(item.current_stock, item.default_unit, item.unit);
+              const possiblePortions = item.quantity_needed > 0 ? (currentStockInRecipeUnit / item.quantity_needed) : Infinity;
+              if (possiblePortions < maxPortions) {
+                maxPortions = possiblePortions;
+                limitingIngredientName = item.ingredient_name;
+              }
+            }
+
+            portions_remaining.push({
+              dish_id: dish.id,
+              dish_name: dish.name,
+              max_portions: maxPortions === Infinity ? 0 : Math.floor(maxPortions),
+              limiting_ingredient: maxPortions === Infinity ? undefined : limitingIngredientName,
+            });
+          }
+        }
+
+        setDashboardData({
+          ingredients,
+          portions_remaining: portions_remaining.sort((a, b) => a.max_portions - b.max_portions),
+          expiring_soon,
+          low_stock
+        });
+      }
     } catch (err) {
       console.error('Failed to load dashboard:', err);
       toast.error('Erreur de chargement du tableau de bord');
@@ -161,24 +259,52 @@ export function IngredientsPage() {
 
     setSaving(true);
     try {
-      const payload = {
+      const dc = getDataClient();
+      const payload: any = {
         ...formState,
-        store_id: storeId,
+        restaurant_id: storeId,
         expiry_date: formState.expiry_date || null,
       };
 
-      if (editingIngredient) {
-        await OfflineAuthService.localBridgeRequest<Ingredient>(
-          `/rest/v1/ingredients/${editingIngredient.id}`,
-          { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
-        );
-        toast.success('Ingrédient mis à jour avec succès');
+      if (dc.isLocalFirst) {
+        const localPayload = {
+          ...formState,
+          store_id: storeId,
+          expiry_date: formState.expiry_date || null,
+        };
+        if (editingIngredient) {
+          await OfflineAuthService.localBridgeRequest<Ingredient>(
+            `/rest/v1/ingredients/${editingIngredient.id}`,
+            { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(localPayload) }
+          );
+          toast.success('Ingrédient mis à jour avec succès');
+        } else {
+          await OfflineAuthService.localBridgeRequest<Ingredient>(
+            '/rest/v1/ingredients',
+            { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(localPayload) }
+          );
+          toast.success('Ingrédient créé avec succès');
+        }
       } else {
-        await OfflineAuthService.localBridgeRequest<Ingredient>(
-          '/rest/v1/ingredients',
-          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
-        );
-        toast.success('Ingrédient créé avec succès');
+        if (editingIngredient) {
+          const { error } = await supabase
+            .from('ingredients')
+            .update(payload)
+            .eq('id', editingIngredient.id);
+          if (error) throw error;
+          toast.success('Ingrédient mis à jour avec succès');
+        } else {
+          const { error } = await supabase
+            .from('ingredients')
+            .insert({
+              id: crypto.randomUUID(),
+              ...payload,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+          if (error) throw error;
+          toast.success('Ingrédient créé avec succès');
+        }
       }
       setIsFormOpen(false);
       fetchDashboard();
@@ -194,7 +320,16 @@ export function IngredientsPage() {
   const handleDeleteIngredient = async (id: string) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cet ingrédient ? Cela supprimera également ses liaisons de recette.')) return;
     try {
-      await OfflineAuthService.localBridgeRequest(`/rest/v1/ingredients/${id}`, { method: 'DELETE' });
+      const dc = getDataClient();
+      if (dc.isLocalFirst) {
+        await OfflineAuthService.localBridgeRequest(`/rest/v1/ingredients/${id}`, { method: 'DELETE' });
+      } else {
+        const { error } = await supabase
+          .from('ingredients')
+          .delete()
+          .eq('id', id);
+        if (error) throw error;
+      }
       toast.success('Ingrédient supprimé');
       fetchDashboard();
     } catch (err) {
@@ -217,10 +352,35 @@ export function IngredientsPage() {
     if (!restockTarget || restockQty <= 0) return;
     setRestocking(true);
     try {
-      await OfflineAuthService.localBridgeRequest(
-        `/rest/v1/ingredients/${restockTarget.id}/restock`,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quantity: restockQty, note: restockNote || undefined }) }
-      );
+      const dc = getDataClient();
+      if (dc.isLocalFirst) {
+        await OfflineAuthService.localBridgeRequest(
+          `/rest/v1/ingredients/${restockTarget.id}/restock`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quantity: restockQty, note: restockNote || undefined }) }
+        );
+      } else {
+        const now = new Date().toISOString();
+        const newStock = restockTarget.current_stock + restockQty;
+        const { error: updErr } = await supabase
+          .from('ingredients')
+          .update({ current_stock: newStock, updated_at: now })
+          .eq('id', restockTarget.id);
+        
+        if (updErr) throw updErr;
+
+        const { error: movErr } = await supabase
+          .from('ingredient_movements')
+          .insert({
+            id: crypto.randomUUID(),
+            ingredient_id: restockTarget.id,
+            movement_type: 'restock',
+            quantity_delta: restockQty,
+            note: restockNote || 'Réapprovisionnement manuel',
+            created_at: now
+          });
+
+        if (movErr) throw movErr;
+      }
       toast.success('Réapprovisionnement enregistré');
       setIsRestockOpen(false);
       fetchDashboard();
@@ -246,10 +406,35 @@ export function IngredientsPage() {
     if (!wasteTarget || wasteQty <= 0) return;
     setLoggingWaste(true);
     try {
-      await OfflineAuthService.localBridgeRequest(
-        `/rest/v1/ingredients/${wasteTarget.id}/waste`,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quantity: wasteQty, note: wasteNote || undefined }) }
-      );
+      const dc = getDataClient();
+      if (dc.isLocalFirst) {
+        await OfflineAuthService.localBridgeRequest(
+          `/rest/v1/ingredients/${wasteTarget.id}/waste`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quantity: wasteQty, note: wasteNote || undefined }) }
+        );
+      } else {
+        const now = new Date().toISOString();
+        const newStock = Math.max(0, wasteTarget.current_stock - wasteQty);
+        const { error: updErr } = await supabase
+          .from('ingredients')
+          .update({ current_stock: newStock, updated_at: now })
+          .eq('id', wasteTarget.id);
+        
+        if (updErr) throw updErr;
+
+        const { error: movErr } = await supabase
+          .from('ingredient_movements')
+          .insert({
+            id: crypto.randomUUID(),
+            ingredient_id: wasteTarget.id,
+            movement_type: 'waste',
+            quantity_delta: -wasteQty,
+            note: wasteNote || 'Déchet manuel',
+            created_at: now
+          });
+
+        if (movErr) throw movErr;
+      }
       toast.success(`Déchet enregistré : -${wasteQty} ${wasteTarget.unit}`);
       setIsWasteOpen(false);
       fetchDashboard();
@@ -268,11 +453,24 @@ export function IngredientsPage() {
     setIsMovementsOpen(true);
     setLoadingMovements(true);
     try {
-      const res = await OfflineAuthService.localBridgeRequest<IngredientMovement[]>(
-        `/rest/v1/ingredients/${ing.id}/movements?limit=100`,
-        { method: 'GET' }
-      );
-      setMovements(res ?? []);
+      const dc = getDataClient();
+      if (dc.isLocalFirst) {
+        const res = await OfflineAuthService.localBridgeRequest<IngredientMovement[]>(
+          `/rest/v1/ingredients/${ing.id}/movements?limit=100`,
+          { method: 'GET' }
+        );
+        setMovements(res ?? []);
+      } else {
+        const { data, error } = await supabase
+          .from('ingredient_movements')
+          .select('*')
+          .eq('ingredient_id', ing.id)
+          .order('created_at', { ascending: false })
+          .limit(100);
+        
+        if (error) throw error;
+        setMovements((data || []) as any[]);
+      }
     } catch (err) {
       console.error('Movements fetch error:', err);
       toast.error('Impossible de charger l\'historique');
