@@ -958,7 +958,8 @@
       "proforma": "PROFORMA INVOICE",
       "invoice_number": "Invoice No.",
       "closeCash": "CASH CLOSING",
-      "settlement": "Settlement of BILLS"
+      "settlement": "Settlement of BILLS",
+      "cashierCredits": "Cashier Credits"
     },
     "purchases": {
       "trigger": "Purchases",

@@ -13,7 +13,7 @@ const MAX_OUTBOX_BATCH = 100;
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type NetworkHealthStatus = 'ONLINE' | 'OFFLINE' | 'CLOCK_SKEW' | 'FIREWALL_BLOCKED' | 'ISP_BLOCKED' | 'RATE_LIMITED';
 
-type EntityType = 'product' | 'sale' | 'sale_item' | 'users' | 'user_roles';
+type EntityType = 'product' | 'sale' | 'sale_item' | 'users' | 'user_roles' | 'cashier_credit' | 'stock_adjustment';
 type Operation = 'create' | 'update' | 'delete' | 'upsert';
 
 interface OutboxEntry {
@@ -128,6 +128,8 @@ const TABLE_MAP: Record<EntityType | 'store', string> = {
   store: 'stores',
   users: 'offline_users',
   user_roles: 'user_roles',
+  cashier_credit: 'cashier_credits',
+  stock_adjustment: 'stock_adjustments',
 };
 
 function mapToSupabase(entityType: EntityType, raw: EntityRow): Record<string, unknown> {
@@ -246,6 +248,42 @@ function mapToSupabase(entityType: EntityType, raw: EntityRow): Record<string, u
     deleted_at: si.deleted_at ?? null,
     created_at: si.created_at ?? now,
   };
+}
+
+  if (entityType === 'cashier_credit') {
+    const c = raw as any;
+    return {
+      id: c.id,
+      store_id: c.store_id,
+      worker_id: c.worker_id,
+      client_name: c.client_name,
+      amount: Number(c.amount) || 0,
+      status: c.status ?? 'unpaid',
+      notes: c.notes ?? null,
+      version: c.version ?? 1,
+      deleted_at: c.deleted_at ?? null,
+      created_at: c.created_at ?? now,
+      updated_at: c.updated_at ?? now,
+    };
+  }
+
+  if (entityType === 'stock_adjustment') {
+    const s = raw as any;
+    return {
+      id: s.id,
+      store_id: s.store_id,
+      worker_id: s.worker_id,
+      product_id: s.product_id,
+      adjustment_type: s.adjustment_type,
+      quantity_adjusted: Number(s.quantity_adjusted) || 0,
+      reason: s.reason ?? null,
+      version: s.version ?? 1,
+      deleted_at: s.deleted_at ?? null,
+      created_at: s.created_at ?? now,
+    };
+  }
+
+  return {};
 }
 
 export class LocalBridgeSyncService {
@@ -484,9 +522,11 @@ export class LocalBridgeSyncService {
       console.log(`[LocalBridgeSyncService] Pulling changes since ${since}…`);
 
       // 2. Fetch changed rows from Supabase (sales includes nested sale_items)
-      const [products, sales] = await Promise.all([
+      const [products, sales, cashier_credits, stock_adjustments] = await Promise.all([
         this.fetchTable('products', since, targetStoreId),
         this.fetchTable('sales', since, targetStoreId),
+        this.fetchTable('cashier_credits', since, targetStoreId),
+        this.fetchTable('stock_adjustments', since, targetStoreId),
       ]);
 
       // Extract and flatten sale_items from the sales payload
@@ -499,13 +539,13 @@ export class LocalBridgeSyncService {
         return rest;
       });
 
-      const total = products.length + cleanedSales.length + saleItems.length;
+      const total = products.length + cleanedSales.length + saleItems.length + cashier_credits.length + stock_adjustments.length;
       if (total === 0) {
         console.log('[LocalBridgeSyncService] No remote changes found.');
         return { pulled: 0 };
       }
 
-      console.log(`[LocalBridgeSyncService] Merging ${products.length} products, ${cleanedSales.length} sales, ${saleItems.length} sale_items…`);
+      console.log(`[LocalBridgeSyncService] Merging ${products.length} products, ${cleanedSales.length} sales, ${saleItems.length} sale_items, ${cashier_credits.length} cashier_credits, ${stock_adjustments.length} stock_adjustments…`);
 
       // 3. Post to /sync/merge
       const mergeResp = await smartFetch(`${dataClient.localBridgeBaseUrl}/sync/merge`, {
@@ -516,6 +556,8 @@ export class LocalBridgeSyncService {
           products,
           sales: cleanedSales,
           sale_items: saleItems,
+          cashier_credits,
+          stock_adjustments,
           pulled_at: pulledAt,
         }),
       });
@@ -533,7 +575,13 @@ export class LocalBridgeSyncService {
         void this.checkNetworkHealth();
       }
 
-      return { pulled: (mergeResult.merged?.products || 0) + (mergeResult.merged?.sales || 0) + (mergeResult.merged?.sale_items || 0) };
+      return {
+        pulled: (mergeResult.merged?.products || 0) +
+                (mergeResult.merged?.sales || 0) +
+                (mergeResult.merged?.sale_items || 0) +
+                (mergeResult.merged?.cashier_credits || 0) +
+                (mergeResult.merged?.stock_adjustments || 0)
+      };
     } catch (err) {
       console.error('[LocalBridgeSyncService] pullData error:', err);
       this.currentPullInterval = Math.min(this.currentPullInterval * 1.5, MAX_BACKOFF_MS); // Exponential backoff
@@ -548,14 +596,15 @@ export class LocalBridgeSyncService {
     storeId: string
   ): Promise<Record<string, unknown>[]> {
     const selectFields = table === 'sales' ? '*, sale_items(*)' : '*';
-    const query = supabase.from(table).select(selectFields).gt('updated_at', since);
+    const dateField = table === 'stock_adjustments' ? 'created_at' : 'updated_at';
+    const query = supabase.from(table).select(selectFields).gt(dateField, since);
 
     // Filter by store_id relation
-    if (table === 'products' || table === 'sales') {
+    if (table === 'products' || table === 'sales' || table === 'cashier_credits' || table === 'stock_adjustments') {
       query.eq('store_id', storeId);
     }
 
-    const { data, error } = await query.order('updated_at', { ascending: true });
+    const { data, error } = await query.order(dateField, { ascending: true });
 
     if (error) {
       console.error(`[LocalBridgeSyncService] Pull error on "${table}":`, error.message);
@@ -567,7 +616,7 @@ export class LocalBridgeSyncService {
 
   // ── Realtime ───────────────────────────────────────────────────────────────
   private static subscribeRealtime(storeId: string): void {
-    const tables = ['products', 'sales', 'sale_items'] as const;
+    const tables = ['products', 'sales', 'sale_items', 'cashier_credits', 'stock_adjustments'] as const;
 
     tables.forEach((table) => {
       const filterStr = table === 'sale_items' ? undefined : `store_id=eq.${storeId}`;

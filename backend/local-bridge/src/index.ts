@@ -17,6 +17,8 @@ import { registerAnalyticsRoutes } from './routes/analytics.js';
 import { registerAuditRoutes } from './routes/audit.js';
 import { registerCashRoutes } from './routes/cash.js';
 import { registerSystemRoutes } from './routes/system.js';
+import { registerCashierCreditsRoutes } from './routes/cashier_credits.js';
+import { registerStockAdjustmentsRoutes } from './routes/stock_adjustments.js';
 import { db } from './db/index.js';
 import { runScheduler } from './scheduler.js';
 
@@ -98,6 +100,9 @@ async function start() {
   await registerAuditRoutes(app);
   await registerCashRoutes(app);
   await registerSystemRoutes(app);
+  await registerCashierCreditsRoutes(app);
+  await registerStockAdjustmentsRoutes(app);
+
 
   // Auto-heal fragmented stores from old bug
   try {

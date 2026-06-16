@@ -20,6 +20,7 @@ export type WorkerModule =
   | 'proforma'
   | 'fermeture-caisse'
   | 'reglements-bons'
+  | 'credits-caisse'
   | 'reception-achats'
   | 'commande-auto'
   | 'commande-manuelle'
@@ -88,6 +89,7 @@ export function WorkerMenuBar({ activeModule, onModuleChange, className }: Worke
                 { labelKey: 'menu.sales.proforma', module: 'proforma' },        { separator: true },
         { labelKey: 'menu.sales.closeCash', module: 'fermeture-caisse', shortcut: 'F12' },
         { labelKey: 'menu.sales.settlement', module: 'reglements-bons' },
+        { labelKey: 'menu.sales.cashierCredits', module: 'credits-caisse' },
       ],
     },
     {
