@@ -184,8 +184,13 @@ export const createSalesRepo = (db: Database.Database) => {
       id: saleId,
       ...Object.fromEntries(normalizedEntries),
     });
-    
-    return stmts.getSale.get(saleId) as LocalSale | undefined;
+
+    const updated = stmts.getSale.get(saleId) as LocalSale | undefined;
+    if (updated) {
+      // Emit outbox so this update (e.g. a partial credit settlement) is synced to Supabase
+      emitOutbox(db, updated.store_id, 'sale', saleId, 'update', updated as unknown as Record<string, unknown>);
+    }
+    return updated;
   },
 
   deleteSale(saleId: string) {
