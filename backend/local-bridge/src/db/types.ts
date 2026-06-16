@@ -366,9 +366,37 @@ export interface ReplenishmentNeed {
   selling_price_4?: number;
 }
 
+export interface LocalCashierCredit {
+  id: string;
+  store_id: string;
+  worker_id: string;
+  client_name: string;
+  amount: number;
+  status: 'unpaid' | 'paid';
+  notes?: string | null;
+  version?: number;
+  deleted_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LocalStockAdjustment {
+  id: string;
+  store_id: string;
+  worker_id: string;
+  product_id: string;
+  adjustment_type: string; // 'loss' | 'damage' | 'inventory_count' | 'other'
+  quantity_adjusted: number;
+  reason?: string | null;
+  version?: number;
+  deleted_at?: string | null;
+  created_at: string;
+}
+
 // Helper to prevent database corruption from null bytes or control characters
 export const sanitizeString = (str?: string | null) => {
   if (!str) return str;
   // Remove control characters (0-31) except newlines/tabs, and delete (127)
   return str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "").trim();
 };
+

@@ -31,6 +31,7 @@ import { SettingsModule } from '../Modules/SettingsModule';
 import { useGlobalKeyboard, useNavigationStore } from '@/navigation';
 import { ReglementsBonsModule } from '../Modules/ReglementsBonsModule';
 import { resetMasterPasswordGates } from '@/components/shared/MasterPasswordGate';
+import { CashierCreditsModule } from '../Modules/CashierCreditsModule';
 
 interface WorkerLayoutProps {
   className?: string;
@@ -72,6 +73,7 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
     'proforma': t('menu.sales.proforma'),
     'fermeture-caisse': t('menu.sales.closeCash'),
     'reglements-bons': t('menu.sales.settlement'),
+    'credits-caisse': t('menu.sales.cashierCredits'),
     'reception-achats': t('menu.purchases.reception'),
     'commande-auto': t('menu.purchases.autoOrder'),
     'commande-manuelle': t('menu.purchases.manualOrder'),
@@ -228,6 +230,9 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
 
       case 'reglements-bons':
         return <ReglementsBonsModule storeId={storeId} />;
+
+      case 'credits-caisse':
+        return <CashierCreditsModule storeId={storeId} />;
 
       case 'situation-client':
       case 'suivi-ventes-jour':

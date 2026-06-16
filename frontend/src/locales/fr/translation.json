@@ -1032,7 +1032,8 @@
       "proforma": "FACTURE PROFORMA",
       "invoice_number": "N° Facture",
       "closeCash": "FERMETURE CAISSE",
-      "settlement": "Règlement de FACTURES"
+      "settlement": "Règlement de FACTURES",
+      "cashierCredits": "Crédits Caissiers"
     },
     "purchases": {
       "trigger": "Achats",

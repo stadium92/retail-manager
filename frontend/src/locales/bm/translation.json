@@ -1040,7 +1040,8 @@
       "proforma": "Facture PROFORMA",
       "invoice_number": "Facture nimɔrɔ",
       "closeCash": "Caisse da",
-      "settlement": "Facture sara"
+      "settlement": "Facture sara",
+      "cashierCredits": "Caissier ka juru"
     },
     "purchases": {
       "trigger": "Achats",

@@ -20,6 +20,7 @@ import { Search, Save, RotateCcw, WifiOff, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { OfflineDataService } from '@/services/OfflineDataService';
+import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { useProductScanner } from '@/hooks/useProductScanner';
 import { Product } from '@/types';
 import { cn } from '@/lib/utils';
@@ -46,16 +47,11 @@ export function RegularisationStock({ storeId }: RegularisationStockProps) {
 
   const fetchHistory = async () => {
     try {
-      const { movements } = await OfflineDataService.getStockMovements(storeId);
-      // Broaden filter: include anything that looks like an adjustment or manual stock change
-      const regMovs = movements.filter(m => 
-        m.reason?.toLowerCase().includes('regularisation') || 
-        m.reason?.toLowerCase().includes('ajustement') || 
-        m.reason?.toLowerCase().includes('inventaire') ||
-        m.reason?.toLowerCase().includes('correction') ||
-        m.reason?.toLowerCase().includes('perte')
+      const data = await OfflineAuthService.localBridgeRequest<any[]>(
+        `/rest/v1/stock_adjustments?store_id=${storeId}`,
+        { method: 'GET' }
       );
-      setHistory(regMovs.slice(0, 20)); // Show last 20 for better visibility
+      setHistory(data || []);
     } catch (e) {
       console.error('Failed to fetch reg history:', e);
     }
@@ -110,16 +106,35 @@ export function RegularisationStock({ storeId }: RegularisationStockProps) {
         finalQtyInPieces = regQuantity * packaging;
       }
 
+      let delta = 0;
       let newQuantity = 0;
       if (regAdjustmentType === 'real') {
          newQuantity = Math.max(0, finalQtyInPieces);
+         delta = newQuantity - regProduct.quantity;
       } else {
-         newQuantity = regProduct.quantity + finalQtyInPieces; 
+         delta = finalQtyInPieces;
+         newQuantity = regProduct.quantity + delta; 
       }
 
-      // We prefix with 'Regularisation: ' to ensure it's picked up by the filter
-      const fullReason = `Regularisation: ${regReason}`;
-      await OfflineDataService.updateProductStock(storeId, regProduct.id, newQuantity, fullReason);
+      let adjType: 'loss' | 'damage' | 'inventory_count' | 'other' = 'other';
+      if (regReason === 'Trouvé' || regReason === 'Erreur de comptage' || regReason === 'Correction inventaire') {
+        adjType = 'inventory_count';
+      } else if (regReason === 'Don / Cadeau') {
+        adjType = 'other';
+      } else {
+        adjType = 'loss';
+      }
+
+      await OfflineAuthService.localBridgeRequest('/rest/v1/stock_adjustments', {
+        method: 'POST',
+        body: JSON.stringify({
+          store_id: storeId,
+          product_id: regProduct.id,
+          adjustment_type: adjType,
+          quantity_adjusted: delta,
+          reason: regReason,
+        })
+      });
       
       toast.success(`${t('common.success')}: ${regProduct.name} → ${newQuantity} ${t('inventory.unitPiece')}`);
       
@@ -316,21 +331,28 @@ export function RegularisationStock({ storeId }: RegularisationStockProps) {
                 {history.map(m => (
                   <TableRow key={m.id} className="h-11 border-b hover:bg-muted/5 transition-colors">
                     <TableCell className="text-xs font-mono text-muted-foreground">
-                      {format(new Date(m.created_at || m.date || new Date()), 'HH:mm')}
+                      {format(new Date(m.created_at || new Date()), 'dd/MM HH:mm')}
                     </TableCell>
                     <TableCell className="text-xs font-black uppercase truncate max-w-[200px]">
-                      {m.product_name}
+                      {m.product_name || 'N/A'}
                     </TableCell>
                     <TableCell className={cn(
                       "text-xs text-center font-black font-mono",
-                      (m.movement_type || m.type) === 'in' ? "text-success" : "text-danger"
+                      m.quantity_adjusted >= 0 ? "text-success" : "text-danger"
                     )}>
-                      {(m.movement_type || m.type) === 'in' ? '+' : '-'}{m.quantity}
+                      {m.quantity_adjusted > 0 ? `+${m.quantity_adjusted}` : m.quantity_adjusted}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Badge variant="outline" className="text-[8px] uppercase border-muted-foreground/30 font-bold px-1 h-4">
-                        {m.reason?.replace('Regularisation: ', '')}
-                      </Badge>
+                      <div className="flex flex-col items-end gap-0.5">
+                        <Badge variant="outline" className="text-[8px] uppercase border-muted-foreground/30 font-bold px-1 h-4">
+                          {m.adjustment_type || 'autre'}
+                        </Badge>
+                        {m.reason && (
+                          <span className="text-[9px] text-muted-foreground max-w-[120px] truncate">
+                            {m.reason}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
