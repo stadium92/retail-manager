@@ -569,6 +569,22 @@ export class LocalBridgeSyncService {
 
       const mergeResult = await mergeResp.json();
       console.log('[LocalBridgeSyncService] Merge complete:', mergeResult.merged);
+
+      if (mergeResult.merged) {
+        const { products, sales, sale_items, cashier_credits, stock_adjustments } = mergeResult.merged;
+        if (products > 0) {
+          window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'product' } }));
+        }
+        if (sales > 0 || sale_items > 0) {
+          window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'sale' } }));
+        }
+        if (cashier_credits > 0) {
+          window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'cashier_credit' } }));
+        }
+        if (stock_adjustments > 0) {
+          window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
+        }
+      }
       
       this.currentPullInterval = PULL_INTERVAL_MS; // Reset backoff on success
       if (this.currentHealth !== 'ONLINE') {
