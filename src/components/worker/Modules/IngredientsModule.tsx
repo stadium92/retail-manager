@@ -17,9 +17,7 @@ import {
   DollarSign,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { OfflineAuthService } from '@/services/OfflineAuthService';
-import { supabase } from '@/lib/supabase';
-import { getDataClient } from '@/lib/dataClient';
+import { OfflineIngredientsService } from '@/services/OfflineIngredientsService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -139,28 +137,9 @@ export function IngredientsModule({ storeId }: IngredientsModuleProps) {
     if (!storeId) return;
     setLoading(true);
     try {
-      const dc = getDataClient();
-      if (dc.isLocalFirst) {
-        const data = await OfflineAuthService.localBridgeRequest<Ingredient[]>(
-          `/rest/v1/ingredients?store_id=${storeId}`,
-          { method: 'GET' },
-        );
-        setIngredients(data ?? []);
-      } else {
-        const { data: ingData, error: ingErr } = await supabase
-          .from('ingredients')
-          .select('*')
-          .eq('restaurant_id', storeId)
-          .order('name', { ascending: true });
-        
-        if (ingErr) throw ingErr;
-
-        const mapped = (ingData || []).map((i: any) => ({
-          ...i,
-          store_id: i.restaurant_id
-        })) as Ingredient[];
-        setIngredients(mapped);
-      }
+      const { data, error } = await OfflineIngredientsService.getIngredients(storeId);
+      if (error) throw error;
+      setIngredients(data ?? []);
     } catch (err) {
       console.error('Failed to fetch ingredients:', err);
       toast({
@@ -217,53 +196,14 @@ export function IngredientsModule({ storeId }: IngredientsModuleProps) {
     }
     setSubmitting(true);
     try {
-      const dc = getDataClient();
-      if (dc.isLocalFirst) {
-        if (editingItem) {
-          await OfflineAuthService.localBridgeRequest<Ingredient>(
-            `/rest/v1/ingredients/${editingItem.id}`,
-            { method: 'PATCH', body: JSON.stringify(form) },
-          );
-          toast({ title: '✓ Modifié', description: `"${form.name}" mis à jour.` });
-        } else {
-          await OfflineAuthService.localBridgeRequest<Ingredient>(
-            `/rest/v1/ingredients`,
-            {
-              method: 'POST',
-              body: JSON.stringify({ store_id: storeId, ...form }),
-            },
-          );
-          toast({ title: '✓ Ajouté', description: `"${form.name}" enregistré.` });
-        }
+      if (editingItem) {
+        const { error } = await OfflineIngredientsService.updateIngredient(editingItem.id, storeId, form);
+        if (error) throw error;
+        toast({ title: '✓ Modifié', description: `"${form.name}" mis à jour.` });
       } else {
-        const payload = {
-          name: form.name,
-          unit: form.unit,
-          category: form.category,
-          current_stock: form.current_stock,
-          min_threshold: form.min_threshold,
-          cost_per_unit: form.cost_per_unit,
-          restaurant_id: storeId,
-          updated_at: new Date().toISOString()
-        };
-        if (editingItem) {
-          const { error } = await supabase
-            .from('ingredients')
-            .update(payload)
-            .eq('id', editingItem.id);
-          if (error) throw error;
-          toast({ title: '✓ Modifié', description: `"${form.name}" mis à jour.` });
-        } else {
-          const { error } = await supabase
-            .from('ingredients')
-            .insert({
-              id: crypto.randomUUID(),
-              ...payload,
-              created_at: new Date().toISOString(),
-            });
-          if (error) throw error;
-          toast({ title: '✓ Ajouté', description: `"${form.name}" enregistré.` });
-        }
+        const { error } = await OfflineIngredientsService.createIngredient(storeId, form);
+        if (error) throw error;
+        toast({ title: '✓ Ajouté', description: `"${form.name}" enregistré.` });
       }
       closeDialog();
       fetchIngredients();
@@ -282,19 +222,8 @@ export function IngredientsModule({ storeId }: IngredientsModuleProps) {
   const handleDelete = async (ing: Ingredient) => {
     if (!window.confirm(`Supprimer définitivement "${ing.name}" ?`)) return;
     try {
-      const dc = getDataClient();
-      if (dc.isLocalFirst) {
-        await OfflineAuthService.localBridgeRequest<void>(
-          `/rest/v1/ingredients/${ing.id}`,
-          { method: 'DELETE' },
-        );
-      } else {
-        const { error } = await supabase
-          .from('ingredients')
-          .delete()
-          .eq('id', ing.id);
-        if (error) throw error;
-      }
+      const { error } = await OfflineIngredientsService.deleteIngredient(ing.id);
+      if (error) throw error;
       toast({ title: '✓ Supprimé', description: `"${ing.name}" supprimé.` });
       fetchIngredients();
     } catch (err) {

@@ -35,11 +35,24 @@ function isTauriDesktop(): boolean {
 
 export function getDataClient(): DataClient {
   const android = isAndroid();
-  // On Android there is no local-bridge sidecar — use IndexedDB fallback (isLocalFirst = false)
-  const localFirst = !android;
+  const tauri = isTauriDesktop();
+  
+  let isLocalHost = true;
+  if (typeof window !== 'undefined') {
+    isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  }
+
+  // Pure cloud mode is when we are not running locally, not in Tauri, and not on Android WebView
+  // If we are in Pure Cloud, we don't have a local bridge sidecar.
+  let localFirst = false;
+  if (tauri) {
+    localFirst = true; // Tauri desktop always has local bridge
+  } else if (isLocalHost && !android) {
+    localFirst = true; // Local development browser uses local bridge
+  }
 
   console.log(
-    `🔑 [DataClient] mode: offline, isLocalFirst: ${localFirst}, android: ${android}, baseUrl: ${localBridgeBaseUrl}`
+    `🔑 [DataClient] mode: offline, isLocalFirst: ${localFirst}, tauri: ${tauri}, localhost: ${isLocalHost}, android: ${android}, baseUrl: ${localBridgeBaseUrl}`
   );
   return {
     mode: 'offline',

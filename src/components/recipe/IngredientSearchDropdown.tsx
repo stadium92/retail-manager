@@ -8,8 +8,7 @@ import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { useTranslation } from 'react-i18next';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { supabase } from '@/lib/supabase';
-import { getDataClient } from '@/lib/dataClient';
+import { OfflineIngredientsService } from '@/services/OfflineIngredientsService';
 
 interface IngredientSearchDropdownProps {
   storeId: string;
@@ -53,28 +52,9 @@ export function IngredientSearchDropdown({ storeId, onSelect, excludeIds = [] }:
   const fetchIngredients = async () => {
     setLoading(true);
     try {
-      const dc = getDataClient();
-      if (dc.isLocalFirst) {
-        const res = await OfflineAuthService.localBridgeRequest<Ingredient[]>(
-          `/rest/v1/ingredients?store_id=${storeId}`,
-          { method: 'GET' }
-        );
-        setIngredients(res || []);
-      } else {
-        const { data: ingData, error: ingErr } = await supabase
-          .from('ingredients')
-          .select('*')
-          .eq('restaurant_id', storeId)
-          .order('name', { ascending: true });
-        
-        if (ingErr) throw ingErr;
-
-        const mapped = (ingData || []).map((i: any) => ({
-          ...i,
-          store_id: i.restaurant_id
-        })) as Ingredient[];
-        setIngredients(mapped);
-      }
+      const { data, error } = await OfflineIngredientsService.getIngredients(storeId);
+      if (error) throw error;
+      setIngredients(data ?? []);
     } catch (err) {
       console.error('Failed to fetch ingredients:', err);
     } finally {
@@ -109,41 +89,8 @@ export function IngredientSearchDropdown({ storeId, onSelect, excludeIds = [] }:
 
     setCreating(true);
     try {
-      const dc = getDataClient();
-      let newIng: Ingredient | null = null;
-      if (dc.isLocalFirst) {
-        newIng = await OfflineAuthService.localBridgeRequest<Ingredient>('/rest/v1/ingredients', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            store_id: storeId,
-            ...quickForm,
-          }),
-        });
-      } else {
-        const id = crypto.randomUUID();
-        const payload = {
-          id,
-          name: quickForm.name,
-          unit: quickForm.unit,
-          category: quickForm.category,
-          min_threshold: quickForm.min_threshold,
-          cost_per_unit: quickForm.cost_per_unit,
-          current_stock: quickForm.current_stock,
-          restaurant_id: storeId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        const { error } = await supabase
-          .from('ingredients')
-          .insert(payload);
-        
-        if (error) throw error;
-        newIng = {
-          ...payload,
-          store_id: storeId
-        } as Ingredient;
-      }
+      const { data: newIng, error } = await OfflineIngredientsService.createIngredient(storeId, quickForm);
+      if (error) throw error;
 
       if (newIng) {
         setIngredients(prev => [...prev, newIng]);
