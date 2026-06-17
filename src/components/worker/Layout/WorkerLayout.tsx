@@ -37,6 +37,7 @@ import { TableManagement } from '../Modules/TableManagement';
 import { SupabaseSyncService } from '@/services/SupabaseSyncService';
 import { CashierReadyOrdersBell } from './CashierReadyOrdersBell';
 import { IngredientsModule } from '../Modules/IngredientsModule';
+import { MinWidthGate } from '@/components/shared/MinWidthGate';
 
 interface WorkerLayoutProps {
   className?: string;
@@ -358,6 +359,7 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
   };
 
   return (
+    <MinWidthGate minWidth={900}>
     <div className={cn('h-full flex flex-col bg-background', subRole === 'cashier' && 'dark', className)}>
       <header className={cn(
         'h-10 flex items-center shrink-0 px-2',
@@ -439,5 +441,6 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
         subRole={subRole}
       />
     </div>
+    </MinWidthGate>
   );
 }
