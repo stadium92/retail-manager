@@ -1,8 +1,8 @@
 {
     "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-    "productName": "retail-manager-dibidani",
+    "productName": "retail-manager",
     "version": "0.5.35",
-    "identifier": "com.retailmanager.dibidani",
+    "identifier": "com.retailmanager.app",
     "build": {
         "frontendDist": "../frontend/dist",
         "devUrl": "http://localhost:5173",
@@ -12,7 +12,7 @@
     "app": {
         "windows": [
             {
-                "title": "Retail Manager - Dibidani",
+                "title": "Retail Manager",
                 "width": 800,
                 "height": 600,
                 "resizable": true,
