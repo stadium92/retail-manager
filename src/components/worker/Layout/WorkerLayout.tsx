@@ -40,6 +40,7 @@ import { CashierReadyOrdersBell } from './CashierReadyOrdersBell';
 import { IngredientsModule } from '../Modules/IngredientsModule';
 import { useDevice } from '@/contexts/DeviceContext';
 import { MobileWorkerLayout } from '@/components/mobile/MobileWorkerLayout';
+import { MinWidthGate } from '@/components/shared/MinWidthGate';
 import { MobileSalesModule } from '../../mobile/Sales/MobileSalesModule';
 import { MobileFicheCaisse } from '../../mobile/Sales/MobileFicheCaisse';
 import { MobileReceptionAchats } from '../../mobile/Purchases/MobileReceptionAchats';
@@ -386,6 +387,7 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
   }
 
   return (
+    <MinWidthGate minWidth={900}>
     <div className={cn('h-full flex flex-col bg-background', subRole === 'cashier' && 'dark', className)}>
       <header className={cn(
         'h-10 flex items-center shrink-0 px-2',
@@ -472,5 +474,6 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
         subRole={subRole}
       />
     </div>
+    </MinWidthGate>
   );
 }

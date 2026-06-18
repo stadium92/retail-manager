@@ -377,6 +377,203 @@ export class OfflineAuthService {
           }
           return { total_cost, total_retail, item_count } as any;
         }
+
+        if (path.startsWith('/rest/v1/stock/dashboard')) {
+          const urlObj = new URL(`http://localhost${path}`);
+          const storeId = urlObj.searchParams.get('store_id');
+          if (!storeId) throw new Error('store_id is required');
+
+          const { data: ingredientsData, error: ingError } = await supabase
+            .from('ingredients')
+            .select('*')
+            .eq('restaurant_id', storeId)
+            .is('deleted_at', null);
+          if (ingError) throw ingError;
+
+          const mappedIngredients = (ingredientsData || []).map((i: any) => ({
+            id: i.id,
+            store_id: i.restaurant_id,
+            name: i.name,
+            unit: i.unit,
+            category: i.category,
+            current_stock: Number(i.current_stock || 0),
+            min_threshold: Number(i.min_threshold || 0),
+            cost_per_unit: Number(i.cost_per_unit || 0),
+            expiry_date: i.expiry_date,
+            created_at: i.created_at,
+            updated_at: i.updated_at
+          }));
+
+          const low_stock = mappedIngredients.filter(i => i.current_stock < i.min_threshold);
+          const expiring_soon: any[] = [];
+          const today = new Date();
+          for (const i of mappedIngredients) {
+            if (i.expiry_date) {
+              const exp = new Date(i.expiry_date);
+              const daysLeft = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+              if (daysLeft >= 0 && daysLeft <= 3) {
+                expiring_soon.push(i);
+              }
+            }
+          }
+
+          const { data: dishes, error: dishesError } = await supabase
+            .from('menu_items')
+            .select('id, name')
+            .eq('restaurant_id', storeId)
+            .is('deleted_at', null);
+          if (dishesError) throw dishesError;
+
+          const { data: recipes, error: recError } = await supabase
+            .from('dish_recipes')
+            .select('*, ingredients!inner(name, unit, current_stock)')
+            .eq('ingredients.restaurant_id', storeId);
+          if (recError) throw recError;
+
+          const portions_remaining: any[] = [];
+          for (const dish of (dishes || [])) {
+            const dishRecipe = (recipes || []).filter((r: any) => r.dish_id === dish.id);
+            if (dishRecipe.length > 0) {
+              let maxPortions = Infinity;
+              let limitingIngredientName = '—';
+
+              for (const item of dishRecipe) {
+                const ing = item.ingredients;
+                if (!ing) continue;
+                
+                const convertQuantity = (qty: number, fromUnit: string, toUnit: string): number => {
+                  if (fromUnit === toUnit) return qty;
+                  const f = fromUnit.toLowerCase();
+                  const t = toUnit.toLowerCase();
+                  if (f === 'kg' && t === 'g') return qty * 1000;
+                  if (f === 'g' && t === 'kg') return qty / 1000;
+                  if (f === 'l' && t === 'ml') return qty * 1000;
+                  if (f === 'ml' && t === 'l') return qty / 1000;
+                  return qty;
+                };
+
+                const currentStockInRecipeUnit = convertQuantity(Number(ing.current_stock || 0), ing.unit, item.unit);
+                const possiblePortions = item.quantity_needed > 0 ? (currentStockInRecipeUnit / Number(item.quantity_needed)) : Infinity;
+                if (possiblePortions < maxPortions) {
+                  maxPortions = possiblePortions;
+                  limitingIngredientName = ing.name;
+                }
+              }
+
+              portions_remaining.push({
+                dish_id: dish.id,
+                dish_name: dish.name,
+                max_portions: maxPortions === Infinity ? 0 : Math.floor(maxPortions),
+                limiting_ingredient: maxPortions === Infinity ? undefined : limitingIngredientName,
+              });
+            }
+          }
+
+          return {
+            ingredients: mappedIngredients,
+            portions_remaining,
+            expiring_soon,
+            low_stock
+          } as any;
+        }
+
+        if (path.includes('/restock')) {
+          const parts = path.split('/');
+          const id = parts[3];
+          const body = JSON.parse(init.body as string);
+
+          const { data: existing, error: getErr } = await supabase
+            .from('ingredients')
+            .select('*')
+            .eq('id', id)
+            .single();
+          if (getErr || !existing) throw new Error('Ingredient not found');
+
+          const newStock = Number(existing.current_stock || 0) + Number(body.quantity || 0);
+          const now = new Date().toISOString();
+
+          const { error: updErr } = await supabase
+            .from('ingredients')
+            .update({ current_stock: newStock, updated_at: now })
+            .eq('id', id);
+          if (updErr) throw updErr;
+
+          const movementId = crypto.randomUUID();
+          const { error: movErr } = await supabase
+            .from('ingredient_movements')
+            .insert({
+              id: movementId,
+              ingredient_id: id,
+              movement_type: 'restock',
+              quantity_delta: Number(body.quantity || 0),
+              note: body.note || 'Réapprovisionnement de stock manuel',
+              created_at: now
+            });
+          if (movErr) throw movErr;
+
+          return { success: true } as any;
+        }
+
+        if (path.includes('/waste')) {
+          const parts = path.split('/');
+          const id = parts[3];
+          const body = JSON.parse(init.body as string);
+
+          const { data: existing, error: getErr } = await supabase
+            .from('ingredients')
+            .select('*')
+            .eq('id', id)
+            .single();
+          if (getErr || !existing) throw new Error('Ingredient not found');
+
+          const newStock = Math.max(0, Number(existing.current_stock || 0) - Number(body.quantity || 0));
+          const now = new Date().toISOString();
+
+          const { error: updErr } = await supabase
+            .from('ingredients')
+            .update({ current_stock: newStock, updated_at: now })
+            .eq('id', id);
+          if (updErr) throw updErr;
+
+          const movementId = crypto.randomUUID();
+          const { error: movErr } = await supabase
+            .from('ingredient_movements')
+            .insert({
+              id: movementId,
+              ingredient_id: id,
+              movement_type: 'waste',
+              quantity_delta: -Number(body.quantity || 0),
+              note: body.note || 'Déchet / perte déclarée manuellement',
+              created_at: now
+            });
+          if (movErr) throw movErr;
+
+          return { success: true } as any;
+        }
+
+        if (path.includes('/movements')) {
+          const parts = path.split('/');
+          const id = parts[3];
+
+          const { data: movements, error: movError } = await supabase
+            .from('ingredient_movements')
+            .select('*, menu_items(name)')
+            .eq('ingredient_id', id)
+            .order('created_at', { ascending: false });
+          if (movError) throw movError;
+
+          return (movements || []).map((m: any) => ({
+            id: m.id,
+            ingredient_id: m.ingredient_id,
+            movement_type: m.movement_type,
+            quantity_delta: Number(m.quantity_delta),
+            related_dish_id: m.related_dish_id,
+            order_id: m.order_id,
+            dish_name: m.menu_items?.name || null,
+            note: m.note,
+            created_at: m.created_at
+          })) as any;
+        }
       } catch (err) {
         console.error('🚫 [OfflineAuth] Supabase direct client request failed:', err);
         throw err;
