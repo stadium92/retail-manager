@@ -13,16 +13,16 @@ const numberFromEnv = (value: string | undefined, fallback: number) => {
 
 const getDefaultDataDir = () => {
     if (process.platform === 'win32') {
-        return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'retail-manager-dibidani', 'data');
+        return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'retail-manager-stihl', 'data');
     }
     if (process.platform === 'darwin') {
-        return path.join(os.homedir(), 'Library', 'Application Support', 'Retail Manager Dibidani', 'data');
+        return path.join(os.homedir(), 'Library', 'Application Support', 'Retail Manager Stihl', 'data');
     }
-    return path.join(os.homedir(), '.local', 'share', 'retail-manager-dibidani', 'data');
+    return path.join(os.homedir(), '.local', 'share', 'retail-manager-stihl', 'data');
 };
 
 export const env = {
-  port: numberFromEnv(process.env.PORT, 8789),
+  port: numberFromEnv(process.env.PORT, 8788),
   dataDir: process.env.DATA_DIR || getDefaultDataDir(),
   jwtSecret: process.env.JWT_SECRET || 'dev-secret',
   
