@@ -734,9 +734,8 @@ export class OfflineTeamService {
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData?.session?.access_token;
 
-        const { data: edgeData, error: edgeErr } = await supabase.functions.invoke('create-user', {
-          method: 'DELETE',
-          body: { user_id: userId },
+        const { data: edgeData, error: edgeErr } = await supabase.functions.invoke('delete-user', {
+          body: { user_id: userId, role_id: roleId },
           headers: token ? { Authorization: `Bearer ${token}` } : undefined
         });
 
