@@ -1,7 +1,8 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronRight, ShoppingCart, ShoppingBag, FolderOpen, FileText, BarChart3, Package, LogOut } from 'lucide-react';
+import { ChevronRight, ShoppingCart, ShoppingBag, FolderOpen, FileText, BarChart3, Package, LogOut, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { LocalDatabase } from '@/services/LocalDatabase';
 
 interface MobileMenuScreenProps {
   onSelect: (moduleId: string) => void;
@@ -101,7 +102,26 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
           </div>
         ))}
 
-        <div className="pt-4 pb-8">
+        <div className="pt-4 pb-8 space-y-3">
+          <button
+            onClick={async () => {
+              if (window.confirm("Attention: Cela va vider le cache de l'application (IndexedDB et LocalStorage) pour supprimer les anciennes données de test. Continuer ?")) {
+                try {
+                  await LocalDatabase.clearAll();
+                  localStorage.clear();
+                  alert("Cache vidé avec succès. Rechargement...");
+                  window.location.reload();
+                } catch (e) {
+                  alert("Échec de la suppression du cache");
+                }
+              }
+            }}
+            className="w-full flex items-center justify-center gap-2 p-4 rounded-xl bg-[#1a1510] text-[#e0a96d] border border-[#e0a96d]/20 font-bold hover:opacity-90 active:scale-95 transition-all"
+          >
+            <RefreshCw className="w-5 h-5" />
+            <span>Réinitialiser le cache</span>
+          </button>
+
           <button
             onClick={() => signOut()}
             className="w-full flex items-center justify-center gap-2 p-4 rounded-xl bg-rs-error-container text-rs-on-error-container font-bold hover:opacity-90 active:scale-95 transition-all"

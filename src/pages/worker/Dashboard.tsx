@@ -6,13 +6,13 @@
 // This is the ONLY file in the old desktop codebase that needs to change.
 // WorkerLayout.tsx is completely untouched.
 //
-// Device routing table:
+// Device routing table (reduced by 25% per user request):
 // ┌──────────────────────────────────────────────────────────┐
 // │ Device           │ Width       │ Layout rendered          │
 // ├──────────────────────────────────────────────────────────┤
-// │ Mobile phone     │ < 768 px    │ MobileWorkerLayout ✦     │
-// │ Tablet / iPad    │ 768–1279 px │ WorkerLayout (desktop)   │
-// │ Laptop / Monitor │ ≥ 1280 px   │ WorkerLayout (desktop)   │
+// │ Mobile phone     │ < 576 px    │ MobileWorkerLayout ✦     │
+// │ Tablet / iPad    │ 576–767 px  │ WorkerLayout (desktop)   │
+// │ Laptop / Monitor │ ≥ 768 px    │ WorkerLayout (desktop)   │
 // │ Tauri kiosk      │ any         │ WorkerLayout (desktop)   │
 // └──────────────────────────────────────────────────────────┘
 //

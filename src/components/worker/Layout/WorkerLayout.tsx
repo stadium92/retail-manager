@@ -387,7 +387,7 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
   }
 
   return (
-    <MinWidthGate minWidth={900}>
+    <MinWidthGate minWidth={675}>
     <div className={cn('h-full flex flex-col bg-background', subRole === 'cashier' && 'dark', className)}>
       <header className={cn(
         'h-10 flex items-center shrink-0 px-2',

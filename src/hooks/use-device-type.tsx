@@ -8,11 +8,11 @@ export interface DeviceInfo {
   width: number;
   /** True if running inside Tauri desktop wrapper */
   isTauri: boolean;
-  /** True for mobile phones (< 768px) */
+  /** True for mobile phones (< 576px) (reduced by 25%) */
   isMobile: boolean;
-  /** True for tablets (768px – 1279px) */
+  /** True for tablets (576px – 767px) (reduced by 25%) */
   isTablet: boolean;
-  /** True for desktop browsers (≥ 1280px, non-Tauri) */
+  /** True for desktop browsers (≥ 768px, non-Tauri) (reduced by 25%) */
   isDesktopBrowser: boolean;
   /**
    * TRUE for desktop browsers AND Tauri.
@@ -39,12 +39,13 @@ function checkIsTauri(): boolean {
 }
 
 // ─── Breakpoint Classification ────────────────────────────────────────────────
-// These breakpoints are intentional for a restaurant/retail context:
-//   - Tablets (768-1023px) run in kitchens and at counters — they need touch UI
-//   - Laptops/monitors (≥1024px) and Tauri get the dense desktop UI
+// These breakpoints are intentional for a restaurant/retail context (reduced by 25%):
+//   - Mobile (< 576px)
+//   - Tablets (576-767px) run in kitchens and at counters — they need touch UI
+//   - Laptops/monitors (≥768px) and Tauri get the dense desktop UI
 function classifyWidth(width: number): 'mobile' | 'tablet' | 'desktop' {
-  if (width < 768)  return 'mobile';
-  if (width < 1024) return 'tablet';
+  if (width < 576)  return 'mobile';
+  if (width < 768)  return 'tablet';
   return 'desktop';
 }
 

@@ -4,7 +4,7 @@ import { Monitor, RotateCcw } from 'lucide-react';
 interface MinWidthGateProps {
   /**
    * Minimum screen width in pixels required to show children.
-   * Defaults to 900px (suitable for the desktop POS/restaurant app).
+   * Defaults to 675px (suitable for the desktop POS/restaurant app, reduced by 25% from 900px).
    */
   minWidth?: number;
   /** Content to render when the screen is wide enough */
@@ -19,7 +19,7 @@ interface MinWidthGateProps {
  * This is intentional for the WorkerLayout desktop app which requires
  * at least ~900px to be usable.
  */
-export function MinWidthGate({ minWidth = 900, children }: MinWidthGateProps) {
+export function MinWidthGate({ minWidth = 675, children }: MinWidthGateProps) {
   const [windowWidth, setWindowWidth] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth : 1920
   );
