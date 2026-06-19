@@ -44,10 +44,22 @@ export function KitchenDisplay({ storeId }: KitchenDisplayProps) {
     try {
       const sales = await OfflineSalesService.getSales(storeId);
       // Filter sales that are restaurant orders and not yet served or completed
+      const now = new Date();
       const activeOrders = sales
         .filter((sale: any) => {
           const status = sale.order_status || sale.status;
-          return status === 'pending' || status === 'preparing' || status === 'ready';
+          const isPendingOrPreparingOrReady = status === 'pending' || status === 'preparing' || status === 'ready';
+          
+          if (!isPendingOrPreparingOrReady) return false;
+
+          // Filter out stale/ghost orders older than 24 hours
+          if (sale.created_at) {
+            const diffMs = now.getTime() - new Date(sale.created_at).getTime();
+            if (diffMs > 24 * 60 * 60 * 1000) {
+              return false;
+            }
+          }
+          return true;
         })
         .map((sale: any) => ({
           id: sale.id,
