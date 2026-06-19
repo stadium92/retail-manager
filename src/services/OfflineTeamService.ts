@@ -255,92 +255,62 @@ export class OfflineTeamService {
         return this.getWorkersViaLocalBridge();
       }
 
+      // ── Cloud (Supabase) path — use get-team edge function (bypasses profiles RLS) ──
+      if (navigator.onLine) {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData?.session?.access_token;
+
+          if (token) {
+            const { data: teamData, error: teamError } = await supabase.functions.invoke('get-team', {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (!teamError && teamData?.workers) {
+              return { data: teamData.workers };
+            }
+
+            if (teamError) {
+              console.error('[getWorkers] get-team edge function error:', teamError);
+            }
+          }
+        } catch (supabaseErr) {
+          console.error('[getWorkers] Supabase fetch failed, falling back to IndexedDB:', supabaseErr);
+        }
+      }
+
+
+      // ── Offline fallback: use IndexedDB cache ──
       await LocalDatabase.init();
 
-      // Get local users and roles
       const localUsers = await LocalDatabase.getAllUsers();
       const localRoles = await LocalDatabase.getAllRoles();
       const localStores = await LocalDatabase.getAllStores();
 
-      // Filter to workers only
       const workerRoles = localRoles.filter(r => r.role === 'worker');
 
-      const localWorkers: TeamMember[] = workerRoles
-        .filter(role => !role.synced) // Only include unsynced local workers
-        .map(role => {
-          const user = localUsers.find(u => u.id === role.user_id);
-          const store = role.store_id ? localStores.find(s => s.id === role.store_id) : undefined;
+      const allWorkers: TeamMember[] = workerRoles.map(role => {
+        const user = localUsers.find(u => u.id === role.user_id);
+        const store = role.store_id ? localStores.find(s => s.id === role.store_id) : undefined;
 
-          return {
-            id: role.id,
-            user_id: role.user_id,
-            email: user?.email || '',
-            full_name: user?.full_name || 'Unknown',
-            phone: user?.phone,
-            role: 'worker' as AppRole,
-            sub_role: role.sub_role,
-            store_id: role.store_id,
-            store_name: store?.name,
-            is_active: true,
-            created_at: role.created_at,
-            sales_count: 0,
-            total_revenue: 0,
-          };
-        });
+        return {
+          id: role.id,
+          user_id: role.user_id,
+          email: user?.email || '',
+          full_name: user?.full_name || 'Unknown',
+          phone: user?.phone,
+          role: 'worker' as AppRole,
+          sub_role: role.sub_role,
+          store_id: role.store_id,
+          store_name: store?.name,
+          is_active: user ? (user.is_active ?? true) : true,
+          created_at: role.created_at,
+          sales_count: 0,
+          total_revenue: 0,
+        };
+      });
 
-      if (!navigator.onLine) {
-        // Also include synced workers from local cache
-        const syncedWorkers: TeamMember[] = workerRoles
-          .filter(role => role.synced)
-          .map(role => {
-            const user = localUsers.find(u => u.id === role.user_id);
-            const store = role.store_id ? localStores.find(s => s.id === role.store_id) : undefined;
-
-            return {
-              id: role.id,
-              user_id: role.user_id,
-              email: user?.email || '',
-              full_name: user?.full_name || 'Unknown',
-              phone: user?.phone,
-              role: 'worker' as AppRole,
-              sub_role: role.sub_role,
-              store_id: role.store_id,
-              store_name: store?.name,
-              is_active: true,
-              created_at: role.created_at,
-              sales_count: 0,
-              total_revenue: 0,
-            };
-          });
-
-        return { data: [...localWorkers, ...syncedWorkers] };
-      }
-
-      // Cloud sync disabled - return local workers only
-      const syncedWorkers: TeamMember[] = workerRoles
-        .filter(role => role.synced)
-        .map(role => {
-          const user = localUsers.find(u => u.id === role.user_id);
-          const store = role.store_id ? localStores.find(s => s.id === role.store_id) : undefined;
-
-          return {
-            id: role.id,
-            user_id: role.user_id,
-            email: user?.email || '',
-            full_name: user?.full_name || 'Unknown',
-            phone: user?.phone,
-            role: 'worker' as AppRole,
-            sub_role: role.sub_role,
-            store_id: role.store_id,
-            store_name: store?.name,
-            is_active: user ? (user.is_active ?? true) : true,
-            created_at: role.created_at,
-            sales_count: 0,
-            total_revenue: 0,
-          };
-        });
-
-      return { data: [...localWorkers, ...syncedWorkers] };
+      return { data: allWorkers };
     } catch (error) {
       console.error('Get workers error:', error);
       return { error };
