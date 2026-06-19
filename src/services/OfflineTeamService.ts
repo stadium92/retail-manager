@@ -379,14 +379,35 @@ export class OfflineTeamService {
     }
   }
 
-  /**
-   * Get all deliverers (merges local and remote)
-   */
   static async getDeliverers(): Promise<{ data?: TeamMember[]; error?: any }> {
     try {
       const dataClient = getDataClient();
       if (dataClient.isLocalFirst) {
         return this.getDeliverersViaLocalBridge();
+      }
+
+      // ── Cloud (Supabase) path — use get-team edge function (bypasses profiles RLS) ──
+      if (navigator.onLine) {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const token = sessionData?.session?.access_token;
+
+          if (token) {
+            const { data: teamData, error: teamError } = await supabase.functions.invoke('get-team', {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (!teamError && teamData?.deliverers) {
+              return { data: teamData.deliverers };
+            }
+
+            if (teamError) {
+              console.error('[getDeliverers] get-team edge function error:', teamError);
+            }
+          }
+        } catch (supabaseErr) {
+          console.error('[getDeliverers] Supabase fetch failed, falling back to IndexedDB:', supabaseErr);
+        }
       }
 
       await LocalDatabase.init();
