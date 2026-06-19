@@ -10,8 +10,34 @@ if (typeof window !== 'undefined') {
   const resizeObserverErr = 'ResizeObserver loop completed with undelivered notifications';
   const resizeObserverErrLimit = 'ResizeObserver loop limit exceeded';
   
+  const isResizeObserverError = (msg: string) => {
+    return msg && (msg.includes(resizeObserverErr) || msg.includes(resizeObserverErrLimit));
+  };
+
+  // 1. window.onerror
+  const oldOnError = window.onerror;
+  window.onerror = function (message, source, lineno, colno, error) {
+    const msgStr = typeof message === 'string' ? message : message?.toString() || '';
+    if (isResizeObserverError(msgStr)) {
+      return true; // prevents firing default handler
+    }
+    if (oldOnError) {
+      return oldOnError.apply(this, arguments as any);
+    }
+  };
+
+  // 2. window.addEventListener('error')
   window.addEventListener('error', (e) => {
-    if (e.message && (e.message.includes(resizeObserverErr) || e.message.includes(resizeObserverErrLimit))) {
+    if (e.message && isResizeObserverError(e.message)) {
+      e.stopImmediatePropagation();
+      e.preventDefault();
+    }
+  });
+
+  // 3. window.addEventListener('unhandledrejection')
+  window.addEventListener('unhandledrejection', (e) => {
+    const reasonStr = e.reason?.message || e.reason?.toString() || '';
+    if (isResizeObserverError(reasonStr)) {
       e.stopImmediatePropagation();
       e.preventDefault();
     }
