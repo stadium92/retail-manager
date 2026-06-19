@@ -272,14 +272,26 @@ export class SupabaseSyncService {
             const { data: sessionData } = await supabase.auth.getSession();
             const token = sessionData?.session?.access_token;
             
-            const { data, error: edgeErr } = await supabase.functions.invoke('create-user', {
-              body: mappedPayload,
-              headers: token ? { Authorization: `Bearer ${token}` } : undefined
-            });
-            error = edgeErr;
-            if (data?.error) {
-               // The edge function returned a 400/500 error gracefully via JSON
-               error = new Error(data.error);
+            if (entry.op_type === 'delete') {
+              const { data, error: edgeErr } = await supabase.functions.invoke('create-user', {
+                method: 'DELETE',
+                body: { user_id: entry.entity_id },
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined
+              });
+              error = edgeErr;
+              if (data?.error) {
+                 error = new Error(data.error);
+              }
+            } else {
+              const { data, error: edgeErr } = await supabase.functions.invoke('create-user', {
+                body: mappedPayload,
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined
+              });
+              error = edgeErr;
+              if (data?.error) {
+                 // The edge function returned a 400/500 error gracefully via JSON
+                 error = new Error(data.error);
+              }
             }
           } else {
             const { error: upsErr } = await supabase

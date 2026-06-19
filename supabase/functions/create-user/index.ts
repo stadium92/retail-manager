@@ -70,8 +70,34 @@ Deno.serve(async (req) => {
     const hasMasterRole = callerRoles?.some(r => r.role === 'master');
     if (!hasMasterRole) {
       return new Response(
-        JSON.stringify({ error: 'Only masters can create staff accounts' }),
+        JSON.stringify({ error: 'Only masters can perform this action' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (req.method === 'DELETE') {
+      const body = await req.json().catch(() => ({}));
+      const { user_id } = body;
+      if (!user_id) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required field: user_id' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(user_id);
+      if (deleteError) {
+        console.error('Error deleting user:', deleteError);
+        return new Response(
+          JSON.stringify({ error: deleteError.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log(`User deleted: ${user_id} by master ${callerId}`);
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

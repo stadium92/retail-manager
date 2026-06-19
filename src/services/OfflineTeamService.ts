@@ -8,6 +8,7 @@ import { toast } from '@/hooks/use-toast';
 import { getDataClient, smartFetch } from '@/lib/dataClient';
 import { OfflineAuthService } from './OfflineAuthService';
 import i18n from '@/i18n/config';
+import { supabase } from '../lib/supabase';
 
 export interface TeamMember {
   id: string;
@@ -60,7 +61,80 @@ export class OfflineTeamService {
     try {
       await LocalDatabase.init();
 
-      // Create local user
+      if (isOnline) {
+        // Retrieve caller's access token to authenticate with the edge function
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        
+        const { data: edgeData, error: edgeErr } = await supabase.functions.invoke('create-user', {
+          body: {
+            email: payload.email,
+            password: payload.password,
+            full_name: payload.full_name,
+            phone: payload.phone,
+            role: payload.role,
+            sub_role: payload.sub_role,
+            store_id: payload.store_id,
+            vehicle_type: payload.vehicle_type,
+          },
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined
+        });
+
+        if (edgeErr || edgeData?.error) {
+          const errMessage = edgeErr?.message || edgeData?.error || 'Failed to create user on Supabase';
+          console.error('[createUser] Supabase edge function failed:', errMessage);
+          return { error: { message: errMessage } };
+        }
+
+        const supabaseUser = edgeData.user;
+        const newUserId = supabaseUser.id;
+
+        // Save locally
+        const localUser: LocalUser = {
+          id: newUserId,
+          email: payload.email,
+          password_hash: '', 
+          full_name: payload.full_name,
+          phone: payload.phone,
+          created_at: now,
+          updated_at: now,
+          synced: true,
+          is_active: true,
+        };
+        await LocalDatabase.saveUser(localUser);
+
+        const localRole: LocalRole = {
+          id: roleId,
+          user_id: newUserId,
+          role: payload.role as 'master' | 'worker' | 'deliverer',
+          sub_role: payload.sub_role,
+          store_id: payload.store_id,
+          created_at: now,
+          synced: true,
+        };
+        await LocalDatabase.saveRole(localRole);
+
+        toast({
+          title: payload.role === 'worker' ? i18n.t('sync.workerCreated') : i18n.t('sync.delivererCreated'),
+          description: 'Stored in cloud database',
+        });
+
+        return {
+          data: {
+            success: true,
+            user: {
+              id: newUserId,
+              email: payload.email,
+              full_name: payload.full_name,
+              role: payload.role,
+              sub_role: payload.sub_role,
+              store_id: payload.store_id,
+            },
+          },
+        };
+      }
+
+      // Create local user (offline fallback)
       const localUser: LocalUser = {
         id: userId,
         email: payload.email,
@@ -88,48 +162,7 @@ export class OfflineTeamService {
 
       await LocalDatabase.saveRole(localRole);
 
-      if (!isOnline) {
-        // Queue for later sync
-        await LocalDatabase.addToSyncQueue({
-          id: crypto.randomUUID(),
-          type: 'user_create',
-          data: {
-            email: payload.email,
-            password: payload.password,
-            fullName: payload.full_name,
-            phone: payload.phone,
-            role: payload.role,
-            sub_role: payload.sub_role,
-            storeId: payload.store_id,
-            vehicleType: payload.vehicle_type,
-            localUserId: userId,
-            localRoleId: roleId,
-          },
-          timestamp: Date.now(),
-          retries: 0,
-        });
-
-        toast({
-          title: payload.role === 'worker' ? i18n.t('sync.workerCreatedOffline') : i18n.t('sync.delivererCreatedOffline'),
-          description: i18n.t('sync.willSyncWhenOnline'),
-        });
-
-        return {
-          data: {
-            success: true,
-            user: {
-              id: userId,
-              email: payload.email,
-              full_name: payload.full_name,
-              role: payload.role,
-              sub_role: payload.sub_role,
-              store_id: payload.store_id,
-            },
-          },
-        };
-      }
-
-      // Cloud provisioning disabled - queue for later sync
+      // Queue for later sync
       await LocalDatabase.addToSyncQueue({
         id: crypto.randomUUID(),
         type: 'user_create',
@@ -150,7 +183,7 @@ export class OfflineTeamService {
       });
 
       toast({
-        title: payload.role === 'worker' ? i18n.t('sync.workerCreatedLocally') : i18n.t('sync.delivererCreatedLocally'),
+        title: payload.role === 'worker' ? i18n.t('sync.workerCreatedOffline') : i18n.t('sync.delivererCreatedOffline'),
         description: i18n.t('sync.willSyncWhenOnline'),
       });
 
@@ -162,6 +195,7 @@ export class OfflineTeamService {
             email: payload.email,
             full_name: payload.full_name,
             role: payload.role,
+            sub_role: payload.sub_role,
             store_id: payload.store_id,
           },
         },
@@ -694,6 +728,24 @@ export class OfflineTeamService {
 
     try {
       await LocalDatabase.init();
+
+      if (isOnline) {
+        // Retrieve caller's access token to authenticate with the edge function
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+
+        const { data: edgeData, error: edgeErr } = await supabase.functions.invoke('create-user', {
+          method: 'DELETE',
+          body: { user_id: userId },
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined
+        });
+
+        if (edgeErr || edgeData?.error) {
+          const errMessage = edgeErr?.message || edgeData?.error || 'Failed to delete user on Supabase';
+          console.error('[deleteMember] Supabase edge function failed:', errMessage);
+          return { success: false, error: { message: errMessage } };
+        }
+      }
 
       // Delete from local IndexedDB immediately
       await LocalDatabase.deleteRole(roleId);
