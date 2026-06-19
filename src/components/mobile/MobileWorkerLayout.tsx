@@ -46,6 +46,7 @@ import { ReplenishmentNeeds } from '@/components/master/Purchases/ReplenishmentN
 import { EditionModule } from '@/components/worker/Modules/EditionModule';
 import InvitationsPage from '@/pages/master/Invitations';
 import AuditLogsPage from '@/pages/master/AuditLogs';
+import TeamPage from '@/pages/master/Team';
 
 export interface MobileWorkerLayoutProps {
   onOpenDesktopModule?: (moduleId: string) => void;
@@ -234,6 +235,8 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
           return renderMasterPageWrapper('Logs Système', AuditLogsPage);
         case 'invitations':
           return renderMasterPageWrapper('Invitations', InvitationsPage);
+        case 'team':
+          return renderMasterPageWrapper('Gestion Équipe', TeamPage);
         default:
           break;
       }

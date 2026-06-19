@@ -59,6 +59,7 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
       icon: <FileText className="w-5 h-5" />,
       items: [
         ...(isMaster ? [
+          { id: 'team', label: `👥 ${t('sidebar.team') || 'Gestion Équipe'}` },
           { id: 'audit-logs', label: '📜 Logs Système' },
           { id: 'invitations', label: '✉️ Invitations' }
         ] : [])
