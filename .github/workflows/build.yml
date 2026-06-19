@@ -65,7 +65,9 @@ jobs:
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: windows-installer
           path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+
 
