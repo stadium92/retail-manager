@@ -643,16 +643,18 @@ export class OfflineAuthService {
       let store_id = data.user.user_metadata?.store_id || null;
       let userRole = data.user.user_metadata?.role;
       let store_object = null;
+      let remoteRolesData: any[] | null = null;
       
       try {
         const { data: rolesData, error: rolesError } = await supabase
           .from('user_roles')
-          .select('role, store_id')
+          .select('role, store_id, sub_role')
           .eq('user_id', data.user.id);
         
         if (rolesError) {
           console.error('[OfflineAuth] user_roles query failed:', rolesError);
         } else if (rolesData && rolesData.length > 0) {
+           remoteRolesData = rolesData;
            userRole = rolesData[0].role;
            if (!store_id && rolesData[0].store_id) {
              store_id = rolesData[0].store_id;
@@ -697,15 +699,21 @@ export class OfflineAuthService {
           }
       }
 
-      // If store_id or role on Supabase user_metadata is missing or different, update it
+      // If store_id, role or sub_role on Supabase user_metadata is missing or different, update it
       const currentMeta = data.user.user_metadata || {};
-      if (store_id && (currentMeta.store_id !== store_id || currentMeta.role !== finalRole)) {
-        console.log('[OfflineAuth] Updating Supabase user metadata with store_id:', store_id, 'role:', finalRole);
+      const finalSubRole = remoteRolesData?.[0]?.sub_role || null;
+      if (store_id && (
+        currentMeta.store_id !== store_id || 
+        currentMeta.role !== finalRole || 
+        currentMeta.sub_role !== finalSubRole
+      )) {
+        console.log('[OfflineAuth] Updating Supabase user metadata with store_id:', store_id, 'role:', finalRole, 'sub_role:', finalSubRole);
         try {
           await supabase.auth.updateUser({
             data: {
               store_id: store_id,
-              role: finalRole || 'master'
+              role: finalRole || 'master',
+              sub_role: finalSubRole
             }
           });
         } catch (metaErr) {
@@ -733,6 +741,7 @@ export class OfflineAuthService {
             full_name: data.user.user_metadata?.full_name || 'Cloud User',
             store_id: store_id,
             role: finalRole,
+            sub_role: finalSubRole || undefined,
           },
           aud: data.user.aud || 'authenticated',
           created_at: data.user.created_at || new Date().toISOString(),
@@ -751,6 +760,7 @@ export class OfflineAuthService {
           user_id: data.user.id,
           role: (finalRole || 'master') as any,
           store_id: store_id || undefined,
+          sub_role: finalSubRole || undefined,
           created_at: new Date().toISOString(),
         }];
 
@@ -773,6 +783,7 @@ export class OfflineAuthService {
             password,
             full_name: data.user.user_metadata?.full_name || 'Cloud User',
             role: finalRole,
+            sub_role: finalSubRole,
             store_id: store_id,
             store_object: store_object,
           }),

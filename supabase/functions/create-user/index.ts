@@ -9,6 +9,7 @@ interface CreateUserRequest {
   role: 'worker' | 'deliverer';
   store_id?: string;
   vehicle_type?: string;
+  sub_role?: string;
 }
 
 Deno.serve(async (req) => {
@@ -103,7 +104,7 @@ Deno.serve(async (req) => {
 
     // Parse request body
     const body: CreateUserRequest = await req.json();
-    const { email, password, full_name, phone, role, store_id, vehicle_type } = body;
+    const { email, password, full_name, phone, role, store_id, vehicle_type, sub_role } = body;
 
     // Validate required fields
     if (!email || !password || !full_name || !role) {
@@ -140,6 +141,9 @@ Deno.serve(async (req) => {
         full_name,
         phone,
         created_by: callerId,
+        role,
+        sub_role: sub_role || undefined,
+        store_id: store_id || undefined,
       },
     });
 
@@ -180,6 +184,7 @@ Deno.serve(async (req) => {
         user_id: userId,
         role,
         store_id: store_id || null,
+        sub_role: sub_role || null,
       });
 
     if (roleError) {
@@ -215,6 +220,7 @@ Deno.serve(async (req) => {
           email,
           full_name,
           role,
+          sub_role,
           store_id,
         },
       }),

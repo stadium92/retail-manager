@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
     // Fetch all worker roles for this store
     let rolesQuery = supabaseAdmin
       .from('user_roles')
-      .select('id, user_id, role, store_id, created_at')
+      .select('id, user_id, role, store_id, sub_role, created_at')
       .neq('role', 'master');
 
     if (masterStoreId) {
@@ -109,6 +109,7 @@ Deno.serve(async (req) => {
         phone: profile?.phone || null,
         role: role.role,
         store_id: role.store_id || null,
+        sub_role: role.sub_role || null,
         store_name: restaurantName || null,
         is_active: true,
         created_at: role.created_at,
