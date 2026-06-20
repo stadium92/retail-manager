@@ -1,4 +1,4 @@
-export type AppRole = 'master' | 'worker' | 'deliverer' | 'customer';
+export type AppRole = 'master' | 'worker' | 'deliverer' | 'customer' | 'cashier' | 'cook' | 'waiter' | 'waiters';
 export type DeliveryStatus = 'pending' | 'assigned' | 'in_transit' | 'delivered' | 'cancelled';
 export type SalesStatus = 'good' | 'bad' | 'worse';
 export type SaleType = 'detail' | 'gros' | 'proforma';

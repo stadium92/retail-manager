@@ -435,7 +435,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // rolesData[0] alone is unsafe because the signup trigger inserts a 'customer' row
           // automatically, which can appear before the actual 'worker' or 'master' row.
           const ROLE_PRIORITY: Record<string, number> = {
-            master: 4, worker: 3, deliverer: 2, customer: 1,
+            master: 4,
+            worker: 3,
+            cashier: 3,
+            cook: 3,
+            waiter: 3,
+            waiters: 3,
+            deliverer: 2,
+            customer: 1,
           };
           const bestRow = rolesData.reduce((best, current) => {
             const bestP = ROLE_PRIORITY[best.role] ?? 0;

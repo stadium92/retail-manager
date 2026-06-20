@@ -80,6 +80,7 @@ const STORAGE_KEY = 'worker_mobile_active_tab';
 function getVisibleTabs(subRole: string | null | undefined): TabConfig[] {
   if (subRole === 'cook')    return ALL_TABS.filter(t => t.id === 'kds');
   if (subRole === 'cashier') return ALL_TABS.filter(t => t.id === 'pos' || t.id === 'menu');
+  if (subRole === 'waiter')  return ALL_TABS.filter(t => t.id === 'menu');
   return ALL_TABS; // waiter / manager / null → all
 }
 
@@ -90,12 +91,11 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
   const [activeMobileModule, setActiveMobileModule] = useState<string | null>(null);
   const [storeId, setStoreId] = useState<string>('');
 
-  // Resolve sub-role the same way WorkerLayout.tsx does
   const workerRole = roles.find(r => r.role === 'worker');
-  const subRole = (
-    workerRole?.sub_role ??
-    (user?.user_metadata?.sub_role as 'cook' | 'cashier' | 'waiter' | null | undefined)
-  );
+  const rawSubRole = roles.find(r => ['cook', 'cashier', 'waiter', 'waiters'].includes(r.role))?.role
+    || workerRole?.sub_role
+    || (user?.user_metadata?.sub_role as string | null | undefined);
+  const subRole = (rawSubRole === 'waiters' ? 'waiter' : rawSubRole) as 'cook' | 'cashier' | 'waiter' | null | undefined;
 
   const visibleTabs = getVisibleTabs(subRole);
   const defaultTab: MobileTab = visibleTabs[0]?.id ?? 'kds';
@@ -141,7 +141,19 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
       setActiveTab('pos');
       setActiveMobileModule(null);
     } else {
-      setActiveMobileModule(moduleId);
+      const mobileSupportedModules = [
+        'fermeture-caisse', 'suivi-ventes-jour', 'fiche-produits', 'clients',
+        'fournisseurs', 'restaurants', 'inventaire-stock', 'ingredients',
+        'reception-achats', 'commande-manuelle', 'reglement-fournisseurs',
+        'besoins-achats', 'historique-achats', 'situation-client',
+        'situation-fournisseur', 'audit-logs', 'invitations', 'team'
+      ];
+      
+      if (!mobileSupportedModules.includes(moduleId) && onOpenDesktopModule) {
+        onOpenDesktopModule(moduleId);
+      } else {
+        setActiveMobileModule(moduleId);
+      }
     }
   };
 

@@ -210,6 +210,9 @@ export function WorkerMenuBar({ activeModule, onModuleChange, className, subRole
         section.triggerKey === 'menu.program.trigger'
       );
     }
+    if (subRole === 'waiter') {
+      return section.triggerKey === 'menu.restaurant.trigger';
+    }
     return true;
   }).map((section) => {
     if (subRole === 'cook') {
@@ -223,6 +226,16 @@ export function WorkerMenuBar({ activeModule, onModuleChange, className, subRole
         return {
           ...section,
           items: section.items.filter((item) => item.module === 'mots-de-passe'),
+        };
+      }
+      return section;
+    }
+
+    if (subRole === 'waiter') {
+      if (section.triggerKey === 'menu.restaurant.trigger') {
+        return {
+          ...section,
+          items: section.items.filter((item) => item.module === 'tables'),
         };
       }
       return section;

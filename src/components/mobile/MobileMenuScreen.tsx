@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronRight, ShoppingCart, ShoppingBag, FolderOpen, FileText, BarChart3, Package, LogOut, RefreshCw } from 'lucide-react';
+import { ChevronRight, ShoppingCart, ShoppingBag, FolderOpen, FileText, BarChart3, Package, LogOut, RefreshCw, Layout } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { LocalDatabase } from '@/services/LocalDatabase';
 
@@ -81,6 +81,9 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
   );
 
   const finalSections = menuSections.filter(section => {
+    if (subRole === 'waiter') {
+      return false;
+    }
     if (subRole === 'cashier') {
       return section.title === 'Ventes';
     }
@@ -103,6 +106,16 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
     }
     return section;
   });
+
+  if (subRole === 'waiter') {
+    finalSections.push({
+      title: 'Restaurant',
+      icon: <Layout className="w-5 h-5" />,
+      items: [
+        { id: 'tables', label: 'Plan de salle / Tables' }
+      ]
+    });
+  }
 
   return (
     <div className="flex flex-col h-full bg-[#0a0a0a] pb-[80px]">

@@ -10,8 +10,12 @@ import { AppRole } from '@/types';
 
 // Define which roles can access which routes
 const ROLE_ACCESS_MAP: Record<AppRole, AppRole[]> = {
-  master: ['master', 'worker', 'deliverer', 'customer'], // Master can access everything
-  worker: ['worker', 'deliverer', 'customer'], // Worker can access worker, deliverer, customer
+  master: ['master', 'worker', 'deliverer', 'customer', 'cashier', 'cook', 'waiter', 'waiters'], // Master can access everything
+  worker: ['worker', 'deliverer', 'customer', 'cashier', 'cook', 'waiter', 'waiters'], // Worker can access worker, deliverer, customer
+  cashier: ['worker', 'cashier', 'deliverer', 'customer'],
+  cook: ['worker', 'cook', 'deliverer', 'customer'],
+  waiter: ['worker', 'waiter', 'deliverer', 'customer'],
+  waiters: ['worker', 'waiters', 'waiter', 'deliverer', 'customer'],
   deliverer: ['deliverer', 'customer'], // Deliverer can access deliverer, customer
   customer: ['customer'], // Customer can only access customer pages
 };
@@ -47,8 +51,8 @@ export function canAccessRoute(userRoles: AppRole[], requiredRole: AppRole): boo
 export function getPrimaryRole(roles: AppRole[]): AppRole | null {
   if (roles.length === 0) return null;
   
-  // Priority order: master > worker > deliverer > customer
-  const priority: AppRole[] = ['master', 'worker', 'deliverer', 'customer'];
+  // Priority order: master > worker > cashier > cook > waiter > waiters > deliverer > customer
+  const priority: AppRole[] = ['master', 'worker', 'cashier', 'cook', 'waiter', 'waiters', 'deliverer', 'customer'];
   
   for (const role of priority) {
     if (roles.includes(role)) {
@@ -69,6 +73,10 @@ export function getDefaultDashboardRoute(roles: AppRole[]): string {
     case 'master':
       return '/master/dashboard';
     case 'worker':
+    case 'cashier':
+    case 'cook':
+    case 'waiter':
+    case 'waiters':
       return '/worker/dashboard';
     case 'deliverer':
       return '/deliverer/dashboard';

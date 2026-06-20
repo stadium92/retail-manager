@@ -57,7 +57,10 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
   const { user, signOut, roles } = useAuth();
   
   const workerRole = roles.find(r => r.role === 'worker');
-  const subRole = workerRole?.sub_role || (user?.user_metadata?.sub_role as 'cook' | 'cashier' | 'waiter' | null | undefined);
+  const rawSubRole = roles.find(r => ['cook', 'cashier', 'waiter', 'waiters'].includes(r.role))?.role
+    || workerRole?.sub_role
+    || (user?.user_metadata?.sub_role as string | null | undefined);
+  const subRole = (rawSubRole === 'waiters' ? 'waiter' : rawSubRole) as 'cook' | 'cashier' | 'waiter' | null | undefined;
   const { isDesktop } = useDevice();
   const [forceDesktopMode, setForceDesktopMode] = useState(false);
 
@@ -102,6 +105,9 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
         'preferences', 'programmation-touches', 'mots-de-passe'
       ].includes(module);
     }
+    if (role === 'waiter') {
+      return ['tables'].includes(module);
+    }
     return true;
   }, []);
 
@@ -112,6 +118,8 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
         setActiveModule('kds');
       } else if (subRole === 'cashier') {
         setActiveModule('facturation-detail');
+      } else if (subRole === 'waiter') {
+        setActiveModule('tables');
       }
     }
   }, [activeModule, subRole, isModuleAllowed]);
@@ -214,7 +222,7 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
       if (!foundStoreId && !localStorage.getItem('worker_store_id')) {
         try {
           const localRoles = await LocalDatabase.getRolesByUserId(user.id);
-          const workerRole = localRoles.find(r => r.role === 'worker' || r.role === 'master');
+          const workerRole = localRoles.find(r => r.store_id) || localRoles.find(r => r.role === 'worker' || r.role === 'master');
           if (workerRole?.store_id) {
             setStoreId(workerRole.store_id);
           }
@@ -375,8 +383,7 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
     }} />;
   }
 
-  return (
-    <MinWidthGate minWidth={675}>
+  const layoutContent = (
     <div className={cn('h-full flex flex-col bg-background', subRole === 'cashier' && 'dark', className)}>
       <header className={cn(
         'h-10 flex items-center shrink-0 px-2',
@@ -466,6 +473,15 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
         subRole={subRole}
       />
     </div>
+  );
+
+  if (subRole === 'waiter' || activeModule === 'tables') {
+    return layoutContent;
+  }
+
+  return (
+    <MinWidthGate minWidth={675}>
+      {layoutContent}
     </MinWidthGate>
   );
 }

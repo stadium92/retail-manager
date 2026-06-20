@@ -68,6 +68,17 @@ interface LocalBridgeSessionCache {
 const LOCALBRIDGE_SESSION_KEY = 'localbridge:session';
 const ACCESS_EXPIRY_BUFFER_MS = 300_000; // 5 minutes proactive refresh
 
+const ROLE_PRIORITY: Record<string, number> = {
+  master: 4,
+  worker: 3,
+  cashier: 3,
+  cook: 3,
+  waiter: 3,
+  waiters: 3,
+  deliverer: 2,
+  customer: 1,
+};
+
 export class OfflineAuthService {
   private static isLocalBridgeMode(): boolean {
     return getDataClient().isLocalFirst;
@@ -644,6 +655,7 @@ export class OfflineAuthService {
       let userRole = data.user.user_metadata?.role;
       let store_object = null;
       let remoteRolesData: any[] | null = null;
+      let selectedBestRow: any = null;
       
       try {
         const { data: rolesData, error: rolesError } = await supabase
@@ -655,9 +667,14 @@ export class OfflineAuthService {
           console.error('[OfflineAuth] user_roles query failed:', rolesError);
         } else if (rolesData && rolesData.length > 0) {
            remoteRolesData = rolesData;
-           userRole = rolesData[0].role;
-           if (!store_id && rolesData[0].store_id) {
-             store_id = rolesData[0].store_id;
+           selectedBestRow = rolesData.reduce((best, current) => {
+             const bestP = ROLE_PRIORITY[best.role] ?? 0;
+             const currP = ROLE_PRIORITY[current.role] ?? 0;
+             return currP > bestP ? current : best;
+           });
+           userRole = selectedBestRow.role;
+           if (!store_id && selectedBestRow.store_id) {
+             store_id = selectedBestRow.store_id;
            }
         }
       } catch (e) {
@@ -701,7 +718,7 @@ export class OfflineAuthService {
 
       // If store_id, role or sub_role on Supabase user_metadata is missing or different, update it
       const currentMeta = data.user.user_metadata || {};
-      const finalSubRole = remoteRolesData?.[0]?.sub_role || null;
+      const finalSubRole = selectedBestRow?.sub_role || null;
       if (store_id && (
         currentMeta.store_id !== store_id || 
         currentMeta.role !== finalRole || 
@@ -927,6 +944,7 @@ export class OfflineAuthService {
             full_name: fullName,
             store_id: storeId,
             role: role,
+            sub_role: sub_role || undefined,
           },
           aud: user.aud || 'authenticated',
           created_at: user.created_at || new Date().toISOString(),
@@ -1058,7 +1076,18 @@ export class OfflineAuthService {
       }
 
       const localRoles = await LocalDatabase.getRolesByUserId(localUser.id);
-      const storeId = localRoles.find(r => r.store_id)?.store_id;
+      let bestRoleRow: any = null;
+      if (localRoles && localRoles.length > 0) {
+        bestRoleRow = localRoles.reduce((best, current) => {
+          const bestP = ROLE_PRIORITY[best.role] ?? 0;
+          const currP = ROLE_PRIORITY[current.role] ?? 0;
+          return currP > bestP ? current : best;
+        });
+      }
+      
+      const storeId = bestRoleRow?.store_id || localRoles.find(r => r.store_id)?.store_id;
+      const finalRole = bestRoleRow?.role || 'customer';
+      const finalSubRole = bestRoleRow?.sub_role || undefined;
 
       const mockUser: User = {
         id: localUser.id,
@@ -1066,7 +1095,9 @@ export class OfflineAuthService {
         app_metadata: {},
         user_metadata: {
           full_name: localUser.full_name,
-          store_id: storeId
+          store_id: storeId,
+          role: finalRole,
+          sub_role: finalSubRole,
         },
         aud: 'authenticated',
         created_at: localUser.created_at,
