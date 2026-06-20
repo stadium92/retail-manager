@@ -414,7 +414,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role = 'master';
       }
 
-      // Check user_roles table on Supabase
+      // Check user_roles table on Supabase — pick highest-priority role
       try {
         const { data: rolesData, error: rolesError } = await supabase
           .from('user_roles')
@@ -424,10 +424,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (rolesError) {
           console.error('[AuthContext] user_roles query failed:', rolesError);
         } else if (rolesData && rolesData.length > 0) {
-          role = rolesData[0].role || role;
-          subRole = rolesData[0].sub_role || subRole;
-          if (!storeId && rolesData[0].store_id) {
-            storeId = rolesData[0].store_id;
+          // Always pick the highest-privilege role (master > worker > deliverer > customer)
+          // rolesData[0] alone is unsafe because the signup trigger inserts a 'customer' row
+          // automatically, which can appear before the actual 'worker' or 'master' row.
+          const ROLE_PRIORITY: Record<string, number> = {
+            master: 4, worker: 3, deliverer: 2, customer: 1,
+          };
+          const bestRow = rolesData.reduce((best, current) => {
+            const bestP = ROLE_PRIORITY[best.role] ?? 0;
+            const currP = ROLE_PRIORITY[current.role] ?? 0;
+            return currP > bestP ? current : best;
+          });
+          console.log('[AuthContext] All user_roles rows:', rolesData, '→ selected:', bestRow);
+          role = bestRow.role || role;
+          subRole = bestRow.sub_role || subRole;
+          if (!storeId && bestRow.store_id) {
+            storeId = bestRow.store_id;
           }
         }
       } catch (e) {
@@ -573,6 +585,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (result.user && result.session) {
+      // Set rolesLoading=true BEFORE committing user to prevent AuthPage
+      // from redirecting based on stale IndexedDB roles while fetchUserRoles runs.
+      setRolesLoading(true);
       setUser(result.user);
       setSession(result.session);
       setRoles(result.roles);

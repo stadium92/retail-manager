@@ -21,7 +21,7 @@ export function ProtectedRoute({ children, role, redirectTo = '/auth' }: Protect
       const timeout = setTimeout(() => {
         console.warn('ProtectedRoute: Loading timeout, forcing render');
         setForceRender(true);
-      }, 2000);
+      }, 5000);
       return () => clearTimeout(timeout);
     }
   }, [loading, rolesLoading]);
