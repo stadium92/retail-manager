@@ -326,8 +326,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const now = Date.now();
           if (!rolesLoadingStartTimeRef.current) {
             rolesLoadingStartTimeRef.current = now;
-          } else if (now - rolesLoadingStartTimeRef.current > 3000) {
-            console.warn('Safety mechanism: rolesLoading stuck for >3s, forcing to false');
+          } else if (now - rolesLoadingStartTimeRef.current > 8000) {
+            console.warn('Safety mechanism: rolesLoading stuck for >8s, forcing to false');
             setRolesLoading(false);
             rolesLoadingStartTimeRef.current = null;
           }
@@ -341,11 +341,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const offlineSession = await OfflineAuthService.getOfflineSession();
         if (offlineSession && offlineSession.user) {
           console.log('Restored offline session');
+          // IMPORTANT: Set rolesLoading=true BEFORE setLoading(false) so that
+          // AuthPage and ProtectedRoute keep showing the spinner while
+          // fetchUserRoles fetches authoritative roles from Supabase.
+          // Without this, a stale IndexedDB role (e.g. 'master' for a worker)
+          // would trigger a redirect before the correct roles arrive.
+          setRolesLoading(true);
           setUser(offlineSession.user);
           setSession(offlineSession.session);
           setRoles(offlineSession.roles);
           setLoading(false);
-          fetchUserRoles(offlineSession.user.id);
+          await fetchUserRoles(offlineSession.user.id);
           return () => {
             clearInterval(safetyInterval);
             rolesLoadingStartTimeRef.current = null;
@@ -404,7 +410,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 2. Extract user metadata and query cloud tables for role & store Resolution
       const metadata = data.user.user_metadata || {};
       const fullName = metadata.full_name || 'Cloud User';
-      let role = metadata.role || 'master';
+      // Start with null — user_roles table is authoritative, metadata is only a hint
+      let role: string | null = null;
       let storeId = metadata.store_id || null;
       let storeName = metadata.store_name || 'Cloud Restaurant';
       let subRole = metadata.sub_role || null;
@@ -446,8 +453,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.warn('[AuthContext] Exception fetching roles from supabase', e);
       }
 
-      // Check owned restaurants if worker has no store or role is not set
-      if (!role || role === 'worker') {
+      // Only check restaurant ownership if we have NO role yet from user_roles.
+      // A confirmed 'worker' from user_roles must NOT be overridden by restaurant ownership.
+      if (!role) {
         try {
           const { data: ownedStores, error: storesError } = await supabase
             .from('restaurants')
@@ -467,7 +475,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Fallback for master role
+      // If STILL no role, fall back to 'master' for new account bootstrap only
+      if (!role) {
+        console.warn('[AuthContext] No role found in user_roles or restaurants. Defaulting to master for new account.');
+        role = 'master';
+      }
+
+      // Ensure master users have a storeId
       if (!storeId && role === 'master') {
         try {
           const { data: stores } = await supabase
@@ -498,8 +512,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: 'Cloud account is missing required restaurant association (store_id metadata).' };
       }
 
-      if (!metadata.store_id || metadata.role !== role) {
-        console.log('[AuthContext] Updating Supabase user metadata during bootstrap with store_id:', storeId, 'role:', role);
+      // Always sync user metadata to keep it up-to-date with user_roles table
+      if (metadata.role !== role || !metadata.store_id) {
+        console.log('[AuthContext] Syncing Supabase user metadata — role:', role, 'store_id:', storeId);
         try {
           await supabase.auth.updateUser({
             data: {
@@ -511,6 +526,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error('[AuthContext] Failed to update user metadata on Supabase during bootstrap:', metaErr);
         }
       }
+
 
       if (dataClient.isLocalFirst) {
         // 3. Send credentials to local bridge
