@@ -192,7 +192,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserRoles = async (userId: string) => {
     console.log('fetchUserRoles called for userId:', userId);
-    setRolesLoading(true);
 
     const determineRoleFromDevId = (id: string): AppRole | null => {
       if (id === DEV_MODE_UUIDS['dev-worker']) return 'worker';
@@ -341,17 +340,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const offlineSession = await OfflineAuthService.getOfflineSession();
         if (offlineSession && offlineSession.user) {
           console.log('Restored offline session');
-          // IMPORTANT: Set rolesLoading=true BEFORE setLoading(false) so that
-          // AuthPage and ProtectedRoute keep showing the spinner while
-          // fetchUserRoles fetches authoritative roles from Supabase.
-          // Without this, a stale IndexedDB role (e.g. 'master' for a worker)
-          // would trigger a redirect before the correct roles arrive.
-          setRolesLoading(true);
+          // Set user/session/roles from cache immediately — no spinner.
           setUser(offlineSession.user);
           setSession(offlineSession.session);
           setRoles(offlineSession.roles);
           setLoading(false);
-          await fetchUserRoles(offlineSession.user.id);
+          // Non-blocking background role sync — does NOT block the UI.
+          if (navigator.onLine) {
+            setTimeout(() => {
+              fetchUserRoles(offlineSession.user.id).catch(e =>
+                console.warn('[AuthContext] Background role sync failed:', e)
+              );
+            }, 1000);
+          }
           return () => {
             clearInterval(safetyInterval);
             rolesLoadingStartTimeRef.current = null;
@@ -608,14 +609,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (result.user && result.session) {
-      // Set rolesLoading=true BEFORE committing user to prevent AuthPage
-      // from redirecting based on stale IndexedDB roles while fetchUserRoles runs.
-      setRolesLoading(true);
+      // Roles from OfflineAuthService.signIn are already ROLE_PRIORITY-selected and correct.
+      // Set them immediately and clear rolesLoading so the UI can render without waiting.
       setUser(result.user);
       setSession(result.session);
       setRoles(result.roles);
       setIsOffline(result.isOffline);
-      await fetchUserRoles(result.user.id);
+      // rolesLoading stays false — the UI shows immediately with the correct roles.
+      // Fire a non-blocking background refresh to sync any server-side role changes.
+      if (navigator.onLine) {
+        setTimeout(() => {
+          fetchUserRoles(result.user!.id).catch(e =>
+            console.warn('[AuthContext] Background role refresh failed:', e)
+          );
+        }, 500);
+      }
 
       toast({
         title: result.isOffline ? 'Signed In (Offline)' : 'Welcome back!',

@@ -25,3 +25,5 @@ release/
 *.sw?
 .vercel
 .env*.local
+
+testsprite_tests/tmp/config.json

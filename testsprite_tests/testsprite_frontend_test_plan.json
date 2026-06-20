@@ -1,0 +1,887 @@
+[
+  {
+    "id": "TC001",
+    "title": "Sign in and reach the correct role dashboard",
+    "description": "This verifies that a user can sign in and is redirected to the dashboard that matches their role.",
+    "category": "User Login and Role-Based Redirect",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the role-appropriate dashboard is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Create a new sales ticket from the cashier workspace",
+    "description": "This verifies that a cashier can add products to a ticket and confirm it for printing.",
+    "category": "Cashier POS and Cash Closing",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the sales ticket module"
+      },
+      {
+        "type": "action",
+        "description": "Select products to add to the ticket"
+      },
+      {
+        "type": "action",
+        "description": "Adjust the ticket quantity and pricing"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the sale ticket"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the ticket is ready for printing"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Return a signed-in user to the correct dashboard while offline",
+    "description": "This verifies that a cached session can restore access offline and route the user to the correct dashboard.",
+    "category": "User Login and Role-Based Redirect",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Sign in again while offline using the cached session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the role-appropriate dashboard is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Close the cash register from the cashier workspace",
+    "description": "This verifies that a cashier can review the register state and complete cash closing.",
+    "category": "Cashier POS and Cash Closing",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the cash closing module"
+      },
+      {
+        "type": "action",
+        "description": "Review the register state"
+      },
+      {
+        "type": "action",
+        "description": "Close the cash register"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the closing completed state is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Move an order through kitchen work stages",
+    "description": "This verifies that a cook can filter incoming orders and update one order from pending to in progress and completed.",
+    "category": "Kitchen Display System",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the kitchen display"
+      },
+      {
+        "type": "action",
+        "description": "Filter orders by status"
+      },
+      {
+        "type": "action",
+        "description": "Mark an order as in progress"
+      },
+      {
+        "type": "action",
+        "description": "Mark the order as completed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the order list updates to reflect the completed order"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Show an error for invalid sign in",
+    "description": "This verifies that entering invalid credentials prevents access and shows a login error.",
+    "category": "User Login and Role-Based Redirect",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with fake-invalid-user@example.com"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with invalid-password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a login error message is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Select and update a table on the floor plan",
+    "description": "A waiter can open table management, choose a table, change its status, and see the floor plan reflect the update.",
+    "category": "Table Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /worker/dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Open the table management module"
+      },
+      {
+        "type": "action",
+        "description": "Select a table on the floor plan"
+      },
+      {
+        "type": "action",
+        "description": "Update the selected table status"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the floor plan refreshes to show the updated table status"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Open the cook workspace as a single-screen mobile view",
+    "description": "Verifies that a signed-in cook can open the kitchen display on a phone and view the order list in a single-screen layout.",
+    "category": "Mobile Worker Layout",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the username field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /worker/dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Open the kitchen display screen"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the order list is displayed in the cook workspace"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Assign an order to a table",
+    "description": "A waiter can select a table and link an order to it, resulting in the table showing the assigned order association.",
+    "category": "Table Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /worker/dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Open the table management module"
+      },
+      {
+        "type": "action",
+        "description": "Select a table on the floor plan"
+      },
+      {
+        "type": "action",
+        "description": "Assign an order to the selected table"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the table is linked to the assigned order"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Update an order status from the mobile cook screen",
+    "description": "Verifies that a cook can move an order through the mobile kitchen workflow and see the list update afterward.",
+    "category": "Mobile Worker Layout",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the username field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /worker/dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Open the kitchen display screen"
+      },
+      {
+        "type": "action",
+        "description": "Mark an order as in progress"
+      },
+      {
+        "type": "action",
+        "description": "Mark the same order as completed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated order is no longer shown in the active list"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "Settle selected invoices from the cashier workspace",
+    "description": "This verifies that a cashier can review outstanding invoices and update their payment status after settlement.",
+    "category": "Cashier POS and Cash Closing",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the invoice settlement module"
+      },
+      {
+        "type": "action",
+        "description": "Review the outstanding invoices"
+      },
+      {
+        "type": "action",
+        "description": "Settle the selected invoices"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the payment status is updated"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
+    "title": "Use bottom tabs to switch between worker areas on mobile",
+    "description": "Verifies that a signed-in worker can switch between mobile work areas using the bottom navigation and continue in the selected section.",
+    "category": "Mobile Worker Layout",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the username field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /worker/dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Click the cashier area in the bottom navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click the menu area in the bottom navigation"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the mobile worker layout shows the selected sections"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC013",
+    "title": "Update a team member role",
+    "description": "An owner can open team management, change a team member role, and see the team list reflect the update.",
+    "category": "Master Dashboard Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /master/dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Open team management"
+      },
+      {
+        "type": "action",
+        "description": "Select a team member"
+      },
+      {
+        "type": "action",
+        "description": "Update the team member role"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated team list is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC014",
+    "title": "Open tables from the waiter mobile menu",
+    "description": "Verifies that a signed-in waiter can reach table management on mobile through the menu option and view the floor plan.",
+    "category": "Mobile Worker Layout",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the username field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /worker/dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Open the menu area"
+      },
+      {
+        "type": "action",
+        "description": "Select the tables option"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the floor plan is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC015",
+    "title": "View the floor plan in table management",
+    "description": "A waiter can open table management and see the restaurant floor plan displayed for operational use.",
+    "category": "Table Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /worker/dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Open the table management module"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the restaurant floor plan is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify tables are visible on the floor plan"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC016",
+    "title": "Manage a table status from the mobile floor plan",
+    "description": "Verifies that a waiter can change a table's status after opening the table floor plan on mobile.",
+    "category": "Mobile Worker Layout",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the username field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /worker/dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Open the menu area"
+      },
+      {
+        "type": "action",
+        "description": "Select the tables option"
+      },
+      {
+        "type": "action",
+        "description": "Select a table on the floor plan"
+      },
+      {
+        "type": "action",
+        "description": "Change the selected table status"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the table status update is reflected in the floor plan"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC017",
+    "title": "Review revenue and sales charts on the master dashboard",
+    "description": "An owner can open the master dashboard and see business performance charts for revenue and sales trends.",
+    "category": "Master Dashboard Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /master/dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Review the revenue and sales charts"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify revenue data is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify sales performance trends are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC018",
+    "title": "Filter kitchen orders to focus on pending work",
+    "description": "This verifies that a cook can narrow the kitchen list by status and see the updated order list.",
+    "category": "Kitchen Display System",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the kitchen display"
+      },
+      {
+        "type": "action",
+        "description": "Filter orders by status to focus on pending work"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated order list is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC019",
+    "title": "Review and update stock information",
+    "description": "An owner can inspect inventory levels, edit stock information, and see the revised inventory state.",
+    "category": "Master Dashboard Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /master/dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Open stock and inventory management"
+      },
+      {
+        "type": "action",
+        "description": "Review inventory levels"
+      },
+      {
+        "type": "action",
+        "description": "Update stock information"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the revised inventory state is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC020",
+    "title": "Keep worker layout usable after switching between sections",
+    "description": "Verifies that a worker can move between mobile sections without losing access to the currently selected workspace.",
+    "category": "Mobile Worker Layout",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the username field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /worker/dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Open the cashier area"
+      },
+      {
+        "type": "action",
+        "description": "Open the menu area"
+      },
+      {
+        "type": "action",
+        "description": "Return to the cashier area"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cashier workspace is still available"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC021",
+    "title": "Change password from worker settings",
+    "description": "A worker can open password management, submit a new password, and receive confirmation that the update completed.",
+    "category": "Programme and Settings",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /worker/dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Open the settings module"
+      },
+      {
+        "type": "action",
+        "description": "Open password management"
+      },
+      {
+        "type": "action",
+        "description": "Change the password"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a password update confirmation is visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC022",
+    "title": "Switch between reporting modules",
+    "description": "An owner can open reporting tools and move between sales and edition modules to reach the selected management view.",
+    "category": "Master Dashboard Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /master/dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Open reporting tools"
+      },
+      {
+        "type": "action",
+        "description": "Move to the sales module"
+      },
+      {
+        "type": "action",
+        "description": "Move to the edition module"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected management view is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC023",
+    "title": "Open preferences in worker settings",
+    "description": "A worker can open settings, review preferences, change them, and see the saved changes persist in the interface.",
+    "category": "Programme and Settings",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /worker/dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Open the settings module"
+      },
+      {
+        "type": "action",
+        "description": "Review preferences"
+      },
+      {
+        "type": "action",
+        "description": "Update application preferences"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the preference changes are saved"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC024",
+    "title": "Configure key programming shortcuts",
+    "description": "A worker can open key programming, change shortcut mappings, and see the updated assignments reflected in settings.",
+    "category": "Programme and Settings",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /worker/dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Open the settings module"
+      },
+      {
+        "type": "action",
+        "description": "Open key programming"
+      },
+      {
+        "type": "action",
+        "description": "Configure shortcut mappings"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated key assignments are displayed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC025",
+    "title": "Show the waiter menu-to-tables extra step on mobile",
+    "description": "Verifies that a waiter can access table management through the mobile menu flow rather than a direct tables tab.",
+    "category": "Mobile Worker Layout",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /auth"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_USER}} into the username field"
+      },
+      {
+        "type": "action",
+        "description": "Fill in {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /worker/dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Open the menu area"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the tables option is available in the menu area"
+      },
+      {
+        "type": "action",
+        "description": "Select the tables option"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the floor plan is displayed"
+      }
+    ],
+    "priority": "Low"
+  }
+]
