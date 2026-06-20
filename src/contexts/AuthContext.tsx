@@ -285,7 +285,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }]);
       } else {
         console.warn('User has no roles assigned. User should contact admin.');
-        setRoles([]);
+        setRoles(prev => prev && prev.length > 0 ? prev : []);
       }
       setRolesLoading(false);
     } catch (err) {
@@ -306,11 +306,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             created_at: r.created_at,
           })));
         } else {
-          setRoles([]);
+          setRoles(prev => prev && prev.length > 0 ? prev : []);
         }
       } catch (dbErr) {
         console.error('Failed to recover local roles:', dbErr);
-        setRoles([]);
+        setRoles(prev => prev && prev.length > 0 ? prev : []);
       }
       
       setRolesLoading(false);
