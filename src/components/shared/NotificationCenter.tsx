@@ -22,7 +22,11 @@ interface Notification {
   timestamp: string;
 }
 
-export function NotificationCenter() {
+interface NotificationCenterProps {
+  className?: string;
+}
+
+export function NotificationCenter({ className }: NotificationCenterProps = {}) {
   const { t, i18n } = useTranslation();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   
@@ -111,7 +115,8 @@ export function NotificationCenter() {
             "relative h-10 w-10 rounded-full border transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-rs-surface-tint/60",
             unreadCount > 0 
               ? "border-rs-surface-tint/40 bg-rs-surface-tint/10 hover:bg-rs-surface-tint/20 text-rs-surface-tint" 
-              : "border-neutral-800/40 bg-neutral-900/40 hover:bg-neutral-800/60 text-neutral-300"
+              : "border-neutral-800/40 bg-neutral-900/40 hover:bg-neutral-800/60 text-neutral-300",
+            className
           )}
         >
           <Bell className={cn("h-5 w-5", unreadCount > 0 && "animate-pulse-subtle")} />

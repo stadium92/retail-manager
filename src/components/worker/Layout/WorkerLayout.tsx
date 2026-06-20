@@ -35,8 +35,8 @@ import { ReglementsBonsModule } from '../Modules/ReglementsBonsModule';
 import { resetMasterPasswordGates } from '@/components/shared/MasterPasswordGate';
 import { KitchenDisplay } from '../Modules/KitchenDisplay';
 import { TableManagement } from '../Modules/TableManagement';
-import { SupabaseSyncService } from '@/services/SupabaseSyncService';
 import { CashierReadyOrdersBell } from './CashierReadyOrdersBell';
+import { NotificationCenter } from '@/components/shared/NotificationCenter';
 import { IngredientsModule } from '../Modules/IngredientsModule';
 import { useDevice } from '@/contexts/DeviceContext';
 import { MobileWorkerLayout } from '@/components/mobile/MobileWorkerLayout';
@@ -99,7 +99,6 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
       return [
         'facturation-detail',
         'fermeture-caisse', 'reglements-bons',
-        'consultation-caisse', 'journal-caisse',
         'preferences', 'programmation-touches', 'mots-de-passe'
       ].includes(module);
     }
@@ -233,17 +232,7 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
     fetchStore();
   }, [user]);
 
-  // Start Supabase background sync when storeId is loaded
-  useEffect(() => {
-    if (storeId) {
-      console.log('🔄 [WorkerLayout] Starting Supabase background sync for store:', storeId);
-      SupabaseSyncService.startSyncCycle(storeId);
-      return () => {
-        console.log('🔄 [WorkerLayout] Stopping Supabase background sync');
-        SupabaseSyncService.stopSyncCycle();
-      };
-    }
-  }, [storeId]);
+
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -414,7 +403,10 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
           subRole={subRole}
         />
         {subRole === 'cashier' && (
-          <CashierReadyOrdersBell storeId={storeId} />
+          <div className="flex items-center gap-2.5 ml-auto pr-1">
+            <NotificationCenter className="h-8 w-8" />
+            <CashierReadyOrdersBell storeId={storeId} />
+          </div>
         )}
       </header>
 

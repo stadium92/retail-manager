@@ -73,6 +73,7 @@ export function CashierReadyOrdersBell({ storeId }: CashierReadyOrdersBellProps)
   const [isLoading, setIsLoading] = useState(false);
   const [clearedServedIds, setClearedServedIds] = useState<string[]>([]);
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
+  const [reconnectTrigger, setReconnectTrigger] = useState(0);
   const previousReadyIds = useRef<Set<string>>(new Set());
   const hasLoadedOnce = useRef(false);
 
@@ -145,7 +146,7 @@ export function CashierReadyOrdersBell({ storeId }: CashierReadyOrdersBellProps)
     }
   }, [formatCurrency, storeId]);
 
-  // ─── Polling fallback (4s) ────────────────────────────────────────────────
+  // ─── Polling fallback (4s) & Online Reconnection ──────────────────────────
   useEffect(() => {
     fetchOrders();
 
@@ -156,11 +157,19 @@ export function CashierReadyOrdersBell({ storeId }: CashierReadyOrdersBellProps)
       }
     };
 
+    const handleOnline = () => {
+      console.log('🔌 [CashierReadyOrdersBell] Connection recovered. Resubscribing and fetching.');
+      setReconnectTrigger((prev) => prev + 1);
+      fetchOrders();
+    };
+
     window.addEventListener('localDbDataUpdated', handleLocalUpdate);
+    window.addEventListener('online', handleOnline);
     const interval = window.setInterval(fetchOrders, 4000);
 
     return () => {
       window.removeEventListener('localDbDataUpdated', handleLocalUpdate);
+      window.removeEventListener('online', handleOnline);
       window.clearInterval(interval);
     };
   }, [fetchOrders]);
@@ -212,7 +221,7 @@ export function CashierReadyOrdersBell({ storeId }: CashierReadyOrdersBellProps)
       supabase.removeChannel(channel);
       setIsRealtimeConnected(false);
     };
-  }, [storeId, fetchOrders]);
+  }, [storeId, fetchOrders, reconnectTrigger]);
 
   // ─── Computed views ───────────────────────────────────────────────────────
   const readyOrders = useMemo(

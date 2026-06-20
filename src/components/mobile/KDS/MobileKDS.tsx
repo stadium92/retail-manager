@@ -44,6 +44,7 @@ export function MobileKDS() {
     const [currentTime, setCurrentTime] = useState(Date.now());
     const [storeId, setStoreId] = useState<string | null>(null);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [reconnectTrigger, setReconnectTrigger] = useState(0);
 
     // Get Store ID
     useEffect(() => {
@@ -94,16 +95,23 @@ export function MobileKDS() {
         }
     }, [storeId]);
 
-    // Sync / poll orders
+    // Sync / poll orders & Online Reconnection
     useEffect(() => {
         fetchOrders();
         const handleRefresh = (e: any) => {
             if (e.detail?.type === 'sale') fetchOrders();
         };
+        const handleOnline = () => {
+            console.log('🔌 [MobileKDS] Connection recovered. Resubscribing and fetching.');
+            setReconnectTrigger((prev) => prev + 1);
+            fetchOrders();
+        };
         window.addEventListener('localDbDataUpdated', handleRefresh);
+        window.addEventListener('online', handleOnline);
         const interval = setInterval(fetchOrders, 5000);
         return () => {
             window.removeEventListener('localDbDataUpdated', handleRefresh);
+            window.removeEventListener('online', handleOnline);
             clearInterval(interval);
         };
     }, [fetchOrders]);
@@ -139,7 +147,7 @@ export function MobileKDS() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [storeId, fetchOrders]);
+    }, [storeId, fetchOrders, reconnectTrigger]);
 
     const handleStatusChange = async (orderId: string, nextStatus: Order['order_status']) => {
         try {

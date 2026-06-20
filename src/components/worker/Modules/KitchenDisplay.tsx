@@ -37,6 +37,7 @@ export function KitchenDisplay({ storeId }: KitchenDisplayProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [crossedItems, setCrossedItems] = useState<Record<string, boolean>>({});
+  const [reconnectTrigger, setReconnectTrigger] = useState(0);
 
   // Fetch orders from the local bridge
   const fetchOrders = useCallback(async () => {
@@ -80,7 +81,7 @@ export function KitchenDisplay({ storeId }: KitchenDisplayProps) {
     }
   }, [storeId]);
 
-  // Sync / poll orders periodically
+  // Sync / poll orders periodically & Online Reconnection
   useEffect(() => {
     fetchOrders();
 
@@ -90,10 +91,18 @@ export function KitchenDisplay({ storeId }: KitchenDisplayProps) {
       }
     };
 
+    const handleOnline = () => {
+      console.log('🔌 [KDS] Connection recovered. Resubscribing and fetching.');
+      setReconnectTrigger((prev) => prev + 1);
+      fetchOrders();
+    };
+
     window.addEventListener('localDbDataUpdated', handleRefresh);
+    window.addEventListener('online', handleOnline);
     const interval = setInterval(fetchOrders, 5000); // Poll every 5s for fast updates
     return () => {
       window.removeEventListener('localDbDataUpdated', handleRefresh);
+      window.removeEventListener('online', handleOnline);
       clearInterval(interval);
     };
   }, [fetchOrders]);
@@ -129,7 +138,7 @@ export function KitchenDisplay({ storeId }: KitchenDisplayProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [storeId, fetchOrders]);
+  }, [storeId, fetchOrders, reconnectTrigger]);
 
   const handleStatusChange = async (orderId: string, nextStatus: Order['order_status']) => {
     try {

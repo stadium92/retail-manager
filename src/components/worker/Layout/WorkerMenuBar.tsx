@@ -207,7 +207,6 @@ export function WorkerMenuBar({ activeModule, onModuleChange, className, subRole
     if (subRole === 'cashier') {
       return (
         section.triggerKey === 'menu.sales.trigger' ||
-        section.triggerKey === 'menu.management.trigger' ||
         section.triggerKey === 'menu.program.trigger'
       );
     }
@@ -240,22 +239,6 @@ export function WorkerMenuBar({ activeModule, onModuleChange, className, subRole
           item.module === 'facturation-detail' ||
           item.module === 'fermeture-caisse' ||
           item.module === 'reglements-bons' ||
-          item.separator
-        ).filter((item, index, items) => {
-          if (!item.separator) return true;
-          const prev = items[index - 1];
-          const next = items[index + 1];
-          return Boolean(prev && next && !prev.separator && !next.separator);
-        }),
-      };
-    }
-
-    if (section.triggerKey === 'menu.management.trigger') {
-      return {
-        ...section,
-        items: section.items.filter((item) =>
-          item.module === 'consultation-caisse' ||
-          item.module === 'journal-caisse' ||
           item.separator
         ).filter((item, index, items) => {
           if (!item.separator) return true;

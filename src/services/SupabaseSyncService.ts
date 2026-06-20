@@ -840,6 +840,7 @@ export class SupabaseSyncService {
         title: 'Connexion rétablie',
         description: 'Synchronisation des données en cours...',
       });
+      this.setupRealtimeSubscriptions(storeId);
       this.runSync(storeId);
     });
   }
