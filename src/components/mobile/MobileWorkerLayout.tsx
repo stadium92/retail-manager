@@ -79,7 +79,7 @@ const STORAGE_KEY = 'worker_mobile_active_tab';
 
 function getVisibleTabs(subRole: string | null | undefined): TabConfig[] {
   if (subRole === 'cook')    return ALL_TABS.filter(t => t.id === 'kds');
-  if (subRole === 'cashier') return ALL_TABS.filter(t => t.id !== 'dashboard');
+  if (subRole === 'cashier') return ALL_TABS.filter(t => t.id === 'pos' || t.id === 'menu');
   return ALL_TABS; // waiter / manager / null → all
 }
 

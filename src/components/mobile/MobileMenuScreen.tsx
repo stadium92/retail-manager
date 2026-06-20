@@ -74,13 +74,43 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
     },
   ];
 
+  const workerRole = roles.find(r => r.role === 'worker');
+  const subRole = (
+    workerRole?.sub_role ??
+    (user?.user_metadata?.sub_role as 'cook' | 'cashier' | 'waiter' | null | undefined)
+  );
+
+  const finalSections = menuSections.filter(section => {
+    if (subRole === 'cashier') {
+      return section.title === 'Ventes';
+    }
+    return true;
+  }).map(section => {
+    if (subRole === 'cashier' && section.title === 'Ventes') {
+      return {
+        ...section,
+        title: 'Commandes',
+        items: section.items.filter(item => 
+          item.id === 'vente-detail' || 
+          item.id === 'fermeture-caisse'
+        ).map(item => {
+          if (item.id === 'vente-detail') {
+            return { ...item, label: 'Ticket commande' };
+          }
+          return item;
+        })
+      };
+    }
+    return section;
+  });
+
   return (
     <div className="flex flex-col h-full bg-[#0a0a0a] pb-[80px]">
       <header className="flex-shrink-0 h-[56px] bg-[#141414] border-b border-rs-surface-container flex items-center px-4 z-10 sticky top-0">
         <h1 className="text-xl font-bold tracking-tight text-white flex-1">Modules DJATI</h1>
       </header>
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
-        {menuSections.filter(s => s.items.length > 0).map((section, idx) => (
+        {finalSections.filter(s => s.items.length > 0).map((section, idx) => (
           <div key={idx} className="space-y-3">
             <div className="flex items-center gap-2 text-rs-surface-tint font-bold text-sm tracking-wider uppercase pl-2">
               {section.icon}
