@@ -229,6 +229,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (backendErr) {
           console.warn('Failed to fetch roles from LocalBridge backend, falling back to IndexedDB:', backendErr);
         }
+      } else if (navigator.onLine) {
+        try {
+          const { data: supaRoles, error: supaErr } = await supabase
+            .from('user_roles')
+            .select('*')
+            .eq('user_id', userId);
+
+          if (!supaErr && supaRoles && supaRoles.length > 0) {
+            console.log('Using Supabase cloud roles:', supaRoles);
+            setRoles(supaRoles.map(r => ({
+              id: r.id,
+              user_id: r.user_id,
+              role: r.role as AppRole,
+              store_id: r.store_id,
+              sub_role: r.sub_role,
+              created_at: r.created_at,
+            })));
+            setRolesLoading(false);
+            return;
+          }
+        } catch (supaErr) {
+          console.warn('Failed to fetch roles from Supabase, falling back to IndexedDB:', supaErr);
+        }
       }
 
       // Use local roles only
@@ -384,6 +407,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let role = metadata.role || 'master';
       let storeId = metadata.store_id || null;
       let storeName = metadata.store_name || 'Cloud Restaurant';
+      let subRole = metadata.sub_role || null;
 
       const emailLower = email.toLowerCase();
       if (emailLower === 'imsnsylla@gmail.com' || emailLower === 'bahsyllah223@gmail.com' || emailLower === 'ursula@master.com') {
@@ -394,13 +418,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const { data: rolesData, error: rolesError } = await supabase
           .from('user_roles')
-          .select('role, store_id')
+          .select('role, store_id, sub_role')
           .eq('user_id', data.user.id);
         
         if (rolesError) {
           console.error('[AuthContext] user_roles query failed:', rolesError);
         } else if (rolesData && rolesData.length > 0) {
           role = rolesData[0].role || role;
+          subRole = rolesData[0].sub_role || subRole;
           if (!storeId && rolesData[0].store_id) {
             storeId = rolesData[0].store_id;
           }
@@ -502,7 +527,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         // Pure Cloud: Save session to LocalDatabase (IndexedDB) directly
-        await OfflineAuthService.saveOfflineSession(data.user, data.session, role, storeId, fullName, password);
+        await OfflineAuthService.saveOfflineSession(data.user, data.session, role, storeId, fullName, password, subRole);
       }
 
       // 4. Sign in locally now that it has been bootstrapped

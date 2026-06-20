@@ -729,7 +729,8 @@ export class OfflineAuthService {
           finalRole || 'master',
           store_id || '',
           data.user.user_metadata?.full_name || 'Cloud User',
-          password
+          password,
+          finalSubRole
         );
 
         const mockUser: User = {
@@ -884,7 +885,8 @@ export class OfflineAuthService {
     role: string,
     storeId: string,
     fullName: string,
-    password?: string
+    password?: string,
+    sub_role?: string | null
   ): Promise<void> {
     try {
       await LocalDatabase.init();
@@ -908,7 +910,8 @@ export class OfflineAuthService {
         id: `${user.id}-${role}`,
         user_id: user.id,
         role: role as any,
-        store_id: storeId,
+        store_id: storeId || null,
+        sub_role: sub_role || null,
         created_at: new Date().toISOString(),
         synced: true,
       });
