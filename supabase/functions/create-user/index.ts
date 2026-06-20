@@ -9,6 +9,7 @@ interface CreateUserRequest {
   role: 'worker' | 'deliverer';
   store_id?: string;
   vehicle_type?: string;
+  sub_role?: string;
 }
 
 Deno.serve(async (req) => {
@@ -103,7 +104,7 @@ Deno.serve(async (req) => {
 
     // Parse request body
     const body: CreateUserRequest = await req.json();
-    const { email, password, full_name, phone, role, store_id, vehicle_type } = body;
+    const { email, password, full_name, phone, role, store_id, vehicle_type, sub_role } = body;
 
     // Validate required fields
     if (!email || !password || !full_name || !role) {
@@ -140,6 +141,7 @@ Deno.serve(async (req) => {
         full_name,
         phone,
         created_by: callerId,
+        sub_role: sub_role || null,
       },
     });
 
@@ -180,6 +182,7 @@ Deno.serve(async (req) => {
         user_id: userId,
         role,
         store_id: store_id || null,
+        sub_role: sub_role || null,
       });
 
     if (roleError) {
@@ -205,7 +208,7 @@ Deno.serve(async (req) => {
     }
 
     // Log the action for audit purposes
-    console.log(`User created: ${email} with role ${role} by master ${callerId}`);
+    console.log(`User created: ${email} with role ${role} (sub_role: ${sub_role}) by master ${callerId}`);
 
     return new Response(
       JSON.stringify({
@@ -216,6 +219,7 @@ Deno.serve(async (req) => {
           full_name,
           role,
           store_id,
+          sub_role: sub_role || null,
         },
       }),
       { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
