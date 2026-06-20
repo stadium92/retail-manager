@@ -513,6 +513,15 @@ class LocalDatabaseService {
     db.transaction('stores', 'readwrite').objectStore('stores').put(store);
   }
 
+  async getStore(id: string): Promise<LocalStore | null> {
+    const db = await this.ensureDb();
+    return new Promise(r => {
+      const req = db.transaction('stores', 'readonly').objectStore('stores').get(id);
+      req.onsuccess = () => r(req.result || null);
+      req.onerror = () => r(null);
+    });
+  }
+
   async getAllStores(): Promise<LocalStore[]> {
     const db = await this.ensureDb();
     return new Promise(r => {
