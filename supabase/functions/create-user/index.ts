@@ -102,6 +102,107 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (req.method === 'PATCH') {
+      const body = await req.json().catch(() => ({}));
+      const { user_id, email, password, full_name, phone, role, store_id, sub_role } = body;
+
+      let targetUserId = user_id;
+      if (!targetUserId && email) {
+        // Resolve email to user_id using profiles
+        const { data: profileData } = await supabaseAdmin
+          .from('profiles')
+          .select('id')
+          .eq('email', email)
+          .maybeSingle();
+        if (profileData?.id) {
+          targetUserId = profileData.id;
+        } else {
+          // Fallback to auth.admin.listUsers()
+          const { data: userList } = await supabaseAdmin.auth.admin.listUsers();
+          const foundUser = userList?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+          if (foundUser) {
+            targetUserId = foundUser.id;
+          }
+        }
+      }
+
+      if (!targetUserId) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required target identifier: user_id or email' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Update auth user if password or email is changed
+      const updateData: any = {};
+      if (password) updateData.password = password;
+      if (email) updateData.email = email;
+
+      const metadataUpdates: any = {};
+      if (full_name) metadataUpdates.full_name = full_name;
+      if (phone) metadataUpdates.phone = phone;
+      if (role) metadataUpdates.role = role;
+      if (store_id) metadataUpdates.store_id = store_id;
+      if (sub_role) metadataUpdates.sub_role = sub_role;
+
+      if (Object.keys(metadataUpdates).length > 0) {
+        updateData.user_metadata = metadataUpdates;
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        const { error: authUpdateErr } = await supabaseAdmin.auth.admin.updateUserById(targetUserId, updateData);
+        if (authUpdateErr) {
+          console.error('Error updating auth user:', authUpdateErr);
+          return new Response(
+            JSON.stringify({ error: authUpdateErr.message }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+
+      // Update profile
+      if (full_name !== undefined || phone !== undefined || email !== undefined) {
+        const profileUpdates: any = {};
+        if (full_name !== undefined) profileUpdates.full_name = full_name;
+        if (phone !== undefined) profileUpdates.phone = phone;
+        if (email !== undefined) profileUpdates.email = email;
+
+        const { error: profileUpdateErr } = await supabaseAdmin
+          .from('profiles')
+          .update(profileUpdates)
+          .eq('id', targetUserId);
+
+        if (profileUpdateErr) {
+          console.warn('Profile update warning:', profileUpdateErr.message);
+        }
+      }
+
+      // Update role
+      if (role !== undefined || store_id !== undefined || sub_role !== undefined) {
+        const roleUpdates: any = {};
+        if (role !== undefined) roleUpdates.role = role;
+        if (store_id !== undefined) roleUpdates.store_id = store_id;
+        if (sub_role !== undefined) roleUpdates.sub_role = sub_role;
+
+        const { error: roleUpdateErr } = await supabaseAdmin
+          .from('user_roles')
+          .upsert({
+            user_id: targetUserId,
+            ...roleUpdates
+          }, { onConflict: 'user_id' });
+
+        if (roleUpdateErr) {
+          console.warn('Role update warning:', roleUpdateErr.message);
+        }
+      }
+
+      console.log(`User updated: ${targetUserId} by master ${callerId}`);
+      return new Response(
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Parse request body
     const body: CreateUserRequest = await req.json();
     const { email, password, full_name, phone, role, store_id, vehicle_type, sub_role } = body;
