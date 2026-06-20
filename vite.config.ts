@@ -4,7 +4,7 @@ import path from "path";
 import fs from "fs";
 import { componentTagger } from "lovable-tagger";
 import basicSsl from "@vitejs/plugin-basic-ssl";
-import obfuscator from 'vite-plugin-javascript-obfuscator';
+// import obfuscator from 'vite-plugin-javascript-obfuscator';
 
 const enableHttps = process.env.VITE_DEV_HTTPS === "true";
 
@@ -36,7 +36,9 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    base: mode === 'production' ? './' : '/', // Important for Electron
+    // Use '/' for Vercel web builds so deep routes (e.g. /team) load assets
+    // correctly. Keep './' only for local Electron builds.
+    base: (mode === 'production' && !process.env.VERCEL) ? './' : '/',
     server: {
       host: "::",
       port: 5173,
