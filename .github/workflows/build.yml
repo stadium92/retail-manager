@@ -62,6 +62,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           args: --target x86_64-pc-windows-msvc
+          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
+          releaseName: "Release ${{ github.ref_name }}"
+          releaseDraft: true
+          prerelease: false
+
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
