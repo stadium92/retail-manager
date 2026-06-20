@@ -96,7 +96,7 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
   // Allowed modules checks
   const isModuleAllowed = useCallback((module: WorkerModule, role?: 'cook' | 'cashier' | 'waiter' | null): boolean => {
     if (role === 'cook') {
-      return ['kds', 'mots-de-passe'].includes(module);
+      return ['kds', 'preferences', 'programmation-touches', 'mots-de-passe'].includes(module);
     }
     if (role === 'cashier') {
       return [

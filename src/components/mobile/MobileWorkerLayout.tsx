@@ -149,7 +149,16 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
         'situation-fournisseur', 'audit-logs', 'invitations', 'team'
       ];
       
-      if (!mobileSupportedModules.includes(moduleId) && onOpenDesktopModule) {
+      // Programme and settings modules open via desktop overlay
+      const desktopOnlyModules = [
+        'preferences', 'programmation-touches', 'mots-de-passe',
+        'tables', 'kds',
+        'facturation-detail', 'reglements-bons',
+      ];
+      
+      if (desktopOnlyModules.includes(moduleId) && onOpenDesktopModule) {
+        onOpenDesktopModule(moduleId);
+      } else if (!mobileSupportedModules.includes(moduleId) && onOpenDesktopModule) {
         onOpenDesktopModule(moduleId);
       } else {
         setActiveMobileModule(moduleId);

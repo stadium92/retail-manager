@@ -222,12 +222,7 @@ export function WorkerMenuBar({ activeModule, onModuleChange, className, subRole
           items: section.items.filter((item) => item.module === 'kds'),
         };
       }
-      if (section.triggerKey === 'menu.program.trigger') {
-        return {
-          ...section,
-          items: section.items.filter((item) => item.module === 'mots-de-passe'),
-        };
-      }
+      // Programme section: show all items (Préférences, Programmation touches, Mots de passe)
       return section;
     }
 

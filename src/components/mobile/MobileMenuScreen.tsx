@@ -72,20 +72,38 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
         { id: 'tableau-bord', label: t('menu.management.dashboard') || 'Tableau de Bord' },
       ],
     },
+    {
+      title: 'Programme',
+      icon: <FileText className="w-5 h-5" />,
+      items: [
+        { id: 'preferences', label: t('menu.program.preferences') || 'Préférences' },
+        { id: 'programmation-touches', label: t('menu.program.keyProgramming') || 'Programmation touches' },
+        { id: 'mots-de-passe', label: t('menu.program.passwords') || 'Mots de passe' },
+      ],
+    },
   ];
 
+  // Resolve subRole: direct role rows (cashier/cook/waiter) take precedence over
+  // the legacy worker+sub_role pattern and user_metadata fallback.
   const workerRole = roles.find(r => r.role === 'worker');
-  const subRole = (
+  const rawSubRole =
+    roles.find(r => ['cook', 'cashier', 'waiter', 'waiters'].includes(r.role))?.role ??
     workerRole?.sub_role ??
-    (user?.user_metadata?.sub_role as 'cook' | 'cashier' | 'waiter' | null | undefined)
-  );
+    (user?.user_metadata?.sub_role as string | null | undefined);
+  const subRole = (rawSubRole === 'waiters' ? 'waiter' : rawSubRole) as 'cook' | 'cashier' | 'waiter' | null | undefined;
 
-  const finalSections = menuSections.filter(section => {
-    if (subRole === 'waiter') {
-      return false;
+  let finalSections = menuSections.filter(section => {
+    if (subRole === 'cook') {
+      // Cook: only Programme section
+      return section.title === 'Programme';
     }
     if (subRole === 'cashier') {
-      return section.title === 'Ventes';
+      // Cashier: Ventes (renamed to Commandes) + Programme
+      return section.title === 'Ventes' || section.title === 'Programme';
+    }
+    if (subRole === 'waiter') {
+      // Waiter: no generic sections (only Restaurant added below)
+      return false;
     }
     return true;
   }).map(section => {
@@ -93,8 +111,8 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
       return {
         ...section,
         title: 'Commandes',
-        items: section.items.filter(item => 
-          item.id === 'vente-detail' || 
+        items: section.items.filter(item =>
+          item.id === 'vente-detail' ||
           item.id === 'fermeture-caisse'
         ).map(item => {
           if (item.id === 'vente-detail') {
