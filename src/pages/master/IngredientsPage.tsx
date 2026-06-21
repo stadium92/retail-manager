@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useMasterDashboardStore } from '@/stores/useMasterDashboardStore';
+import { useMasterDataStore } from '@/stores/useMasterDataStore';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { Ingredient, StockDashboard } from '@/types/ingredients';
 import { PortionsGauge } from '@/components/stock/PortionsGauge';
@@ -43,7 +44,20 @@ const movementTypeLabel: Record<IngredientMovement['movement_type'], { label: st
 export function IngredientsPage() {
   const { t } = useTranslation();
   const { selectedStoreIds } = useMasterDashboardStore();
-  const storeId = selectedStoreIds[0] || '';
+  const { stores } = useMasterDataStore();
+  const [localStoreId, setLocalStoreId] = useState<string>('');
+
+  useEffect(() => {
+    if (selectedStoreIds.length === 1) {
+      setLocalStoreId(selectedStoreIds[0]);
+    } else if (selectedStoreIds.length === 0 || selectedStoreIds.length > 1) {
+      if (!localStoreId || !stores.some(s => s.id === localStoreId)) {
+        if (stores.length > 0) {
+          setLocalStoreId(stores[0].id);
+        }
+      }
+    }
+  }, [selectedStoreIds, stores]);
 
   const [loading, setLoading] = useState(false);
   const [dashboardData, setDashboardData] = useState<StockDashboard>({
@@ -92,11 +106,11 @@ export function IngredientsPage() {
   const [loadingMovements, setLoadingMovements] = useState(false);
 
   const fetchDashboard = async () => {
-    if (!storeId) return;
+    if (!localStoreId) return;
     setLoading(true);
     try {
       const res = await OfflineAuthService.localBridgeRequest<StockDashboard>(
-        `/rest/v1/stock/dashboard?store_id=${storeId}`,
+        `/rest/v1/stock/dashboard?store_id=${localStoreId}`,
         { method: 'GET' }
       );
       if (res) setDashboardData(res);
@@ -110,7 +124,7 @@ export function IngredientsPage() {
 
   useEffect(() => {
     fetchDashboard();
-  }, [storeId]);
+  }, [localStoreId]);
 
   // Total stock value
   const stockValue = useMemo(() => {
@@ -157,13 +171,13 @@ export function IngredientsPage() {
   // Submit ingredient form
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!storeId) return;
+    if (!localStoreId) return;
 
     setSaving(true);
     try {
       const payload = {
         ...formState,
-        store_id: storeId,
+        store_id: localStoreId,
         expiry_date: formState.expiry_date || null,
       };
 
@@ -318,6 +332,20 @@ export function IngredientsPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          {selectedStoreIds.length !== 1 && stores.length > 1 && (
+            <Select value={localStoreId} onValueChange={setLocalStoreId}>
+              <SelectTrigger className="w-56 h-10 border-2 font-bold uppercase text-[10px] tracking-wider bg-card">
+                <SelectValue placeholder="Choisir un restaurant" />
+              </SelectTrigger>
+              <SelectContent>
+                {stores.map(s => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Button variant="outline" onClick={handleCSVImport} className="h-10 uppercase font-black text-[10px] tracking-wider gap-2">
             <FileSpreadsheet className="h-4 w-4" /> Importer CSV
           </Button>
