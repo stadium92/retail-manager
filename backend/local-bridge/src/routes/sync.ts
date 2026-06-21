@@ -75,7 +75,7 @@ export async function registerSyncRoutes(app: FastifyInstance) {
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       
       // Fallback Supabase URL if not defined in env (matches frontend lib/supabase.ts)
-      const supabaseUrl = process.env.VITE_SUPABASE_URL || "https://fpvrbxmbrotowdlyebqv.supabase.co";
+      const supabaseUrl = process.env.VITE_SUPABASE_URL || "https://kvxqutffphaxlhjyyjsw.supabase.co";
       
       const res = await fetch(`${supabaseUrl}/rest/v1/`, { 
         signal: controller.signal 
