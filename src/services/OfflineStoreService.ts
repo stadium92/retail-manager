@@ -9,6 +9,7 @@ import { toast } from '@/hooks/use-toast';
 import { storeSchema } from '@/schemas/validation';
 import { getDataClient, smartFetch } from '@/lib/dataClient';
 import { OfflineAuthService } from './OfflineAuthService';
+import { supabase } from '@/lib/supabase';
 
 type TimeoutResult<T> =
   | { timedOut: true; promise: Promise<T> }
@@ -251,6 +252,36 @@ export class OfflineStoreService {
       const localAsStores = localStores.map(mapLocalStoreToStore);
 
       const dataClient = getDataClient();
+      
+      // Pure Cloud mode online fetching
+      if (!dataClient.isLocalFirst && navigator.onLine) {
+        try {
+          const { data, error } = await supabase
+            .from('restaurants')
+            .select('*')
+            .is('deleted_at', null)
+            .order('name');
+          
+          if (error) throw error;
+          
+          if (data) {
+            await this.cacheRemoteStores(data, localStores);
+            return { data: data.map(s => ({
+              id: s.id,
+              name: s.name,
+              address: s.address || undefined,
+              phone: s.phone || undefined,
+              owner_id: s.owner_id || undefined,
+              default_price_tier: s.default_price_tier || 1,
+              created_at: s.created_at,
+              updated_at: s.updated_at,
+            })) };
+          }
+        } catch (e) {
+          console.warn('[OfflineStoreService] Failed to fetch stores from Supabase:', e);
+        }
+      }
+
       if (dataClient.isLocalFirst) {
         const headers = await OfflineAuthService.getAuthHeaders();
         if (!headers) {
@@ -274,7 +305,7 @@ export class OfflineStoreService {
         return { data: merged };
       }
 
-      // Local-first only: return local stores
+      // Pure Cloud mode fallback: return local stores
       return { data: localAsStores };
     } catch (error) {
       console.error('Get stores error:', error);

@@ -167,7 +167,7 @@ export function DashboardView() {
           icon={TrendingUp}
         />
         <MetricCard
-          title={t('dashboard.metrics.inventoryValue')}
+          title={t('dashboard.inventoryValue')}
           value={formatCurrency(metrics.stockValuation)}
           icon={Package}
         />
