@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { useMasterDashboardStore } from '@/stores/useMasterDashboardStore';
 import { useMasterDataStore } from '@/stores/useMasterDataStore';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
+import { OfflineStoreService } from '@/services/OfflineStoreService';
 import { Ingredient, StockDashboard } from '@/types/ingredients';
 import { PortionsGauge } from '@/components/stock/PortionsGauge';
 import { PerishableAlertCard } from '@/components/stock/PerishableAlertCard';
@@ -44,10 +45,30 @@ const movementTypeLabel: Record<IngredientMovement['movement_type'], { label: st
 export function IngredientsPage() {
   const { t } = useTranslation();
   const { selectedStoreIds } = useMasterDashboardStore();
-  const { stores } = useMasterDataStore();
+  const { stores, setStores } = useMasterDataStore();
   const [localStoreId, setLocalStoreId] = useState<string>('');
 
+  // Load stores on mount if empty
   useEffect(() => {
+    const loadStores = async () => {
+      if (stores.length === 0) {
+        console.log('[IngredientsPage] Stores empty in store, loading via OfflineStoreService...');
+        try {
+          const res = await OfflineStoreService.getStores({ notify: false });
+          if (res.data) {
+            console.log('[IngredientsPage] Loaded stores successfully:', res.data.length);
+            setStores(res.data);
+          }
+        } catch (error) {
+          console.error('[IngredientsPage] Failed to load stores:', error);
+        }
+      }
+    };
+    loadStores();
+  }, [stores, setStores]);
+
+  useEffect(() => {
+    console.log('[IngredientsPage] selectedStoreIds changed:', selectedStoreIds, 'stores count:', stores.length);
     if (selectedStoreIds.length === 1) {
       setLocalStoreId(selectedStoreIds[0]);
     } else if (selectedStoreIds.length === 0 || selectedStoreIds.length > 1) {
@@ -57,7 +78,7 @@ export function IngredientsPage() {
         }
       }
     }
-  }, [selectedStoreIds, stores]);
+  }, [selectedStoreIds, stores, localStoreId]);
 
   const [loading, setLoading] = useState(false);
   const [dashboardData, setDashboardData] = useState<StockDashboard>({
@@ -106,13 +127,18 @@ export function IngredientsPage() {
   const [loadingMovements, setLoadingMovements] = useState(false);
 
   const fetchDashboard = async () => {
-    if (!localStoreId) return;
+    console.log('[IngredientsPage] fetchDashboard executing for store:', localStoreId);
+    if (!localStoreId) {
+      console.warn('[IngredientsPage] No localStoreId resolved, skipping fetch');
+      return;
+    }
     setLoading(true);
     try {
       const res = await OfflineAuthService.localBridgeRequest<StockDashboard>(
         `/rest/v1/stock/dashboard?store_id=${localStoreId}`,
         { method: 'GET' }
       );
+      console.log('[IngredientsPage] fetchDashboard response ingredients:', res?.ingredients?.length || 0);
       if (res) setDashboardData(res);
     } catch (err) {
       console.error('Failed to load dashboard:', err);
