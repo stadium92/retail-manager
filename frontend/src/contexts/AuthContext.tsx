@@ -412,9 +412,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     console.log('🔑 AuthContext.signIn called for:', email, 'isBootstrapped:', isBootstrapped);
+    const dc = getDataClient();
     
     let result;
-    if (!isBootstrapped) {
+    if (!dc.isLocalFirst) {
+      console.log('🌐 Direct cloud sign in...');
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) {
+          result = { error: error.message };
+        } else if (!data.user || !data.session) {
+          result = { error: 'Retrieval of user session failed.' };
+        } else {
+          // Fetch cloud user roles
+          const { data: rolesData } = await supabase
+            .from('user_roles')
+            .select('*')
+            .eq('user_id', data.user.id);
+
+          result = {
+            user: data.user,
+            session: data.session,
+            roles: rolesData || [],
+            isOffline: false,
+          };
+        }
+      } catch (err: any) {
+        result = { error: err.message || 'Supabase authentication failed.' };
+      }
+    } else if (!isBootstrapped) {
       console.log('🔌 Running cloud designed account bootstrap flow...');
       result = await runCloudBootstrapFlow(email, password);
     } else {

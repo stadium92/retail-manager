@@ -6,6 +6,7 @@ on:
       - feat/moe-stihl-templates
       - feat/stihl-niamakoro
       - feat/niamanan-dubai
+      - feat/stihl-dibidani
     tags:
       - 'v*'
   pull_request:
@@ -61,10 +62,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           args: --target x86_64-pc-windows-msvc
+          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
+          releaseName: "Release ${{ github.ref_name }}"
+          releaseDraft: true
+          prerelease: false
+
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: windows-installer
           path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+
 

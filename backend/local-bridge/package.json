@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",
+    "@supabase/supabase-js": "^2.108.2",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^9.6.0",
     "csv-parse": "^6.1.0",
@@ -32,6 +33,7 @@
     "fastify": "^4.29.1",
     "jsonwebtoken": "^9.0.3",
     "uuid": "^13.0.0",
+    "ws": "^8.21.0",
     "zod": "^3.25.6"
   },
   "devDependencies": {
@@ -39,6 +41,7 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.16.5",
+    "@types/ws": "^8.18.1",
     "@yao-pkg/pkg": "^6.12.0",
     "caxa": "^3.0.1",
     "javascript-obfuscator": "^5.2.1",

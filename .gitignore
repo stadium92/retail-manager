@@ -42,3 +42,7 @@ backend/local-bridge/retail-manager-logs/
 docs/FINANCIAL_STRATEGY.md
 
 testsprite_tests/tmp/config.json
+
+# Local agent database/logs
+.agent/
+

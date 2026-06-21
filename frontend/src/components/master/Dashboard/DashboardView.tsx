@@ -34,6 +34,16 @@ export function DashboardView() {
 
   useEffect(() => {
     loadDashboardData();
+
+    const handleDataUpdated = (e: Event) => {
+      console.log('[DashboardView] Local DB updated, reloading dashboard data...');
+      loadDashboardData();
+    };
+
+    window.addEventListener('localDbDataUpdated', handleDataUpdated);
+    return () => {
+      window.removeEventListener('localDbDataUpdated', handleDataUpdated);
+    };
   }, [version, selectedStoreIds, isAllStoresSelected]);
 
   const loadDashboardData = async () => {

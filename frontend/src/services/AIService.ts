@@ -12,7 +12,7 @@ export interface Suggestion {
 
 export class AIService {
   private static resolveUrl(path: string): string | null {
-    const base = import.meta.env.VITE_SUPABASE_URL || "https://fpvrbxmbrotowdlyebqv.supabase.co";
+    const base = import.meta.env.VITE_SUPABASE_URL || "https://kvxqutffphaxlhjyyjsw.supabase.co";
     if (!base) return null;
     return `${base.replace(/\/$/, '')}${path}`;
   }
@@ -39,7 +39,7 @@ export class AIService {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwdnJieG1icm90b3dkbHllYnF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNzE1MjMsImV4cCI6MjA5NjY0NzUyM30.8_mjBGr1FpYE20cc22iehEf0Xi9Fix2M0d_SSHIDQuI"}`,
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2eHF1dGZmcGhheGxoanl5anN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5Nzg3MjksImV4cCI6MjA5NjU1NDcyOX0.Ag6hB8LIXTrYHTcmSgDMoItU13Ql59JRXQvrwpI5v7c"}`,
       },
       body: JSON.stringify({ messages }),
     });
@@ -123,7 +123,7 @@ export class AIService {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwdnJieG1icm90b3dkbHllYnF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNzE1MjMsImV4cCI6MjA5NjY0NzUyM30.8_mjBGr1FpYE20cc22iehEf0Xi9Fix2M0d_SSHIDQuI"}`,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2eHF1dGZmcGhheGxoanl5anN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5Nzg3MjksImV4cCI6MjA5NjU1NDcyOX0.Ag6hB8LIXTrYHTcmSgDMoItU13Ql59JRXQvrwpI5v7c"}`,
         },
         body: JSON.stringify({ salesData, inventoryData, storeId }),
       });

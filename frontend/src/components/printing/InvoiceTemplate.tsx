@@ -56,13 +56,13 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, { data: InvoiceData }>
                     <div>
                         {/* Title adjusts based on template mode */}
                         <h1 className={`text-2xl font-bold uppercase tracking-wider ${hasStihlProduct ? 'text-[#f04e23]' : 'text-gray-900'}`}>
-                            {hasStihlProduct ? 'STIHL' : 'ETS Quincaillerie de la paix'}
+                            {hasStihlProduct ? 'Revendeur Agréé STIHL' : 'JATE'}
                         </h1>
                         <p className="text-sm text-gray-700 font-bold mb-1">ETS Madjou Sylla - QUINCAILLERIE DE LA PAIX</p>
                         <p className="text-[11px] text-gray-600 font-medium tracking-tight mb-1 uppercase">Vente de machine tronçonneuse, disque, meule bosch</p>
                         <p className="text-sm text-gray-600 leading-tight">{data.storeAddress || t('invoice.defaultStore')}</p>
                         <p className="text-sm text-gray-600 leading-tight">Tel: +223 77 77 90 60 / 20 22 26 45 / 79 45 49 46</p>
-                        <p className="text-xs text-gray-500 leading-tight mt-1">Niamakoro près de SONEF, Bamako</p>
+                        <p className="text-xs text-gray-500 leading-tight mt-1">Face centre Djoliba, BP 2844, Bamako</p>
                     </div>
                 </div>
                 <div className="text-right">

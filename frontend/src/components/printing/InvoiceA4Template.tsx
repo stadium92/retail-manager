@@ -27,40 +27,17 @@ export const InvoiceA4Template = forwardRef<HTMLDivElement, { data: InvoiceData 
         item.product.name.toLowerCase().includes('steel')
     );
 
-    const hasNonStihlProduct = data.items.some(item =>
-        !(item.product.name.toLowerCase().includes('stihl') ||
-          item.product.name.toLowerCase().includes('steel'))
-    );
-
-    const onlyStihl = hasStihlProduct && !hasNonStihlProduct;
-    const both = hasStihlProduct && hasNonStihlProduct;
-    const onlyQuincaillerie = hasNonStihlProduct && !hasStihlProduct; // Or just fallback if no stihl
-
     return (
         <div
             ref={ref}
-            className="bg-white text-black font-sans hidden print:flex print:flex-col mx-auto relative"
+            className="bg-white text-black font-sans hidden print:flex print:flex-col mx-auto"
             style={{ width: '210mm', minHeight: '297mm', padding: '10mm 15mm' }}
         >
-            {/* Watermark Logos */}
-            <div className="absolute inset-0 z-0 pointer-events-none flex flex-col justify-center items-center opacity-[0.15]">
-                {onlyStihl && (
-                    <img src="/stihl-logo.jpg" alt="Watermark STIHL" className="w-[60%] h-auto object-contain grayscale contrast-200" />
-                )}
-                {both && (
-                    <>
-                        <img src="/quincaillerie-logo.jpg" alt="Watermark Quincaillerie" className="w-[55%] h-auto object-contain grayscale contrast-200" />
-                        <img src="/stihl-logo.jpg" alt="Watermark STIHL" className="w-[45%] h-auto object-contain grayscale contrast-200 -mt-2" />
-                    </>
-                )}
-                {(!hasStihlProduct || onlyQuincaillerie) && !both && !onlyStihl && (
-                    <img src="/quincaillerie-logo.jpg" alt="Watermark Quincaillerie" className="w-[70%] h-auto object-contain grayscale contrast-200" />
-                )}
-            </div>
-
             {/* HEADER MODULE */}
-            <div className={`relative z-10 flex flex-col justify-center items-center mb-6 pb-4 border-b-4 ${hasStihlProduct ? 'border-[#f04e23]' : 'border-[#2c3e50]'}`}>
-                <div className="w-full text-center px-4">
+            <div className={`flex justify-between items-center mb-6 pb-4 border-b-4 ${hasStihlProduct ? 'border-[#f04e23]' : 'border-[#2c3e50]'}`}>
+                <QuincaillerieLogo />
+
+                <div className="flex-1 text-center px-4">
                     <div className="inline-block bg-red-600 text-white text-xs font-bold px-2 py-1 rounded mb-1">
                         ETS Madjou Sylla
                     </div>
@@ -72,8 +49,12 @@ export const InvoiceA4Template = forwardRef<HTMLDivElement, { data: InvoiceData 
                     </p>
                     <div className="text-sm font-semibold text-gray-800 leading-snug">
                         <p>TEL: <span className="text-green-700">+223 77 77 90 60 / 20 22 26 45 / 79 45 49 46</span></p>
-                        <p className="text-blue-800">madjoulalasylla@gmail.com &nbsp;|&nbsp; <span className="text-gray-600">Niamakoro près de SONEF</span></p>
+                        <p className="text-blue-800">madjoulalasylla@gmail.com &nbsp;|&nbsp; <span className="text-gray-600">Face à Djoliba, près du Trésor</span></p>
                     </div>
+                </div>
+
+                <div className="w-[110px] shrink-0 text-right flex justify-end">
+                    {hasStihlProduct ? <StihlLogo /> : <div className="w-full"></div>}
                 </div>
             </div>
 
@@ -114,7 +95,7 @@ export const InvoiceA4Template = forwardRef<HTMLDivElement, { data: InvoiceData 
 
                 {/* Client Info Box */}
                 {(data.customerName || data.customerPhone || data.customerAddress) && (
-                    <div className="w-[45%] border-2 border-gray-300 rounded p-4 bg-transparent">
+                    <div className="w-[45%] border-2 border-gray-300 rounded p-4 bg-gray-50">
                         <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Facturé à :</p>
                         {data.customerName && <h3 className="text-lg font-bold text-gray-900 mb-1">{data.customerName}</h3>}
                         {data.customerAddress && <p className="text-sm text-gray-700">{data.customerAddress}</p>}
@@ -136,7 +117,7 @@ export const InvoiceA4Template = forwardRef<HTMLDivElement, { data: InvoiceData 
                     </thead>
                     <tbody>
                         {data.items.map((item, index) => (
-                            <tr key={index}>
+                            <tr key={index} className={index % 2 === 0 ? '' : 'bg-gray-50'}>
                                 <td className="py-2 px-3 border border-gray-300 font-medium text-gray-900">
                                     {item.product.name}
                                     {item.discount > 0 && (
@@ -174,7 +155,7 @@ export const InvoiceA4Template = forwardRef<HTMLDivElement, { data: InvoiceData 
                     </div>
 
                     <div className="w-[45%]">
-                        <div className="flex justify-between items-center py-2 px-3 font-bold text-lg bg-transparent border border-gray-300 rounded whitespace-nowrap">
+                        <div className="flex justify-between items-center py-2 px-3 font-bold text-lg bg-gray-100 border border-gray-300 rounded whitespace-nowrap">
                             <span className="mr-4">NET À PAYER :</span>
                             <span>{formatCurrency(data.total_price)}</span>
                         </div>
