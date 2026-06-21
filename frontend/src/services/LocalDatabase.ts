@@ -353,6 +353,22 @@ class LocalDatabaseService {
     });
   }
 
+  async getUserByEmail(email: string): Promise<LocalUser | null> {
+    const db = await this.ensureDb();
+    return new Promise((resolve) => {
+      try {
+        const transaction = db.transaction('users', 'readonly');
+        const store = transaction.objectStore('users');
+        const index = store.index('email');
+        const req = index.get(email.toLowerCase());
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => resolve(null);
+      } catch (err) {
+        resolve(null);
+      }
+    });
+  }
+
   async getAllUsers(): Promise<LocalUser[]> {
     const db = await this.ensureDb();
     return new Promise(r => {
