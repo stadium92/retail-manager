@@ -358,7 +358,7 @@ export class SupabaseSyncService {
 
       // Load last pull time cursor from localStorage
       const cursorKey = `supabase_sync_cursor:${storeId}`;
-      const lastCursor = localStorage.getItem(cursorKey) || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(); // Default to 30 days ago
+      const lastCursor = localStorage.getItem(cursorKey) || '1970-01-01T00:00:00.000Z'; // Pull all records on first sync
 
       console.log(`🔄 [SupabaseSync] Pulling remote updates from Supabase since: ${lastCursor}`);
 
