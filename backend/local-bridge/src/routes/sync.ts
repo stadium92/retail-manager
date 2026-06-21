@@ -2,6 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { db } from '../db/index.js';
 import { authenticateRequest } from './utils/auth.js';
 import { env } from '../env.js';
+import { SyncService } from '../db/SyncService.js';
+
 
 interface OutboxEntry {
   id: string;
@@ -369,4 +371,60 @@ export async function registerSyncRoutes(app: FastifyInstance) {
       },
     });
   });
+
+  // Server-Sent Events endpoint for real-time synchronization updates
+  app.get('/sync/events', async (request, reply) => {
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+    });
+
+    reply.raw.write('comment: connection established\n\n');
+    SyncService.addSseClient(reply);
+
+    request.raw.on('close', () => {
+      SyncService.removeSseClient(reply);
+    });
+  });
+
+  // Trigger manual outbox push immediately
+  app.post('/sync/push', async (request, reply) => {
+    const claims = authenticateRequest(request, reply, ['master', 'worker']);
+    if (!claims) return;
+
+    const { store_id } = request.query as { store_id?: string };
+    const actualStoreId = store_id || claims.store_id;
+
+    if (!actualStoreId) {
+      return reply.status(400).send({ error: 'MissingStoreId', message: 'store_id parameter is required.' });
+    }
+
+    try {
+      await SyncService.pushOutbox();
+      const stats = db.getOutboxStats(actualStoreId);
+      return reply.send({
+        pushed: stats.sent,
+        failed: stats.failed,
+        pending: stats.pending
+      });
+    } catch (err: any) {
+      return reply.status(500).send({ error: 'PushFailed', message: err.message });
+    }
+  });
+
+  // Trigger manual remote pull immediately
+  app.post('/sync/pull', async (request, reply) => {
+    const claims = authenticateRequest(request, reply, ['master', 'worker']);
+    if (!claims) return;
+
+    try {
+      await SyncService.pullData();
+      return reply.send({ success: true });
+    } catch (err: any) {
+      return reply.status(500).send({ error: 'PullFailed', message: err.message });
+    }
+  });
 }
+

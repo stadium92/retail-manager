@@ -21,6 +21,8 @@ import { registerCashierCreditsRoutes } from './routes/cashier_credits.js';
 import { registerStockAdjustmentsRoutes } from './routes/stock_adjustments.js';
 import { db } from './db/index.js';
 import { runScheduler } from './scheduler.js';
+import { SyncService } from './db/SyncService.js';
+
 
 import os from 'os';
 
@@ -117,6 +119,14 @@ async function start() {
   } catch (err) {
     log(`Scheduler Error: ${err}`);
   }
+
+  // Start Background Sync Service Daemon
+  try {
+    SyncService.start();
+  } catch (err) {
+    log(`SyncService Start Error: ${err}`);
+  }
+
 
   try {
     log(`Attempting to listen on port ${env.port}...`);
