@@ -127,25 +127,61 @@ export const OfflineInventoryService = {
       const dc = getDataClient();
       await LocalDatabase.init();
       
-      // 1. If Local-First, try Bridge as the absolute source of truth
+      const targetStoreId = storeId === 'all' ? undefined : storeId;
+
+      // 1. If Pure Cloud mode (not local-first) and online, fetch directly from Supabase
+      if (!dc.isLocalFirst && navigator.onLine) {
+        try {
+          let query = supabase
+            .from('menu_items')
+            .select('*')
+            .is('deleted_at', null)
+            .order('name');
+            
+          if (targetStoreId) {
+            query = query.eq('restaurant_id', targetStoreId);
+          }
+          
+          const { data, error } = await query;
+          if (error) throw error;
+          
+          if (data) {
+            const mapped = data.map(mapDbToInventoryItem);
+            
+            // Cache remote items to IndexedDB asynchronously without blocking UI
+            (async () => {
+              try {
+                for (const p of data) {
+                  await LocalDatabase.saveInventoryItem(mapToLocalInventory(p, true));
+                }
+              } catch (e) {
+                console.warn('[OfflineInventory] Failed to cache inventory item:', e);
+              }
+            })();
+            
+            return { data: mapped };
+          }
+        } catch (e) {
+          console.warn('[OfflineInventory] Supabase direct fetch failed, falling back to local cache:', e);
+        }
+      }
+
+      // 2. If Local-First, try Bridge as the absolute source of truth
       if (dc.isLocalFirst) {
         try {
           const { OfflineAuthService } = await import('./OfflineAuthService');
           const headers = await OfflineAuthService.getAuthHeaders();
           if (headers) {
-            const params = new URLSearchParams({ store_id: storeId });
+            const params = new URLSearchParams();
+            if (targetStoreId) {
+              params.append('store_id', targetStoreId);
+            }
             const res = await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/products?${params.toString()}`, { headers });
             if (res.ok) {
               const payload = await res.json();
               const remoteProducts = Array.isArray(payload) ? payload : (payload.data || []);
               const mappedItems = remoteProducts.map(mapDbToInventoryItem);
               
-              // NO CACHE SYNC: We rely purely on the Local Bridge to avoid "Ghost Files".
-              // Browser IndexedDB is now ONLY used as an emergency read-only fallback.
-              
-              // Update cache without blocking
-              
-
               if (options?.notify !== false) {
                 window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
               }
@@ -158,12 +194,12 @@ export const OfflineInventoryService = {
         }
       }
 
-      // 2. Emergency Fallback: ONLY use IndexedDB if bridge is literally offline
-      const localInventory = await LocalDatabase.getInventory(storeId);
+      // 3. Fallback: retrieve from IndexedDB
+      const localInventory = await LocalDatabase.getInventory(targetStoreId);
       if (localInventory.length > 0 && !dc.isLocalFirst) {
         return { data: localInventory.map(mapLocalInventoryToItem) };
       }
-      // If we are Local-First and bridge failed, we must NOT show ghost data from browser
+      
       return { data: [] };
     } catch (error) {
       console.error('[OfflineInventory] getInventory fatal error:', error);
@@ -176,6 +212,26 @@ export const OfflineInventoryService = {
       await LocalDatabase.init();
       const local = await LocalDatabase.getInventoryItem(id);
       if (local) return { data: mapLocalInventoryToItem(local) };
+
+      const dc = getDataClient();
+      if (!dc.isLocalFirst && navigator.onLine) {
+        try {
+          const { data, error } = await supabase
+            .from('menu_items')
+            .select('*')
+            .eq('id', id)
+            .maybeSingle();
+            
+          if (error) throw error;
+          if (data) {
+            const mapped = mapDbToInventoryItem(data);
+            await LocalDatabase.saveInventoryItem(mapToLocalInventory(data, true));
+            return { data: mapped };
+          }
+        } catch (e) {
+          console.warn('[OfflineInventory] Failed to fetch product from Supabase:', e);
+        }
+      }
 
       return { data: undefined };
     } catch (error) {

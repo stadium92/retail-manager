@@ -386,7 +386,86 @@ export class OfflineAuthService {
               if (qty > 0) item_count++;
             }
           }
-          return { total_cost, total_retail, item_count } as any;
+        }
+
+        if (path.startsWith('/rest/v1/ingredients')) {
+          const parts = path.split('/');
+          const id = parts[4] ? parts[4].split('?')[0] : null; // e.g. /rest/v1/ingredients/uuid
+
+          if (init.method === 'POST') {
+            const body = JSON.parse(init.body as string);
+            const mapped = {
+              id: body.id || crypto.randomUUID(),
+              restaurant_id: body.store_id || body.restaurant_id,
+              name: body.name,
+              unit: body.unit,
+              category: body.category || null,
+              current_stock: Number(body.current_stock || 0),
+              min_threshold: Number(body.min_threshold || 0),
+              cost_per_unit: Number(body.cost_per_unit || 0),
+              expiry_date: body.expiry_date || null,
+              updated_at: new Date().toISOString()
+            };
+            const { error } = await supabase.from('ingredients').insert(mapped);
+            if (error) throw error;
+            return {
+              id: mapped.id,
+              store_id: mapped.restaurant_id,
+              name: mapped.name,
+              unit: mapped.unit,
+              category: mapped.category,
+              current_stock: mapped.current_stock,
+              min_threshold: mapped.min_threshold,
+              cost_per_unit: mapped.cost_per_unit,
+              expiry_date: mapped.expiry_date,
+              created_at: new Date().toISOString(),
+              updated_at: mapped.updated_at
+            } as any;
+          } else if (init.method === 'PATCH' && id) {
+            const body = JSON.parse(init.body as string);
+            const mapped: any = {};
+            if (body.name !== undefined) mapped.name = body.name;
+            if (body.unit !== undefined) mapped.unit = body.unit;
+            if (body.category !== undefined) mapped.category = body.category;
+            if (body.current_stock !== undefined) mapped.current_stock = Number(body.current_stock);
+            if (body.min_threshold !== undefined) mapped.min_threshold = Number(body.min_threshold);
+            if (body.cost_per_unit !== undefined) mapped.cost_per_unit = Number(body.cost_per_unit);
+            if (body.expiry_date !== undefined) mapped.expiry_date = body.expiry_date;
+            mapped.updated_at = new Date().toISOString();
+
+            const { error } = await supabase.from('ingredients').update(mapped).eq('id', id);
+            if (error) throw error;
+            return { id, ...body } as any;
+          } else if (init.method === 'DELETE' && id) {
+            const { error } = await supabase.from('ingredients').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+            if (error) throw error;
+            return { success: true } as any;
+          } else {
+            // GET
+            const urlObj = new URL(`http://localhost${path}`);
+            const storeId = urlObj.searchParams.get('store_id');
+            
+            let query = supabase.from('ingredients').select('*').is('deleted_at', null);
+            if (storeId) {
+              query = query.eq('restaurant_id', storeId);
+            }
+            const { data, error } = await query;
+            if (error) throw error;
+            
+            return (data || []).map((i: any) => ({
+              id: i.id,
+              store_id: i.restaurant_id,
+              name: i.name,
+              unit: i.unit,
+              category: i.category,
+              current_stock: Number(i.current_stock || 0),
+              min_threshold: Number(i.min_threshold || 0),
+              cost_per_unit: Number(i.cost_per_unit || 0),
+              expiry_date: i.expiry_date,
+              created_at: i.created_at,
+              updated_at: i.updated_at
+            })) as any;
+          }
         }
 
         if (path.startsWith('/rest/v1/stock/dashboard')) {
