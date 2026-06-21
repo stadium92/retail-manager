@@ -475,5 +475,63 @@ export const OfflineInventoryService = {
       console.error('Error fetching stock valuation:', error);
       return { total_cost: 0, total_retail: 0, item_count: 0, error };
     }
+  },
+
+  async getLowStockItems(limit: number = 10, storeId?: string): Promise<{ data?: InventoryItem[]; error?: any }> {
+    try {
+      const dc = getDataClient();
+      await LocalDatabase.init();
+      const targetStoreId = storeId === 'all' ? undefined : storeId;
+
+      // 1. If Local-First, try Bridge
+      if (dc.isLocalFirst) {
+        try {
+          const headers = await OfflineAuthService.getAuthHeaders();
+          if (headers) {
+            const params = new URLSearchParams({
+              filter: 'low_stock',
+              limit: String(limit)
+            });
+            if (targetStoreId) {
+              params.append('store_id', targetStoreId);
+            }
+            const res = await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/products?${params.toString()}`, { headers });
+            if (res.ok) {
+              const payload = await res.json();
+              const remoteProducts = Array.isArray(payload) ? payload : (payload.data || []);
+              const mappedItems = remoteProducts.map(mapDbToInventoryItem);
+              return { data: mappedItems.slice(0, limit) };
+            }
+          }
+        } catch (e) {
+          console.warn('[OfflineInventory] Bridge getLowStockItems failed, falling back to local cache:', e);
+        }
+      }
+
+      // 2. Fallback: IndexedDB
+      if (targetStoreId) {
+        const localInventory = await LocalDatabase.getInventory(targetStoreId);
+        const lowStock = localInventory
+          .map(mapLocalInventoryToItem)
+          .filter(item => item.quantity > 0 && item.quantity <= (item.low_stock_threshold || 0));
+        return { data: lowStock.slice(0, limit) };
+      } else {
+        const { OfflineStoreService } = await import('./OfflineStoreService');
+        const { data: allStores } = await OfflineStoreService.getStores();
+        const storeIds = allStores?.map(s => s.id) || [];
+        let combinedLowStock: InventoryItem[] = [];
+        for (const sid of storeIds) {
+          const localInventory = await LocalDatabase.getInventory(sid);
+          const lowStock = localInventory
+            .map(mapLocalInventoryToItem)
+            .filter(item => item.quantity > 0 && item.quantity <= (item.low_stock_threshold || 0));
+          combinedLowStock.push(...lowStock);
+        }
+        return { data: combinedLowStock.slice(0, limit) };
+      }
+    } catch (error) {
+      console.error('[OfflineInventory] getLowStockItems fatal error:', error);
+      return { error };
+    }
   }
 };
