@@ -227,6 +227,7 @@
     "monthSales": "Commandes du mois",
     "totalStores": "Total des restaurants",
     "lowStockItems": "Plats en rupture de menu / stock",
+    "inventoryValue": "Valeur de l'Inventaire",
     "salesStatus": "Statut des commandes",
     "status": {
       "good": "Bonnes commandes",

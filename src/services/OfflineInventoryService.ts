@@ -469,8 +469,21 @@ export const OfflineInventoryService = {
           if (res.ok) return await res.json();
         }
       }
-      // Sum local fallback if needed (simplified)
-      return { total_cost: 0, total_retail: 0, item_count: 0 };
+      
+      // Calculate from LocalDatabase (IndexedDB) for pure cloud mode or fallback
+      await LocalDatabase.init();
+      const items = await LocalDatabase.getInventory(storeId === 'all' ? undefined : storeId);
+      let total_cost = 0;
+      let total_retail = 0;
+      for (const item of items) {
+        total_cost += (item.cost || 0) * (item.quantity || 0);
+        total_retail += (item.unit_price || item.price || 0) * (item.quantity || 0);
+      }
+      return {
+        total_cost,
+        total_retail,
+        item_count: items.length
+      };
     } catch (error) {
       console.error('Error fetching stock valuation:', error);
       return { total_cost: 0, total_retail: 0, item_count: 0, error };

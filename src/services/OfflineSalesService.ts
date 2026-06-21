@@ -305,13 +305,30 @@ export const OfflineSalesService = {
                 }
             }
 
-            const today = new Date().toISOString().split('T')[0];
+            const now = new Date();
+            const todayStr = now.toISOString().split('T')[0];
+
+            // 7 days ago in UTC string format
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(now.getDate() - 7);
+            const sevenDaysAgoStr = sevenDaysAgo.toISOString();
+
+            // 30 days ago in UTC string format
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(now.getDate() - 30);
+            const thirtyDaysAgoStr = thirtyDaysAgo.toISOString();
+
             const todaySales = sales
-                .filter(s => s.created_at && s.created_at.startsWith(today) && s.sale_type !== 'proforma')
+                .filter(s => s.created_at && s.created_at.startsWith(todayStr) && s.sale_type !== 'proforma')
                 .reduce((sum, s) => sum + (s.total_price || 0), 0);
 
-            const weekSales = todaySales; 
-            const monthSales = todaySales;
+            const weekSales = sales
+                .filter(s => s.created_at && s.created_at >= sevenDaysAgoStr && s.sale_type !== 'proforma')
+                .reduce((sum, s) => sum + (s.total_price || 0), 0);
+
+            const monthSales = sales
+                .filter(s => s.created_at && s.created_at >= thirtyDaysAgoStr && s.sale_type !== 'proforma')
+                .reduce((sum, s) => sum + (s.total_price || 0), 0);
 
             return { todaySales, weekSales, monthSales };
         } catch (error) {

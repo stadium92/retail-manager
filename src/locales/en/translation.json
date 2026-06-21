@@ -153,6 +153,7 @@
     "monthSales": "Month Orders",
     "totalStores": "Total Restaurants",
     "lowStockItems": "Low Menu Dishes",
+    "inventoryValue": "Inventory Value",
     "salesStatus": "Orders Status",
     "status": {
       "good": "Good Orders",
