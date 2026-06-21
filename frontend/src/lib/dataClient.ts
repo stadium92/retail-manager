@@ -11,10 +11,18 @@ export interface DataClient {
 }
 
 export function getDataClient(): DataClient {
-  console.log(`🔑 [DataClient] mode: offline, isLocalFirst: true, baseUrl: ${localBridgeBaseUrl}`);
+  const isVercelOrCloud = typeof window !== 'undefined' && 
+    (window.location.hostname.includes('vercel.app') || 
+     window.location.hostname.includes('mpm-food-portal') ||
+     (!['localhost', '127.0.0.1', '0.0.0.0'].includes(window.location.hostname) && window.location.hostname !== ''));
+
+  const mode = isVercelOrCloud ? 'cloud' : (import.meta.env.VITE_APP_MODE || 'offline');
+  const isLocalFirst = !isVercelOrCloud && (mode === 'offline' || mode === 'hybrid');
+
+  console.log(`🔑 [DataClient] mode: ${mode}, isLocalFirst: ${isLocalFirst}, baseUrl: ${localBridgeBaseUrl}`);
   return {
-    mode: 'offline',
-    isLocalFirst: true,
+    mode: mode as AppMode,
+    isLocalFirst,
     localBridgeBaseUrl,
   };
 }
