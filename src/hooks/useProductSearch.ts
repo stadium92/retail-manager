@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getDataClient, smartFetch } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { Product } from '@/types';
+import { supabase } from '@/lib/supabase';
 
 interface SearchResult {
   data: Product[];
@@ -160,9 +161,85 @@ export function useProductSearch(storeId: string, enabled: boolean = true) {
         }
       }
       
-      // Non-local-first path removed (supabase no longer available)
-      console.warn('[useProductSearch] non-local-first path is not supported');
-      return { data: [], total: 0 }; 
+      // Direct cloud mode: query Supabase first if online, otherwise fallback to local IndexedDB
+      if (navigator.onLine) {
+        try {
+          const { data: supaData, error } = await supabase
+            .from('menu_items')
+            .select('*')
+            .is('deleted_at', null)
+            .eq('restaurant_id', storeId)
+            .or(`name.ilike.%${debouncedSearch}%,sku.ilike.%${debouncedSearch}%,barcode.ilike.%${debouncedSearch}%`)
+            .limit(50);
+            
+          if (error) throw error;
+          
+          if (supaData) {
+            const mappedData = supaData.map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              sku: p.sku,
+              barcode: p.barcode || p.sku,
+              unit_price: p.unit_price || p.price || 0,
+              cost_price: p.cost_price || p.cost || 0,
+              wholesale_price: p.wholesale_price_ttc || p.wholesale_price || 0,
+              wholesale_price_ht: p.wholesale_price_ht || 0,
+              wholesale_price_ttc: p.wholesale_price_ttc || 0,
+              selling_price_2: p.selling_price_2 || 0,
+              selling_price_3: p.selling_price_3 || 0,
+              selling_price_4: p.selling_price_4 || 0,
+              quantity: p.quantity || 0,
+              min_quantity: p.min_quantity || p.low_stock_threshold || 0,
+              packaging: p.packaging || '1',
+              unit_type: p.unit_type || 'Piece',
+              category_id: p.category || p.category_id,
+              store_id: p.restaurant_id || p.store_id
+            }));
+            return { data: mappedData, total: mappedData.length };
+          }
+        } catch (e) {
+          console.warn('[useProductSearch] Supabase direct search failed, falling back to local DB:', e);
+        }
+      }
+
+      // OFFLINE WEB FALLBACK (IndexedDB)
+      const { LocalDatabase } = await import('@/services/LocalDatabase');
+      await LocalDatabase.init();
+      let allItems = await LocalDatabase.getInventory(storeId && storeId !== 'all' ? storeId : undefined);
+
+      if (debouncedSearch) {
+        const lowerQ = debouncedSearch.toLowerCase();
+        allItems = allItems.filter(p => 
+          (p.name && p.name.toLowerCase().includes(lowerQ)) ||
+          (p.product_name && p.product_name.toLowerCase().includes(lowerQ)) ||
+          (p.sku && p.sku.toLowerCase().includes(lowerQ)) ||
+          (p.barcode && p.barcode.toLowerCase().includes(lowerQ))
+        );
+      }
+
+      const total = allItems.length;
+      const mappedData = allItems.slice(0, 50).map((p: any) => ({
+        id: p.id,
+        name: p.product_name || p.name,
+        sku: p.sku,
+        barcode: p.barcode || p.sku,
+        unit_price: p.price || p.unit_price || 0,
+        cost_price: p.cost || p.cost_price || 0,
+        wholesale_price: p.wholesale_price_ttc || p.wholesale_price || 0,
+        wholesale_price_ht: p.wholesale_price_ht || 0,
+        wholesale_price_ttc: p.wholesale_price_ttc || 0,
+        selling_price_2: p.selling_price_2 || 0,
+        selling_price_3: p.selling_price_3 || 0,
+        selling_price_4: p.selling_price_4 || 0,
+        quantity: p.quantity ?? p.stock ?? 0,
+        min_quantity: p.reorder_quantity || p.min_quantity || 0,
+        packaging: p.packaging || '1',
+        unit_type: p.unit_type || 'Piece',
+        category_id: p.category || p.category_id,
+        store_id: p.store_id
+      }));
+
+      return { data: mappedData, total };
     },
     enabled: enabled && !!storeId,
     staleTime: 0, // Always fetch fresh data
