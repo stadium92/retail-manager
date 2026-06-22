@@ -343,6 +343,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Set user/session/roles from cache immediately — no spinner.
           setUser(offlineSession.user);
           setSession(offlineSession.session);
+          
+          // Sync with global Supabase client in cloud mode
+          if (offlineSession.session && !dataClient.isLocalFirst) {
+            console.log('[AuthContext] Restoring Supabase client session');
+            supabase.auth.setSession({
+              access_token: offlineSession.session.access_token,
+              refresh_token: offlineSession.session.refresh_token,
+            }).catch(e => console.warn('[AuthContext] Failed to sync restored session to Supabase client:', e));
+          }
+
           setRoles(offlineSession.roles);
           setLoading(false);
           // Non-blocking background role sync — does NOT block the UI.
@@ -613,6 +623,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Set them immediately and clear rolesLoading so the UI can render without waiting.
       setUser(result.user);
       setSession(result.session);
+
+      // Sync with global Supabase client in cloud mode
+      if (result.session && !dataClient.isLocalFirst) {
+        console.log('[AuthContext] Syncing Supabase client session on sign in');
+        supabase.auth.setSession({
+          access_token: result.session.access_token,
+          refresh_token: result.session.refresh_token,
+        }).catch(e => console.warn('[AuthContext] Failed to sync signed in session to Supabase client:', e));
+      }
+
       setRoles(result.roles);
       setIsOffline(result.isOffline);
       // rolesLoading stays false — the UI shows immediately with the correct roles.
@@ -799,6 +819,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setSession(null);
       setRoles([]);
+
+      if (!dataClient.isLocalFirst) {
+        await supabase.auth.signOut().catch(e => console.warn('[AuthContext] Failed to sign out of Supabase client:', e));
+      }
       
       toast({
         title: 'Signed Out',
@@ -812,6 +836,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setSession(null);
       setRoles([]);
+
+      if (!dataClient.isLocalFirst) {
+        supabase.auth.signOut().catch(() => {});
+      }
       
       toast({
         title: 'Signed Out',
