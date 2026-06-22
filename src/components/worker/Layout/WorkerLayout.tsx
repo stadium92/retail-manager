@@ -186,7 +186,7 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
     const fetchStore = async () => {
       if (!user) return;
 
-      let foundStoreId = user?.user_metadata?.store_id || roles.find(r => r.store_id)?.store_id || '';
+      let foundStoreId = roles.find(r => r.store_id)?.store_id || user?.user_metadata?.store_id || '';
       let foundStoreName = '';
 
       // Try to resolve store name from local bridge or cache

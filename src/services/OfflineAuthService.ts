@@ -752,7 +752,7 @@ export class OfflineAuthService {
              return currP > bestP ? current : best;
            });
            userRole = selectedBestRow.role;
-           if (!store_id && selectedBestRow.store_id) {
+           if (selectedBestRow.store_id) {
              store_id = selectedBestRow.store_id;
            }
         }
@@ -1253,7 +1253,7 @@ export class OfflineAuthService {
       }));
 
       const storeId = localRoles.find(r => r.store_id)?.store_id;
-      if (storeId && !session.user.user_metadata.store_id) {
+      if (storeId) {
         session.user.user_metadata.store_id = storeId;
       }
 

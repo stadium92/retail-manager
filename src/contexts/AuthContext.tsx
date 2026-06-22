@@ -237,14 +237,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           if (!supaErr && supaRoles && supaRoles.length > 0) {
             console.log('Using Supabase cloud roles:', supaRoles);
-            setRoles(supaRoles.map(r => ({
+            const mappedRoles = supaRoles.map(r => ({
               id: r.id,
               user_id: r.user_id,
               role: r.role as AppRole,
               store_id: r.store_id,
               sub_role: r.sub_role,
               created_at: r.created_at,
-            })));
+            }));
+            setRoles(mappedRoles);
+
+            const ROLE_PRIORITY: Record<string, number> = {
+              master: 4,
+              worker: 3,
+              cashier: 3,
+              cook: 3,
+              waiter: 3,
+              waiters: 3,
+              deliverer: 2,
+              customer: 1,
+            };
+            const bestRow = supaRoles.reduce((best, current) => {
+              const bestP = ROLE_PRIORITY[best.role] ?? 0;
+              const currP = ROLE_PRIORITY[current.role] ?? 0;
+              return currP > bestP ? current : best;
+            });
+            const storeId = bestRow.store_id;
+            const role = bestRow.role;
+
+            if (storeId) {
+              setUser(prev => {
+                if (prev && (prev.user_metadata?.store_id !== storeId || prev.user_metadata?.role !== role)) {
+                  console.log('[AuthContext] fetchUserRoles updating local user state metadata:', storeId, role);
+                  supabase.auth.updateUser({
+                    data: {
+                      store_id: storeId,
+                      role: role,
+                      sub_role: bestRow.sub_role || undefined
+                    }
+                  }).catch(err => console.error('[AuthContext] fetchUserRoles background metadata update failed:', err));
+
+                  return {
+                    ...prev,
+                    user_metadata: {
+                      ...prev.user_metadata,
+                      store_id: storeId,
+                      role: role,
+                      sub_role: bestRow.sub_role || undefined
+                    }
+                  };
+                }
+                return prev;
+              });
+            }
+
             setRolesLoading(false);
             return;
           }
@@ -463,7 +509,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('[AuthContext] All user_roles rows:', rolesData, '→ selected:', bestRow);
           role = bestRow.role || role;
           subRole = bestRow.sub_role || subRole;
-          if (!storeId && bestRow.store_id) {
+          if (bestRow.store_id) {
             storeId = bestRow.store_id;
           }
         }
@@ -531,7 +577,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Always sync user metadata to keep it up-to-date with user_roles table
-      if (metadata.role !== role || !metadata.store_id) {
+      if (metadata.role !== role || metadata.store_id !== storeId) {
         console.log('[AuthContext] Syncing Supabase user metadata — role:', role, 'store_id:', storeId);
         try {
           await supabase.auth.updateUser({
