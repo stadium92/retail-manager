@@ -37,10 +37,11 @@ export function getDataClient(): DataClient {
   const android = isAndroid();
   const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
   const tauri = isTauriDesktop();
+  const forceCloud = typeof window !== 'undefined' && (window.location.search.includes('force_cloud=true') || window.location.hash.includes('force_cloud=true'));
   
   // On Android there is no local-bridge sidecar — use IndexedDB fallback (isLocalFirst = false)
   // On HTTPS/browser (Vercel), Mixed Content rules block HTTP local-bridge requests, so use pure cloud
-  const localFirst = !android && (!isHttps || tauri);
+  const localFirst = !android && (!isHttps || tauri) && !forceCloud;
   const baseUrl = localFirst 
     ? localBridgeBaseUrl 
     : (import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-project.supabase.co').replace(/\/$/, '');
@@ -161,17 +162,31 @@ if (typeof window !== 'undefined' && !(window as any).__fetch_patched__) {
           modified = true;
         }
         
-        // 3. Rewrite query params: store_id -> restaurant_id
+        // 3. Rewrite query params: store_id -> restaurant_id and auto-add eq. prefix if missing
         if (urlStr.includes('/rest/v1/')) {
           try {
             const urlObj = new URL(urlStr);
             let paramModified = false;
+            
             if (urlObj.searchParams.has('store_id')) {
-              const val = urlObj.searchParams.get('store_id');
+              const val = urlObj.searchParams.get('store_id') || '';
               urlObj.searchParams.delete('store_id');
-              urlObj.searchParams.set('restaurant_id', val!);
+              urlObj.searchParams.set('restaurant_id', val);
               paramModified = true;
             }
+            
+            // Prefix filter parameters with 'eq.' if they don't have an operator prefix
+            const postgrestKeywords = ['select', 'order', 'limit', 'offset', 'columns', 'or', 'and', 'not', 'apikey'];
+            for (const [key, val] of Array.from(urlObj.searchParams.entries())) {
+              if (!postgrestKeywords.includes(key)) {
+                const hasOperator = /^[a-z]{2,5}\./.test(val);
+                if (!hasOperator) {
+                  urlObj.searchParams.set(key, `eq.${val}`);
+                  paramModified = true;
+                }
+              }
+            }
+            
             if (paramModified) {
               urlStr = urlObj.toString();
               modified = true;
@@ -228,7 +243,43 @@ if (typeof window !== 'undefined' && !(window as any).__fetch_patched__) {
         
         if (modified) {
           console.log(`🔄 [fetch patch] Rewriting ${input.toString()} -> ${urlStr}`);
-          const response = await originalFetch(urlStr, newInit);
+          
+          let finalInput: RequestInfo = urlStr;
+          if (typeof input !== 'string' && !(input instanceof URL)) {
+            const req = input as Request;
+            try {
+              // Clone original request with new URL to keep headers/method/body stream intact
+              finalInput = new Request(urlStr, req);
+              if (newInit && newInit.body) {
+                // If body was modified, override with newInit options
+                finalInput = new Request(urlStr, {
+                  ...newInit,
+                  headers: newInit.headers as HeadersInit
+                });
+              }
+            } catch (e) {
+              console.warn('[fetch patch] Request cloning failed, falling back to URL string:', e);
+              // Fallback: build manual headers merge
+              const reqHeaders: Record<string, string> = {};
+              req.headers.forEach((val, key) => {
+                reqHeaders[key] = val;
+              });
+              newInit = {
+                method: req.method,
+                headers: {
+                  ...reqHeaders,
+                  ...(newInit?.headers || {})
+                },
+                credentials: req.credentials,
+                mode: req.mode,
+                referrer: req.referrer,
+                ...newInit
+              };
+              finalInput = urlStr;
+            }
+          }
+          
+          const response = await originalFetch(finalInput, newInit);
           
           if (response.ok && response.status !== 204) {
             try {

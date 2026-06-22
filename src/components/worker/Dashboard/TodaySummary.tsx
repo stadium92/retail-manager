@@ -28,40 +28,32 @@ export function TodaySummary() {
     today.setHours(0, 0, 0, 0);
 
     try {
-      if (isLocalFirst) {
-        const headers = await OfflineAuthService.getAuthHeaders();
-        if (!headers) {
-          setLoading(false);
-          return;
-        }
-        const params = new URLSearchParams();
-        if (user.user_metadata?.store_id) {
-          params.set('store_id', String(user.user_metadata.store_id));
-        }
-        const response = await fetch(`${localBridgeBaseUrl}/rest/v1/sales?${params.toString()}`, {
-          headers,
-        });
-        const payload = await response.json().catch(() => []);
-        if (!response.ok) {
-          console.error('Error fetching today summary:', payload);
-          setLoading(false);
-          return;
-        }
-        const sales = (payload || []) as Array<{ total_price?: number; worker_id?: string; created_at?: string }>;
-        const filtered = sales.filter((sale) => {
-          if (sale.worker_id && sale.worker_id !== user.id) return false;
-          if (!sale.created_at) return false;
-          return new Date(sale.created_at) >= today;
-        });
-        setSalesCount(filtered.length);
-        setTotalRevenue(filtered.reduce((sum, sale) => sum + Number(sale.total_price || 0), 0));
+      const headers = await OfflineAuthService.getAuthHeaders();
+      if (!headers) {
         setLoading(false);
         return;
       }
-
-      // Local bridge path handles all data fetching above; no remote fallback needed.
-      setSalesCount(0);
-      setTotalRevenue(0);
+      const params = new URLSearchParams();
+      if (user.user_metadata?.store_id) {
+        params.set('store_id', String(user.user_metadata.store_id));
+      }
+      const response = await fetch(`${localBridgeBaseUrl}/rest/v1/sales?${params.toString()}`, {
+        headers,
+      });
+      const payload = await response.json().catch(() => []);
+      if (!response.ok) {
+        console.error('Error fetching today summary:', payload);
+        setLoading(false);
+        return;
+      }
+      const sales = (payload || []) as Array<{ total_price?: number; worker_id?: string; created_at?: string }>;
+      const filtered = sales.filter((sale) => {
+        if (sale.worker_id && sale.worker_id !== user.id) return false;
+        if (!sale.created_at) return false;
+        return new Date(sale.created_at) >= today;
+      });
+      setSalesCount(filtered.length);
+      setTotalRevenue(filtered.reduce((sum, sale) => sum + Number(sale.total_price || 0), 0));
     } catch (error) {
       console.error('Unexpected error fetching today summary:', error);
     } finally {
