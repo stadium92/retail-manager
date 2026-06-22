@@ -15,7 +15,7 @@ import { supabase } from '../lib/supabase';
 function mapDbToInventoryItem(product: any): InventoryItem {
   return {
     id: product.id,
-    store_id: product.store_id,
+    store_id: product.restaurant_id || product.store_id,
     name: product.name,
     sku: product.sku,
     barcode: product.barcode,
@@ -88,7 +88,7 @@ function mapLocalInventoryToItem(local: LocalInventory): InventoryItem {
 function mapToLocalInventory(item: InventoryItem | any, synced: boolean = true): LocalInventory {
   return {
     id: item.id,
-    store_id: item.store_id,
+    store_id: item.restaurant_id || item.store_id,
     product_name: item.name || item.product_name,
     sku: item.sku,
     barcode: item.barcode,
