@@ -27,8 +27,33 @@ interface Table {
   position_y: number;
 }
 
-export function TableManagement({ storeId, onModuleChange }: TableManagementProps) {
+export function TableManagement({ storeId: propStoreId, onModuleChange }: TableManagementProps) {
   const { t } = useTranslation();
+  const [storeId, setStoreId] = useState<string>(() => {
+    return propStoreId || localStorage.getItem('worker_store_id') || '';
+  });
+
+  useEffect(() => {
+    if (propStoreId) {
+      setStoreId(propStoreId);
+    } else {
+      const cached = localStorage.getItem('worker_store_id');
+      if (cached) {
+        setStoreId(cached);
+      } else {
+        const dc = getDataClient();
+        if (!dc.isLocalFirst) {
+          import('@/lib/supabase').then(({ supabase }) => {
+            supabase.auth.getSession().then(({ data: { session } }) => {
+              if (session?.user?.user_metadata?.store_id) {
+                setStoreId(session.user.user_metadata.store_id);
+              }
+            });
+          });
+        }
+      }
+    }
+  }, [propStoreId]);
   const [tables, setTables] = useState<Table[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
