@@ -69,11 +69,12 @@ export function IngredientsPage() {
 
   useEffect(() => {
     console.log('[IngredientsPage] selectedStoreIds changed:', selectedStoreIds, 'stores count:', stores.length);
-    if (selectedStoreIds.length === 1) {
-      setLocalStoreId(selectedStoreIds[0]);
-    } else if (selectedStoreIds.length === 0 || selectedStoreIds.length > 1) {
-      if (!localStoreId || !stores.some(s => s.id === localStoreId)) {
-        if (stores.length > 0) {
+    if (stores.length > 0) {
+      const validSelectedIds = selectedStoreIds.filter(id => stores.some(s => s.id === id));
+      if (validSelectedIds.length === 1) {
+        setLocalStoreId(validSelectedIds[0]);
+      } else {
+        if (!localStoreId || !stores.some(s => s.id === localStoreId)) {
           setLocalStoreId(stores[0].id);
         }
       }

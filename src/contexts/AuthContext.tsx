@@ -247,6 +247,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }));
             setRoles(mappedRoles);
 
+            // Save updated roles to LocalDatabase
+            LocalDatabase.deleteRolesByUserId(userId).then(async () => {
+              for (const r of supaRoles) {
+                await LocalDatabase.saveRole({
+                  id: r.id,
+                  user_id: r.user_id,
+                  role: r.role as any,
+                  store_id: r.store_id || null,
+                  sub_role: r.sub_role || null,
+                  created_at: r.created_at || new Date().toISOString(),
+                  synced: true,
+                });
+              }
+              console.log('[AuthContext] Successfully synced fresh roles to local IndexedDB.');
+            }).catch(dbErr => console.error('[AuthContext] Failed to save roles to local IndexedDB:', dbErr));
+
             const ROLE_PRIORITY: Record<string, number> = {
               master: 4,
               worker: 3,
@@ -393,10 +409,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Sync with global Supabase client in cloud mode
           if (offlineSession.session && !dataClient.isLocalFirst) {
             console.log('[AuthContext] Restoring Supabase client session');
-            supabase.auth.setSession({
-              access_token: offlineSession.session.access_token,
-              refresh_token: offlineSession.session.refresh_token,
-            }).catch(e => console.warn('[AuthContext] Failed to sync restored session to Supabase client:', e));
+            try {
+              await supabase.auth.setSession({
+                access_token: offlineSession.session.access_token,
+                refresh_token: offlineSession.session.refresh_token,
+              });
+            } catch (e) {
+              console.warn('[AuthContext] Failed to sync restored session to Supabase client:', e);
+            }
           }
 
           setRoles(offlineSession.roles);
@@ -673,10 +693,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Sync with global Supabase client in cloud mode
       if (result.session && !dataClient.isLocalFirst) {
         console.log('[AuthContext] Syncing Supabase client session on sign in');
-        supabase.auth.setSession({
-          access_token: result.session.access_token,
-          refresh_token: result.session.refresh_token,
-        }).catch(e => console.warn('[AuthContext] Failed to sync signed in session to Supabase client:', e));
+        try {
+          await supabase.auth.setSession({
+            access_token: result.session.access_token,
+            refresh_token: result.session.refresh_token,
+          });
+        } catch (e) {
+          console.warn('[AuthContext] Failed to sync signed in session to Supabase client:', e);
+        }
       }
 
       setRoles(result.roles);

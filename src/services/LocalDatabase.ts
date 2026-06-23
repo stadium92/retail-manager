@@ -362,6 +362,20 @@ class LocalDatabaseService {
     db.transaction('roles', 'readwrite').objectStore('roles').put(role);
   }
 
+  async deleteRolesByUserId(userId: string): Promise<void> {
+    const db = await this.ensureDb();
+    const roles = await this.getRolesByUserId(userId);
+    return new Promise((resolve) => {
+      const tx = db.transaction('roles', 'readwrite');
+      const store = tx.objectStore('roles');
+      for (const r of roles) {
+        store.delete(r.id);
+      }
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    });
+  }
+
   async getAllRoles(): Promise<LocalRole[]> {
     const db = await this.ensureDb();
     return new Promise(r => {
