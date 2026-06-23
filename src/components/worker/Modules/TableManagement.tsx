@@ -941,13 +941,14 @@ export function TableManagement({ storeId, onModuleChange }: TableManagementProp
                 </Button>
               </div>
             </div>
-          ) : (
+          )
+        ) : (
             <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground gap-2">
               <Navigation className="h-8 w-8 text-white/20 animate-pulse" />
               <p className="text-xs max-w-[200px]">Sélectionnez une table sur le plan pour gérer ses commandes, changer son statut ou configurer sa capacité.</p>
             </div>
           )
-        )}
+        }
       </div>
     </div>
   );
