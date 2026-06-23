@@ -209,9 +209,14 @@ if (typeof window !== 'undefined' && !(window as any).__fetch_patched__) {
           } catch(e) {}
         }
         
-        let newInit = init;
+        let newInit = init ? { ...init } : {};
         // 4. Rewrite body parameters (store_id -> restaurant_id)
         if (init && init.body && typeof init.body === 'string') {
+          newInit.headers = {
+            'Content-Type': 'application/json',
+            ...(init.headers || {})
+          };
+          
           try {
             const bodyJson = JSON.parse(init.body);
             let bodyModified = false;
@@ -247,13 +252,10 @@ if (typeof window !== 'undefined' && !(window as any).__fetch_patched__) {
             }
             
             if (bodyModified) {
-              newInit = {
-                ...init,
-                body: JSON.stringify(bodyJson)
-              };
-              modified = true;
+              newInit.body = JSON.stringify(bodyJson);
             }
           } catch (e) {}
+          modified = true;
         }
         
         if (modified) {

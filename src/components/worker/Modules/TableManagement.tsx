@@ -155,6 +155,7 @@ export function TableManagement({ storeId, onModuleChange }: TableManagementProp
         method: 'POST',
         headers: {
           ...headers,
+          'Content-Type': 'application/json',
           'Prefer': 'return=representation'
         },
         body: JSON.stringify({
@@ -214,6 +215,7 @@ export function TableManagement({ storeId, onModuleChange }: TableManagementProp
         method: 'PATCH',
         headers: {
           ...headers,
+          'Content-Type': 'application/json',
           'Prefer': 'return=representation'
         },
         body: JSON.stringify({
@@ -254,6 +256,7 @@ export function TableManagement({ storeId, onModuleChange }: TableManagementProp
         method: 'PATCH',
         headers: {
           ...headers,
+          'Content-Type': 'application/json',
           'Prefer': 'return=representation'
         },
         body: JSON.stringify({
@@ -360,6 +363,7 @@ export function TableManagement({ storeId, onModuleChange }: TableManagementProp
         method: 'PATCH',
         headers: {
           ...headers,
+          'Content-Type': 'application/json',
           'Prefer': 'return=representation'
         },
         body: JSON.stringify({
