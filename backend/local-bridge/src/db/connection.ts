@@ -70,8 +70,8 @@ if (!fs.existsSync(dbPath) || isEmptyDb) {
   }
   
   const defaultLegacy = osPlatform === 'darwin'
-    ? ['Retail Manager', 'Retail Manager Dibidani', 'Retail Manager Stihl']
-    : ['retail-manager', 'retail-manager-dibidani', 'retail-manager-stihl'];
+    ? ['Retail Manager', 'Retail Manager Dibidani', 'Retail Manager Stihl', 'com.retailmanager.dibidani', 'com.retailmanager.app']
+    : ['retail-manager', 'retail-manager-dibidani', 'retail-manager-stihl', 'com.retailmanager.dibidani', 'com.retailmanager.app'];
 
   // Prioritize active app name variants, then check defaults
   const legacyNames = Array.from(new Set([...nameVariants, ...defaultLegacy]));
