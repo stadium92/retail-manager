@@ -31,8 +31,27 @@ for (const p of possiblePaths) {
     }
 }
 
-// Automatically migrate legacy database if the new one doesn't exist
-if (!fs.existsSync(dbPath)) {
+// Automatically migrate legacy database if the new one doesn't exist or is empty
+let isEmptyDb = false;
+if (fs.existsSync(dbPath)) {
+  try {
+    const tempDb = new Database(dbPath, options);
+    const tableExists = tempDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").get();
+    if (!tableExists) {
+      isEmptyDb = true;
+    } else {
+      const userCount = tempDb.prepare("SELECT COUNT(*) as count FROM users").get() as { count: number };
+      if (!userCount || userCount.count === 0) {
+        isEmptyDb = true;
+      }
+    }
+    tempDb.close();
+  } catch (e) {
+    isEmptyDb = true;
+  }
+}
+
+if (!fs.existsSync(dbPath) || isEmptyDb) {
   const osPlatform = process.platform;
   const legacyNames = osPlatform === 'darwin'
     ? ['Retail Manager', 'Retail Manager Dibidani']
@@ -51,7 +70,7 @@ if (!fs.existsSync(dbPath)) {
     }
 
     const legacyPath = path.join(legacyDir, 'localbridge.sqlite');
-    if (fs.existsSync(legacyPath)) {
+    if (fs.existsSync(legacyPath) && legacyPath !== dbPath) {
       foundLegacyDb = legacyPath;
       break;
     }
@@ -60,6 +79,11 @@ if (!fs.existsSync(dbPath)) {
   if (foundLegacyDb) {
     try {
       console.log(`[DB Migration] Legacy database found at ${foundLegacyDb}. Copying to ${dbPath} to preserve old credentials/data...`);
+      if (fs.existsSync(dbPath)) {
+        fs.unlinkSync(dbPath);
+        if (fs.existsSync(dbPath + '-wal')) fs.unlinkSync(dbPath + '-wal');
+        if (fs.existsSync(dbPath + '-shm')) fs.unlinkSync(dbPath + '-shm');
+      }
       fs.copyFileSync(foundLegacyDb, dbPath);
       console.log('[DB Migration] Database successfully migrated.');
     } catch (err) {
