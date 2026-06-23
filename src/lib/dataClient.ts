@@ -161,6 +161,21 @@ if (typeof window !== 'undefined' && !(window as any).__fetch_patched__) {
           urlStr = urlStr.replace('/rest/v1/stores', '/rest/v1/restaurants');
           modified = true;
         }
+
+        // 2.5. Rewrite path parameters for single rows: /rest/v1/table/UUID -> /rest/v1/table?id=eq.UUID
+        const uuidRegex = /\/rest\/v1\/([a-zA-Z0-9_-]+)\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/;
+        const pathMatch = urlStr.match(uuidRegex);
+        if (pathMatch) {
+          const tableName = pathMatch[1];
+          const rowId = pathMatch[2];
+          try {
+            const urlObj = new URL(urlStr);
+            urlObj.pathname = urlObj.pathname.replace(`/${tableName}/${rowId}`, `/${tableName}`);
+            urlObj.searchParams.set('id', `eq.${rowId}`);
+            urlStr = urlObj.toString();
+            modified = true;
+          } catch (e) {}
+        }
         
         // 3. Rewrite query params: store_id -> restaurant_id and auto-add eq. prefix if missing
         if (urlStr.includes('/rest/v1/')) {

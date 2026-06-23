@@ -144,7 +144,7 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
       setActiveMobileModule(null);
     } else {
       const mobileSupportedModules = [
-        'fermeture-caisse', 'suivi-ventes-jour', 'fiche-produits', 'clients',
+        'tables', 'fermeture-caisse', 'suivi-ventes-jour', 'fiche-produits', 'clients',
         'fournisseurs', 'restaurants', 'inventaire-stock', 'ingredients',
         'reception-achats', 'commande-manuelle', 'reglement-fournisseurs',
         'besoins-achats', 'historique-achats', 'situation-client',

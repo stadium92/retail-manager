@@ -145,8 +145,12 @@ export function TableManagement({ storeId, onModuleChange }: TableManagementProp
       if (!headers) return;
       const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/tables_layout`, {
         method: 'POST',
-        headers,
+        headers: {
+          ...headers,
+          'Prefer': 'return=representation'
+        },
         body: JSON.stringify({
+          id: crypto.randomUUID(),
           store_id: storeId,
           table_number: tableNum,
           capacity: parseInt(newTableCapacity, 10) || 4,
@@ -161,9 +165,21 @@ export function TableManagement({ storeId, onModuleChange }: TableManagementProp
         toast({ title: 'Succès', description: 'Table ajoutée.' });
         setNewTableNumber('');
         fetchTables();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        toast({
+          title: t('common.error'),
+          description: errData.message || errData.error || 'Impossible d\'ajouter la table.',
+          variant: 'destructive'
+        });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('[TableManagement] Add table error:', err);
+      toast({
+        title: t('common.error'),
+        description: err.message || 'Erreur réseau lors de la création.',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -188,7 +204,10 @@ export function TableManagement({ storeId, onModuleChange }: TableManagementProp
       if (!headers) return;
       const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/tables_layout/${selectedTable.id}`, {
         method: 'PATCH',
-        headers,
+        headers: {
+          ...headers,
+          'Prefer': 'return=representation'
+        },
         body: JSON.stringify({
           table_number: tableNum,
           capacity: parseInt(editTableCapacity, 10) || 4,
@@ -200,9 +219,21 @@ export function TableManagement({ storeId, onModuleChange }: TableManagementProp
         toast({ title: 'Succès', description: 'Table mise à jour.' });
         fetchTables();
         setSelectedTable(null);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        toast({
+          title: t('common.error'),
+          description: errData.message || errData.error || 'Impossible de modifier la table.',
+          variant: 'destructive'
+        });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('[TableManagement] Edit table properties error:', err);
+      toast({
+        title: t('common.error'),
+        description: err.message || 'Erreur de modification de la table.',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -213,7 +244,10 @@ export function TableManagement({ storeId, onModuleChange }: TableManagementProp
       if (!headers) return;
       const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/tables_layout/${tableId}`, {
         method: 'PATCH',
-        headers,
+        headers: {
+          ...headers,
+          'Prefer': 'return=representation'
+        },
         body: JSON.stringify({
           status: nextStatus,
           current_order_id: nextStatus === 'available' ? null : undefined, // clean order ref if set to available
@@ -221,15 +255,40 @@ export function TableManagement({ storeId, onModuleChange }: TableManagementProp
       });
 
       if (res.ok) {
-        const updated = await res.json();
-        setTables((prev) => prev.map((t) => (t.id === tableId ? updated : t)));
-        if (selectedTable && selectedTable.id === tableId) {
-          setSelectedTable(updated);
+        let updated: any = null;
+        if (res.status !== 204) {
+          try {
+            updated = await res.json();
+          } catch (e) {}
+        }
+
+        if (updated) {
+          setTables((prev) => prev.map((t) => (t.id === tableId ? updated : t)));
+          if (selectedTable && selectedTable.id === tableId) {
+            setSelectedTable(updated);
+          }
+        } else {
+          fetchTables();
+          if (selectedTable && selectedTable.id === tableId) {
+            setSelectedTable(prev => prev ? { ...prev, status: nextStatus, current_order_id: nextStatus === 'available' ? null : prev.current_order_id } : null);
+          }
         }
         toast({ title: 'Statut mis à jour', description: `La table est maintenant : ${nextStatus}` });
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        toast({
+          title: t('common.error'),
+          description: errData.message || errData.error || 'Impossible de mettre à jour le statut.',
+          variant: 'destructive'
+        });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('[TableManagement] Update status error:', err);
+      toast({
+        title: t('common.error'),
+        description: err.message || 'Erreur réseau lors du changement de statut.',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -249,9 +308,21 @@ export function TableManagement({ storeId, onModuleChange }: TableManagementProp
         toast({ title: 'Table supprimée', description: 'Le plan de salle a été mis à jour.' });
         setSelectedTable(null);
         fetchTables();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        toast({
+          title: t('common.error'),
+          description: errData.message || errData.error || 'Impossible de supprimer la table.',
+          variant: 'destructive'
+        });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('[TableManagement] Delete table error:', err);
+      toast({
+        title: t('common.error'),
+        description: err.message || 'Erreur réseau lors de la suppression.',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -279,7 +350,10 @@ export function TableManagement({ storeId, onModuleChange }: TableManagementProp
       if (!headers) return;
       const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/tables_layout/${tableId}`, {
         method: 'PATCH',
-        headers,
+        headers: {
+          ...headers,
+          'Prefer': 'return=representation'
+        },
         body: JSON.stringify({
           position_x: Math.round(x),
           position_y: Math.round(y),
@@ -287,8 +361,17 @@ export function TableManagement({ storeId, onModuleChange }: TableManagementProp
       });
 
       if (res.ok) {
-        const updated = await res.json();
-        setTables((prev) => prev.map((t) => (t.id === tableId ? updated : t)));
+        let updated: any = null;
+        if (res.status !== 204) {
+          try {
+            updated = await res.json();
+          } catch (e) {}
+        }
+        if (updated) {
+          setTables((prev) => prev.map((t) => (t.id === tableId ? updated : t)));
+        } else {
+          fetchTables();
+        }
       }
     } catch (err) {
       console.error('[TableManagement] Update position error:', err);
