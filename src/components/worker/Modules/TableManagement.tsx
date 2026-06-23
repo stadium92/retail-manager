@@ -27,26 +27,48 @@ interface Table {
   position_y: number;
 }
 
+const isValidUuid = (id: any): boolean => {
+  if (typeof id !== 'string') return false;
+  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  return uuidRegex.test(id);
+};
+
 export function TableManagement({ storeId: propStoreId, onModuleChange }: TableManagementProps) {
   const { t } = useTranslation();
   const [storeId, setStoreId] = useState<string>(() => {
-    return propStoreId || localStorage.getItem('worker_store_id') || '';
+    if (isValidUuid(propStoreId)) return propStoreId;
+    const cached = localStorage.getItem('worker_store_id');
+    if (isValidUuid(cached)) return cached!;
+    return '';
   });
 
   useEffect(() => {
-    if (propStoreId) {
+    if (isValidUuid(propStoreId)) {
       setStoreId(propStoreId);
     } else {
       const cached = localStorage.getItem('worker_store_id');
-      if (cached) {
-        setStoreId(cached);
+      if (isValidUuid(cached)) {
+        setStoreId(cached!);
       } else {
         const dc = getDataClient();
         if (!dc.isLocalFirst) {
           import('@/lib/supabase').then(({ supabase }) => {
             supabase.auth.getSession().then(({ data: { session } }) => {
-              if (session?.user?.user_metadata?.store_id) {
+              if (session?.user?.user_metadata?.store_id && isValidUuid(session.user.user_metadata.store_id)) {
                 setStoreId(session.user.user_metadata.store_id);
+              } else if (session?.user?.id) {
+                // Direct database fallback if JWT metadata has not synchronized yet
+                supabase
+                  .from('user_roles')
+                  .select('store_id')
+                  .eq('user_id', session.user.id)
+                  .limit(1)
+                  .then(({ data }) => {
+                    const dbStoreId = data?.[0]?.store_id;
+                    if (isValidUuid(dbStoreId)) {
+                      setStoreId(dbStoreId);
+                    }
+                  });
               }
             });
           });
