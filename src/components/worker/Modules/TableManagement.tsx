@@ -154,8 +154,25 @@ export function TableManagement({ storeId: propStoreId, onModuleChange }: TableM
 
   useEffect(() => {
     fetchTables();
-    const interval = setInterval(fetchTables, 8000);
-    return () => clearInterval(interval);
+    
+    // Poll every 30 seconds only if the tab is visible to prevent Supabase connection spam
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchTables();
+      }
+    }, 30000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchTables();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [fetchTables]);
 
   useEffect(() => {
@@ -388,6 +405,19 @@ export function TableManagement({ storeId: propStoreId, onModuleChange }: TableM
   const handleDragStart = (e: React.DragEvent, tableId: string) => {
     if (!isEditMode) return;
     e.dataTransfer.setData('text/plain', tableId);
+    
+    // Store original cursor click offset relative to the table itself
+    // to prevent table jumping to top-left or offset when dropped.
+    const rect = e.currentTarget.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left;
+    const offsetY = e.clientY - rect.top;
+    
+    e.dataTransfer.setData('application/json', JSON.stringify({
+      offsetX,
+      offsetY,
+      width: rect.width,
+      height: rect.height
+    }));
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -399,13 +429,45 @@ export function TableManagement({ storeId: propStoreId, onModuleChange }: TableM
     const tableId = e.dataTransfer.getData('text/plain');
     if (!tableId) return;
 
+    // Decode drag metadata or fallback to default table size offsets
+    const dragMetadataStr = e.dataTransfer.getData('application/json');
+    let offsetX = 48;
+    let offsetY = 48;
+    let width = 96;
+    let height = 96;
+    if (dragMetadataStr) {
+      try {
+        const meta = JSON.parse(dragMetadataStr);
+        offsetX = meta.offsetX ?? 48;
+        offsetY = meta.offsetY ?? 48;
+        width = meta.width ?? 96;
+        height = meta.height ?? 96;
+      } catch (err) {}
+    }
+
     const container = e.currentTarget.getBoundingClientRect();
-    const x = Math.max(0, Math.min(container.width - 96, e.clientX - container.left - 48));
-    const y = Math.max(0, Math.min(container.height - 96, e.clientY - container.top - 48));
+    const x = Math.max(0, Math.min(container.width - width, e.clientX - container.left - offsetX));
+    const y = Math.max(0, Math.min(container.height - height, e.clientY - container.top - offsetY));
+
+    const roundedX = Math.round(x);
+    const roundedY = Math.round(y);
+
+    // Save previous state for optimistic rollback if the update fails
+    const originalTable = tables.find(t => t.id === tableId);
+    if (!originalTable) return;
+    const origX = originalTable.position_x;
+    const origY = originalTable.position_y;
+
+    // Optimistically update position immediately in UI
+    setTables((prev) => prev.map((t) => t.id === tableId ? { ...t, position_x: roundedX, position_y: roundedY } : t));
 
     try {
       const headers = await OfflineAuthService.getAuthHeaders();
-      if (!headers) return;
+      if (!headers) {
+        // Rollback
+        setTables((prev) => prev.map((t) => t.id === tableId ? { ...t, position_x: origX, position_y: origY } : t));
+        return;
+      }
       const res = await smartFetch(`${localBridgeBaseUrl}/rest/v1/tables_layout/${tableId}`, {
         method: 'PATCH',
         headers: {
@@ -414,8 +476,8 @@ export function TableManagement({ storeId: propStoreId, onModuleChange }: TableM
           'Prefer': 'return=representation'
         },
         body: JSON.stringify({
-          position_x: Math.round(x),
-          position_y: Math.round(y),
+          position_x: roundedX,
+          position_y: roundedY,
         }),
       });
 
@@ -428,12 +490,26 @@ export function TableManagement({ storeId: propStoreId, onModuleChange }: TableM
         }
         if (updated) {
           setTables((prev) => prev.map((t) => (t.id === tableId ? updated : t)));
-        } else {
-          fetchTables();
         }
+      } else {
+        // Rollback on server error
+        setTables((prev) => prev.map((t) => t.id === tableId ? { ...t, position_x: origX, position_y: origY } : t));
+        const errData = await res.json().catch(() => ({}));
+        toast({
+          title: t('common.error'),
+          description: errData.message || errData.error || 'Impossible de déplacer la table.',
+          variant: 'destructive'
+        });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('[TableManagement] Update position error:', err);
+      // Rollback on network failure
+      setTables((prev) => prev.map((t) => t.id === tableId ? { ...t, position_x: origX, position_y: origY } : t));
+      toast({
+        title: t('common.error'),
+        description: err.message || 'Erreur réseau lors du déplacement.',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -676,7 +752,8 @@ export function TableManagement({ storeId: propStoreId, onModuleChange }: TableM
                 onDragStart={(e) => handleDragStart(e, table.id)}
                 onClick={() => setSelectedTable(table)}
                 className={cn(
-                  'absolute flex flex-col items-center justify-center cursor-pointer transition-all border shadow-xl z-10 group select-none',
+                  'absolute flex flex-col items-center justify-center cursor-pointer border shadow-xl z-10 group select-none',
+                  isEditMode ? 'transition-none' : 'transition-all duration-200',
                   shapeClass,
                   isAvailable && 'bg-emerald-500/5 hover:bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:scale-[1.03]',
                   isOccupied && 'bg-rose-500/5 hover:bg-rose-500/10 border-rose-500/25 text-rose-400 hover:scale-[1.03]',
@@ -685,8 +762,8 @@ export function TableManagement({ storeId: propStoreId, onModuleChange }: TableM
                   selectedTable?.id === table.id && 'ring-2 ring-primary border-primary scale-[1.03] z-20'
                 )}
                 style={{
-                  left: `${table.position_x}px`,
-                  top: `${table.position_y}px`,
+                  left: `${table.position_x ?? 0}px`,
+                  top: `${table.position_y ?? 0}px`,
                 }}
               >
                 {/* Visual Chairs Render */}
