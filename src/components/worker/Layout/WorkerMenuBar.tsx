@@ -211,7 +211,7 @@ export function WorkerMenuBar({ activeModule, onModuleChange, className, subRole
       );
     }
     if (subRole === 'waiter') {
-      return section.triggerKey === 'menu.restaurant.trigger';
+      return ['menu.restaurant.trigger', 'menu.sales.trigger', 'menu.files.trigger', 'menu.program.trigger'].includes(section.triggerKey);
     }
     return true;
   }).map((section) => {
@@ -231,6 +231,18 @@ export function WorkerMenuBar({ activeModule, onModuleChange, className, subRole
         return {
           ...section,
           items: section.items.filter((item) => item.module === 'tables'),
+        };
+      }
+      if (section.triggerKey === 'menu.sales.trigger') {
+        return {
+          ...section,
+          items: section.items.filter((item) => item.module === 'vente-detail'),
+        };
+      }
+      if (section.triggerKey === 'menu.files.trigger') {
+        return {
+          ...section,
+          items: section.items.filter((item) => item.module === 'fiche-produits'),
         };
       }
       return section;

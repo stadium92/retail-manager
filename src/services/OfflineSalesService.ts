@@ -4,6 +4,62 @@ import { OfflineAuthService } from "./OfflineAuthService";
 import { supabase } from "@/lib/supabase";
 import { SupabaseSyncService } from "./SupabaseSyncService";
 
+async function syncTableStatusForSale(
+    storeId: string,
+    tableNumber: number | null,
+    saleId: string,
+    paymentStatus: string,
+    orderStatus: string
+) {
+    if (!tableNumber) return;
+    try {
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (!headers) return;
+        
+        const { getDataClient } = await import("@/lib/dataClient");
+        const { localBridgeBaseUrl } = getDataClient();
+        
+        // 1. Fetch tables to find the table matching tableNumber
+        const res = await fetch(`${localBridgeBaseUrl}/rest/v1/tables_layout?store_id=${storeId}`, { headers });
+        if (!res.ok) return;
+        
+        const tables = await res.json() as any[];
+        const targetTable = tables.find(t => Number(t.table_number) === Number(tableNumber));
+        if (!targetTable) return;
+        
+        // 2. Decide next status and current_order_id
+        let nextStatus = targetTable.status;
+        let nextOrderId = targetTable.current_order_id;
+        
+        if (paymentStatus === 'paid') {
+            nextStatus = 'cleaning'; // mark as cleaning after payment
+            nextOrderId = null;
+        } else {
+            nextStatus = 'occupied';
+            nextOrderId = saleId;
+        }
+        
+        // Only update if something changed
+        if (targetTable.status !== nextStatus || targetTable.current_order_id !== nextOrderId) {
+            await fetch(`${localBridgeBaseUrl}/rest/v1/tables_layout/${targetTable.id}`, {
+                method: 'PATCH',
+                headers: {
+                    ...headers,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    status: nextStatus,
+                    current_order_id: nextOrderId
+                })
+            });
+            // Trigger event to refresh TableManagement UI
+            window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'tables_layout' } }));
+        }
+    } catch (err) {
+        console.error('[OfflineSales] Failed to sync table status for sale:', err);
+    }
+}
+
 export const OfflineSalesService = {
     /**
      * Create a sale with items atomically on the local bridge
@@ -122,6 +178,18 @@ export const OfflineSalesService = {
             }
         }
 
+        const storeId = sale.store_id || localStorage.getItem('worker_store_id');
+        const saleId = sale.id || localResult?.id;
+        if (storeId && saleId && sale.table_number) {
+            syncTableStatusForSale(
+                storeId,
+                Number(sale.table_number),
+                saleId,
+                sale.payment_status || 'paid',
+                sale.order_status || 'pending'
+            ).catch(console.error);
+        }
+
         // Centralized event dispatch to ensure UI reactivity
         window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'sale' } }));
 
@@ -196,6 +264,21 @@ export const OfflineSalesService = {
             } catch (supaErr) {
                 console.error('[OfflineSales] Supabase update failed:', supaErr);
             }
+        }
+
+        const storeId = updates.store_id || localResult?.store_id || localStorage.getItem('worker_store_id');
+        const tableNumber = updates.table_number !== undefined ? updates.table_number : localResult?.table_number;
+        const paymentStatus = updates.payment_status !== undefined ? updates.payment_status : localResult?.payment_status;
+        const orderStatus = updates.order_status !== undefined ? updates.order_status : (updates.status !== undefined ? updates.status : localResult?.order_status);
+
+        if (storeId && tableNumber && (updates.payment_status !== undefined || updates.order_status !== undefined || updates.status !== undefined || updates.table_number !== undefined)) {
+            syncTableStatusForSale(
+                storeId,
+                Number(tableNumber),
+                saleId,
+                paymentStatus || 'paid',
+                orderStatus || 'pending'
+            ).catch(console.error);
         }
 
         window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'sale' } }));
