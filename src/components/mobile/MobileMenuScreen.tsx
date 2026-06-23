@@ -102,8 +102,8 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
       return section.title === 'Ventes' || section.title === 'Programme';
     }
     if (subRole === 'waiter') {
-      // Waiter: no generic sections (only Restaurant added below)
-      return false;
+      // Waiter: Ventes + Fichiers + Programme
+      return section.title === 'Ventes' || section.title === 'Fichiers' || section.title === 'Programme';
     }
     return true;
   }).map(section => {
@@ -121,6 +121,26 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
           return item;
         })
       };
+    }
+    if (subRole === 'waiter') {
+      if (section.title === 'Ventes') {
+        return {
+          ...section,
+          items: section.items.filter(item => item.id === 'vente-detail')
+        };
+      }
+      if (section.title === 'Fichiers') {
+        return {
+          ...section,
+          items: section.items.filter(item => item.id === 'fiche-produits')
+        };
+      }
+      if (section.title === 'Programme') {
+        return {
+          ...section,
+          items: section.items.filter(item => item.id === 'preferences')
+        };
+      }
     }
     return section;
   });

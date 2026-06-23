@@ -44,6 +44,7 @@ import { ReplenishmentNeeds } from '@/components/master/Purchases/ReplenishmentN
 
 // Shared / Desktop wrapper modules for mobile
 import { EditionModule } from '@/components/worker/Modules/EditionModule';
+import { TableManagement } from '@/components/worker/Modules/TableManagement';
 import InvitationsPage from '@/pages/master/Invitations';
 import AuditLogsPage from '@/pages/master/AuditLogs';
 import TeamPage from '@/pages/master/Team';
@@ -80,7 +81,7 @@ const STORAGE_KEY = 'worker_mobile_active_tab';
 function getVisibleTabs(subRole: string | null | undefined): TabConfig[] {
   if (subRole === 'cook')    return ALL_TABS.filter(t => t.id === 'kds');
   if (subRole === 'cashier') return ALL_TABS.filter(t => t.id === 'pos' || t.id === 'menu');
-  if (subRole === 'waiter')  return ALL_TABS.filter(t => t.id === 'menu');
+  if (subRole === 'waiter')  return ALL_TABS.filter(t => t.id === 'pos' || t.id === 'menu');
   return ALL_TABS; // waiter / manager / null → all
 }
 
@@ -153,7 +154,7 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
       // Programme and settings modules open via desktop overlay
       const desktopOnlyModules = [
         'preferences', 'programmation-touches', 'mots-de-passe',
-        'tables', 'kds',
+        'kds',
         'facturation-detail', 'reglements-bons',
       ];
       
@@ -223,6 +224,20 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
   const renderContent = () => {
     if (activeMobileModule) {
       switch (activeMobileModule) {
+        case 'tables':
+          return (
+            <div className="flex flex-col h-full bg-[#0a0a0a] pb-[64px] md:pb-0 font-sans text-white">
+              <header className="flex-shrink-0 bg-[#141414] border-b border-[#F5C518]/20 px-4 py-3 sticky top-0 z-10 flex items-center gap-2">
+                <button onClick={() => setActiveMobileModule(null)} className="p-2 -ml-2 rounded-full hover:bg-rs-surface-container text-white active:scale-95 transition-transform">
+                  <span className="material-symbols-outlined flex items-center justify-center">arrow_back</span>
+                </button>
+                <h1 className="text-lg font-bold text-white uppercase tracking-wider">Plan de Salle</h1>
+              </header>
+              <div className="flex-1 overflow-hidden bg-background">
+                <TableManagement storeId={storeId} onModuleChange={(mod) => handleSelectModule(mod)} />
+              </div>
+            </div>
+          );
         case 'fermeture-caisse':
           return <MobileFicheCaisse onBack={() => setActiveMobileModule(null)} />;
         case 'suivi-ventes-jour':
