@@ -2,11 +2,6 @@ name: "CI/CD Pipeline: Build Windows Application"
 
 on:
   push:
-    branches:
-      - feat/moe-stihl-templates
-      - feat/stihl-niamakoro
-      - feat/niamanan-dubai
-      - feat/stihl-dibidani
     tags:
       - 'v*'
   pull_request:
