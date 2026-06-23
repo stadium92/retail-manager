@@ -12,7 +12,7 @@ export interface Suggestion {
 
 export class AIService {
   private static resolveUrl(path: string): string | null {
-    const base = import.meta.env.VITE_SUPABASE_URL || "https://kvxqutffphaxlhjyyjsw.supabase.co";
+    const base = import.meta.env.VITE_SUPABASE_URL || "https://onsqvduklnwffugsixbs.supabase.co";
     if (!base) return null;
     return `${base.replace(/\/$/, '')}${path}`;
   }

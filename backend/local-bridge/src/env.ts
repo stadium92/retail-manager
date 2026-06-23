@@ -25,6 +25,6 @@ export const env = {
   port: numberFromEnv(process.env.PORT, 8787),
   dataDir: process.env.DATA_DIR || getDefaultDataDir(),
   jwtSecret: process.env.JWT_SECRET || 'dev-secret',
-  supabaseUrl: process.env.VITE_SUPABASE_URL || 'https://fpvrbxmbrotowdlyebqv.supabase.co',
-  supabaseAnonKey: process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwdnJieG1icm90b3dkbHllYnF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNzE1MjMsImV4cCI6MjA5NjY0NzUyM30.8_mjBGr1FpYE20cc22iehEf0Xi9Fix2M0d_SSHIDQuI',
+  supabaseUrl: process.env.VITE_SUPABASE_URL || 'https://onsqvduklnwffugsixbs.supabase.co',
+  supabaseAnonKey: process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uc3F2ZHVrbG53ZmZ1Z3NpeWJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMzk1MDgsImV4cCI6MjA5NzgxNTUwOH0.39u7eCzwZonAVbxdEYTQBv9cMONWHSCD5SBKeKSmUkE',
 };

@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-export const FALLBACK_SUPABASE_URL = "https://kvxqutffphaxlhjyyjsw.supabase.co";
-export const FALLBACK_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2eHF1dGZmcGhheGxoanl5anN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5Nzg3MjksImV4cCI6MjA5NjU1NDcyOX0.Ag6hB8LIXTrYHTcmSgDMoItU13Ql59JRXQvrwpI5v7c";
+export const FALLBACK_SUPABASE_URL = "https://onsqvduklnwffugsixbs.supabase.co";
+export const FALLBACK_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uc3F2ZHVrbG53ZmZ1Z3NpeWJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMzk1MDgsImV4cCI6MjA5NzgxNTUwOH0.39u7eCzwZonAVbxdEYTQBv9cMONWHSCD5SBKeKSmUkE";
 
 
 
