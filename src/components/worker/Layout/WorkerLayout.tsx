@@ -106,7 +106,7 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
       ].includes(module);
     }
     if (role === 'waiter') {
-      return ['tables', 'vente-detail', 'preferences', 'fiche-produits'].includes(module);
+      return ['tables', 'vente-detail'].includes(module);
     }
     return true;
   }, []);

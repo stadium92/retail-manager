@@ -56,6 +56,14 @@ export function TableManagement({ storeId, onModuleChange }: TableManagementProp
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'credit'>('cash');
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
 
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   const { localBridgeBaseUrl } = getDataClient();
 
   const fetchTables = useCallback(async () => {
@@ -543,7 +551,7 @@ export function TableManagement({ storeId, onModuleChange }: TableManagementProp
   };
 
   return (
-    <div className="h-full flex bg-slate-950 text-white select-none">
+    <div className="h-full flex flex-col md:flex-row bg-slate-950 text-white select-none">
       {/* Visual Floor Plan */}
       <div className="flex-1 flex flex-col p-4 gap-4 overflow-hidden">
         {/* Header toolbar */}
@@ -579,31 +587,30 @@ export function TableManagement({ storeId, onModuleChange }: TableManagementProp
           </div>
         </div>
 
-        {/* Zones Selector Tab Switcher */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 shrink-0 border-b border-white/5">
-          {zonesList.map((z) => (
-            <button
-              key={z}
-              onClick={() => setActiveZone(z)}
-              className={cn(
-                'px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap border',
-                activeZone === z
-                  ? 'bg-primary text-black border-primary shadow-lg shadow-primary/10'
-                  : 'bg-slate-900/60 text-muted-foreground border-white/5 hover:text-white hover:bg-slate-900'
-              )}
-            >
-              {z === 'Toutes' ? 'Toutes les zones' : z}
-            </button>
-          ))}
+        {/* Zones Selector Dropdown Menu */}
+        <div className="flex items-center gap-2 pb-2 shrink-0 border-b border-white/5">
+          <label className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Zone :</label>
+          <select
+            value={activeZone}
+            onChange={(e) => setActiveZone(e.target.value)}
+            className="bg-slate-950 border border-white/10 text-white h-9 px-3 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary w-48 font-semibold"
+          >
+            {zonesList.map((z) => (
+              <option key={z} value={z}>
+                {z === 'Toutes' ? 'Toutes les zones' : z}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* Floor Canvas */}
-        <div
-          onDragOver={handleDragOver}
-          onDrop={handleDrop}
-          className="flex-1 bg-slate-900/20 border border-white/5 rounded-2xl relative overflow-hidden bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.08),rgba(255,255,255,0))]"
-          style={{ backgroundImage: 'radial-gradient(rgba(255, 255, 255, 0.04) 1.2px, transparent 0)', backgroundSize: '24px 24px' }}
-        >
+        {/* Floor Canvas Wrapper */}
+        <div className="flex-1 overflow-auto bg-slate-900/20 border border-white/5 rounded-2xl relative">
+          <div
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            className="w-[1000px] h-[650px] relative bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.08),rgba(255,255,255,0))]"
+            style={{ backgroundImage: 'radial-gradient(rgba(255, 255, 255, 0.04) 1.2px, transparent 0)', backgroundSize: '24px 24px' }}
+          >
           {filteredTables.map((table) => {
             const shapeClass = getTableSizeAndShape(table.capacity);
             const isOccupied = table.status === 'occupied';
@@ -658,19 +665,21 @@ export function TableManagement({ storeId, onModuleChange }: TableManagementProp
             );
           })}
 
-          {filteredTables.length === 0 && !isLoading && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground text-center p-4">
-              <p className="font-bold">Aucune table dans cette zone.</p>
-              <p className="text-xs max-w-xs mt-1 text-muted-foreground/60">
-                {isEditMode ? 'Utilisez le formulaire pour ajouter une table et déplacez-la sur le plan.' : 'Activez le mode configuration pour ajouter des tables.'}
-              </p>
-            </div>
-          )}
+            {filteredTables.length === 0 && !isLoading && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground text-center p-4">
+                <p className="font-bold">Aucune table dans cette zone.</p>
+                <p className="text-xs max-w-xs mt-1 text-muted-foreground/60">
+                  {isEditMode ? 'Utilisez le formulaire pour ajouter une table et déplacez-la sur le plan.' : 'Activez le mode configuration pour ajouter des tables.'}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Control Panel / Sidebar */}
-      <div className="w-[320px] bg-slate-900 border-l border-white/10 p-4 flex flex-col gap-4 overflow-y-auto shrink-0">
+      {(!isMobile || selectedTable || isEditMode) && (
+        <div className="w-full md:w-[320px] h-[320px] md:h-full bg-slate-900 border-t md:border-t-0 md:border-l border-white/10 p-4 flex flex-col gap-4 overflow-y-auto shrink-0 relative">
         {isEditMode ? (
           selectedTable ? (
             <form onSubmit={handleUpdateTableProperties} className="flex flex-col gap-4 shrink-0">
@@ -711,12 +720,16 @@ export function TableManagement({ storeId, onModuleChange }: TableManagementProp
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-muted-foreground font-bold">Zone</label>
-                <Input
+                <select
                   value={editTableZone}
                   onChange={(e) => setEditTableZone(e.target.value)}
-                  placeholder="Ex: Terrasse"
-                  className="bg-slate-950 border-white/10 text-white h-9"
-                />
+                  className="bg-slate-950 border border-white/10 text-white h-9 px-3 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary w-full"
+                >
+                  <option value="Salle Principale">Salle Principale</option>
+                  <option value="Terrasse">Terrasse</option>
+                  <option value="VIP">VIP</option>
+                  <option value="Mezzanine">Mezzanine</option>
+                </select>
               </div>
 
               <div className="flex flex-col gap-2 mt-2">
@@ -763,12 +776,16 @@ export function TableManagement({ storeId, onModuleChange }: TableManagementProp
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs text-muted-foreground font-bold">Zone</label>
-                <Input
+                <select
                   value={newTableZone}
                   onChange={(e) => setNewTableZone(e.target.value)}
-                  placeholder="Ex: Salle Principale"
-                  className="bg-slate-950 border-white/10 text-white h-9"
-                />
+                  className="bg-slate-950 border border-white/10 text-white h-9 px-3 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary w-full"
+                >
+                  <option value="Salle Principale">Salle Principale</option>
+                  <option value="Terrasse">Terrasse</option>
+                  <option value="VIP">VIP</option>
+                  <option value="Mezzanine">Mezzanine</option>
+                </select>
               </div>
               <Button type="submit" className="bg-primary text-black font-black uppercase text-xs tracking-wider h-10 w-full gap-1.5 hover:bg-primary/95">
                 <Plus className="h-4 w-4" />
@@ -862,9 +879,21 @@ export function TableManagement({ storeId, onModuleChange }: TableManagementProp
             <div className="flex flex-col gap-3 h-full">
               <div className="flex items-center justify-between border-b border-white/10 pb-2">
                 <div className="flex flex-col">
-                  <h2 className="text-lg font-black text-primary leading-none">
-                    TABLE {selectedTable.table_number}
-                  </h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-black text-primary leading-none">
+                      TABLE {selectedTable.table_number}
+                    </h2>
+                    {isMobile && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setSelectedTable(null)}
+                        className="h-6 w-6 p-0 hover:bg-white/5"
+                      >
+                        <Plus className="h-3.5 w-3.5 rotate-45 text-muted-foreground" />
+                      </Button>
+                    )}
+                  </div>
                   <span className="text-[10px] text-muted-foreground font-mono mt-0.5">
                     {selectedTable.zone || 'Salle'}
                   </span>
@@ -1032,7 +1061,8 @@ export function TableManagement({ storeId, onModuleChange }: TableManagementProp
             </div>
           )
         }
-      </div>
+        </div>
+      )}
     </div>
   );
 }

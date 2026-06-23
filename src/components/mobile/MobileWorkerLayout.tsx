@@ -55,7 +55,7 @@ export interface MobileWorkerLayoutProps {
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type MobileTab = 'pos' | 'kds' | 'dashboard';
+type MobileTab = 'pos' | 'kds' | 'dashboard' | 'tables' | 'menu';
 
 interface TabConfig {
   id: MobileTab;
@@ -70,6 +70,7 @@ interface TabConfig {
 const ALL_TABS: TabConfig[] = [
   { id: 'pos',       label: 'Caisse',  icon: 'point_of_sale' },
   { id: 'kds',       label: 'Cuisine', icon: 'restaurant'    },
+  { id: 'tables',    label: 'Plan Salle', icon: 'table_restaurant' },
   { id: 'dashboard', label: 'Tableau', icon: 'bar_chart'     },
   { id: 'menu',      label: 'Menu',    icon: 'menu'          },
 ];
@@ -81,7 +82,7 @@ const STORAGE_KEY = 'worker_mobile_active_tab';
 function getVisibleTabs(subRole: string | null | undefined): TabConfig[] {
   if (subRole === 'cook')    return ALL_TABS.filter(t => t.id === 'kds');
   if (subRole === 'cashier') return ALL_TABS.filter(t => t.id === 'pos' || t.id === 'menu');
-  if (subRole === 'waiter')  return ALL_TABS.filter(t => t.id === 'pos' || t.id === 'menu');
+  if (subRole === 'waiter')  return ALL_TABS.filter(t => t.id === 'tables');
   return ALL_TABS; // waiter / manager / null → all
 }
 
@@ -280,13 +281,35 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
     }
 
     switch (activeTab) {
-      case 'pos':       return <MobilePOS />;
+      case 'pos':
+        return (
+          <MobilePOS
+            onBack={() => {
+              if (subRole === 'waiter') {
+                setActiveTab('tables');
+              } else {
+                setActiveTab('dashboard');
+              }
+            }}
+          />
+        );
       case 'kds':       return <MobileKDS />;
+      case 'tables':
+        return (
+          <div className="flex flex-col h-full bg-[#0a0a0a] pb-[64px] md:pb-0 font-sans text-white">
+            <header className="flex-shrink-0 bg-[#141414] border-b border-[#F5C518]/20 px-4 py-3 sticky top-0 z-10 flex items-center justify-between">
+              <h1 className="text-lg font-bold text-white uppercase tracking-wider">Plan de Salle</h1>
+            </header>
+            <div className="flex-1 overflow-hidden bg-background">
+              <TableManagement storeId={storeId} onModuleChange={(mod) => handleSelectModule(mod)} />
+            </div>
+          </div>
+        );
       case 'dashboard': 
         return (
           <MobileDashboard 
             onNavigate={(target) => {
-              if (target === 'pos' || target === 'kds' || target === 'menu') {
+              if (target === 'pos' || target === 'kds' || target === 'menu' || target === 'tables') {
                 setActiveTab(target as any);
                 setActiveMobileModule(null);
               } else {

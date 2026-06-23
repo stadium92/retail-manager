@@ -9,7 +9,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useProductSearch } from '@/hooks/useProductSearch';
 import { NotificationCenter } from '@/components/shared/NotificationCenter';
 
-export function MobilePOS() {
+interface MobilePOSProps {
+    onBack?: () => void;
+}
+
+export function MobilePOS({ onBack }: MobilePOSProps) {
     const { t } = useTranslation();
     const { formatCurrency } = useFormatters();
     const {
@@ -97,6 +101,7 @@ export function MobilePOS() {
 
             clearCart();
             setIsCheckoutOpen(false);
+            onBack?.();
 
         } catch (err) {
             console.error(err);
@@ -160,9 +165,15 @@ export function MobilePOS() {
             {/* TopAppBar */}
             <header className="fixed top-0 w-full h-[56px] border-b border-rs-surface-container-highest bg-rs-surface flex justify-between items-center px-4 z-50 pt-safe">
                 <div className="flex items-center gap-3">
-                    <button className="active:scale-95 transition-transform duration-150 p-2 -ml-2 rounded-full hover:bg-rs-surface-container-highest text-rs-on-surface-variant">
-                        <span className="material-symbols-outlined">restaurant</span>
-                    </button>
+                    {onBack ? (
+                        <button onClick={onBack} className="active:scale-95 transition-transform duration-150 p-2 -ml-2 rounded-full hover:bg-rs-surface-container-highest text-rs-on-surface-variant">
+                            <span className="material-symbols-outlined">arrow_back</span>
+                        </button>
+                    ) : (
+                        <button className="active:scale-95 transition-transform duration-150 p-2 -ml-2 rounded-full hover:bg-rs-surface-container-highest text-rs-on-surface-variant">
+                            <span className="material-symbols-outlined">restaurant</span>
+                        </button>
+                    )}
                     <div className="flex flex-col">
                         <h1 className="font-bold text-rs-surface-tint uppercase tracking-tight text-lg">TICKET COMMANDE</h1>
                         <span className="text-sm text-rs-on-surface-variant font-mono">Mobile POS</span>
