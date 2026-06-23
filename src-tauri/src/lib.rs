@@ -53,6 +53,7 @@ pub fn run() {
       simulate_hardware_scan
     ])
     .setup(|app| {
+      use tauri::Manager;
       use std::fs::{self, OpenOptions};
       use std::io::Write;
       use std::path::PathBuf;
@@ -73,7 +74,19 @@ pub fn run() {
       let _ = writeln!(file, "App starting... {}", std::env::consts::ARCH);
 
       match shell.sidecar("local-bridge") {
-        Ok(sidecar_command) => {
+        Ok(mut sidecar_command) => {
+          // Force the sidecar to run on port 8787 to align with the frontend
+          sidecar_command = sidecar_command.env("PORT", "8787");
+          
+          // Provide dynamic DATA_DIR based on this Tauri app's product name/bundle identifier
+          if let Ok(app_data) = app.path().app_data_dir() {
+            let data_dir = app_data.join("data");
+            if let Some(data_dir_str) = data_dir.to_str() {
+              let _ = writeln!(file, "Sidecar resolved DATA_DIR: {}", data_dir_str);
+              sidecar_command = sidecar_command.env("DATA_DIR", data_dir_str);
+            }
+          }
+
           match sidecar_command.spawn() {
             Ok((mut rx, _child)) => {
               let _ = writeln!(file, "Sidecar spawn command successful.");

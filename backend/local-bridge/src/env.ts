@@ -22,7 +22,7 @@ const getDefaultDataDir = () => {
 };
 
 export const env = {
-  port: numberFromEnv(process.env.PORT, 8788),
+  port: numberFromEnv(process.env.PORT, 8787),
   dataDir: process.env.DATA_DIR || getDefaultDataDir(),
   jwtSecret: process.env.JWT_SECRET || 'dev-secret',
   supabaseUrl: process.env.VITE_SUPABASE_URL || 'https://fpvrbxmbrotowdlyebqv.supabase.co',

@@ -53,9 +53,28 @@ if (fs.existsSync(dbPath)) {
 
 if (!fs.existsSync(dbPath) || isEmptyDb) {
   const osPlatform = process.platform;
-  const legacyNames = osPlatform === 'darwin'
-    ? ['Retail Manager', 'Retail Manager Dibidani']
-    : ['retail-manager', 'retail-manager-dibidani'];
+  // Determine current app name from dataDir to prioritize its legacy path
+  const appDirName = path.basename(path.dirname(env.dataDir));
+  
+  // Format standard variations of the app name for search
+  const nameVariants: string[] = [];
+  if (appDirName) {
+    nameVariants.push(appDirName);
+    // If it has spaces/hyphens, handle clean capitalization: e.g. "retail-manager-dibidani" -> "Retail Manager Dibidani"
+    const cleaned = appDirName
+      .replace(/-/g, ' ')
+      .split(' ')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+    nameVariants.push(cleaned);
+  }
+  
+  const defaultLegacy = osPlatform === 'darwin'
+    ? ['Retail Manager', 'Retail Manager Dibidani', 'Retail Manager Stihl']
+    : ['retail-manager', 'retail-manager-dibidani', 'retail-manager-stihl'];
+
+  // Prioritize active app name variants, then check defaults
+  const legacyNames = Array.from(new Set([...nameVariants, ...defaultLegacy]));
 
   let foundLegacyDb = '';
 
@@ -71,8 +90,22 @@ if (!fs.existsSync(dbPath) || isEmptyDb) {
 
     const legacyPath = path.join(legacyDir, 'localbridge.sqlite');
     if (fs.existsSync(legacyPath) && legacyPath !== dbPath) {
-      foundLegacyDb = legacyPath;
-      break;
+      // Open legacy database to verify if it actually has users
+      try {
+        const tempDb = new Database(legacyPath, options);
+        const tableExists = tempDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").get();
+        if (tableExists) {
+          const userCount = tempDb.prepare("SELECT COUNT(*) as count FROM users").get() as { count: number };
+          if (userCount && userCount.count > 0) {
+            tempDb.close();
+            foundLegacyDb = legacyPath;
+            break;
+          }
+        }
+        tempDb.close();
+      } catch (e) {
+        // Not a valid DB or no users table, continue
+      }
     }
   }
 
