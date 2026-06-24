@@ -521,32 +521,84 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: null };
     }
 
-    // Fallback: create locally and queue for sync
-    const result = await OfflineAuthService.createUser(email, password, fullName, 'worker');
-    
-    if (!result.success) {
+    // Pure Cloud mode: Register user on Supabase
+    try {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          }
+        }
+      });
+
+      if (signUpError) {
+        toast({
+          title: 'Sign Up Error',
+          description: signUpError.message,
+          variant: 'destructive',
+        });
+        return { error: signUpError };
+      }
+
+      if (!data.user) {
+        toast({
+          title: 'Sign Up Error',
+          description: 'Failed to create account.',
+          variant: 'destructive',
+        });
+        return { error: { message: 'Failed to create account' } };
+      }
+
+      // Auto sign in or show verification message
+      if (data.session) {
+        let role = 'master'; // default role
+        const emailLower = email.toLowerCase();
+        if (emailLower.includes('@worker.') || emailLower.startsWith('worker@') || emailLower.includes('@employee.') || emailLower.startsWith('employee@')) {
+          role = 'worker';
+        } else if (emailLower.includes('@deliverer.') || emailLower.startsWith('deliverer@') || emailLower.includes('@delivery.') || emailLower.startsWith('delivery@')) {
+          role = 'deliverer';
+        }
+
+        // Generate a random store ID for new master registration
+        const storeId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' 
+          ? crypto.randomUUID() 
+          : 'store-' + Math.random().toString(36).substring(2, 15);
+
+        await OfflineAuthService.saveOfflineSession(data.user, data.session, role, storeId, fullName, password);
+        
+        setUser(data.user);
+        setSession(data.session);
+        setRoles([{
+          id: `${data.user.id}-${role}`,
+          user_id: data.user.id,
+          role: role as any,
+          store_id: storeId,
+          created_at: new Date().toISOString()
+        }]);
+        
+        toast({
+          title: 'Account Created',
+          description: 'Welcome to retail manager!',
+        });
+      } else {
+        // If email confirmation is enabled, user needs to verify email first
+        toast({
+          title: 'Account Created',
+          description: 'Please check your email inbox to verify your account.',
+        });
+      }
+
+      return { error: null };
+    } catch (err: any) {
       toast({
         title: 'Sign Up Error',
-        description: result.error || 'Failed to create account',
+        description: err.message || 'An unexpected error occurred during sign up.',
         variant: 'destructive',
       });
-      return { error: { message: result.error } };
+      return { error: err };
     }
-
-    // Auto sign in the new offline user
-    const signInResult = await OfflineAuthService.offlineSignIn(email, password);
-    if (signInResult.user) {
-      setUser(signInResult.user);
-      setSession(signInResult.session);
-      setRoles(signInResult.roles);
-    }
-
-    toast({
-      title: 'Account Created (Offline)',
-      description: 'Your account will be synced when back online.',
-    });
-
-    return { error: null };
   };
 
   const devLogin = async (role: AppRole = 'master') => {
