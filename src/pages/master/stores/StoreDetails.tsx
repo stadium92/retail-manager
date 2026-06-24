@@ -87,7 +87,7 @@ export default function StoreDetailsPage() {
       const recentSales = sales.slice(0, 10);
 
       // Calculate metrics
-      const metrics = await OfflineSalesService.getSalesMetrics(storeId);
+      const metrics = await OfflineSalesService.getSaleMetrics(storeId);
       const lowStockCount = inventory?.filter(item => 
         item.quantity <= (item.low_stock_threshold || 10)
       ).length || 0;

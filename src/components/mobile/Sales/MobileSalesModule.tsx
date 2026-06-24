@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFormatters } from '@/utils/formatting';
-import { useSalesStore } from '@/stores/useSalesStore';
+import { useSalesStore, DEFAULT_SESSION } from '@/stores/useSalesStore';
 import { useMasterDataStore } from '@/stores/useMasterDataStore';
 import { OfflineSalesService } from '@/services/OfflineSalesService';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
@@ -19,16 +19,10 @@ export function MobileSalesModule({ mode, onBack }: { mode: 'vente-detail' | 'fa
     const { clients } = useMasterDataStore();
     const { toast } = useToast();
 
-    const currentSession = sessions[mode] || {
-        lineItems: [],
-        customerCode: '',
-        customerName: '',
-        customerAddress: '',
-        orderRef: '',
-        invoiceNumber: '',
-    };
+    const currentSession = sessions[mode] || DEFAULT_SESSION;
 
-    const { lineItems, customerName, orderRef } = currentSession;
+    const lineItems = (currentSession.lineItems || []) as any[];
+    const { customerName, orderRef } = currentSession;
 
     const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
     const [isClientSheetOpen, setIsClientSheetOpen] = useState(false);
@@ -98,9 +92,12 @@ export function MobileSalesModule({ mode, onBack }: { mode: 'vente-detail' | 'fa
     };
 
     const total = useMemo(() => {
-        return lineItems.reduce((acc, item) => {
-            const multiplier = item.isBox ? (item.packSize || 1) : 1;
-            return acc + (item.unitPrice * item.quantity * multiplier) - item.discountAmount;
+        return lineItems.reduce<number>((acc, item) => {
+            const multiplier = item.isBox ? (Number(item.conditionnement) || 1) : 1;
+            const itemPrice = Number(item.unitPrice) || 0;
+            const itemQty = Number(item.quantity) || 0;
+            const itemDiscount = Number(item.discountAmount) || 0;
+            return acc + (itemPrice * itemQty * multiplier) - itemDiscount;
         }, 0);
     }, [lineItems]);
 

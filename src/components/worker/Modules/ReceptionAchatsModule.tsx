@@ -192,8 +192,8 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
           total_amount: totalAmountOnReceipt,
           notes: 'Direct Purchase / Ad-Hoc Reception',
           items: normalizedItems.map(item => ({
-            product_id: item.product_id || item.product?.id,
-            product_name: item.product_name || item.product?.name,
+            product_id: item.product_id,
+            product_name: item.product_name,
             quantity_ordered: item.quantity_received,
             quantity_received: item.quantity_received,
             unit_cost: item.unit_cost

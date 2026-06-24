@@ -114,7 +114,7 @@ export function MobileClients({ onBack }: MobileClientsProps) {
         });
         if (!res.ok) throw new Error();
         const updated = await res.json();
-        updateClient(updated);
+        updateClient(editingClient.id, updated);
         toast({ title: t('common.success'), description: 'Client mis à jour' });
       } else {
         const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/clients`, {
@@ -241,8 +241,8 @@ export function MobileClients({ onBack }: MobileClientsProps) {
                   </div>
                   <div className="text-right">
                     <span className="text-rs-on-surface-variant">Solde: </span>
-                    <span className={`font-mono font-bold ${client.balance > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                      {formatCurrency(client.balance || 0)}
+                    <span className={`font-mono font-bold ${(client.current_balance || 0) > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                      {formatCurrency(client.current_balance || 0)}
                     </span>
                   </div>
                 </div>

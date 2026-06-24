@@ -553,7 +553,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                             </TableCell>
                             <TableCell>
                               {sale.payment_status === 'partial' ? (
-                                <Badge variant="warning" className="text-[9px] uppercase font-bold px-1 bg-orange-500 text-white">
+                                <Badge variant="outline" className="text-[9px] uppercase font-bold px-1 bg-orange-500 text-white border-transparent">
                                   {t('menu.program.partial', 'Partiel')}
                                 </Badge>
                               ) : sale.payment_status === 'pending' ? (
@@ -561,7 +561,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                                   {t('menu.program.unpaid', 'Impayé')}
                                 </Badge>
                               ) : (sale.payment_status === 'paid' && sale.sale_type !== 'proforma') ? (
-                                <Badge variant="success" className="text-[9px] uppercase font-bold px-1 bg-success text-white">
+                                <Badge variant="default" className="text-[9px] uppercase font-bold px-1 bg-success text-white border-transparent">
                                   {t('edition.paid')}
                                 </Badge>
                               ) : (
@@ -691,7 +691,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge variant={(sale.payment_status === 'paid' && sale.sale_type !== 'proforma') ? 'success' : 'warning'} className={cn("text-[9px] uppercase font-bold px-1", (sale.payment_status === 'paid' && sale.sale_type !== 'proforma') && "bg-success text-white")}>
+                            <Badge variant={(sale.payment_status === 'paid' && sale.sale_type !== 'proforma') ? 'default' : 'outline'} className={cn("text-[9px] uppercase font-bold px-1 border-transparent", (sale.payment_status === 'paid' && sale.sale_type !== 'proforma') ? "bg-success text-white" : "bg-orange-500 text-white")}>
                               {(sale.payment_status === 'paid' && sale.sale_type !== 'proforma') ? t('edition.paid') : t('edition.pending')}
                             </Badge>
                           </TableCell>

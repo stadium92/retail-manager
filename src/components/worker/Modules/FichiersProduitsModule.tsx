@@ -15,6 +15,7 @@ import { getDataClient } from '@/lib/dataClient';
 import { useMasterDataStore, ProductMaster } from '@/stores/useMasterDataStore';
 import { toast } from '@/hooks/use-toast';
 import { OfflineInventoryService } from '@/services/OfflineInventoryService';
+import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { useTranslation } from 'react-i18next';
 import { ImageUpload } from '@/components/shared/ImageUpload';
 import { cn } from '@/lib/utils';
@@ -130,7 +131,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
             setTimeout(() => document.getElementById(`product-name-${targetIdx}`)?.focus(), 50);
           }
         }
-        toast.success(t('scanner.codeScanned') || 'Code scanned');
+        toast({ title: t('scanner.codeScanned') || 'Code scanned' });
       }
     };
     window.addEventListener('scanner-input', handleScannerInput);
@@ -447,7 +448,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
   
   const handleExport = (type: 'soft' | 'full') => {
     if (localProducts.length === 0) {
-      toast.error(t('common.noData'));
+      toast({ title: t('common.noData'), variant: 'destructive' });
       return;
     }
 
@@ -465,12 +466,12 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
         Name: p.name,
         SKU: p.sku || '',
         Barcode: p.barcode || '',
-        Category: p.category_name || '',
-        Quantity: p.quantity,
-        MinQuantity: p.min_quantity,
-        CostPrice: p.cost_price,
-        RetailPrice: p.unit_price,
-        WholesalePrice: p.wholesale_price,
+        Category: families.find(f => f.id === p.family_id)?.name || '',
+        Quantity: p.current_stock,
+        MinQuantity: p.min_stock_alert,
+        CostPrice: p.purchase_price,
+        RetailPrice: p.selling_price_detail,
+        WholesalePrice: p.selling_price_3 || p.selling_price_wholesale || 0,
         SellingPrice2: p.selling_price_2,
         SellingPrice3: p.selling_price_3,
         SellingPrice4: p.selling_price_4,
@@ -556,7 +557,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                           <Input 
                               list={`families-list-${index ?? 'single'}`}
                               value={data.family_id} 
-                              onChange={e => update('family_id', e.target.value, index)} 
+                              onChange={e => update('family_id', e.target.value)} 
                               placeholder={t('inventory.fields.selectFamily')}
                               className="h-10 bg-primary/5 border-primary/20 pr-8 font-bold"
                           />
@@ -637,7 +638,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                             value={data.min_stock_alert} 
                             onChange={(e) => {
                               const v = e.target.value;
-                              update('min_stock_alert', v === '' ? '' : Number(v), index);
+                              update('min_stock_alert', v === '' ? '' : Number(v));
                             }} 
                             className="h-10 border-primary/20 font-bold" 
                           />

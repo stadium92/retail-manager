@@ -1,6 +1,7 @@
 import { LocalDatabase } from "./LocalDatabase";
 import { getDataClient } from "@/lib/dataClient";
 import { OfflineAuthService } from "./OfflineAuthService";
+import { supabase } from "@/lib/supabase";
 
 interface DailyRevenue {
     today: number;
@@ -38,10 +39,31 @@ export interface SaleWithItems {
     payment_status: string;
     notes?: string;
     invoice_number?: string;
+    customer_code?: string;
+    customer_address?: string;
+    order_ref?: string;
     created_at: string;
     updated_at: string;
     items?: any[];
     sale_items?: any[];
+}
+
+export interface PurchaseWithSupplier {
+    id: string;
+    store_id: string;
+    supplier_id: string;
+    status: string;
+    total_amount: number;
+    notes?: string;
+    order_number?: string;
+    created_at: string;
+    updated_at: string;
+    supplier?: {
+        id: string;
+        name: string;
+        phone?: string;
+        address?: string;
+    };
 }
 
 class OfflineDataServiceClass {
@@ -329,7 +351,7 @@ class OfflineDataServiceClass {
             // Compute stock health
             const stock_health = (products || []).reduce((acc, p) => {
                 const qty = Number(p.quantity || 0);
-                const threshold = Number(p.min_quantity || p.low_stock_threshold || 10);
+                const threshold = Number(p.reorder_quantity || p.low_stock_threshold || 10);
                 if (qty <= 0) acc.out++;
                 else if (qty <= threshold) acc.low++;
                 else acc.ok++;
@@ -368,7 +390,44 @@ class OfflineDataServiceClass {
             if (from) params.append('from', from.toISOString());
             return await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/cash_transactions?${params.toString()}`, { method: 'GET' });
         }
-        return [];
+        try {
+            let query = supabase.from('cash_transactions').select('*').eq('store_id', storeId);
+            if (from) query = query.gte('created_at', from.toISOString());
+            const { data, error } = await query;
+            if (error) throw error;
+            return data || [];
+        } catch (error) {
+            console.error('getCashTransactions cloud error:', error);
+            return [];
+        }
+    }
+
+    async createCashTransaction(transaction: any): Promise<boolean> {
+        try {
+            const { isLocalFirst } = getDataClient();
+            if (isLocalFirst) {
+                await OfflineAuthService.localBridgeRequest('/rest/v1/cash_transactions', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        ...transaction,
+                        id: crypto.randomUUID(),
+                        created_at: new Date().toISOString(),
+                    }),
+                });
+                return true;
+            } else {
+                const { error } = await supabase.from('cash_transactions').insert({
+                    ...transaction,
+                    id: crypto.randomUUID(),
+                    created_at: new Date().toISOString(),
+                });
+                if (error) throw error;
+                return true;
+            }
+        } catch (error) {
+            console.error('createCashTransaction error:', error);
+            return false;
+        }
     }
 
     async getPurchaseOrders(storeId: string, from?: Date, to?: Date): Promise<any[]> {

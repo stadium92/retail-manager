@@ -389,13 +389,13 @@ const items = (sale.items?.length ? sale.items : sale.sale_items) || [];
 
   // Handle loss recording - works offline
   const handleRecordLoss = async () => {
-    if (!lossForm.product || lossForm.quantity <= 0) {
+    if (!lossForm.product || Number(lossForm.quantity) <= 0) {
       toast.error(t('worker.sales.addAtLeastOne'));
       return;
     }
 
     try {
-      const newQuantity = Math.max(0, lossForm.product.quantity - lossForm.quantity);
+      const newQuantity = Math.max(0, lossForm.product.quantity - Number(lossForm.quantity));
       await OfflineDataService.updateProductStock(storeId, lossForm.product.id, newQuantity, `Perte: ${lossForm.reason}`);
       toast.success(t('common.success'));
       setLossForm({ product: null, quantity: 1, reason: 'expired', notes: '' });

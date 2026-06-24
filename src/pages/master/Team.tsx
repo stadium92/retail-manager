@@ -104,6 +104,7 @@ export default function TeamPage() {
           address: s.address,
           phone: s.phone,
           owner_id: s.owner_id,
+          default_price_tier: s.default_price_tier || 1,
           created_at: s.created_at,
           updated_at: s.updated_at,
         })));
@@ -564,21 +565,20 @@ export default function TeamPage() {
 
       {/* Delete Confirmation Dialog */}
       <ConfirmActionDialog
-        isOpen={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={handleDelete}
+        open={!!deleteTarget}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        onConfirm={handleDeleteMember}
         title={t('team.dialogs.deleteTitle')}
         description={t('team.dialogs.deleteDesc')}
-        loading={deleting}
+        variant="destructive"
       />
 
       <ConfirmActionDialog
-        isOpen={!!promoteTarget}
-        onClose={() => setPromoteTarget(null)}
+        open={!!promoteTarget}
+        onOpenChange={(open) => { if (!open) setPromoteTarget(null); }}
         onConfirm={handlePromote}
         title="Promouvoir au rang de Master"
         description={`Êtes-vous sûr de vouloir promouvoir ${promoteTarget?.full_name} au rôle de Master ? Ce rôle aura un accès complet au tableau de bord Master et à toutes les fonctionnalités d'administration. (Cette action nécessite une synchronisation internet ultérieure pour s'appliquer sur tous les appareils)`}
-        loading={promoting}
         confirmText="Promouvoir"
       />
     </div>

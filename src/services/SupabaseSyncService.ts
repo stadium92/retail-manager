@@ -195,6 +195,7 @@ export class SupabaseSyncService {
               phone: sup.phone || undefined,
               email: sup.email || undefined,
               address: sup.address || undefined,
+              balance: sup.balance || 0,
               default_purchase_type: sup.default_purchase_type || undefined,
               created_at: sup.created_at,
               updated_at: sup.updated_at,

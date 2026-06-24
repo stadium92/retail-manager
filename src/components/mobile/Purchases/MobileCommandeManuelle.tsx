@@ -81,13 +81,15 @@ export function MobileCommandeManuelle({ onBack }: { onBack?: () => void }) {
             unit_cost: r.unit_cost,
         }));
         
-        await createOrder({
+        await createOrder(
+          {
             store_id: storeId,
-            supplier_id: selectedSupplierId || null,
+            supplier_id: selectedSupplierId || undefined,
             status,
-            total_cost: totalCost,
-            items: payloadItems
-        });
+            total_amount: totalCost,
+          },
+          payloadItems
+        );
         toast({ title: status === 'ordered' ? "Commande Envoyée" : "Brouillon Sauvegardé" });
         setItems([]);
         setSelectedSupplierId('');

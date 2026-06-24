@@ -230,7 +230,7 @@ export function CommandeManuelleModule({ storeId }: CommandeManuelleModuleProps)
 
     setLoading(true);
     try {
-      const order = await createOrder(
+      await createOrder(
         {
           store_id: storeId,
           supplier_id: selectedSupplierId,
@@ -253,11 +253,9 @@ export function CommandeManuelleModule({ storeId }: CommandeManuelleModuleProps)
         })
       );
 
-      if (order) {
-        toast.success(t('common.success'));
-        setItems([]);
-        setSelectedSupplierId('');
-      }
+      toast.success(t('common.success'));
+      setItems([]);
+      setSelectedSupplierId('');
     } catch (error) {
       toast.error(t('common.error'));
     } finally {

@@ -325,5 +325,10 @@ export const OfflineSalesService = {
             console.error('Error calculating sales metrics:', error);
             return { todaySales: 0, weekSales: 0, monthSales: 0, error };
         }
+    },
+
+    async getProformas(storeId: string): Promise<any[]> {
+        const sales = await this.getSales(storeId);
+        return sales.filter((s: any) => s.sale_type === 'proforma');
     }
 }

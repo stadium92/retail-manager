@@ -250,7 +250,7 @@ export function CommandeAutoModule({ storeId }: CommandeAutoModuleProps) {
       for (const [supplierId, items] of Object.entries(bySupplier)) {
         const totalAmount = items.reduce((sum, p) => sum + (p.suggested_qty * (p.cost_price || 0)), 0);
         
-        const order = await createOrder(
+        await createOrder(
           {
             store_id: storeId,
             supplier_id: supplierId,
@@ -266,7 +266,7 @@ export function CommandeAutoModule({ storeId }: CommandeAutoModuleProps) {
           }))
         );
         
-        if (order) ordersCreated++;
+        ordersCreated++;
       }
 
       toast.success(t('common.success'));

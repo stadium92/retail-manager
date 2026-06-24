@@ -524,4 +524,32 @@ export class OfflineStoreService {
       return { error: { message: 'Failed to update store' } };
     }
   }
+
+  static async deleteStore(id: string): Promise<{ error?: any }> {
+    try {
+      await LocalDatabase.init();
+      await LocalDatabase.deleteStore(id);
+
+      const dataClient = getDataClient();
+      if (dataClient.isLocalFirst) {
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (!headers) {
+          return { error: { message: 'LocalBridge session required.' } };
+        }
+        const response = await smartFetch(`${dataClient.localBridgeBaseUrl}/rest/v1/stores/${id}`, {
+          method: 'DELETE',
+          headers,
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          return { error: payload };
+        }
+        return {};
+      }
+
+      return {};
+    } catch (error) {
+      return { error };
+    }
+  }
 }

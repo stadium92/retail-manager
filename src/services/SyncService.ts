@@ -43,7 +43,7 @@ export class SyncService {
    */
   static async syncAll(): Promise<SyncResult> {
     console.log('🚀 [SyncService] Sync is currently disabled. Everything is local.');
-    return { success: true, processed: 0, failed: 0 };
+    return { success: 0, failed: 0, pending: 0 };
   }
 
   /**

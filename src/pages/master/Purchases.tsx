@@ -27,6 +27,7 @@ import { useFormatters } from '@/utils/formatting';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from '@/hooks/use-toast';
 import { ReplenishmentNeeds } from '@/components/master/Purchases/ReplenishmentNeeds';
 import { ReceptionAchatsModule } from '@/components/worker/Modules/ReceptionAchatsModule';
 import { ReglementsFournisseursModule } from '@/components/worker/Modules/ReglementsFournisseursModule';
@@ -262,9 +263,9 @@ export default function PurchasesPage() {
                                   e.stopPropagation();
                                   try {
                                     await updateOrderStatus(order.id, 'ordered');
-                                    toast.success(t('common.success'));
+                                    toast({ title: t('common.success') });
                                   } catch (err) {
-                                    toast.error(t('common.error'));
+                                    toast({ title: t('common.error'), variant: 'destructive' });
                                   }
                                 }}
                               >

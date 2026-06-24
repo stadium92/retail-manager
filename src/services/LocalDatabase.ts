@@ -40,6 +40,7 @@ export interface LocalSupplier {
   email?: string;
   address?: string;
   balance: number;
+  default_purchase_type?: string;
   created_at: string;
   updated_at: string;
   synced: boolean;
@@ -62,6 +63,7 @@ export interface LocalRole {
   user_id: string;
   role: 'master' | 'worker' | 'deliverer';
   store_id?: string;
+  sub_role?: string;
   created_at: string;
   synced: boolean;
 }
@@ -82,6 +84,7 @@ export interface LocalSale {
   payment_status?: string;
   created_at: string;
   synced: boolean;
+  deleted_at?: string;
 }
 
 export interface LocalInventory {
@@ -95,6 +98,9 @@ export interface LocalInventory {
   wholesale_price?: number;
   wholesale_price_ht?: number;
   wholesale_price_ttc?: number;
+  selling_price_2?: number;
+  selling_price_3?: number;
+  selling_price_4?: number;
   cost?: number;
   category?: string;
   aisle?: string;
@@ -233,6 +239,12 @@ class LocalDatabaseService {
     tx.objectStore('purchase_orders').put(order);
   }
 
+  async savePurchaseItem(item: any): Promise<void> {
+    const db = await this.ensureDb();
+    const tx = db.transaction('purchase_items', 'readwrite');
+    tx.objectStore('purchase_items').put(item);
+  }
+
   async deletePurchaseOrder(id: string): Promise<void> {
     const db = await this.ensureDb();
     
@@ -345,6 +357,19 @@ class LocalDatabaseService {
     });
   }
 
+  async markStoreSynced(id: string): Promise<void> {
+    const db = await this.ensureDb();
+    const tx = db.transaction('stores', 'readwrite');
+    const store = tx.objectStore('stores');
+    const req = store.get(id);
+    req.onsuccess = () => {
+        if (req.result) {
+            req.result.synced = true;
+            store.put(req.result);
+        }
+    };
+  }
+
   async getUser(id: string): Promise<LocalUser | null> {
     const db = await this.ensureDb();
     return new Promise(r => {
@@ -389,6 +414,54 @@ class LocalDatabaseService {
     return new Promise(r => {
       const req = db.transaction('roles', 'readonly').objectStore('roles').getAll();
       req.onsuccess = () => r(req.result || []);
+    });
+  }
+
+  async getRolesByUserId(userId: string): Promise<LocalRole[]> {
+    const db = await this.ensureDb();
+    return new Promise(r => {
+      const tx = db.transaction('roles', 'readonly');
+      const store = tx.objectStore('roles');
+      const index = store.index('user_id');
+      const req = index.getAll(IDBKeyRange.only(userId));
+      req.onsuccess = () => r(req.result || []);
+      req.onerror = () => r([]);
+    });
+  }
+
+  async deleteRolesByUserId(userId: string): Promise<void> {
+    const db = await this.ensureDb();
+    const roles = await this.getRolesByUserId(userId);
+    return new Promise((resolve) => {
+      const tx = db.transaction('roles', 'readwrite');
+      const store = tx.objectStore('roles');
+      for (const r of roles) {
+        store.delete(r.id);
+      }
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    });
+  }
+
+  async deleteRole(id: string): Promise<void> {
+    const db = await this.ensureDb();
+    return new Promise((resolve) => {
+      const tx = db.transaction('roles', 'readwrite');
+      const store = tx.objectStore('roles');
+      store.delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    });
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    const db = await this.ensureDb();
+    return new Promise((resolve) => {
+      const tx = db.transaction('users', 'readwrite');
+      const store = tx.objectStore('users');
+      store.delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
     });
   }
 

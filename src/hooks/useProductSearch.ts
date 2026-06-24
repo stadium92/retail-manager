@@ -127,7 +127,6 @@ export function useProductSearch(storeId: string, enabled: boolean = true) {
             if (debouncedSearch) {
                 const lowerQ = debouncedSearch.toLowerCase();
                 allItems = allItems.filter(p => 
-                    (p.name && p.name.toLowerCase().includes(lowerQ)) ||
                     (p.product_name && p.product_name.toLowerCase().includes(lowerQ)) ||
                     (p.sku && p.sku.toLowerCase().includes(lowerQ)) ||
                     (p.barcode && p.barcode.toLowerCase().includes(lowerQ))

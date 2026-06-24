@@ -26,7 +26,8 @@ export interface SanifereLineItem {
   basePrice: number; // New: Store original unit price
   unitPrice: number | string;
   quantity: number | string;
-  discountPercent: number | string;
+  discountPercent?: number | string;
+  discountAmount?: number | string;
   lineTotal: number;
   priceTiers?: Record<number, number>;
 }

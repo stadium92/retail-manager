@@ -30,6 +30,7 @@ export interface UserRole {
   user_id: string;
   role: AppRole;
   store_id?: string;
+  sub_role?: string;
   created_at: string;
 }
 
@@ -79,6 +80,7 @@ export interface InventoryItem {
   name: string;
   description?: string;
   sku?: string;
+  barcode?: string;
   price: number;
   wholesale_price?: number;
   wholesale_price_ht?: number;
@@ -121,6 +123,9 @@ export interface Sale {
   payment_status?: PaymentStatus;
   notes?: string;
   invoice_number?: string;
+  customer_code?: string;
+  customer_address?: string;
+  order_ref?: string;
   created_at: string;
   updated_at: string;
 }
@@ -220,4 +225,15 @@ export interface Deliverer {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface StockMovement {
+  id: string;
+  created_at?: string;
+  date?: string;
+  product_name: string;
+  movement_type?: 'in' | 'out' | string;
+  type?: 'in' | 'out' | string;
+  quantity: number;
+  reason?: string;
 }

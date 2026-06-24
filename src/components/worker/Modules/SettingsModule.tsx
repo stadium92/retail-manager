@@ -21,6 +21,8 @@ import { LocalDatabase } from '@/services/LocalDatabase';
 import { useStockSearch } from '@/hooks/useStockSearch';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore, KeyMapping } from '@/stores/useSettingsStore';
+import { getDataClient } from '@/lib/dataClient';
+import { OfflineAuthService } from '@/services/OfflineAuthService';
 
 interface SettingsModuleProps {
   storeId: string;
@@ -233,7 +235,7 @@ export function SettingsModule({ storeId, mode }: SettingsModuleProps) {
   };
 
   const saveFKeyMappings = () => {
-    localStorage.setItem('fKeyMappings', JSON.stringify(fKeyMappings));
+    localStorage.setItem('fKeyMappings', JSON.stringify(keyMappings));
     toast.success(t('common.success'));
   };
 

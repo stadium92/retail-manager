@@ -300,7 +300,7 @@ export class OfflineTeamService {
           full_name: user?.full_name || 'Unknown',
           phone: user?.phone,
           role: 'worker' as AppRole,
-          sub_role: role.sub_role,
+          sub_role: role.sub_role as any,
           store_id: role.store_id,
           store_name: store?.name,
           is_active: user ? (user.is_active ?? true) : true,
@@ -842,6 +842,7 @@ export class OfflineTeamService {
             city: undefined,
             phone: store.phone || undefined,
             email: undefined,
+            default_price_tier: store.default_price_tier || 1,
             is_active: true,
             created_at: store.created_at,
             updated_at: store.updated_at || store.created_at,
@@ -895,6 +896,7 @@ export class OfflineTeamService {
           city: undefined,
           phone: store.phone || undefined,
           email: undefined,
+          default_price_tier: store.default_price_tier || 1,
           is_active: true,
           created_at: store.created_at,
           updated_at: store.updated_at || store.created_at,
@@ -914,6 +916,37 @@ export class OfflineTeamService {
     } catch (error) {
       console.error('Get stores error:', error);
       return { error };
+    }
+  }
+
+  static async updateWorkerRole(id: string, role: string): Promise<{ success: boolean; error?: any }> {
+    try {
+      const dataClient = getDataClient();
+      if (!dataClient.isLocalFirst) {
+        return { success: false, error: new Error('Cannot update role directly via Supabase API from offline service yet.') };
+      }
+
+      const headers = await OfflineAuthService.getAuthHeaders();
+      if (!headers) throw new Error('Not authenticated');
+
+      const response = await smartFetch(
+        `${dataClient.localBridgeBaseUrl}/auth/workers/${id}/role`,
+        {
+          method: 'PATCH',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update role');
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Update worker role error:', error);
+      return { success: false, error };
     }
   }
 }

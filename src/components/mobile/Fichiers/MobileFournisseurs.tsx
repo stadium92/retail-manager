@@ -115,7 +115,7 @@ export function MobileFournisseurs({ onBack }: MobileFournisseursProps) {
         });
         if (!res.ok) throw new Error();
         const updated = await res.json();
-        updateSupplier(updated);
+        updateSupplier(editingSupplier.id, updated);
         toast({ title: t('common.success'), description: 'Fournisseur mis à jour' });
       } else {
         const res = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/suppliers`, {

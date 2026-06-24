@@ -12,7 +12,7 @@ import { OfflineSalesService } from '@/services/OfflineSalesService';
 import { Product } from '@/types';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { useSalesStore } from '@/stores/useSalesStore';
+import { useSalesStore, DEFAULT_SESSION } from '@/stores/useSalesStore';
 import { useMasterDataStore } from '@/stores/useMasterDataStore';
 
 import { SanifereHeader, SaleMode } from '../Sales/SanifereHeader';
@@ -78,13 +78,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   const keySave = getKeyForAction('ACTION_SAVE') || 'F10';
   const keyScan = getKeyForAction('ACTION_SCAN');
 
-  const currentSession = sessions[mode] || {
-    lineItems: [],
-    customerCode: '',
-    customerName: '',
-    customerAddress: '',
-    orderRef: '',
-  };
+  const currentSession = sessions[mode] || DEFAULT_SESSION;
 
   const {
     lineItems,
@@ -222,7 +216,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         discount: totalDiscount,
         total: netTotal,
         date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString(),
-        cashier: user?.full_name || t('edition.seller')
+        cashier: user?.user_metadata?.full_name || t('edition.seller')
     };
 
     try {
@@ -283,7 +277,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       order_ref: currentSession.orderRef || undefined,
       storeName: store?.name || 'Quincaillerie De La Paix',
       storeAddress: store?.address || 'Face à Djoliba, près du Trésor',
-      workerName: user?.full_name || user?.email || t('edition.seller'),
+      workerName: user?.user_metadata?.full_name || user?.email || t('edition.seller'),
       customerName: currentSession.customerName || undefined,
       customerPhone: undefined, // customerPhone not stored in session; use address only
       customerAddress: currentSession.customerAddress || undefined,
@@ -318,7 +312,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       updates.clientId = matchedClient.id;
 
       const service = services.find(s => s.id === matchedClient!.service_id);
-      const groupDiscount = service?.default_discount_amount || 0;
+      const groupDiscount = service?.default_discount_percent || 0;
 
       if (groupDiscount > 0) {
         toast.info(t('menu.program.autoDiscount', { amount: groupDiscount }));
@@ -326,7 +320,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
           const updatedItems = lineItems.map(item => ({
             ...item,
             discountAmount: groupDiscount,
-            lineTotal: calculateLineTotal(item.unitPrice, item.quantity, groupDiscount, item.isBox, item.conditionnement),
+            lineTotal: calculateLineTotal(Number(item.unitPrice), Number(item.quantity), groupDiscount, item.isBox, item.conditionnement),
           }));
           updates.lineItems = updatedItems;
         }
@@ -340,7 +334,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
           const updatedItems = lineItems.map(item => ({
             ...item,
             discountAmount: 0,
-            lineTotal: calculateLineTotal(item.unitPrice, item.quantity, 0, item.isBox, item.conditionnement),
+            lineTotal: calculateLineTotal(Number(item.unitPrice), Number(item.quantity), 0, item.isBox, item.conditionnement),
           }));
           updates.lineItems = updatedItems;
         }
@@ -622,7 +616,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     newItems[index] = {
       ...item,
       isBox: newIsBox,
-      lineTotal: calculateLineTotal(item.unitPrice, item.quantity, item.discountPercent, newIsBox, item.conditionnement)
+      lineTotal: calculateLineTotal(Number(item.unitPrice), Number(item.quantity), Number(item.discountPercent || 0), newIsBox, item.conditionnement)
     };
     updateSession(mode, { lineItems: newItems });
   }, [lineItems, mode, updateSession, t]);
@@ -635,7 +629,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         return {
             ...item,
             unitPrice: newUnitPrice,
-            lineTotal: calculateLineTotal(newUnitPrice, item.quantity, item.discountPercent, item.isBox, item.conditionnement)
+            lineTotal: calculateLineTotal(Number(newUnitPrice), Number(item.quantity), Number(item.discountPercent || 0), item.isBox, item.conditionnement)
         };
     });
     updateSession(mode, { lineItems: newItems });
@@ -644,12 +638,13 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   const handleRowTierChange = useCallback((index: number, tier: number) => {
     const newItems = [...lineItems];
     const item = newItems[index];
+    if (!item) return;
     if (!item.priceTiers) return;
     const newUnitPrice = item.priceTiers[tier] || item.unitPrice;
     newItems[index] = {
         ...item,
         unitPrice: newUnitPrice,
-        lineTotal: calculateLineTotal(newUnitPrice, item.quantity, item.discountPercent, item.isBox, item.conditionnement)
+        lineTotal: calculateLineTotal(Number(newUnitPrice), Number(item.quantity), Number(item.discountPercent || 0), item.isBox, item.conditionnement)
     };
     updateSession(mode, { lineItems: newItems });
   }, [lineItems, mode, updateSession]);
@@ -662,12 +657,12 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       if (mode === 'facturation-gros') saleType = 'gros';
       if (mode === 'proforma') saleType = 'proforma';
 
-      const validItems = lineItems.filter(item => !!item.productId && item.quantity > 0);
+      const validItems = lineItems.filter(item => !!item.productId && Number(item.quantity) > 0);
       if (validItems.length === 0) return;
 
       const cartItems = validItems.map(item => {
         const packSize = item.conditionnement || 1;
-        let totalUnitsForDb = item.isBox ? item.quantity * packSize : item.quantity;
+        let totalUnitsForDb = item.isBox ? Number(item.quantity) * packSize : Number(item.quantity);
         return {
           product: { id: item.productId || '', store_id: storeId, name: item.designation, unit_price: item.unitPrice, quantity: item.stock, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
           quantity: totalUnitsForDb,
@@ -707,11 +702,11 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   const handleSaveProforma = useCallback(async () => {
     if (lineItems.length === 0) return;
     try {
-      const validItems = lineItems.filter(item => !!item.productId && item.quantity > 0);
+      const validItems = lineItems.filter(item => !!item.productId && Number(item.quantity) > 0);
       if (validItems.length === 0) return;
       const cartItems = validItems.map(item => {
         const packSize = item.conditionnement || 1;
-        let totalUnitsForDb = item.isBox ? item.quantity * packSize : item.quantity;
+        let totalUnitsForDb = item.isBox ? Number(item.quantity) * packSize : Number(item.quantity);
         return {
           product: { id: item.productId || '', store_id: storeId, name: item.designation, unit_price: item.unitPrice, quantity: item.stock, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
           quantity: totalUnitsForDb,

@@ -14,7 +14,7 @@ export interface InvoiceData {
     customerPhone?: string;
     customerAddress?: string;
     created_at: string;
-    items: CartItem[];
+    items: any[];
     total_price: number;
     type: 'detail' | 'gros' | 'proforma';
     paymentMethod?: string;

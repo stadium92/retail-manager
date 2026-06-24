@@ -75,9 +75,9 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
       const res = await OfflineInventoryService.getInventory(sid);
       const mapped = (res?.data || []).map(item => {
         let parsed = [];
-        if (item.pack_items) {
+        if ((item as any).pack_items) {
           try {
-            parsed = typeof item.pack_items === 'string' ? JSON.parse(item.pack_items) : item.pack_items;
+            parsed = typeof (item as any).pack_items === 'string' ? JSON.parse((item as any).pack_items) : (item as any).pack_items;
           } catch(e) {
             console.error('Failed to parse pack_items', e);
           }
@@ -125,6 +125,9 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
     setFormData({
       name: p.name || '',
       item_type: p.item_type || 'product',
+      sku: p.sku || '',
+      barcode: p.barcode || '',
+      description: p.description || '',
       family_id: p.category_id || p.category || '',
       unit_price: scale(p.price || p.unit_price || 0),
       selling_price_2: scale(p.selling_price_2 || 0),
@@ -135,7 +138,6 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
       min_quantity: isBox ? ((p.low_stock_threshold || 0) / packSize) : (p.low_stock_threshold || p.min_quantity || 0),
       unit_type: p.unit_type || 'Pièce',
       packaging: p.packaging || '1',
-      prep_time_minutes: p.prep_time_minutes || 0,
       image_url: p.image_url || '',
       pack_items: p.pack_items || [],
       // Recipe fields removed
@@ -234,7 +236,6 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
         (p.category_name || families.find(f => f.id === (p.category_id || p.category))?.name || '').toLowerCase().includes(searchQuery.toLowerCase());
       
       if (activeTypeFilter === 'all') return matchesSearch;
-      if (activeTypeFilter === 'dish') return matchesSearch && p.item_type === 'dish';
       if (activeTypeFilter === 'product') return matchesSearch && (p.item_type === 'product' || !p.item_type);
       if (activeTypeFilter === 'pack') return matchesSearch && p.item_type === 'pack';
       return matchesSearch;
@@ -343,7 +344,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
                     type="button"
                     onClick={() => {
                       setFormData(prev => ({ ...prev, item_type: 'pack' }));
-                      if (formTab === 'stock') setFormTab('info');
+                      if ((formTab as string) === 'stock') setFormTab('info');
                     }}
                     className={`py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all ${formData.item_type === 'pack' ? 'bg-rs-surface-tint text-white shadow-md' : 'text-rs-on-surface-variant'}`}
                   >
@@ -594,22 +595,6 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
                 </div>
               </div>
 
-              {formData.item_type === 'dish' && (
-                <div className="space-y-2">
-                  <Label htmlFor="prep-time">Temps de préparation (minutes)</Label>
-                  <div className="relative">
-                    <Input
-                      id="prep-time"
-                      type="number"
-                      value={formData.prep_time_minutes}
-                      onChange={e => setFormData(prev => ({ ...prev, prep_time_minutes: e.target.value }))}
-                      className="bg-rs-surface-container border-[#262626] text-white font-mono pr-20"
-                      placeholder="0"
-                    />
-                    <span className="absolute right-4 top-2 text-rs-on-surface-variant text-xs">min</span>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 

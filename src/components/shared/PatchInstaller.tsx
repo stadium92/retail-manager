@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { AlertCircle, CheckCircle, Download, Loader2 } from 'lucide-react';
@@ -43,8 +43,11 @@ export default function PatchInstaller() {
         return;
       }
 
-      setState((prev) => ({ ...prev, step: 'verifying', filename: file.name || 'patch.zip' }));
-      await installPatchFile(file as unknown as string);
+      const pathStr = Array.isArray(file) ? file[0] : file;
+      const filename = pathStr.split(/[\\/]/).pop() || 'patch.zip';
+
+      setState((prev) => ({ ...prev, step: 'verifying', filename }));
+      await installPatchFile(pathStr);
     } catch (error) {
       setState((prev) => ({
         ...prev,

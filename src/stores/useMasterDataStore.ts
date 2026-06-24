@@ -43,6 +43,7 @@ export interface ProductMaster {
   last_sale_date?: string;
   last_purchase_date?: string;
   preferred_supplier_id?: string;
+  aisle?: string;
   store_id: string;
   image_url?: string;
   packaging?: string; // e.g. "12", "6x1L"
@@ -75,6 +76,7 @@ export interface Supplier {
   address?: string;
   lead_time_days?: number;
   balance: number;
+  code?: string;
   default_purchase_type?: string;
   price_notes?: string;
   store_id: string;

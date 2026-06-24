@@ -48,7 +48,7 @@ export function ScannerProvider({ children }: { children: React.ReactNode }) {
       detail: { code: cleanedCode, source } 
     }));
     
-    Logger.info('HARDWARE_SCAN_DETECTED', { new_value: cleanedCode, source });
+    Logger.info('HARDWARE_SCAN_DETECTED', { new_value: cleanedCode, notes: source });
     
     // Optional: Visual/Audio feedback
     // toast.success(`Scanned: ${cleanedCode}`, { duration: 1000 });

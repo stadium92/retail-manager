@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { usePurchasingStore, Supplier } from '@/stores/usePurchasingStore';
 import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
+import { LocalDatabase } from '@/services/LocalDatabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NumericInput } from '@/components/ui/numeric-input';

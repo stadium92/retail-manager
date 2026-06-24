@@ -90,7 +90,7 @@ export function ProductLookupDialog({
       case 'Enter':
         e.preventDefault();
         if (results[selectedIndex]) {
-          onSelect(results[selectedIndex]);
+          onSelect(results[selectedIndex] as any as Product);
           onOpenChange(false);
         }
         break;
@@ -168,8 +168,8 @@ export function ProductLookupDialog({
             ) : (
               results.map((product, index) => {
                 const isSelected = index === selectedIndex;
-                const retailPrice = product.unit_price || product.price || 0;
-                const costPrice = product.cost_price || product.cost || 0;
+                const retailPrice = product.unit_price || 0;
+                const costPrice = product.cost_price || 0;
                 const stockStatus = product.quantity <= 0 ? 'rupture' : product.quantity <= (product.min_quantity || 10) ? 'low' : 'ok';
 
                 return (
@@ -177,7 +177,7 @@ export function ProductLookupDialog({
                     key={product.id}
                     ref={isSelected ? selectedRowRef : null}
                     onClick={() => {
-                      onSelect(product);
+                      onSelect(product as any as Product);
                       onOpenChange(false);
                     }}
                     onMouseEnter={() => setSelectedIndex(index)}
@@ -191,7 +191,7 @@ export function ProductLookupDialog({
                     <div className="font-bold uppercase truncate">{product.name}</div>
                     <div className="text-center text-[10px] opacity-60">{product.sku || '—'}</div>
                     <div className="text-center text-[10px] font-black uppercase tracking-tighter opacity-60 truncate">
-                        {product.category || (product as any).category_name || '—'}
+                        {product.category_id || '—'}
                     </div>
                     <div className="text-center text-[10px] font-bold uppercase truncate opacity-60">
                         {getStoreName(product.store_id)}

@@ -125,7 +125,7 @@ export function InvoiceDetailsDialog({ sale, onClose }: InvoiceDetailsDialogProp
               )}
 
               <div className="flex flex-col items-end">
-                <Badge variant={sale.payment_method === 'credit' ? 'destructive' : 'success'} className="uppercase text-[10px] mb-1">
+                <Badge variant={sale.payment_method === 'credit' ? 'destructive' : 'default'} className={`uppercase text-[10px] mb-1 ${sale.payment_method !== 'credit' ? 'bg-success text-white border-transparent' : ''}`}>
                   {sale.payment_method === 'credit' ? t('common.credit') : t('common.cash')}
                 </Badge>
                 <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter opacity-60">{sale.payment_status}</p>

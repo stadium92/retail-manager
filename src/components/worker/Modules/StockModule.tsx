@@ -18,10 +18,10 @@ import { format } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { OfflineDataService, StockMovement } from '@/services/OfflineDataService';
+import { OfflineDataService } from '@/services/OfflineDataService';
 import { useStockSearch, StockFilter } from '@/hooks/useStockSearch';
 import { useProductScanner } from '@/hooks/useProductScanner';
-import { Product } from '@/types';
+import { Product, StockMovement } from '@/types';
 import { ValorisationStock } from './Stock/ValorisationStock';
 import { RegularisationStock } from './Stock/RegularisationStock';
 import {
@@ -480,7 +480,7 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
             </Card>
             <Card className="h-full flex flex-col">{selectedProduct ? (
               <>
-                <CardHeader className="py-3 border-b"><div className="flex items-center justify-between"><div><CardTitle className="text-lg">{selectedProduct.name}</CardTitle><p className="text-xs text-muted-foreground mt-1">SKU: {selectedProduct.sku || '—'} | {t('inventory.fields.category')}: {families.find(f => f.id === selectedProduct.category_id)?.name || '—'}</p></div><div className="text-right"><div className="text-2xl font-bold text-primary">{selectedProduct.quantity}</div><div className="text-xs text-muted-foreground">{t('inventory.statusIn')}</div></div></div></CardHeader>
+                <CardHeader className="py-3 border-b"><div className="flex items-center justify-between"><div><CardTitle className="text-lg">{selectedProduct.name}</CardTitle><p className="text-xs text-muted-foreground mt-1">SKU: {selectedProduct.sku || '—'} | {t('inventory.fields.category')}: {families.find(f => f.id === selectedProduct.category)?.name || '—'}</p></div><div className="text-right"><div className="text-2xl font-bold text-primary">{selectedProduct.quantity}</div><div className="text-xs text-muted-foreground">{t('inventory.statusIn')}</div></div></div></CardHeader>
                 <CardContent className="flex-1 p-4 overflow-auto">
                   <div className="grid grid-cols-3 gap-4 mb-6"><div className="p-3 rounded-lg bg-muted/50"><p className="text-xs text-muted-foreground">{t('inventory.fields.price')}</p><p className="text-lg font-bold">{formatCurrency(selectedProduct.unit_price)}</p></div><div className="p-3 rounded-lg bg-muted/50"><p className="text-xs text-muted-foreground">{t('inventory.fields.cost')}</p><p className="text-lg font-bold">{formatCurrency(selectedProduct.cost_price || 0)}</p></div><div className="p-3 rounded-lg bg-muted/50"><p className="text-xs text-muted-foreground">{t('menu.program.value')}</p><p className="text-lg font-bold">{formatCurrency(selectedProduct.quantity * (selectedProduct.cost_price || selectedProduct.unit_price))}</p></div></div>
                   

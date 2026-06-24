@@ -92,7 +92,7 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
   const subRole = (rawSubRole === 'waiters' ? 'waiter' : rawSubRole) as 'cook' | 'cashier' | 'waiter' | null | undefined;
 
   const visibleTabs = getVisibleTabs(subRole);
-  const defaultTab: MobileTab = visibleTabs[0]?.id ?? 'kds';
+  const defaultTab: MobileTab = visibleTabs[0]?.id ?? 'pos';
 
   // Restore the last-used tab if it is still accessible for this role
   const [activeTab, setActiveTab] = useState<MobileTab>(() => {

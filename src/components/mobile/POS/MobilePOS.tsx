@@ -31,13 +31,11 @@ export function MobilePOS({ onBack }: MobilePOSProps) {
         customerName,
         customerPhone,
         setCustomer,
-        orderNotes,
-        setOrderNotes,
-        serviceType,
-        setServiceType,
-        globalDiscount,
-        setGlobalDiscount
     } = usePOSStore();
+
+    const [orderNotes, setOrderNotes] = useState('');
+    const [serviceType, setServiceType] = useState<'table' | 'emporter'>('emporter');
+    const [globalDiscount, setGlobalDiscount] = useState(0);
     const { toast } = useToast();
 
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);

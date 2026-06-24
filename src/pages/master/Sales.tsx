@@ -103,7 +103,7 @@ export default function SalesPage() {
       setStores(allStores);
 
       const wMap: Record<string, string> = {};
-      if (user?.id) wMap[user.id] = user.full_name || user.email || 'Master';
+      if (user?.id) wMap[user.id] = (user.user_metadata?.full_name) || user.email || 'Master';
 
       if (workersRes.data) {
         workersRes.data.forEach(w => { if (w.id) wMap[w.id] = w.full_name || w.email || 'Unknown'; });
@@ -288,7 +288,7 @@ export default function SalesPage() {
                                 <span className="font-black text-xs tabular-nums">{formatCurrency(total)}</span>
                                 <div className="flex gap-1">
                                   <Badge variant="outline" className={cn("text-[8px] h-4 py-0 font-black uppercase border-2", sale.payment_method === 'credit' ? "text-danger border-danger/20" : "text-success border-success/20")}>{sale.payment_method}</Badge>
-                                  <Badge variant={sale.payment_status === 'paid' ? 'success' : 'warning'} className="text-[8px] h-4 py-0 font-black uppercase">
+                                  <Badge variant="outline" className={cn("text-[8px] h-4 py-0 font-black uppercase border-2", sale.payment_status === 'paid' ? "text-success border-success/20 bg-success/10" : "text-warning border-warning/20 bg-warning/10")}>
                                     {sale.payment_status}
                                   </Badge>
                                 </div>

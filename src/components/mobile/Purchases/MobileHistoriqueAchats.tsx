@@ -34,7 +34,7 @@ export function MobileHistoriqueAchats({ onBack }: MobileHistoriqueAchatsProps) 
   };
 
   const filteredOrders = (orders || []).filter(o => 
-    o.order_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (o.order_number || o.id.slice(0, 8))?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     o.supplier?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -96,7 +96,7 @@ export function MobileHistoriqueAchats({ onBack }: MobileHistoriqueAchatsProps) 
               >
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-white text-base">Cmd #{order.order_number}</h3>
+                    <h3 className="font-bold text-white text-base">Cmd #{order.order_number || order.id.slice(0, 8)}</h3>
                     {getStatusBadge(order.status)}
                   </div>
                   <p className="text-sm text-rs-on-surface-variant truncate">{order.supplier?.name || 'Fournisseur inconnu'}</p>
@@ -124,7 +124,7 @@ export function MobileHistoriqueAchats({ onBack }: MobileHistoriqueAchatsProps) 
             <div>
               <SheetTitle className="text-white text-lg font-bold">Détails de Commande</SheetTitle>
               {selectedOrder && (
-                <p className="text-xs text-rs-on-surface-variant">Cmd #{selectedOrder.order_number} — {selectedOrder.supplier?.name}</p>
+                <p className="text-xs text-rs-on-surface-variant">Cmd #{selectedOrder.order_number || selectedOrder.id.slice(0, 8)} — {selectedOrder.supplier?.name}</p>
               )}
             </div>
           </SheetHeader>

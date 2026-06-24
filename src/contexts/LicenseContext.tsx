@@ -2,20 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { LicenseBanner } from '@/components/shared/LicenseBanner';
 import { ActivationGate } from '@/components/license/ActivationGate';
-import { LicenseService } from '@/services/LicenseService';
-
-export interface LicenseStore {
-  store_id: string;
-  store_name: string;
-  activated_at: string;
-}
-
-export interface LicenseStatus {
-  status: 'active' | 'trial' | 'expired';
-  days_remaining: number;
-  stores: LicenseStore[];
-  device_hash: string;
-}
+import { LicenseService, LicenseStatus, LicenseStore } from '@/services/LicenseService';
+export type { LicenseStatus, LicenseStore };
 
 interface LicenseContextType {
   license: LicenseStatus | null;

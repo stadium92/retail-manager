@@ -211,7 +211,7 @@ export function SanifereRow({
         />
       </NavigableCell>
 
-      <NavigableCell row={index} column="total" className={cn('px-2 py-1.5 text-right tabular-nums font-bold truncate', item.discountPercent > 0 && !isSelected && 'text-green-300')}>
+      <NavigableCell row={index} column="total" className={cn('px-2 py-1.5 text-right tabular-nums font-bold truncate', Number(item.discountPercent) > 0 && !isSelected && 'text-green-300')}>
         {formatCurrency(item.lineTotal)}
       </NavigableCell>
 

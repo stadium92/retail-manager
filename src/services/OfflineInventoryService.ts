@@ -3,7 +3,7 @@
  * Uses 'products' table in Supabase and 'inventory' store in LocalDatabase
  */
 
-import { LocalDatabase, LocalInventory } from './LocalDatabase';
+import { LocalDatabase, LocalInventory, LocalProductFamily } from './LocalDatabase';
 import { InventoryItem } from '@/types';
 import { getDataClient, smartFetch } from '@/lib/dataClient';
 import { OfflineAuthService } from './OfflineAuthService';
@@ -427,13 +427,166 @@ export const OfflineInventoryService = {
     }
   },
 
-  async getLowStockItems(storeId: string): Promise<{ data?: InventoryItem[]; error?: any }> {
+  async getProductFamilies(storeId?: string): Promise<{ data?: LocalProductFamily[]; error?: any }> {
     try {
-      const { data, error } = await this.getInventory(storeId);
-      if (error) throw error;
-      const lowStock = (data || []).filter(item => item.quantity <= item.low_stock_threshold);
-      return { data: lowStock };
+      await LocalDatabase.init();
+      const local = await LocalDatabase.getProductFamilies(storeId);
+      
+      // Background sync families
+      const syncFams = async () => {
+        let remote: any[] = [];
+        const dc = getDataClient();
+        try {
+          if (dc.isLocalFirst) {
+            const headers = await OfflineAuthService.getAuthHeaders();
+            if (headers) {
+              const res = await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/product_families`, { headers });
+              if (res.ok) remote = await res.json();
+            }
+          } else {
+            const { data, error } = await supabase
+              .from('product_families')
+              .select('*')
+              .eq('store_id', storeId);
+            if (!error && data) remote = data;
+          }
+          
+          if (remote.length > 0) {
+            for (const f of remote) {
+              await LocalDatabase.saveProductFamily({
+                id: f.id,
+                store_id: f.store_id || storeId || '',
+                name: f.name,
+                description: f.description || undefined,
+                parent_id: f.parent_id || undefined,
+                created_at: f.created_at || new Date().toISOString(),
+                updated_at: f.updated_at || new Date().toISOString(),
+                synced: true
+              });
+            }
+          }
+        } catch (e) {}
+      };
+      syncFams();
+
+      return { data: local };
     } catch (error) {
+      return { error };
+    }
+  },
+
+  async getProductBatches(storeId: string, productId: string): Promise<{ data?: any[]; error?: any }> {
+    try {
+      const dc = getDataClient();
+      if (dc.isLocalFirst) {
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (headers) {
+          const res = await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/product_batches?store_id=${storeId}&product_id=${productId}`, { headers });
+          if (res.ok) return { data: await res.json() };
+        }
+      }
+      return { data: [] };
+    } catch (error) {
+      return { error };
+    }
+  },
+
+  async getStockValuation(storeId: string): Promise<{ total_cost: number; total_retail: number; total_wholesale: number; total_resale: number; item_count: number; error?: any }> {
+    try {
+      const dc = getDataClient();
+      if (dc.isLocalFirst) {
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (headers) {
+          const sid = storeId === 'all' ? '' : storeId;
+          const res = await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/analytics/stock-valuation?store_id=${sid}`, { headers });
+          if (res.ok) return await res.json();
+        }
+      }
+      
+      // Calculate from LocalDatabase (IndexedDB) for pure cloud mode or fallback
+      await LocalDatabase.init();
+      const items = await LocalDatabase.getInventory(storeId === 'all' ? undefined : storeId);
+      let total_cost = 0;
+      let total_retail = 0;
+      let total_wholesale = 0;
+      let total_resale = 0;
+      for (const item of items) {
+        const qty = item.quantity || 0;
+        const retail = item.unit_price || 0;
+        total_cost += (item.cost || 0) * qty;
+        total_retail += retail * qty;
+        const wholesale = item.wholesale_price || item.wholesale_price_ttc || retail;
+        total_wholesale += wholesale * qty;
+        const resale = item.selling_price_4 || retail;
+        total_resale += resale * qty;
+      }
+      return {
+        total_cost,
+        total_retail,
+        total_wholesale,
+        total_resale,
+        item_count: items.length
+      };
+    } catch (error) {
+      console.error('Error fetching stock valuation:', error);
+      return { total_cost: 0, total_retail: 0, total_wholesale: 0, total_resale: 0, item_count: 0, error };
+    }
+  },
+
+  async getLowStockItems(limit: number = 10, storeId?: string): Promise<{ data?: InventoryItem[]; error?: any }> {
+    try {
+      const dc = getDataClient();
+      await LocalDatabase.init();
+      const targetStoreId = storeId === 'all' ? undefined : storeId;
+
+      // 1. If Local-First, try Bridge
+      if (dc.isLocalFirst) {
+        try {
+          const headers = await OfflineAuthService.getAuthHeaders();
+          if (headers) {
+            const params = new URLSearchParams({
+              filter: 'low_stock',
+              limit: String(limit)
+            });
+            if (targetStoreId) {
+              params.append('store_id', targetStoreId);
+            }
+            const res = await smartFetch(`${dc.localBridgeBaseUrl}/rest/v1/products?${params.toString()}`, { headers });
+            if (res.ok) {
+              const payload = await res.json();
+              const remoteProducts = Array.isArray(payload) ? payload : (payload.data || []);
+              const mappedItems = remoteProducts.map(mapDbToInventoryItem);
+              return { data: mappedItems.slice(0, limit) };
+            }
+          }
+        } catch (e) {
+          console.warn('[OfflineInventory] Bridge getLowStockItems failed, falling back to local cache:', e);
+        }
+      }
+
+      // 2. Fallback: IndexedDB
+      if (targetStoreId) {
+        const localInventory = await LocalDatabase.getInventory(targetStoreId);
+        const lowStock = localInventory
+          .map(mapLocalInventoryToItem)
+          .filter(item => item.quantity <= (item.low_stock_threshold || 0));
+        return { data: lowStock.slice(0, limit) };
+      } else {
+        const { OfflineStoreService } = await import('./OfflineStoreService');
+        const { data: allStores } = await OfflineStoreService.getStores();
+        const storeIds = allStores?.map(s => s.id) || [];
+        let combinedLowStock: InventoryItem[] = [];
+        for (const sid of storeIds) {
+          const localInventory = await LocalDatabase.getInventory(sid);
+          const lowStock = localInventory
+            .map(mapLocalInventoryToItem)
+            .filter(item => item.quantity <= (item.low_stock_threshold || 0));
+          combinedLowStock.push(...lowStock);
+        }
+        return { data: combinedLowStock.slice(0, limit) };
+      }
+    } catch (error) {
+      console.error('[OfflineInventory] getLowStockItems fatal error:', error);
       return { error };
     }
   }

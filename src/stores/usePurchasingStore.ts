@@ -26,6 +26,7 @@ export interface PurchaseOrder {
   status: 'draft' | 'ordered' | 'received' | 'partial';
   total_amount: number;
   notes?: string;
+  order_number?: string;
   created_at: string;
   updated_at: string;
   supplier?: Supplier;

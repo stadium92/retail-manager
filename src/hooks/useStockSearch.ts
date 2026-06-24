@@ -45,7 +45,7 @@ export function useStockSearch(storeId: string, enabled: boolean = true) {
     setPage(1);
   }, [filter]);
 
-  const query = useQuery({
+  const query = useQuery<StockSearchResult>({
     queryKey: ['stock-search', storeId, debouncedSearch, filter, page],
     queryFn: async () => {
       if (!storeId) return { data: [], total: 0 };
@@ -113,7 +113,6 @@ export function useStockSearch(storeId: string, enabled: boolean = true) {
         if (debouncedSearch) {
             const lowerQ = debouncedSearch.toLowerCase();
             allItems = allItems.filter(p => 
-                (p.name && p.name.toLowerCase().includes(lowerQ)) ||
                 (p.product_name && p.product_name.toLowerCase().includes(lowerQ)) ||
                 (p.sku && p.sku.toLowerCase().includes(lowerQ)) ||
                 (p.barcode && p.barcode.toLowerCase().includes(lowerQ))
@@ -124,7 +123,7 @@ export function useStockSearch(storeId: string, enabled: boolean = true) {
         if (filter === 'out_of_stock') {
             allItems = allItems.filter(p => (p.quantity || 0) <= 0);
         } else if (filter === 'low_stock') {
-            allItems = allItems.filter(p => (p.quantity || 0) <= (p.reorder_quantity || p.min_quantity || 10) && (p.quantity || 0) > 0);
+            allItems = allItems.filter(p => (p.quantity || 0) <= (p.reorder_quantity || p.low_stock_threshold || 10) && (p.quantity || 0) > 0);
         } else if (filter === 'in_stock') {
             allItems = allItems.filter(p => (p.quantity || 0) > 0);
         }
@@ -163,7 +162,7 @@ export function useStockSearch(storeId: string, enabled: boolean = true) {
     },
     enabled: enabled && !!storeId,
     staleTime: 0, // Always fetch fresh data
-    keepPreviousData: true,
+    placeholderData: (prev) => prev,
   });
 
   return {

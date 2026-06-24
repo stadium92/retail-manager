@@ -292,7 +292,7 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
           {t('common.lastUpdate')}: {currentProduct.updated_at ? new Date(currentProduct.updated_at).toLocaleString() : '—'}
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={loadProducts} className="text-xs">
+          <Button variant="outline" size="sm" onClick={() => loadProducts()} className="text-xs">
             <RefreshCw className="h-3 w-3 mr-2" /> {t('common.refresh')}
           </Button>
         </div>
