@@ -32,12 +32,21 @@ import { useGlobalKeyboard, useNavigationStore } from '@/navigation';
 import { ReglementsBonsModule } from '../Modules/ReglementsBonsModule';
 import { resetMasterPasswordGates } from '@/components/shared/MasterPasswordGate';
 import { CashierCreditsModule } from '../Modules/CashierCreditsModule';
+import { useDevice } from '@/contexts/DeviceContext';
+import { MobileWorkerLayout } from '@/components/mobile/MobileWorkerLayout';
+import { MinWidthGate } from '@/components/shared/MinWidthGate';
 
 interface WorkerLayoutProps {
   className?: string;
 }
 
 export function WorkerLayout({ className }: WorkerLayoutProps) {
+  const { isDesktop } = useDevice();
+
+  if (!isDesktop) {
+    return <MobileWorkerLayout />;
+  }
+
   useGlobalKeyboard();
   const { t } = useTranslation();
   const { user, signOut } = useAuth();
@@ -270,7 +279,7 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
     await signOut();
   };
 
-  return (
+  const layoutContent = (
     <div className={cn('h-full flex flex-col bg-background', className)}>
       <header className="h-10 bg-[hsl(160,70%,35%)] flex items-center shrink-0 px-2">
         <div className="h-7 w-7 shrink-0 overflow-hidden rounded bg-white/10 p-0.5 mr-2">
@@ -309,5 +318,11 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
         storeId={storeId}
       />
     </div>
+  );
+
+  return (
+    <MinWidthGate minWidth={675}>
+      {layoutContent}
+    </MinWidthGate>
   );
 }

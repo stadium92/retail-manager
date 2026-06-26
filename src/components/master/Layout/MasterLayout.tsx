@@ -44,6 +44,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { useDevice } from '@/contexts/DeviceContext';
+import { MobileWorkerLayout } from '@/components/mobile/MobileWorkerLayout';
 
 export function MasterLayout() {
   const { t } = useTranslation();
@@ -54,6 +56,11 @@ export function MasterLayout() {
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const { isDesktop } = useDevice();
+
+  if (!isDesktop) {
+    return <MobileWorkerLayout />;
+  }
 
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [networkHealth, setNetworkHealth] = useState<NetworkHealthStatus>('ONLINE');
