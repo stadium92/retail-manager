@@ -86,8 +86,30 @@
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 15% 94%;
     --sidebar-accent-foreground: 220 40% 13%;
-    --sidebar-border: 220 20% 88%;
     --sidebar-ring: 172 80% 45%;
+
+    /* RS Mappings */
+    --rs-background: var(--background);
+    --rs-on-background: var(--foreground);
+    --rs-surface: var(--card);
+    --rs-on-surface: var(--card-foreground);
+    --rs-on-surface-variant: var(--muted-foreground);
+    --rs-outline: var(--border);
+    --rs-surface-container: 220 20% 92%;
+    --rs-surface-container-low: 220 20% 95%;
+    --rs-surface-container-high: 220 20% 88%;
+    --rs-surface-container-highest: 220 20% 84%;
+    --rs-surface-variant: var(--muted);
+    --rs-surface-tint: var(--primary);
+    --rs-primary: var(--primary);
+    --rs-on-primary: var(--primary-foreground);
+    --rs-secondary: var(--secondary);
+    --rs-on-secondary: var(--secondary-foreground);
+    --rs-secondary-container: var(--secondary);
+    --rs-on-secondary-container: var(--secondary-foreground);
+    --rs-error: var(--destructive);
+    --rs-error-container: 0 84% 90%;
+    --rs-on-error-container: var(--destructive);
   }
 
   .dark {
@@ -162,9 +184,31 @@
     --sidebar-primary: 25 95% 53%;
     --sidebar-primary-foreground: 240 27% 8%;
     --sidebar-accent: 240 33% 16%;
-    --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 240 34% 27%;
     --sidebar-ring: 25 95% 53%;
+
+    /* RS Mappings */
+    --rs-background: var(--background);
+    --rs-on-background: var(--foreground);
+    --rs-surface: var(--card);
+    --rs-on-surface: var(--card-foreground);
+    --rs-on-surface-variant: var(--muted-foreground);
+    --rs-outline: var(--border);
+    --rs-surface-container: 240 33% 14%;
+    --rs-surface-container-low: 240 33% 10%;
+    --rs-surface-container-high: 240 33% 18%;
+    --rs-surface-container-highest: 240 33% 22%;
+    --rs-surface-variant: var(--muted);
+    --rs-surface-tint: var(--primary);
+    --rs-primary: var(--primary);
+    --rs-on-primary: var(--primary-foreground);
+    --rs-secondary: var(--secondary);
+    --rs-on-secondary: var(--secondary-foreground);
+    --rs-secondary-container: var(--secondary);
+    --rs-on-secondary-container: var(--secondary-foreground);
+    --rs-error: var(--destructive);
+    --rs-error-container: 0 72% 15%;
+    --rs-on-error-container: 0 100% 80%;
   }
 }
 
