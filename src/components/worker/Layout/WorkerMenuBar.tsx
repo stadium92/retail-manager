@@ -58,6 +58,7 @@ interface WorkerMenuBarProps {
   activeModule: WorkerModule;
   onModuleChange: (module: WorkerModule) => void;
   className?: string;
+  isMaster?: boolean;
 }
 
 interface MenuItem {
@@ -75,7 +76,7 @@ interface MenuSection {
   items: MenuItem[];
 }
 
-export function WorkerMenuBar({ activeModule, onModuleChange, className }: WorkerMenuBarProps) {
+export function WorkerMenuBar({ activeModule, onModuleChange, className, isMaster = false }: WorkerMenuBarProps) {
   const { t } = useTranslation();
 
   const menuStructure: MenuSection[] = [
@@ -181,6 +182,42 @@ export function WorkerMenuBar({ activeModule, onModuleChange, className }: Worke
     },
   ];
 
+  const filteredMenuStructure = menuStructure
+    .filter(section => {
+      if (!isMaster) {
+        // Workers only see Sales and Stock menus
+        return section.triggerKey === 'menu.sales.trigger' || section.triggerKey === 'menu.stock.trigger';
+      }
+      return true;
+    })
+    .map(section => {
+      if (!isMaster) {
+        if (section.triggerKey === 'menu.sales.trigger') {
+          return {
+            ...section,
+            items: section.items.filter(item => 
+              item.separator || (item.module && [
+                'vente-detail', 
+                'facturation-detail', 
+                'facturation-gros', 
+                'proforma', 
+                'fermeture-caisse'
+              ].includes(item.module))
+            )
+          };
+        }
+        if (section.triggerKey === 'menu.stock.trigger') {
+          return {
+            ...section,
+            items: section.items.filter(item => 
+              item.module === 'inventaire-stock'
+            )
+          };
+        }
+      }
+      return section;
+    });
+
   const isModuleInSection = (section: MenuSection) => {
     return section.items.some((item) => {
       if (item.module === activeModule) return true;
@@ -248,7 +285,7 @@ export function WorkerMenuBar({ activeModule, onModuleChange, className }: Worke
 
   return (
     <Menubar className={cn('h-10 gap-0 p-0 border-none bg-transparent rounded-none', className)}>
-      {menuStructure.map((section, index) => {
+      {filteredMenuStructure.map((section, index) => {
         const isActive = isModuleInSection(section);
 
         return (

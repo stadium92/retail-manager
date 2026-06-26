@@ -204,7 +204,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const dataClient = getDataClient();
-      if (!dataClient.isLocalFirst && navigator.onLine) {
+      
+      if (dataClient.isLocalFirst) {
+        // Query local bridge for roles in local-first mode
+        try {
+          const headers = await OfflineAuthService.getAuthHeaders();
+          if (headers) {
+            const response = await smartFetch(
+              `${dataClient.localBridgeBaseUrl}/rest/v1/user_roles`,
+              { headers }
+            );
+            if (response.ok) {
+              const bridgeRoles = await response.json();
+              const userSpecificRoles = (bridgeRoles || []).filter((r: any) => r.user_id === userId);
+              if (userSpecificRoles.length > 0) {
+                console.log('Using local-bridge roles:', userSpecificRoles);
+                const mapped = userSpecificRoles.map((r: any) => ({
+                  id: r.id,
+                  user_id: r.user_id,
+                  role: r.role as AppRole,
+                  store_id: r.store_id,
+                  created_at: r.created_at,
+                }));
+                setRoles(mapped);
+                setRolesLoading(false);
+                return;
+              }
+            }
+          }
+        } catch (bridgeErr) {
+          console.warn('Failed to fetch roles from LocalBridge, falling back to IndexedDB:', bridgeErr);
+        }
+      } else if (navigator.onLine) {
+        // Pure cloud mode
         try {
           const { data: supaRoles, error: supaErr } = await supabase
             .from('user_roles')
@@ -313,8 +345,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           created_at: new Date().toISOString()
         }]);
       } else {
-        console.warn('User has no roles assigned. User should contact admin.');
-        setRoles([]);
+        console.warn('User has no roles assigned. Keeping existing roles to prevent wipeout.');
       }
       setRolesLoading(false);
     } catch (err) {
@@ -333,12 +364,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             store_id: r.store_id,
             created_at: r.created_at,
           })));
-        } else {
-          setRoles([]);
         }
       } catch (dbErr) {
         console.error('Failed to recover local roles:', dbErr);
-        setRoles([]);
       }
       
       setRolesLoading(false);

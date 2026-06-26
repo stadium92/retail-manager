@@ -58,10 +58,6 @@ export function MasterLayout() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const { isDesktop } = useDevice();
 
-  if (!isDesktop) {
-    return <MobileWorkerLayout />;
-  }
-
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [networkHealth, setNetworkHealth] = useState<NetworkHealthStatus>('ONLINE');
   const [networkMessage, setNetworkMessage] = useState('Connected to cloud');
@@ -264,7 +260,9 @@ export function MasterLayout() {
     </div>
   );
 
-  return (
+  return !isDesktop ? (
+    <MobileWorkerLayout />
+  ) : (
     <div className="flex h-full w-full">
       <aside className="hidden lg:flex lg:w-64 lg:flex-col border-r border-sidebar-border bg-sidebar">
         <Sidebar />

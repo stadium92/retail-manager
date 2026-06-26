@@ -92,6 +92,12 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
   const subRole = (rawSubRole === 'waiters' ? 'waiter' : rawSubRole) as 'cook' | 'cashier' | 'waiter' | null | undefined;
 
   let finalSections = menuSections.filter(section => {
+    // Workers (non-master) should only access Ventes (sales) and Stock (inventory)
+    if (!isMaster) {
+      if (section.title !== 'Ventes' && section.title !== 'Stock') {
+        return false;
+      }
+    }
     if (subRole === 'cook') {
       // Cook: only Programme section
       return section.title === 'Programme';
@@ -106,6 +112,15 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
     }
     return true;
   }).map(section => {
+    if (!isMaster && section.title === 'Ventes') {
+      return {
+        ...section,
+        items: section.items.filter(item =>
+          item.id === 'vente-detail' ||
+          item.id === 'fermeture-caisse'
+        )
+      };
+    }
     if (subRole === 'cashier' && section.title === 'Ventes') {
       return {
         ...section,

@@ -30,7 +30,7 @@ import { StockModule } from '../Modules/StockModule';
 import { SettingsModule } from '../Modules/SettingsModule';
 import { useGlobalKeyboard, useNavigationStore } from '@/navigation';
 import { ReglementsBonsModule } from '../Modules/ReglementsBonsModule';
-import { resetMasterPasswordGates } from '@/components/shared/MasterPasswordGate';
+import { MasterPasswordGate, resetMasterPasswordGates } from '@/components/shared/MasterPasswordGate';
 import { CashierCreditsModule } from '../Modules/CashierCreditsModule';
 import { useDevice } from '@/contexts/DeviceContext';
 import { MobileWorkerLayout } from '@/components/mobile/MobileWorkerLayout';
@@ -43,13 +43,10 @@ interface WorkerLayoutProps {
 export function WorkerLayout({ className }: WorkerLayoutProps) {
   const { isDesktop } = useDevice();
 
-  if (!isDesktop) {
-    return <MobileWorkerLayout />;
-  }
-
   useGlobalKeyboard();
   const { t } = useTranslation();
-  const { user, signOut } = useAuth();
+  const { user, signOut, roles } = useAuth();
+  const isMaster = roles?.some(r => r.role === 'master');
   // HIERARCHY FIX: When activeCell becomes null (Escape), focus the top menu.
   const activeCell = useNavigationStore(s => s.activeCell);
   useEffect(() => {
@@ -223,7 +220,15 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
       case 'regularisation-stock':
       case 'valorisation-stock':
       case 'inventaire-stock':
-        return <StockModule storeId={storeId} mode={activeModule} />;
+        const stockContent = <StockModule storeId={storeId} mode={activeModule} />;
+        if (activeModule === 'inventaire-stock') {
+          return (
+            <MasterPasswordGate moduleName={t('menu.stock.inventory') || 'Inventaire Stock'}>
+              {stockContent}
+            </MasterPasswordGate>
+          );
+        }
+        return stockContent;
 
       case 'reception-achats':
         return <ReceptionAchatsModule storeId={storeId} />;
@@ -291,6 +296,7 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
         <WorkerMenuBar
           activeModule={activeModule}
           onModuleChange={setActiveModule}
+          isMaster={isMaster}
         />
       </header>
 
@@ -320,7 +326,9 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
     </div>
   );
 
-  return (
+  return !isDesktop ? (
+    <MobileWorkerLayout />
+  ) : (
     <MinWidthGate minWidth={675}>
       {layoutContent}
     </MinWidthGate>

@@ -271,7 +271,41 @@ export class OfflineTeamService {
             }
 
             if (teamError) {
-              console.error('[getWorkers] get-team edge function error:', teamError);
+              console.warn('[getWorkers] get-team edge function error, falling back to direct table select:', teamError);
+              const { data: dbRoles, error: dbRolesError } = await supabase
+                .from('user_roles')
+                .select('*')
+                .eq('role', 'worker');
+
+              if (!dbRolesError && dbRoles) {
+                if (dbRoles.length === 0) {
+                  return { data: [] };
+                }
+                const userIds = dbRoles.map((r: any) => r.user_id);
+                const { data: dbProfiles } = await supabase
+                  .from('profiles')
+                  .select('*')
+                  .in('id', userIds);
+
+                const mappedWorkers: TeamMember[] = dbRoles.map((r: any) => {
+                  const profile = (dbProfiles || []).find((p: any) => p.id === r.user_id);
+                  return {
+                    id: r.id,
+                    user_id: r.user_id,
+                    email: profile?.email || '',
+                    full_name: profile?.full_name || 'Unknown',
+                    phone: profile?.phone || undefined,
+                    role: 'worker',
+                    sub_role: r.sub_role || undefined,
+                    store_id: r.store_id || undefined,
+                    is_active: true,
+                    created_at: r.created_at,
+                    sales_count: 0,
+                    total_revenue: 0,
+                  };
+                });
+                return { data: mappedWorkers };
+              }
             }
           }
         } catch (supabaseErr) {
@@ -402,7 +436,40 @@ export class OfflineTeamService {
             }
 
             if (teamError) {
-              console.error('[getDeliverers] get-team edge function error:', teamError);
+              console.warn('[getDeliverers] get-team edge function error, falling back to direct table select:', teamError);
+              const { data: dbRoles, error: dbRolesError } = await supabase
+                .from('user_roles')
+                .select('*')
+                .eq('role', 'deliverer');
+
+              if (!dbRolesError && dbRoles) {
+                if (dbRoles.length === 0) {
+                  return { data: [] };
+                }
+                const userIds = dbRoles.map((r: any) => r.user_id);
+                const { data: dbProfiles } = await supabase
+                  .from('profiles')
+                  .select('*')
+                  .in('id', userIds);
+
+                const mappedDeliverers: TeamMember[] = dbRoles.map((r: any) => {
+                  const profile = (dbProfiles || []).find((p: any) => p.id === r.user_id);
+                  return {
+                    id: r.id,
+                    user_id: r.user_id,
+                    email: profile?.email || '',
+                    full_name: profile?.full_name || 'Unknown',
+                    phone: profile?.phone || undefined,
+                    role: 'deliverer',
+                    store_id: r.store_id || undefined,
+                    is_active: true,
+                    created_at: r.created_at,
+                    deliveries_total: 0,
+                    deliveries_completed: 0,
+                  };
+                });
+                return { data: mappedDeliverers };
+              }
             }
           }
         } catch (supabaseErr) {

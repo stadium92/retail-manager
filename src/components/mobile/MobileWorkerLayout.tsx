@@ -45,6 +45,7 @@ import { EditionModule } from '@/components/worker/Modules/EditionModule';
 import InvitationsPage from '@/pages/master/Invitations';
 import AuditLogsPage from '@/pages/master/AuditLogs';
 import TeamPage from '@/pages/master/Team';
+import { MasterPasswordGate } from '@/components/shared/MasterPasswordGate';
 
 export interface MobileWorkerLayoutProps {
   onOpenDesktopModule?: (moduleId: string) => void;
@@ -230,7 +231,11 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
         case 'restaurants':
           return <MobileBoutiques onBack={() => setActiveMobileModule(null)} />;
         case 'inventaire-stock':
-          return <MobileInventaireStock onBack={() => setActiveMobileModule(null)} />;
+          return (
+            <MasterPasswordGate moduleName="Inventaire Stock">
+              <MobileInventaireStock onBack={() => setActiveMobileModule(null)} />
+            </MasterPasswordGate>
+          );
         case 'reception-achats':
           return <MobileReceptionAchats onBack={() => setActiveMobileModule(null)} />;
         case 'commande-manuelle':
