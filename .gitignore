@@ -46,3 +46,4 @@ testsprite_tests/tmp/config.json
 # Local agent database/logs
 .agent/
 
+.vercel

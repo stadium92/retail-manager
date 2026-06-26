@@ -493,6 +493,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, fullName: string) => {
     const dataClient = getDataClient();
 
+    if (!dataClient.isLocalFirst) {
+      console.log('🌐 Direct cloud sign up...');
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: fullName,
+            },
+          },
+        });
+
+        if (error) {
+          toast({
+            title: 'Sign Up Error',
+            description: error.message,
+            variant: 'destructive',
+          });
+          return { error };
+        }
+
+        toast({
+          title: 'Account Created!',
+          description: 'Your account has been created successfully.',
+        });
+        return { error: null };
+      } catch (err: any) {
+        console.error('Direct cloud signup failed:', err);
+        return { error: { message: err.message || 'Supabase signup failed.' } };
+      }
+    }
+
     if (dataClient.isLocalFirst) {
       const bootstrapResult = await OfflineAuthService.bootstrapMaster(email, password, fullName);
 
