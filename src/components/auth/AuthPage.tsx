@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { LanguageSwitcher } from '@/components/shared/LanguageSwitcher';
 import { useDevice } from '@/contexts/DeviceContext';
 import { MobileAuthPage } from '../mobile/Auth/MobileAuthPage';
+import { getDataClient } from '@/lib/dataClient';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -46,6 +47,9 @@ export default function AuthPage() {
   const { isDesktop } = useDevice();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const dataClient = getDataClient();
+  const isLocalFirst = dataClient.isLocalFirst;
 
   // Check for invitation token
   const invitationToken = searchParams.get('token');
@@ -241,28 +245,30 @@ export default function AuthPage() {
 
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
-                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-600 dark:text-amber-400 space-y-2 mb-4">
-                  <div className="flex items-center gap-2 font-bold">
-                    <AlertCircle className="h-4.5 w-4.5" />
-                    <span>{!isBootstrapped ? "Configuration de Premier Démarrage" : "État du Système (Mode Hors-ligne)"}</span>
+                {isLocalFirst && (
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-600 dark:text-amber-400 space-y-2 mb-4">
+                    <div className="flex items-center gap-2 font-bold">
+                      <AlertCircle className="h-4.5 w-4.5" />
+                      <span>{!isBootstrapped ? "Configuration de Premier Démarrage" : "État du Système (Mode Hors-ligne)"}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {!isBootstrapped 
+                        ? "L'application a besoin d'Internet pour se lier à votre compte pré-configuré (\"Designed Account\") et charger les données de votre magasin."
+                        : "Vos identifiants sont sauvegardés localement. Vous pouvez vous connecter même sans connexion Internet."}
+                    </p>
+                    <div className="flex items-center gap-2 pt-1 border-t border-amber-500/10 mt-2">
+                      {!isOffline ? (
+                        <span className="flex items-center gap-1 text-xs text-emerald-500 font-semibold">
+                          <Wifi className="h-3.5 w-3.5" /> Connecté à Internet
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-xs text-destructive font-bold animate-pulse">
+                          <WifiOff className="h-3.5 w-3.5" /> Hors ligne (Mode Local Actif)
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {!isBootstrapped 
-                      ? "L'application a besoin d'Internet pour se lier à votre compte pré-configuré (\"Designed Account\") et charger les données de votre magasin."
-                      : "Vos identifiants sont sauvegardés localement. Vous pouvez vous connecter même sans connexion Internet."}
-                  </p>
-                  <div className="flex items-center gap-2 pt-1 border-t border-amber-500/10 mt-2">
-                    {!isOffline ? (
-                      <span className="flex items-center gap-1 text-xs text-emerald-500 font-semibold">
-                        <Wifi className="h-3.5 w-3.5" /> Connecté à Internet
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-xs text-destructive font-bold animate-pulse">
-                        <WifiOff className="h-3.5 w-3.5" /> Hors ligne (Mode Local Actif)
-                      </span>
-                    )}
-                  </div>
-                </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="login-email">{t('auth.email')}</Label>

@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-export const FALLBACK_SUPABASE_URL = "https://onsqvduklnwffugsixbs.supabase.co";
+export const FALLBACK_SUPABASE_URL = "https://onsqvduklnwffugsiybs.supabase.co";
 export const FALLBACK_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uc3F2ZHVrbG53ZmZ1Z3NpeWJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMzk1MDgsImV4cCI6MjA5NzgxNTUwOH0.39u7eCzwZonAVbxdEYTQBv9cMONWHSCD5SBKeKSmUkE";
 
 
