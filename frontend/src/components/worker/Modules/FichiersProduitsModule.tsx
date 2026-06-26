@@ -655,7 +655,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
 
   return (
     <MasterPasswordGate moduleName={t('menu.files.products')}>
-    <div className={cn("h-full flex flex-col p-4 gap-4 transition-colors", !isMasterView && "bg-[hsl(60,80%,85%)]", "dark:bg-transparent")}>
+    <div className={cn("h-full flex flex-col p-4 gap-4 transition-colors", !isMasterView && "bg-transparent", "dark:bg-transparent")}>
       <div className="flex items-center gap-4 bg-card p-3 rounded-xl border-2 border-border/50 shadow-lg">
         <div className="relative flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder={t('common.search')} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 h-10 border-none bg-muted/30 font-black uppercase tracking-tighter" /></div>
         <div className="flex items-center gap-2">

@@ -148,7 +148,7 @@ export function StockListingModule({ storeId }: StockListingModuleProps) {
 
   return (
     <MasterPasswordGate moduleName={t('menu.program.stockListing')}>
-      <div className="h-full flex flex-col p-4 bg-[hsl(60,80%,85%)] dark:bg-transparent">
+      <div className="h-full flex flex-col p-4 bg-transparent">
       {/* Header with stats */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-4">

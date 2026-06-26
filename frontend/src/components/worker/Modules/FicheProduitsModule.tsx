@@ -147,7 +147,7 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
   const stockStatus = getStockStatus(currentProduct.current_stock, currentProduct.min_stock_alert);
 
   return (
-    <div className="h-full flex flex-col p-4 bg-[hsl(60,80%,95%)] dark:bg-transparent">
+    <div className="h-full flex flex-col p-4 bg-transparent">
       {/* Header with navigation */}
       <div className="flex items-center justify-between mb-4 bg-card/50 p-2 rounded-lg border border-border/50">
         <div className="flex items-center gap-2">

@@ -256,7 +256,7 @@ export function FicheCaisseModule({ storeId }: FicheCaisseModuleProps) {
   };
   
   return (
-    <div className="h-full flex flex-col p-4 bg-[hsl(60,80%,85%)] dark:bg-transparent">
+    <div className="h-full flex flex-col p-4 bg-transparent">
       <ScrollArea className="flex-1">
         <div className="glass-card p-4">
           {/* Header */}

@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import { ThemeProvider } from "next-themes";
 import App from "./App.tsx";
 import "./index.css";
 import "./i18n/config";
@@ -19,4 +20,8 @@ if (!localStorage.getItem('system_reset_v2')) {
   window.location.reload();
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(
+  <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+    <App />
+  </ThemeProvider>
+);

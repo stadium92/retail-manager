@@ -206,7 +206,7 @@ export function FacturationModule({ storeId, mode }: FacturationModuleProps) {
   };
 
   return (
-    <div className="h-full flex flex-col p-4 bg-[hsl(60,80%,85%)] dark:bg-transparent">
+    <div className="h-full flex flex-col p-4 bg-transparent">
       {/* Mode indicator */}
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-3">

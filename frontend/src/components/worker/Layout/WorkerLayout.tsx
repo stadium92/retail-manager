@@ -285,7 +285,7 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
         />
       </header>
 
-      <main className="flex-1 overflow-hidden bg-[hsl(50,90%,55%)] dark:bg-background">
+      <main className="flex-1 overflow-hidden bg-background">
         <div className="h-full p-4">
           <div className="h-full glass-card overflow-hidden flex flex-col">
             <div className="h-8 bg-primary/10 border-b border-primary/30 flex items-center px-4">

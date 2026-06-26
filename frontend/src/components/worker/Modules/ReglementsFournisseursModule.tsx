@@ -213,7 +213,7 @@ export function ReglementsFournisseursModule({ storeId, isMasterView }: Reglemen
   return (
     <div className={cn(
         "h-full flex flex-col p-4 gap-4 transition-colors",
-        !isMasterView && "bg-[hsl(60,80%,85%)]",
+        !isMasterView && "bg-transparent",
         "dark:bg-transparent"
     )}>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

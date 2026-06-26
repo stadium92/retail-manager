@@ -102,11 +102,11 @@ export function WorkerStatusBar({ storeName, userEmail, activeModule, onLogout, 
   };
 
   return (
-    <footer className="h-8 bg-[hsl(180,80%,40%)] dark:bg-card/80 border-t border-primary/30 flex items-center px-2 text-xs shrink-0">
+    <footer className="h-8 bg-card border-t border-border flex items-center px-2 text-xs shrink-0">
       {/* Store Name */}
       <div className="flex items-center gap-2 min-w-[200px]">
-        <HardDrive className="h-3.5 w-3.5 text-primary-foreground/70 dark:text-primary" />
-        <span className="font-medium text-primary-foreground dark:text-foreground truncate">
+        <HardDrive className="h-3.5 w-3.5 text-primary" />
+        <span className="font-medium text-foreground truncate">
           {storeName || t('index.title')}
           <span className="font-mono opacity-50 ml-2 text-[10px]">v{import.meta.env.VITE_APP_VERSION || 'dev'}</span>
         </span>
@@ -114,7 +114,7 @@ export function WorkerStatusBar({ storeName, userEmail, activeModule, onLogout, 
 
       {/* Keyboard Shortcuts */}
       <div className="flex-1 text-center">
-        <span className="font-mono text-primary-foreground/90 dark:text-muted-foreground">
+        <span className="font-mono text-muted-foreground">
           {shortcutHints[activeModule] || t('common.loading')}
         </span>
       </div>
@@ -129,7 +129,7 @@ export function WorkerStatusBar({ storeName, userEmail, activeModule, onLogout, 
           size="sm"
           disabled={isSyncing || !isOnline}
           onClick={handleHardReset}
-          className="h-6 px-2 text-primary-foreground hover:bg-primary-foreground/10 dark:text-foreground flex items-center gap-1"
+          className="h-6 px-2 text-foreground hover:bg-muted flex items-center gap-1"
           title="Hard Reset Browser Cache"
         >
           <RefreshCw className={cn("h-3 w-3", isSyncing && "animate-spin")} />
@@ -166,14 +166,14 @@ export function WorkerStatusBar({ storeName, userEmail, activeModule, onLogout, 
         </div>
 
         {/* User */}
-        <span className="text-primary-foreground/80 dark:text-muted-foreground truncate max-w-[150px]">
+        <span className="text-muted-foreground truncate max-w-[150px]">
           {userEmail}
         </span>
 
         {/* Date/Time */}
-        <div className="flex items-center gap-2 font-mono text-primary-foreground dark:text-foreground">
+        <div className="flex items-center gap-2 font-mono text-foreground">
           <span>{formatDate(currentTime)}</span>
-          <span className="text-primary-foreground/60 dark:text-muted-foreground">•</span>
+          <span className="text-muted-foreground">•</span>
           <span>{formatTime(currentTime)}</span>
         </div>
 
@@ -188,7 +188,7 @@ export function WorkerStatusBar({ storeName, userEmail, activeModule, onLogout, 
           variant="ghost"
           size="sm"
           onClick={onLogout}
-          className="h-6 px-2 text-primary-foreground hover:bg-primary-foreground/10 dark:text-foreground dark:hover:bg-muted"
+          className="h-6 px-2 text-foreground hover:bg-muted"
         >
           <LogOut className="h-3.5 w-3.5" />
         </Button>

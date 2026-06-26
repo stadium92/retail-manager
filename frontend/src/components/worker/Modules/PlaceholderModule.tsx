@@ -10,7 +10,7 @@ export function PlaceholderModule({ title, description }: PlaceholderModuleProps
   const { t } = useTranslation();
 
   return (
-    <div className="h-full flex flex-col items-center justify-center p-8 bg-[hsl(60,80%,85%)] dark:bg-transparent">
+    <div className="h-full flex flex-col items-center justify-center p-8 bg-transparent">
       <div className="glass-card p-12 text-center max-w-md">
         <Construction className="h-16 w-16 mx-auto mb-6 text-primary opacity-50" />
         <h2 className="text-2xl font-bold mb-2">{title}</h2>

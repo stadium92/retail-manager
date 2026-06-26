@@ -676,7 +676,7 @@ export function SettingsModule({ storeId, mode }: SettingsModuleProps) {
   };
 
   return (
-    <div className="h-full flex flex-col p-6 bg-[hsl(60,80%,85%)] dark:bg-transparent overflow-auto">
+    <div className="h-full flex flex-col p-6 bg-transparent overflow-auto">
       {renderContent()}
     </div>
   );
