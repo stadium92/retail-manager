@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
-import { Phone, MapPin, Navigation, CheckCircle2, Package, Truck, Map } from 'lucide-react';
+import { Phone, MapPin, Navigation, CheckCircle2, Package, Truck, Map, History } from 'lucide-react';
 import { OfflineIndicator } from '@/components/shared/OfflineIndicator';
 import { DelivererBottomNavigation } from './BottomNavigation';
 import { lazy, Suspense } from 'react';
@@ -244,8 +244,8 @@ export function DelivererDashboard() {
 
       {/* Summary and Deliveries */}
       <div className="container mx-auto px-4 py-6 safe-area-bottom">
-        <Tabs defaultValue="deliveries" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="deliveries">
               <Package className="h-4 w-4 mr-2" />
               {t('deliverer.dashboard.tabs.deliveries')}
@@ -253,6 +253,10 @@ export function DelivererDashboard() {
             <TabsTrigger value="map">
               <Map className="h-4 w-4 mr-2" />
               {t('deliverer.dashboard.tabs.map')}
+            </TabsTrigger>
+            <TabsTrigger value="history">
+              <History className="h-4 w-4 mr-2" />
+              {t('deliverer.dashboard.tabs.history') || "Historique"}
             </TabsTrigger>
           </TabsList>
 
@@ -363,6 +367,43 @@ export function DelivererDashboard() {
                 deliveries={deliveriesForMap}
               />
             </Suspense>
+          </div>
+
+          <div className={activeTab === 'history' ? 'space-y-6' : 'hidden'}>
+            {/* History List */}
+            {completedToday.length === 0 ? (
+              <div className="text-center py-12">
+                <CheckCircle2 className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">{t('deliverer.dashboard.noCompleted') || "Aucune livraison terminée aujourd'hui"}</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold">{t('deliverer.dashboard.completedToday')}</h2>
+                {completedToday.map(delivery => (
+                  <Card key={delivery.id} className="bg-card/40 border-emerald-500/20">
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-semibold text-lg">{delivery.customer_name || 'Customer'}</p>
+                          <Badge variant="secondary" className="mt-1 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/20">
+                            {t(`deliveries.${delivery.status}`)}
+                          </Badge>
+                        </div>
+                        {delivery.delivered_at && (
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(delivery.delivered_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground mt-1 shrink-0" />
+                        <p className="text-sm text-muted-foreground">{delivery.delivery_address}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
         </Tabs>
       </div>

@@ -646,6 +646,7 @@
       "active": "Actif",
       "completedToday": "Terminées aujourd'hui",
       "noActive": "Aucune livraison active",
+      "noCompleted": "Aucune livraison terminée aujourd'hui",
       "activeDeliveries": "Livraisons actives",
       "call": "Appeler",
       "navigate": "Naviguer",
@@ -657,7 +658,9 @@
       "queuedDescription": "La mise à jour du statut sera synchronisée en ligne",
       "tabs": {
         "deliveries": "Livraisons",
-        "map": "Vue carte"
+        "map": "Vue carte",
+        "route": "Itinéraire",
+        "history": "Historique"
       },
       "notifications": {
         "statusUpdate": "Mise à jour de livraison",

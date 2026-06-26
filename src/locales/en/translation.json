@@ -572,6 +572,7 @@
       "active": "Active",
       "completedToday": "Completed Today",
       "noActive": "No active deliveries",
+      "noCompleted": "No completed deliveries today",
       "activeDeliveries": "Active Deliveries",
       "call": "Call",
       "navigate": "Navigate",
@@ -583,7 +584,9 @@
       "queuedDescription": "Status update will be synced when online",
       "tabs": {
         "deliveries": "Deliveries",
-        "map": "Map View"
+        "map": "Map View",
+        "route": "Route",
+        "history": "History"
       },
       "notifications": {
         "statusUpdate": "Delivery Update",

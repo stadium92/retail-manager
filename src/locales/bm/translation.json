@@ -654,6 +654,7 @@
       "active": "Ka baara kɛ",
       "completedToday": "Ka kɛ banna bi",
       "noActive": "Di baara tɛ yen sisan",
+      "noCompleted": "Di banna tɛ yen bi",
       "activeDeliveries": "Di baara sisan",
       "call": "Ka wele",
       "navigate": "Ka taa",
@@ -665,7 +666,9 @@
       "queuedDescription": "Ni i donna ɛntɛrinɛti la, a bɛna yɛlɛma",
       "tabs": {
         "deliveries": "Di",
-        "map": "Karti"
+        "map": "Karti",
+        "route": "Sira",
+        "history": "Tariku"
       },
       "notifications": {
         "statusUpdate": "Di yɛlɛmali",
