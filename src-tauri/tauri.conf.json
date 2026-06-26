@@ -1,7 +1,7 @@
 {
     "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
     "productName": "retail-manager",
-    "version": "0.5.35",
+    "version": "0.5.44",
     "identifier": "com.retailmanager.dibidani",
     "build": {
         "frontendDist": "../frontend/dist",
