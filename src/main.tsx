@@ -14,7 +14,7 @@ if (sentryDsn) {
       Sentry.replayIntegration(),
     ],
     tracesSampleRate: 1.0,
-    tracePropagationTargets: ["localhost", /^https:\/\/onsqvduklnwffugsiybs\.supabase\.co/],
+    tracePropagationTargets: ["localhost"],
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0,
   });
