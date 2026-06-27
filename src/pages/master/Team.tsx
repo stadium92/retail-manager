@@ -216,14 +216,14 @@ export default function TeamPage() {
   const filteredWorkers = workers.filter(w => {
     const matchesSearch = w.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           w.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStore = isAllStoresSelected || (w.store_id && selectedStoreIds.includes(w.store_id));
+    const matchesStore = isAllStoresSelected || !w.store_id || selectedStoreIds.includes(w.store_id);
     return matchesSearch && matchesStore;
   });
 
   const filteredDeliverers = deliverers.filter(d => {
     const matchesSearch = d.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           d.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStore = isAllStoresSelected || (d.store_id && selectedStoreIds.includes(d.store_id));
+    const matchesStore = isAllStoresSelected || !d.store_id || selectedStoreIds.includes(d.store_id);
     return matchesSearch && matchesStore;
   });
 
