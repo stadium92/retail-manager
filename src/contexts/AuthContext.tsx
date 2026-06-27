@@ -10,6 +10,7 @@ import { LocalBridgeSyncService } from '@/services/LocalBridgeSyncService';
 import { LocalDatabase } from '@/services/LocalDatabase';
 import { supabase } from '@/lib/supabase';
 import i18n from '@/i18n/config';
+import { MonitoringService } from '@/services/MonitoringService';
  
 interface AuthContextType {
   user: User | null;
@@ -57,6 +58,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => clearInterval(heartbeat);
   }, [user]);
+
+  // Synchronize user context with Sentry
+  useEffect(() => {
+    if (user) {
+      const activeRole = roles[0];
+      MonitoringService.setUser({
+        id: user.id,
+        email: user.email || undefined,
+        role: activeRole?.role || undefined,
+      });
+    } else {
+      MonitoringService.setUser(null);
+    }
+  }, [user, roles]);
 
   useEffect(() => {
     const activeRole = roles[0];

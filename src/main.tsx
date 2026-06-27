@@ -1,24 +1,12 @@
 import { createRoot } from "react-dom/client";
 import { ThemeProvider } from "next-themes";
-import * as Sentry from "@sentry/react";
+import { MonitoringService } from "./services/MonitoringService";
 import App from "./App.tsx";
 import "./index.css";
 import "./i18n/config";
 
-const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
-if (sentryDsn) {
-  Sentry.init({
-    dsn: sentryDsn,
-    integrations: [
-      Sentry.browserTracingIntegration(),
-      Sentry.replayIntegration(),
-    ],
-    tracesSampleRate: 1.0,
-    tracePropagationTargets: ["localhost"],
-    replaysSessionSampleRate: 0.1,
-    replaysOnErrorSampleRate: 1.0,
-  });
-}
+// Initialize Sentry Monitoring Service
+MonitoringService.init();
 
 console.log('🚀 Bootstrapping Djati...');
 
