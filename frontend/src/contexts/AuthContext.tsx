@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [roles]);
 
-  // Poll Backend Readiness
+
   useEffect(() => {
     const dataClient = getDataClient();
     if (!dataClient.isLocalFirst) {
@@ -114,7 +114,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const checkHealth = async () => {
       try {
-        const response = await fetch(healthUrl);
+        // Use smartFetch so this routes via Tauri HTTP plugin inside the desktop app
+        const response = await smartFetch(healthUrl, { method: 'GET' });
         if (response.ok && isMounted) {
           const data = await response.json();
           console.log('✅ [AuthContext] Backend is READY, bootstrapped:', data.isBootstrapped);
@@ -128,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (e) {
         // Not ready yet
-        if (isMounted && !warningShown && (Date.now() - startTime > 10000)) {
+        if (isMounted && !warningShown && (Date.now() - startTime > 20000)) {
           warningShown = true;
           toast({
             title: i18n.t('sync.slowStartup'),
@@ -141,17 +142,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const startPolling = async () => {
-      console.log('ðŸ” [AuthContext] Starting backend health poll at:', healthUrl);
+      console.log('🔍 [AuthContext] Starting backend health poll at:', healthUrl);
       
       // Try immediately
       if (await checkHealth()) return;
 
-      // Then poll every 1s
+      // Then poll every 2s (was 1s — reduces log spam while still being responsive)
       pollInterval = setInterval(async () => {
         if (await checkHealth()) {
           clearInterval(pollInterval);
         }
-      }, 1000);
+      }, 2000);
     };
 
     startPolling();
@@ -161,6 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (pollInterval) clearInterval(pollInterval);
     };
   }, []);
+
 
   // Track online/offline status
   useEffect(() => {

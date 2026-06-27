@@ -231,23 +231,38 @@ export default function AuthPage() {
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
                 {isLocalFirst && (
-                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-600 dark:text-amber-400 space-y-2 mb-4">
-                    <div className="flex items-center gap-2 font-bold">
-                      <AlertCircle className="h-4.5 w-4.5" />
-                      <span>{!isBootstrapped ? "Configuration de Premier Démarrage" : "État du Système (Mode Hors-ligne)"}</span>
+                  <div className={`rounded-xl border p-3 text-sm space-y-1.5 mb-4 ${
+                    !isBackendReady
+                      ? 'border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-400'
+                      : 'border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400'
+                  }`}>
+                    <div className="flex items-center gap-2 font-semibold">
+                      {!isBackendReady ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Connexion à la base de données locale...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Store className="h-4 w-4" />
+                          <span>{!isBootstrapped ? 'Configuration de Premier Démarrage' : 'Base de données locale prête ✓'}</span>
+                        </>
+                      )}
                     </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {!isBootstrapped 
-                        ? "L'application a besoin d'Internet pour se lier à votre compte pré-configuré (\"Designed Account\") et charger les données de votre magasin."
-                        : "Vos identifiants sont sauvegardés localement. Vous pouvez vous connecter même sans connexion Internet."}
-                    </p>
-                    <div className="flex items-center gap-2 pt-1 border-t border-amber-500/10 mt-2">
+                    {isBackendReady && (
+                      <p className="text-xs opacity-80 leading-relaxed pl-6">
+                        {!isBootstrapped
+                          ? "Première connexion requise avec Internet pour activer votre compte."
+                          : "Vos identifiants sont sauvegardés localement. Connexion possible sans Internet."}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-2 pt-1 border-t border-current/10 mt-1 pl-1">
                       {!isOffline ? (
-                        <span className="flex items-center gap-1 text-xs text-emerald-500 font-semibold">
+                        <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                           <Wifi className="h-3.5 w-3.5" /> Connecté à Internet
                         </span>
                       ) : (
-                        <span className="flex items-center gap-1 text-xs text-destructive font-bold animate-pulse">
+                        <span className="flex items-center gap-1 text-xs font-bold text-destructive animate-pulse">
                           <WifiOff className="h-3.5 w-3.5" /> Hors ligne (Mode Local Actif)
                         </span>
                       )}
