@@ -275,7 +275,7 @@ export class OfflineTeamService {
               const { data: dbRoles, error: dbRolesError } = await supabase
                 .from('user_roles')
                 .select('*')
-                .eq('role', 'worker');
+                .in('role', ['worker', 'master', 'manager']);
 
               if (!dbRolesError && dbRoles) {
                 if (dbRoles.length === 0) {
@@ -295,7 +295,7 @@ export class OfflineTeamService {
                     email: profile?.email || '',
                     full_name: profile?.full_name || 'Unknown',
                     phone: profile?.phone || undefined,
-                    role: 'worker',
+                    role: r.role,
                     sub_role: r.sub_role || undefined,
                     store_id: r.store_id || undefined,
                     is_active: true,
@@ -321,7 +321,7 @@ export class OfflineTeamService {
       const localRoles = await LocalDatabase.getAllRoles();
       const localStores = await LocalDatabase.getAllStores();
 
-      const workerRoles = localRoles.filter(r => r.role === 'worker');
+      const workerRoles = localRoles.filter(r => ['worker', 'master', 'manager'].includes(r.role));
 
       const allWorkers: TeamMember[] = workerRoles.map(role => {
         const user = localUsers.find(u => u.id === role.user_id);
@@ -333,7 +333,7 @@ export class OfflineTeamService {
           email: user?.email || '',
           full_name: user?.full_name || 'Unknown',
           phone: user?.phone,
-          role: 'worker' as AppRole,
+          role: role.role as AppRole,
           sub_role: role.sub_role as any,
           store_id: role.store_id,
           store_name: store?.name,
@@ -614,13 +614,14 @@ export class OfflineTeamService {
 
       const baseUrl = getDataClient().localBridgeBaseUrl;
       const [rolesRes, usersRes, storesRes, salesRes] = await Promise.all([
-        smartFetch(`${baseUrl}/rest/v1/user_roles?role=worker`, { headers }),
+        smartFetch(`${baseUrl}/rest/v1/user_roles`, { headers }),
         smartFetch(`${baseUrl}/rest/v1/users`, { headers }),
         smartFetch(`${baseUrl}/rest/v1/stores`, { headers }),
         smartFetch(`${baseUrl}/rest/v1/sales`, { headers }),
       ]);
 
-      const roles = rolesRes.ok ? await rolesRes.json() : null;
+      const allRoles = rolesRes.ok ? await rolesRes.json() : null;
+      const roles = allRoles ? allRoles.filter((r: any) => ['worker', 'master', 'manager'].includes(r.role)) : null;
       const users = usersRes.ok ? await usersRes.json() : null;
       const stores = storesRes.ok ? await storesRes.json() : null;
       const sales = salesRes.ok ? await salesRes.json() : [];
@@ -650,7 +651,7 @@ export class OfflineTeamService {
           email: user?.email || '',
           full_name: user?.full_name || 'Unknown',
           phone: user?.phone || undefined,
-          role: 'worker' as AppRole,
+          role: role.role as AppRole,
           sub_role: role.sub_role || undefined,
           store_id: role.store_id || undefined,
           store_name: store?.name,

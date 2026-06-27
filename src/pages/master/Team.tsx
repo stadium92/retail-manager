@@ -362,6 +362,7 @@ export default function TeamPage() {
                       <TableHead>{t('team.table.name')}</TableHead>
                       <TableHead>{t('team.table.email')}</TableHead>
                       <TableHead>{t('team.table.phone')}</TableHead>
+                      <TableHead>{t('team.table.role')}</TableHead>
                       <TableHead>{t('team.table.store')}</TableHead>
                       <TableHead>{t('team.table.sales')}</TableHead>
                       <TableHead>{t('team.table.revenue')}</TableHead>
@@ -375,6 +376,11 @@ export default function TeamPage() {
                         <TableCell className="font-medium">{worker.full_name}</TableCell>
                         <TableCell>{worker.email}</TableCell>
                         <TableCell>{worker.phone || '-'}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="capitalize">
+                            {worker.role}
+                          </Badge>
+                        </TableCell>
                         <TableCell>
                           {worker.store_name ? (
                             <Badge variant="outline" className="gap-1">
@@ -401,14 +407,16 @@ export default function TeamPage() {
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setPromoteTarget(worker)}
-                              title="Promouvoir en Master"
-                            >
-                              <Shield className="h-4 w-4 text-blue-500" />
-                            </Button>
+                            {worker.role !== 'master' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setPromoteTarget(worker)}
+                                title="Promouvoir en Master"
+                              >
+                                <Shield className="h-4 w-4 text-blue-500" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"
