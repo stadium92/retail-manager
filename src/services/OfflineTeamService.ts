@@ -275,7 +275,7 @@ export class OfflineTeamService {
               const { data: dbRoles, error: dbRolesError } = await supabase
                 .from('user_roles')
                 .select('*')
-                .in('role', ['worker', 'master', 'manager']);
+                .in('role', ['worker', 'master']);
 
               if (!dbRolesError && dbRoles) {
                 if (dbRoles.length === 0) {
@@ -321,7 +321,7 @@ export class OfflineTeamService {
       const localRoles = await LocalDatabase.getAllRoles();
       const localStores = await LocalDatabase.getAllStores();
 
-      const workerRoles = localRoles.filter(r => ['worker', 'master', 'manager'].includes(r.role));
+      const workerRoles = localRoles.filter(r => ['worker', 'master'].includes(r.role));
 
       const allWorkers: TeamMember[] = workerRoles.map(role => {
         const user = localUsers.find(u => u.id === role.user_id);
@@ -621,7 +621,7 @@ export class OfflineTeamService {
       ]);
 
       const allRoles = rolesRes.ok ? await rolesRes.json() : null;
-      const roles = allRoles ? allRoles.filter((r: any) => ['worker', 'master', 'manager'].includes(r.role)) : null;
+      const roles = allRoles ? allRoles.filter((r: any) => ['worker', 'master'].includes(r.role)) : null;
       const users = usersRes.ok ? await usersRes.json() : null;
       const stores = storesRes.ok ? await storesRes.json() : null;
       const sales = salesRes.ok ? await salesRes.json() : [];
