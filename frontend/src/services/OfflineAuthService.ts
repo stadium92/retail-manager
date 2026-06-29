@@ -109,11 +109,16 @@ export class OfflineAuthService {
       5,
       Math.floor((cache.accessTokenExpiresAt - Date.now()) / 1000)
     );
+    // expires_at must be in SECONDS (Unix epoch) — this is what isSessionExpired() reads.
+    // Without this field, isSessionExpired() always returns true and every cached
+    // session is discarded on the next app launch, forcing a fresh login every time.
+    const expiresAt = Math.floor(cache.accessTokenExpiresAt / 1000);
 
     const session: Session = {
       access_token: cache.accessToken,
       refresh_token: cache.refreshToken,
       expires_in: expiresIn,
+      expires_at: expiresAt,
       token_type: 'bearer',
       user,
     } as Session;
@@ -175,9 +180,16 @@ export class OfflineAuthService {
     }
   }
 
-  static isSessionExpired(session: { expires_at?: number } | null): boolean {
-    if (!session?.expires_at) return true;
-    return Date.now() / 1000 > session.expires_at - 60; // 60s buffer
+  static isSessionExpired(session: { expires_at?: number; expires_in?: number } | null): boolean {
+    if (!session) return true;
+    // Prefer expires_at (absolute Unix epoch seconds) — set by mapCacheToResult()
+    if (session.expires_at) {
+      return Date.now() / 1000 > session.expires_at - 60; // 60s buffer
+    }
+    // Fallback: if only expires_in is present (legacy sessions), treat as expired
+    // since we can't determine when the session was issued from this field alone.
+    console.warn('[OfflineAuth] Session has no expires_at — clearing stale session.');
+    return true;
   }
 
   private static async refreshLocalBridgeSession(refreshToken: string): Promise<LocalBridgeSessionCache | null> {
@@ -314,7 +326,7 @@ export class OfflineAuthService {
       });
 
       if (supaError || !data.user) {
-        throw supaError;
+        throw supaError ?? new Error('Supabase returned no user without an error.');
       }
 
     let store_id = data.user.user_metadata?.store_id || null;
