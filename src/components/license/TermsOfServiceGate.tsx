@@ -13,6 +13,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTranslation } from 'react-i18next';
 import { ShieldCheck, Scale, Lock } from 'lucide-react';
 
+import { getDataClient } from '@/lib/dataClient';
+
 interface TermsOfServiceGateProps {
   children: React.ReactNode;
 }
@@ -24,6 +26,12 @@ export function TermsOfServiceGate({ children }: TermsOfServiceGateProps) {
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
+    const dc = getDataClient();
+    if (!dc.isLocalFirst) {
+      setAccepted(true);
+      setOpen(false);
+      return;
+    }
     const hasAccepted = localStorage.getItem('jati_terms_accepted');
     if (!hasAccepted) {
       setOpen(true);
