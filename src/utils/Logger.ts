@@ -1,5 +1,6 @@
 import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
+import { MonitoringService } from '@/services/MonitoringService';
 
 export type LogSeverity = 'INFO' | 'WARN' | 'ERROR';
 
@@ -32,6 +33,19 @@ export class Logger {
         // Always log to console in development
         const consoleMethod = entry.severity === 'ERROR' ? 'error' : entry.severity === 'WARN' ? 'warn' : 'log';
         console[consoleMethod](`[${entry.severity || 'INFO'}] ${entry.action_type}:`, entry);
+
+        // Forward to Sentry
+        if (entry.severity === 'ERROR') {
+            MonitoringService.captureException(new Error(entry.action_type), {
+                ...entry,
+                source: 'Logger'
+            });
+        } else if (entry.severity === 'WARN') {
+            MonitoringService.captureMessage(entry.action_type, 'warning', {
+                ...entry,
+                source: 'Logger'
+            });
+        }
 
         if (isLocalFirst) {
             try {

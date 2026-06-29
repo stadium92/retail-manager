@@ -101,7 +101,7 @@ export default function AuthPage() {
       const { error } = await signIn(loginData.email, loginData.password);
 
       if (error) {
-        setErrors({ form: error.message });
+        setErrors({ form: typeof error === 'object' && error.message ? error.message : String(error) });
         setLoading(false);
       } else {
         // If no error, we expect roles to load via context
@@ -150,7 +150,7 @@ export default function AuthPage() {
       );
 
       if (error) {
-        setErrors({ form: error.message });
+        setErrors({ form: typeof error === 'object' && error.message ? error.message : String(error) });
         setLoading(false);
         return;
       }
