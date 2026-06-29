@@ -87,7 +87,7 @@ export class OfflineAuthService {
   private static getLocalBridgeBaseUrl(): string {
     const dc = getDataClient();
     if (!dc.isLocalFirst) {
-      return (import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-project.supabase.co').replace(/\/$/, '');
+      return (import.meta.env.VITE_SUPABASE_URL || 'https://onsqvduklnwffugsiybs.supabase.co').replace(/\/$/, '');
     }
     return dc.localBridgeBaseUrl;
   }

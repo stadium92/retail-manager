@@ -1,5 +1,6 @@
 export type AppMode = 'cloud' | 'hybrid' | 'offline';
 
+const FALLBACK_SUPABASE_URL = "https://onsqvduklnwffugsiybs.supabase.co";
 const localBridgeBaseUrl = (import.meta.env.VITE_LOCALBRIDGE_URL || 'http://127.0.0.1:8787').replace(/\/$/, '');
 
 export interface DataClient {
@@ -42,7 +43,7 @@ export function getDataClient(): DataClient {
   const localFirst = !android && (!isHttps || tauri) && !forceCloud;
   const baseUrl = localFirst 
     ? localBridgeBaseUrl 
-    : (import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-project.supabase.co').replace(/\/$/, '');
+    : (import.meta.env.VITE_SUPABASE_URL || FALLBACK_SUPABASE_URL).replace(/\/$/, '');
 
   console.log(
     `🔑 [DataClient] mode: offline, isLocalFirst: ${localFirst}, android: ${android}, isHttps: ${isHttps}, tauri: ${tauri}, baseUrl: ${baseUrl}`
@@ -139,7 +140,7 @@ if (typeof window !== 'undefined' && !(window as any).__fetch_patched__) {
     const dc = getDataClient();
     if (!dc.isLocalFirst) {
       let urlStr = typeof input === 'string' ? input : (input instanceof URL ? input.href : (input as any).url);
-      const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-project.supabase.co').replace(/\/$/, '');
+      const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || FALLBACK_SUPABASE_URL).replace(/\/$/, '');
       
       if (urlStr.startsWith(supabaseUrl)) {
         let modified = false;
