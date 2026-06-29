@@ -30,3 +30,4 @@ release/
 .env.test.local
 .env.production.local
 .vercel_backup
+scratch/
