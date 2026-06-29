@@ -5,8 +5,8 @@ import App from "./App.tsx";
 import "./index.css";
 import "./i18n/config";
 
-// Initialize Sentry Monitoring Service
-MonitoringService.init();
+// Initialize Sentry Monitoring Service (Temporarily disabled)
+// MonitoringService.init();
 
 console.log('🚀 Bootstrapping Djati...');
 
