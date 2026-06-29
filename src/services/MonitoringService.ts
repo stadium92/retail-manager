@@ -25,14 +25,6 @@ export class MonitoringService {
       Sentry.init({
         dsn: activeDsn,
         environment,
-        integrations: [
-          Sentry.browserTracingIntegration(),
-          Sentry.replayIntegration(),
-        ],
-        tracesSampleRate: 1.0,
-        tracePropagationTargets: ["localhost"],
-        replaysSessionSampleRate: 0.1,
-        replaysOnErrorSampleRate: 1.0,
       });
       this.isInitialized = true;
       console.log('[MonitoringService] Sentry initialized successfully.');
