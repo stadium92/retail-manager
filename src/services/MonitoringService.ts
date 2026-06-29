@@ -15,7 +15,8 @@ export class MonitoringService {
   static init(dsn?: string, environment = 'production') {
     if (this.isInitialized) return;
     
-    const activeDsn = dsn || import.meta.env.VITE_SENTRY_DSN;
+    const FALLBACK_SENTRY_DSN = "https://6af023b576fd6069e3cbf4220463ab28@o4511632263217152.ingest.us.sentry.io/4511639554636880";
+    const activeDsn = dsn || import.meta.env.VITE_SENTRY_DSN || FALLBACK_SENTRY_DSN;
     if (!activeDsn) {
       console.warn('[MonitoringService] Sentry DSN not found. Skipping initialization.');
       return;
