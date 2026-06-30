@@ -494,17 +494,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: 'Failed to retrieve cloud user details.' };
       }
 
-      // 2. Extract user metadata
+      // 2. Fetch cloud user roles
+      const { data: rolesData } = await supabase
+        .from('user_roles')
+        .select('*')
+        .eq('user_id', data.user.id);
+
       const metadata = data.user.user_metadata || {};
       const fullName = metadata.full_name || 'Cloud User';
-      let role = metadata.role || 'master';
+      
+      let role: AppRole = 'customer';
+      let storeId = null;
+
+      if (rolesData && rolesData.length > 0) {
+        const priority: AppRole[] = ['master', 'worker', 'deliverer', 'customer'];
+        const userRoles = rolesData.map((r: any) => r.role as AppRole);
+        role = priority.find(p => userRoles.includes(p)) || userRoles[0] || 'customer';
+        
+        // Find store_id from the primary role record, or any record that has a store_id
+        const primaryRecord = rolesData.find((r: any) => r.role === role && r.store_id) || rolesData.find((r: any) => r.store_id);
+        storeId = primaryRecord ? primaryRecord.store_id : null;
+      } else {
+        // Fallback to metadata
+        role = metadata.role || 'master';
+        storeId = metadata.store_id;
+      }
 
       const emailLower = email.toLowerCase();
       if (emailLower === 'imsnsylla@gmail.com' || emailLower === 'bahsyllah223@gmail.com' || emailLower === 'ursula@master.com') {
         role = 'master';
       }
       
-      let storeId = metadata.store_id;
       let storeName = metadata.store_name || 'Cloud Store';
 
       if (!storeId && role === 'master') {
@@ -517,7 +537,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (!storeId) {
-        return { error: 'Cloud account is missing required store association (store_id metadata).' };
+        return { error: 'Cloud account is missing required store association (store_id).' };
       }
 
       // 3. Send credentials to local bridge
