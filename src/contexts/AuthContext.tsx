@@ -609,8 +609,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (metaErr) {
           console.error('[AuthContext] Failed to update user metadata on Supabase during bootstrap:', metaErr);
         }
-      }
-
 
       if (dataClient.isLocalFirst) {
         // 3. Send credentials to local bridge
@@ -623,6 +621,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             password,
             full_name: fullName,
             role,
+            sub_role: subRole,
             store_id: storeId,
             store_name: storeName,
           }),
@@ -890,9 +889,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(null);
       setRoles([]);
 
-      if (!dataClient.isLocalFirst) {
-        await supabase.auth.signOut().catch(e => console.warn('[AuthContext] Failed to sign out of Supabase client:', e));
-      }
+      await supabase.auth.signOut().catch(e => console.warn('[AuthContext] Failed to sign out of Supabase client:', e));
       
       toast({
         title: 'Signed Out',

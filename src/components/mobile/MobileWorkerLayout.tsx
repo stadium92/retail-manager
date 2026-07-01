@@ -89,7 +89,7 @@ function getVisibleTabs(subRole: string | null | undefined): TabConfig[] {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutProps) {
-  const { roles, user } = useAuth();
+  const { roles, user, signOut } = useAuth();
   const [activeMobileModule, setActiveMobileModule] = useState<string | null>(null);
   const [storeId, setStoreId] = useState<string>('');
 
@@ -97,7 +97,7 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
   const rawSubRole = roles.find(r => ['cook', 'cashier', 'waiter', 'waiters'].includes(r.role))?.role
     || workerRole?.sub_role
     || (user?.user_metadata?.sub_role as string | null | undefined);
-  const subRole = (rawSubRole === 'waiters' ? 'waiter' : rawSubRole) as 'cook' | 'cashier' | 'waiter' | null | undefined;
+  const subRole = ((rawSubRole === 'waiters' ? 'waiter' : rawSubRole) || 'waiter') as 'cook' | 'cashier' | 'waiter';
 
   const visibleTabs = getVisibleTabs(subRole);
   const defaultTab: MobileTab = visibleTabs[0]?.id ?? 'kds';
@@ -299,6 +299,15 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
           <div className="flex flex-col h-full bg-[#0a0a0a] pb-[64px] md:pb-0 font-sans text-white">
             <header className="flex-shrink-0 bg-[#141414] border-b border-[#F5C518]/20 px-4 py-3 sticky top-0 z-10 flex items-center justify-between">
               <h1 className="text-lg font-bold text-white uppercase tracking-wider">Plan de Salle</h1>
+              {!showTabBar && (
+                <button
+                  onClick={() => signOut()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-950/40 border border-red-500/30 text-red-400 text-xs font-semibold active:scale-95 transition-transform"
+                >
+                  <span className="material-symbols-outlined text-sm">logout</span>
+                  Se déconnecter
+                </button>
+              )}
             </header>
             <div className="flex-1 overflow-hidden bg-background">
               <TableManagement storeId={storeId} onModuleChange={(mod) => handleSelectModule(mod)} />

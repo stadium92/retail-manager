@@ -60,7 +60,7 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
   const rawSubRole = roles.find(r => ['cook', 'cashier', 'waiter', 'waiters'].includes(r.role))?.role
     || workerRole?.sub_role
     || (user?.user_metadata?.sub_role as string | null | undefined);
-  const subRole = (rawSubRole === 'waiters' ? 'waiter' : rawSubRole) as 'cook' | 'cashier' | 'waiter' | null | undefined;
+  const subRole = ((rawSubRole === 'waiters' ? 'waiter' : rawSubRole) || 'waiter') as 'cook' | 'cashier' | 'waiter';
   const { isDesktop } = useDevice();
   const [forceDesktopMode, setForceDesktopMode] = useState(false);
 

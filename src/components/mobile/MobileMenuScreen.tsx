@@ -90,7 +90,7 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
     roles.find(r => ['cook', 'cashier', 'waiter', 'waiters'].includes(r.role))?.role ??
     workerRole?.sub_role ??
     (user?.user_metadata?.sub_role as string | null | undefined);
-  const subRole = (rawSubRole === 'waiters' ? 'waiter' : rawSubRole) as 'cook' | 'cashier' | 'waiter' | null | undefined;
+  const subRole = ((rawSubRole === 'waiters' ? 'waiter' : rawSubRole) || 'waiter') as 'cook' | 'cashier' | 'waiter';
 
   let finalSections = menuSections.filter(section => {
     if (subRole === 'cook') {
@@ -102,8 +102,8 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
       return section.title === 'Ventes' || section.title === 'Programme';
     }
     if (subRole === 'waiter') {
-      // Waiter: Ventes + Fichiers + Programme
-      return section.title === 'Ventes' || section.title === 'Fichiers' || section.title === 'Programme';
+      // Waiter: restaurant only (appended dynamically below)
+      return false;
     }
     return true;
   }).map(section => {

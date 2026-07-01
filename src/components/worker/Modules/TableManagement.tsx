@@ -338,9 +338,12 @@ export function TableManagement({ storeId: propStoreId, onModuleChange }: TableM
         }
 
         if (updated) {
-          setTables((prev) => prev.map((t) => (t.id === tableId ? updated : t)));
-          if (selectedTable && selectedTable.id === tableId) {
-            setSelectedTable(updated);
+          const finalUpdated = Array.isArray(updated) ? updated[0] : updated;
+          if (finalUpdated) {
+            setTables((prev) => prev.map((t) => (t.id === tableId ? finalUpdated : t)));
+            if (selectedTable && selectedTable.id === tableId) {
+              setSelectedTable(finalUpdated);
+            }
           }
         } else {
           fetchTables();
@@ -489,7 +492,10 @@ export function TableManagement({ storeId: propStoreId, onModuleChange }: TableM
           } catch (e) {}
         }
         if (updated) {
-          setTables((prev) => prev.map((t) => (t.id === tableId ? updated : t)));
+          const finalUpdated = Array.isArray(updated) ? updated[0] : updated;
+          if (finalUpdated) {
+            setTables((prev) => prev.map((t) => (t.id === tableId ? finalUpdated : t)));
+          }
         }
       } else {
         // Rollback on server error
