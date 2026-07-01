@@ -287,7 +287,7 @@ export class OfflineTeamService {
       const localRoles = await LocalDatabase.getAllRoles();
       const localStores = await LocalDatabase.getAllStores();
 
-      const workerRoles = localRoles.filter(r => r.role === 'worker');
+      const workerRoles = localRoles.filter(r => ['worker', 'cashier', 'cook', 'waiter', 'waiters'].includes(r.role));
 
       const allWorkers: TeamMember[] = workerRoles.map(role => {
         const user = localUsers.find(u => u.id === role.user_id);
@@ -300,7 +300,7 @@ export class OfflineTeamService {
           full_name: user?.full_name || 'Unknown',
           phone: user?.phone,
           role: 'worker' as AppRole,
-          sub_role: role.sub_role,
+          sub_role: role.sub_role || (['cook', 'cashier', 'waiter', 'waiters'].includes(role.role) ? role.role as any : undefined),
           store_id: role.store_id,
           store_name: store?.name,
           is_active: user ? (user.is_active ?? true) : true,
@@ -547,13 +547,14 @@ export class OfflineTeamService {
 
       const baseUrl = getDataClient().localBridgeBaseUrl;
       const [rolesRes, usersRes, storesRes, salesRes] = await Promise.all([
-        smartFetch(`${baseUrl}/rest/v1/user_roles?role=worker`, { headers }),
+        smartFetch(`${baseUrl}/rest/v1/user_roles`, { headers }),
         smartFetch(`${baseUrl}/rest/v1/users`, { headers }),
         smartFetch(`${baseUrl}/rest/v1/stores`, { headers }),
         smartFetch(`${baseUrl}/rest/v1/sales`, { headers }),
       ]);
 
-      const roles = rolesRes.ok ? await rolesRes.json() : null;
+      const rawRoles = rolesRes.ok ? await rolesRes.json() as any[] : null;
+      const roles = rawRoles ? rawRoles.filter((r: any) => ['worker', 'cashier', 'cook', 'waiter', 'waiters'].includes(r.role)) : null;
       const users = usersRes.ok ? await usersRes.json() : null;
       const stores = storesRes.ok ? await storesRes.json() : null;
       const sales = salesRes.ok ? await salesRes.json() : [];
@@ -584,7 +585,7 @@ export class OfflineTeamService {
           full_name: user?.full_name || 'Unknown',
           phone: user?.phone || undefined,
           role: 'worker' as AppRole,
-          sub_role: role.sub_role || undefined,
+          sub_role: role.sub_role || (['cook', 'cashier', 'waiter', 'waiters'].includes(role.role) ? role.role as any : undefined),
           store_id: role.store_id || undefined,
           store_name: store?.name,
           is_active: true,
