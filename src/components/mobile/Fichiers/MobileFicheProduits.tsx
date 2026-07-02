@@ -11,6 +11,8 @@ import {
 import { ImageUpload } from '@/components/shared/ImageUpload';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { supabase } from '@/lib/supabase';
+import { getDataClient } from '@/lib/dataClient';
 // RecipeBuilder import removed for retail app
 
 interface MobileFicheProduitsProps {
@@ -87,7 +89,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
       setProducts(mapped);
     } catch (err) {
       console.error(err);
-      toast({ title: t('common.error'), description: 'Erreur lors du chargement du menu', variant: 'destructive' });
+      toast({ title: t('common.error'), description: 'Erreur lors du chargement des produits', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -185,6 +187,49 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
         finalQty = finalQty * packSize;
       }
 
+      // Category creation on-the-fly
+      let finalFamilyId = formData.family_id;
+      if (formData.family_id) {
+        const existing = families.find(f => f.id === formData.family_id || f.name.toLowerCase() === formData.family_id.toLowerCase());
+        if (existing) {
+          finalFamilyId = existing.id;
+        } else {
+          console.log('[MobileFicheProduits] Creating new family on the fly:', formData.family_id);
+          try {
+            const dc = getDataClient();
+            if (dc.isLocalFirst) {
+              const headers = await OfflineAuthService.getAuthHeaders() || {};
+              const famRes = await fetch(`${dc.localBridgeBaseUrl}/rest/v1/product_families`, {
+                method: 'POST',
+                headers: { ...headers, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: formData.family_id, store_id: storeId })
+              });
+              if (famRes.ok) {
+                const newFam = await famRes.json();
+                if (newFam) {
+                  finalFamilyId = newFam.id;
+                  setFamilies(prev => [...prev, newFam]);
+                }
+              }
+            } else {
+              // Pure cloud mode
+              const { data: newFam, error: supaErr } = await supabase
+                .from('product_families')
+                .insert({ name: formData.family_id, store_id: storeId })
+                .select()
+                .single();
+              if (supaErr) throw supaErr;
+              if (newFam) {
+                finalFamilyId = newFam.id;
+                setFamilies(prev => [...prev, newFam]);
+              }
+            }
+          } catch(e) {
+            console.error("Failed to create family on the fly", e);
+          }
+        }
+      }
+
       const payload = {
         name: formData.name,
         item_type: formData.item_type,
@@ -198,7 +243,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
         low_stock_threshold: formData.item_type === 'pack' ? 0 : (Number(formData.min_quantity) || 0),
         unit_type: formData.item_type === 'pack' ? 'Pièce' : formData.unit_type,
         packaging: formData.item_type === 'pack' ? '1' : formData.packaging,
-        category: formData.family_id || undefined,
+        category: finalFamilyId || undefined,
         image_url: formData.image_url || undefined,
         is_available: true,
         pack_items: formData.item_type === 'pack' ? formData.pack_items : [],
@@ -360,7 +405,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
                   type="text"
                   value={formData.name}
                   onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder={formData.item_type === 'pack' ? "Ex: Pack Famille, Combo Midi..." : "Ex: Burger Maison, Coca Cola..."}
+                  placeholder={formData.item_type === 'pack' ? "Ex: Pack Famille, Lot de 3..." : "Ex: Clé à molette, Ampoule LED..."}
                   className="bg-rs-surface-container border-[#262626] text-white"
                   required
                 />
@@ -368,18 +413,24 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
 
               {formData.item_type !== 'pack' && (
                 <div className="space-y-2">
-                  <Label htmlFor="family-select">Famille / Catégorie</Label>
-                  <select
-                    id="family-select"
-                    value={formData.family_id}
-                    onChange={e => setFormData(prev => ({ ...prev, family_id: e.target.value }))}
-                    className="w-full h-10 px-3 bg-rs-surface-container border border-[#262626] rounded-md text-sm text-white focus:outline-none focus:ring-1 focus:ring-rs-surface-tint"
-                  >
-                    <option value="">Sélectionner une catégorie</option>
-                    {families.map(fam => (
-                      <option key={fam.id} value={fam.id}>{fam.name}</option>
-                    ))}
-                  </select>
+                  <Label htmlFor="family-input">Famille / Catégorie</Label>
+                  <div className="relative">
+                    <Input 
+                      id="family-input"
+                      list="families-datalist"
+                      value={
+                        families.find(f => f.id === formData.family_id)?.name || formData.family_id
+                      } 
+                      onChange={e => setFormData(prev => ({ ...prev, family_id: e.target.value }))}
+                      placeholder="Sélectionner ou saisir une catégorie"
+                      className="bg-rs-surface-container border-[#262626] text-white"
+                    />
+                    <datalist id="families-datalist">
+                      {families.map(fam => (
+                        <option key={fam.id} value={fam.name} />
+                      ))}
+                    </datalist>
+                  </div>
                 </div>
               )}
 
@@ -399,7 +450,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
                       type="text"
                       value={packSearchQuery}
                       onChange={e => setPackSearchQuery(e.target.value)}
-                      placeholder="Rechercher un plat ou article..."
+                      placeholder="Rechercher un article..."
                       className="w-full h-9 bg-rs-surface-container border border-[#262626] rounded-xl pl-9 pr-3 text-xs focus:outline-none focus:border-rs-surface-tint text-white placeholder-rs-on-surface-variant/50"
                     />
                     <Search className="w-4 h-4 absolute left-3 top-2.5 text-rs-on-surface-variant/60" />
@@ -433,7 +484,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-bold text-white truncate">{item.name}</p>
                               <p className="text-[10px] text-rs-on-surface-variant uppercase font-mono">
-                                {item.item_type === 'dish' ? '🍳 Plat' : '📦 Article'}
+                                {item.item_type === 'pack' ? '🎒 Pack' : '📦 Article'}
                               </p>
                             </div>
                             <span className="text-xs text-rs-surface-tint font-mono font-bold">
@@ -641,7 +692,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Rechercher un plat, article ou pack..."
+            placeholder="Rechercher un article ou pack..."
             className="w-full h-11 bg-rs-surface-container border border-rs-surface-container-highest rounded-xl pl-10 pr-4 text-sm focus:outline-none focus:border-rs-surface-tint text-white placeholder-rs-on-surface-variant/50"
           />
           <Search className="w-5 h-5 absolute left-3.5 top-3 text-rs-on-surface-variant/60" />
@@ -676,7 +727,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 text-rs-on-surface-variant">
             <span className="material-symbols-outlined animate-spin text-[32px] text-rs-surface-tint mb-2">refresh</span>
-            <span>Chargement du menu...</span>
+            <span>Chargement des produits...</span>
           </div>
         ) : filteredProducts.length === 0 ? (
           <div className="text-center py-20 text-rs-on-surface-variant">

@@ -314,13 +314,13 @@ export default function TeamPage() {
       <Card>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <TabsList>
-                <TabsTrigger value="workers" className="gap-2">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between w-full">
+              <TabsList className="w-full sm:w-auto flex">
+                <TabsTrigger value="workers" className="gap-2 flex-1 sm:flex-initial">
                   <Users className="h-4 w-4" />
                   {t('team.tabs.workers')} ({workers.length})
                 </TabsTrigger>
-                <TabsTrigger value="deliverers" className="gap-2">
+                <TabsTrigger value="deliverers" className="gap-2 flex-1 sm:flex-initial">
                   <Truck className="h-4 w-4" />
                   {t('team.tabs.deliverers')} ({deliverers.length})
                 </TabsTrigger>
@@ -330,6 +330,7 @@ export default function TeamPage() {
                 <Button
                   onClick={() => setShowAddWorker(true)}
                   disabled={workers.length >= WORKER_SLOT_LIMIT}
+                  className="w-full sm:w-auto"
                 >
                   <UserPlus className="h-4 w-4 mr-2" />
                   {t('team.addWorker')}
@@ -338,6 +339,7 @@ export default function TeamPage() {
                 <Button
                   onClick={() => setShowAddDeliverer(true)}
                   disabled={deliverers.length >= DELIVERER_SLOT_LIMIT}
+                  className="w-full sm:w-auto"
                 >
                   <UserPlus className="h-4 w-4 mr-2" />
                   {t('team.addDeliverer')}

@@ -351,6 +351,16 @@ export const usePOSStore = create<POSState>()(
         customerName: state.customerName,
         customerPhone: state.customerPhone,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          const cart = state.cart || [];
+          const subtotal = cart.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
+          const totalDiscount = cart.reduce((sum, i) => sum + (i.unitPrice * i.quantity * i.discount / 100), 0);
+          state.subtotal = subtotal;
+          state.totalDiscount = totalDiscount;
+          state.grandTotal = subtotal - totalDiscount;
+        }
+      },
     }
   )
 );

@@ -7,6 +7,7 @@ import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { getDataClient, smartFetch } from '@/lib/dataClient';
 import { SyncService } from '@/services/SyncService';
 import { LocalBridgeSyncService } from '@/services/LocalBridgeSyncService';
+import { SupabaseSyncService } from '@/services/SupabaseSyncService';
 import { LocalDatabase } from '@/services/LocalDatabase';
 import { supabase } from '@/lib/supabase';
 import i18n from '@/i18n/config';
@@ -78,8 +79,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const storeId = activeRole?.store_id;
 
     if (storeId) {
-      console.log('[AuthContext] Auto-starting LocalBridgeSyncService for store:', storeId);
-      LocalBridgeSyncService.start(storeId);
+      const dataClient = getDataClient();
+      if (dataClient.isLocalFirst) {
+        console.log('[AuthContext] Auto-starting LocalBridgeSyncService for store:', storeId);
+        LocalBridgeSyncService.start(storeId);
+      } else {
+        console.log('[AuthContext] Auto-starting SupabaseSyncService for store:', storeId);
+        SupabaseSyncService.startSyncCycle(storeId);
+      }
 
       // Proactively check and update Supabase user_metadata if it is out of sync
       if (navigator.onLine) {
@@ -107,8 +114,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       return () => {
-        console.log('[AuthContext] Stopping LocalBridgeSyncService');
-        LocalBridgeSyncService.stop();
+        if (dataClient.isLocalFirst) {
+          console.log('[AuthContext] Stopping LocalBridgeSyncService');
+          LocalBridgeSyncService.stop();
+        } else {
+          console.log('[AuthContext] Stopping SupabaseSyncService');
+          SupabaseSyncService.stopSyncCycle();
+        }
       };
     }
   }, [roles]);
@@ -472,6 +484,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, 5000);
 
     return () => clearTimeout(fallbackTimeout);
+  }, []);
+
+  // Sync Supabase Auth State changes (token refresh) to IndexedDB in cloud mode
+  useEffect(() => {
+    const dataClient = getDataClient();
+    if (dataClient.isLocalFirst) return;
+
+    console.log('[AuthContext] Subscribing to Supabase auth state change listener');
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      console.log('🔄 [AuthContext] Supabase onAuthStateChange event:', event);
+      if (currentSession && currentSession.user) {
+        const role = currentSession.user.user_metadata?.role || 'master';
+        const storeId = currentSession.user.user_metadata?.store_id || '';
+        const fullName = currentSession.user.user_metadata?.full_name || 'Cloud User';
+        const subRole = currentSession.user.user_metadata?.sub_role || null;
+        
+        console.log('[AuthContext] Saving refreshed token to local cache');
+        await OfflineAuthService.saveOfflineSession(
+          currentSession.user,
+          currentSession,
+          role,
+          storeId,
+          fullName,
+          undefined,
+          subRole
+        );
+      }
+    });
+
+    return () => {
+      console.log('[AuthContext] Unsubscribing from Supabase auth state change listener');
+      subscription.unsubscribe();
+    };
   }, []);
 
   const runCloudBootstrapFlow = async (email: string, password: string) => {

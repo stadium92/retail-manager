@@ -72,11 +72,9 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
       ],
     },
     {
-      title: 'Programme',
-      icon: <FileText className="w-5 h-5" />,
+      title: 'Paramètres',
+      icon: <Layout className="w-5 h-5" />,
       items: [
-        { id: 'preferences', label: t('menu.program.preferences') || 'Préférences' },
-        { id: 'programmation-touches', label: t('menu.program.keyProgramming') || 'Programmation touches' },
         { id: 'mots-de-passe', label: t('menu.program.passwords') || 'Mots de passe' },
       ],
     },
@@ -99,16 +97,16 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
       }
     }
     if (subRole === 'cook') {
-      // Cook: only Programme section
-      return section.title === 'Programme';
+      // Cook: only Paramètres section
+      return section.title === 'Paramètres';
     }
     if (subRole === 'cashier') {
-      // Cashier: Ventes (renamed to Commandes) + Programme
-      return section.title === 'Ventes' || section.title === 'Programme';
+      // Cashier: Ventes (renamed to Commandes) + Paramètres
+      return section.title === 'Ventes' || section.title === 'Paramètres';
     }
     if (subRole === 'waiter') {
-      // Waiter: Ventes + Fichiers + Programme
-      return section.title === 'Ventes' || section.title === 'Fichiers' || section.title === 'Programme';
+      // Waiter: Ventes + Fichiers + Paramètres
+      return section.title === 'Ventes' || section.title === 'Fichiers' || section.title === 'Paramètres';
     }
     return true;
   }).map(section => {
@@ -147,12 +145,6 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
         return {
           ...section,
           items: section.items.filter(item => item.id === 'fiche-produits')
-        };
-      }
-      if (section.title === 'Programme') {
-        return {
-          ...section,
-          items: section.items.filter(item => item.id === 'preferences')
         };
       }
     }

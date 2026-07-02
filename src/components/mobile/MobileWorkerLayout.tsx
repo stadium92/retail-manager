@@ -42,6 +42,7 @@ import { ReplenishmentNeeds } from '@/components/master/Purchases/ReplenishmentN
 
 // Shared / Desktop wrapper modules for mobile
 import { EditionModule } from '@/components/worker/Modules/EditionModule';
+import { SettingsModule } from '@/components/worker/Modules/SettingsModule';
 import InvitationsPage from '@/pages/master/Invitations';
 import AuditLogsPage from '@/pages/master/AuditLogs';
 import TeamPage from '@/pages/master/Team';
@@ -142,12 +143,13 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
         'fournisseurs', 'restaurants', 'inventaire-stock',
         'reception-achats', 'commande-manuelle', 'reglement-fournisseurs',
         'besoins-achats', 'historique-achats', 'situation-client',
-        'situation-fournisseur', 'audit-logs', 'invitations', 'team'
+        'situation-fournisseur', 'audit-logs', 'invitations', 'team',
+        'mots-de-passe'
       ];
       
       // Programme and settings modules open via desktop overlay
       const desktopOnlyModules = [
-        'preferences', 'programmation-touches', 'mots-de-passe',
+        'preferences', 'programmation-touches',
         'kds',
         'facturation-detail', 'reglements-bons',
       ];
@@ -213,6 +215,23 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
     );
   };
 
+  // Wrapper for settings modules (like mots de passe)
+  const renderSettingsWrapper = (title: string, mode: 'preferences' | 'programmation-touches' | 'mots-de-passe' | 'synchronisation') => {
+    return (
+      <div className="flex flex-col h-full bg-[#0a0a0a] pb-[64px] md:pb-0 font-sans text-white">
+        <header className="flex-shrink-0 bg-[#141414] border-b border-rs-surface-container-highest px-4 py-3 sticky top-0 z-10 flex items-center gap-2">
+          <button onClick={() => setActiveMobileModule(null)} className="p-2 -ml-2 rounded-full hover:bg-rs-surface-container-highest text-white active:scale-95 transition-transform">
+            <span className="material-symbols-outlined">arrow_back</span>
+          </button>
+          <h1 className="text-lg font-bold text-white uppercase tracking-wider">{title}</h1>
+        </header>
+        <div className="flex-1 overflow-y-auto p-4 bg-[#0a0a0a] dark">
+          <SettingsModule storeId={storeId} mode={mode} />
+        </div>
+      </div>
+    );
+  };
+
   // ── Module rendering ─────────────────────────────────────────────────────
 
   const renderContent = () => {
@@ -256,6 +275,8 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
           return renderMasterPageWrapper('Invitations', InvitationsPage);
         case 'team':
           return renderMasterPageWrapper('Gestion Équipe', TeamPage);
+        case 'mots-de-passe':
+          return renderSettingsWrapper('Mots de Passe', 'mots-de-passe');
         default:
           break;
       }

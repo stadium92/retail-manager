@@ -121,7 +121,7 @@ export function MobilePOS({ onBack }: MobilePOSProps) {
                             autoFocus
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            placeholder="Rechercher un plat..." 
+                            placeholder="Rechercher un article..." 
                             className="w-full bg-rs-surface-container-low text-rs-on-surface h-[40px] rounded-full px-4 pl-10 focus:outline-none border border-rs-surface-container-highest focus:border-rs-surface-tint"
                         />
                         <span className="material-symbols-outlined absolute left-3 top-2.5 text-rs-on-surface-variant">search</span>
