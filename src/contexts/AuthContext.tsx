@@ -212,6 +212,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const localBridgeRoles = await res.json();
               if (Array.isArray(localBridgeRoles) && localBridgeRoles.length > 0) {
                 console.log('Using local-bridge backend roles:', localBridgeRoles);
+                
+                // Synchronize local bridge session cache in localStorage
+                const activeRole = localBridgeRoles[0];
+                OfflineAuthService.updateCachedLocalBridgeUser({
+                  role: activeRole.role,
+                  sub_role: activeRole.sub_role,
+                  store_id: activeRole.store_id,
+                });
+
                 setRoles(localBridgeRoles.map(r => ({
                   id: r.id,
                   user_id: r.user_id,
@@ -280,6 +289,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
             const storeId = bestRow.store_id;
             const role = bestRow.role;
+
+            // Synchronize pure cloud session cache in IndexedDB
+            supabase.auth.getSession().then(async ({ data: supaSession }) => {
+              if (supaSession?.session?.user) {
+                const cachedSession = await LocalDatabase.getSession();
+                const cachedPassword = cachedSession?.password || '';
+                await OfflineAuthService.saveOfflineSession(
+                  supaSession.session.user,
+                  supaSession.session,
+                  bestRow.role,
+                  bestRow.store_id || '',
+                  supaSession.session.user.user_metadata?.full_name || 'Cloud User',
+                  cachedPassword,
+                  bestRow.sub_role || undefined
+                );
+              }
+            }).catch(err => console.warn('[AuthContext] Failed to update IndexedDB session cache:', err));
 
             if (storeId) {
               setUser(prev => {

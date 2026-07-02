@@ -163,6 +163,25 @@ export class OfflineAuthService {
     return cache;
   }
 
+  public static updateCachedLocalBridgeUser(updates: Partial<LocalBridgeUserPayload>) {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(LOCALBRIDGE_SESSION_KEY);
+      if (raw) {
+        const cache = JSON.parse(raw) as LocalBridgeSessionCache;
+        cache.user = {
+          ...cache.user,
+          ...updates
+        };
+        window.localStorage.setItem(LOCALBRIDGE_SESSION_KEY, JSON.stringify(cache));
+        console.log('[OfflineAuth] Updated localbridge session cache:', updates);
+      }
+    } catch (error) {
+      console.error('Failed to update cached LocalBridge user', error);
+    }
+  }
+
+
   private static getLocalBridgeSession(): LocalBridgeSessionCache | null {
     if (typeof window === 'undefined') return null;
     try {
