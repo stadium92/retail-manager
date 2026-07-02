@@ -307,7 +307,6 @@ export class OfflineStoreService {
           const { data, error } = await supabase
             .from('stores')
             .select('*')
-            .is('deleted_at', null)
             .order('name');
           
           if (error) throw error;

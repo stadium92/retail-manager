@@ -113,7 +113,6 @@ export const OfflineInventoryService = {
           let query = supabase
             .from('products')
             .select('*')
-            .is('deleted_at', null)
             .order('name');
             
           if (targetStoreId) {
@@ -261,7 +260,7 @@ export const OfflineInventoryService = {
               wholesale_price_ht: Number(newItem.wholesale_price_ht ?? 0),
               wholesale_price_ttc: Number(newItem.wholesale_price_ttc ?? 0),
               quantity: Number(newItem.quantity ?? 0),
-              category: newItem.category || newItem.category_id || null,
+              category: (newItem.category && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(newItem.category)) ? newItem.category : (newItem.category_id && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(newItem.category_id)) ? newItem.category_id : null,
               image_url: newItem.image_url || null,
               aisle: newItem.aisle || null,
               brand: newItem.brand || null,
@@ -347,8 +346,12 @@ export const OfflineInventoryService = {
             if (updates.wholesale_price_ht !== undefined) mappedUpdates.wholesale_price_ht = Number(updates.wholesale_price_ht);
             if (updates.wholesale_price_ttc !== undefined) mappedUpdates.wholesale_price_ttc = Number(updates.wholesale_price_ttc);
             if (updates.quantity !== undefined) mappedUpdates.quantity = Number(updates.quantity);
-            if (updates.category !== undefined) mappedUpdates.category = updates.category;
-            if (updates.category_id !== undefined) mappedUpdates.category = updates.category_id;
+            if (updates.category !== undefined) {
+              mappedUpdates.category = (updates.category && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(updates.category)) ? updates.category : null;
+            }
+            if (updates.category_id !== undefined) {
+              mappedUpdates.category = (updates.category_id && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(updates.category_id)) ? updates.category_id : null;
+            }
             if (updates.image_url !== undefined) mappedUpdates.image_url = updates.image_url;
             if (updates.aisle !== undefined) mappedUpdates.aisle = updates.aisle;
             if (updates.brand !== undefined) mappedUpdates.brand = updates.brand;
@@ -404,10 +407,9 @@ export const OfflineInventoryService = {
 
         if (navigator.onLine) {
           try {
-            // Soft delete
             const { error: supaErr } = await supabase
               .from('products')
-              .update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+              .delete()
               .eq('id', id);
 
             if (supaErr) {

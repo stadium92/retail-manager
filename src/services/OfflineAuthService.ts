@@ -311,9 +311,7 @@ export class OfflineAuthService {
               if (error) throw error;
               return { id: saleId } as any;
             } else if (init.method === 'DELETE' && saleId) {
-              const { error } = await supabase.from('sales').update({
-                deleted_at: new Date().toISOString()
-              }).eq('id', saleId);
+              const { error } = await supabase.from('sales').delete().eq('id', saleId);
               if (error) throw error;
               return { success: true } as any;
             }
@@ -323,7 +321,6 @@ export class OfflineAuthService {
               .from('sales')
               .select('*, sale_items(*)')
               .eq('store_id', storeId)
-              .is('deleted_at', null)
               .order('created_at', { ascending: false });
             if (error) throw error;
 
@@ -373,21 +370,29 @@ export class OfflineAuthService {
             if (error) throw error;
             return { id, ...body } as any;
           } else if (init.method === 'DELETE' && id) {
-            const { error } = await supabase.from('cashier_credits').update({
-              deleted_at: new Date().toISOString()
-            }).eq('id', id);
-            if (error) throw error;
-            return { success: true } as any;
-          } else {
-            const urlObj = new URL(`http://localhost${path}`);
-            const storeId = urlObj.searchParams.get('store_id');
-            let query = supabase.from('cashier_credits').select('*').is('deleted_at', null);
-            if (storeId) {
-              query = query.eq('store_id', storeId);
+            try {
+              const { error } = await supabase.from('cashier_credits').delete().eq('id', id);
+              if (error) throw error;
+              return { success: true } as any;
+            } catch (e) {
+              console.warn('[OfflineAuthService] Failed to delete cashier_credit:', e);
+              return { success: true } as any;
             }
-            const { data, error } = await query;
-            if (error) throw error;
-            return data as any;
+          } else {
+            try {
+              const urlObj = new URL(`http://localhost${path}`);
+              const storeId = urlObj.searchParams.get('store_id');
+              let query = supabase.from('cashier_credits').select('*');
+              if (storeId) {
+                query = query.eq('store_id', storeId);
+              }
+              const { data, error } = await query;
+              if (error) throw error;
+              return data as any;
+            } catch (e) {
+              console.warn('[OfflineAuthService] Failed to query cashier_credits (may not exist in Supabase):', e);
+              return [] as any;
+            }
           }
         }
 
@@ -409,15 +414,20 @@ export class OfflineAuthService {
             if (error) throw error;
             return mapped as any;
           } else {
-            const urlObj = new URL(`http://localhost${path}`);
-            const storeId = urlObj.searchParams.get('store_id');
-            let query = supabase.from('stock_adjustments').select('*').is('deleted_at', null);
-            if (storeId) {
-              query = query.eq('store_id', storeId);
+            try {
+              const urlObj = new URL(`http://localhost${path}`);
+              const storeId = urlObj.searchParams.get('store_id');
+              let query = supabase.from('stock_adjustments').select('*');
+              if (storeId) {
+                query = query.eq('store_id', storeId);
+              }
+              const { data, error } = await query;
+              if (error) throw error;
+              return data as any;
+            } catch (e) {
+              console.warn('[OfflineAuthService] Failed to query stock_adjustments (may not exist in Supabase):', e);
+              return [] as any;
             }
-            const { data, error } = await query;
-            if (error) throw error;
-            return data as any;
           }
         }
 

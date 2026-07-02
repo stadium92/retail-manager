@@ -221,7 +221,7 @@ export const OfflineSalesService = {
                   try {
                     const { error } = await supabase
                       .from('sales')
-                      .update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+                      .delete()
                       .eq('id', saleId);
                     if (error) throw error;
                     
@@ -257,7 +257,6 @@ export const OfflineSalesService = {
             .from('sales')
             .select('*, sale_items(*)')
             .eq('store_id', storeId)
-            .is('deleted_at', null)
             .order('created_at', { ascending: false });
 
           if (error) throw error;

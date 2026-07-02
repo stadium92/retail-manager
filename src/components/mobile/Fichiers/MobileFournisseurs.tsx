@@ -37,9 +37,10 @@ export function MobileFournisseurs({ onBack }: MobileFournisseursProps) {
 
   useEffect(() => {
     OfflineAuthService.getOfflineSession().then(session => {
-      if (session?.user?.user_metadata?.store_id) {
-        setStoreId(session.user.user_metadata.store_id);
-        loadSuppliers(session.user.user_metadata.store_id);
+      const sid = session?.roles?.find(r => r.store_id)?.store_id || session?.user?.user_metadata?.store_id;
+      if (sid) {
+        setStoreId(sid);
+        loadSuppliers(sid);
       }
     });
   }, []);

@@ -165,8 +165,7 @@ export function useProductSearch(storeId: string, enabled: boolean = true) {
         console.log('[useProductSearch] Cloud Supabase search for:', debouncedSearch);
         let query = supabase
           .from('products')
-          .select('*')
-          .is('deleted_at', null);
+          .select('*');
 
         if (storeId && storeId !== 'all') {
           query = query.eq('store_id', storeId);

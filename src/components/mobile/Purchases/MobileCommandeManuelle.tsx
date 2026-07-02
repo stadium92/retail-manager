@@ -24,9 +24,10 @@ export function MobileCommandeManuelle({ onBack }: { onBack?: () => void }) {
 
   useEffect(() => {
     OfflineAuthService.getOfflineSession().then(session => {
-        if (session?.user?.user_metadata?.store_id) {
-            setStoreId(session.user.user_metadata.store_id);
-            fetchSuppliers(session.user.user_metadata.store_id);
+        const sid = session?.roles?.find(r => r.store_id)?.store_id || session?.user?.user_metadata?.store_id;
+        if (sid) {
+            setStoreId(sid);
+            fetchSuppliers(sid);
         }
     });
   }, []);
