@@ -37,6 +37,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formTab, setFormTab] = useState<'info' | 'prices' | 'stock'>('info');
+  const [isCreatingNewCategory, setIsCreatingNewCategory] = useState(false);
 
   const initialFormState = {
     name: '',
@@ -145,6 +146,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
       // Recipe fields removed
       pending_id: p.id,
     });
+    setIsCreatingNewCategory(false);
     setFormTab('info');
     setIsFormOpen(true);
   }, []);
@@ -413,24 +415,45 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
 
               {formData.item_type !== 'pack' && (
                 <div className="space-y-2">
-                  <Label htmlFor="family-input">Famille / Catégorie</Label>
-                  <div className="relative">
-                    <Input 
-                      id="family-input"
-                      list="families-datalist"
-                      value={
-                        families.find(f => f.id === formData.family_id)?.name || formData.family_id
-                      } 
-                      onChange={e => setFormData(prev => ({ ...prev, family_id: e.target.value }))}
-                      placeholder="Sélectionner ou saisir une catégorie"
-                      className="bg-rs-surface-container border-[#262626] text-white"
-                    />
-                    <datalist id="families-datalist">
-                      {families.map(fam => (
-                        <option key={fam.id} value={fam.name} />
-                      ))}
-                    </datalist>
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="family-select">Famille / Catégorie</Label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCreatingNewCategory(!isCreatingNewCategory);
+                        setFormData(prev => ({ ...prev, family_id: '' }));
+                      }}
+                      className="text-xs text-rs-surface-tint font-bold hover:underline"
+                    >
+                      {isCreatingNewCategory ? "Choisir existante" : "➕ Nouvelle"}
+                    </button>
                   </div>
+                  {isCreatingNewCategory ? (
+                    <div className="space-y-1">
+                      <Input
+                        id="family-new"
+                        type="text"
+                        value={formData.family_id}
+                        onChange={e => setFormData(prev => ({ ...prev, family_id: e.target.value }))}
+                        placeholder="Saisir le nom de la nouvelle catégorie"
+                        className="bg-rs-surface-container border-[#262626] text-white"
+                        autoFocus
+                      />
+                      <p className="text-[10px] text-rs-on-surface-variant/70 italic">La catégorie sera créée à l'enregistrement.</p>
+                    </div>
+                  ) : (
+                    <select
+                      id="family-select"
+                      value={formData.family_id}
+                      onChange={e => setFormData(prev => ({ ...prev, family_id: e.target.value }))}
+                      className="w-full h-10 px-3 bg-rs-surface-container border border-[#262626] rounded-md text-sm text-white focus:outline-none focus:ring-1 focus:ring-rs-surface-tint"
+                    >
+                      <option value="">Sélectionner une catégorie...</option>
+                      {families.map(fam => (
+                        <option key={fam.id} value={fam.id}>{fam.name}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               )}
 
@@ -535,8 +558,6 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
                     </div>
                   </div>
                 )}
-
-                // Recipe cost estimation block removed
               </div>
 
               {formData.item_type !== 'pack' && (
@@ -648,8 +669,6 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
 
             </div>
           )}
-
-          // Recipe composition block removed
         </form>
       </div>
     );
@@ -676,6 +695,7 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
               });
               setEditingProduct(null);
               setPackSearchQuery('');
+              setIsCreatingNewCategory(false);
               setFormTab('info');
               setIsFormOpen(true);
             }}
@@ -702,20 +722,19 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
         <div className="flex gap-1.5 mt-3 pt-1 overflow-x-auto scrollbar-hide">
           <button
             onClick={() => setActiveTypeFilter('all')}
-            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all uppercase shrink-0 ${activeTypeFilter === 'all' ? 'bg-rs-surface-tint text-white shadow-sm' : 'bg-rs-surface-container border border-[#262626] text-rs-on-surface-variant'}`}
+            className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all uppercase shrink-0 ${activeTypeFilter === 'all' ? 'bg-rs-surface-tint text-white shadow-sm' : 'bg-rs-surface-container border border-[#262626] text-rs-on-surface-variant'}`}
           >
             Tout ({products.length})
           </button>
-          // Plats switcher filter removed
           <button
             onClick={() => setActiveTypeFilter('product')}
-            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all uppercase shrink-0 flex items-center gap-1 ${activeTypeFilter === 'product' ? 'bg-rs-surface-tint text-white shadow-sm' : 'bg-rs-surface-container border border-[#262626] text-rs-on-surface-variant'}`}
+            className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all uppercase shrink-0 flex items-center gap-1 ${activeTypeFilter === 'product' ? 'bg-rs-surface-tint text-white shadow-sm' : 'bg-rs-surface-container border border-[#262626] text-rs-on-surface-variant'}`}
           >
             📦 Articles ({products.filter(p => p.item_type === 'product' || !p.item_type).length})
           </button>
           <button
             onClick={() => setActiveTypeFilter('pack')}
-            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all uppercase shrink-0 flex items-center gap-1 ${activeTypeFilter === 'pack' ? 'bg-rs-surface-tint text-white shadow-sm' : 'bg-rs-surface-container border border-[#262626] text-rs-on-surface-variant'}`}
+            className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all uppercase shrink-0 flex items-center gap-1 ${activeTypeFilter === 'pack' ? 'bg-rs-surface-tint text-white shadow-sm' : 'bg-rs-surface-container border border-[#262626] text-rs-on-surface-variant'}`}
           >
             🎒 Packs ({products.filter(p => p.item_type === 'pack').length})
           </button>
