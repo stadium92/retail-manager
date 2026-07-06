@@ -268,7 +268,7 @@ export const OfflineInventoryService = {
               packaging: newItem.packaging || null,
               expiry_date: newItem.expiry_date || null,
               reorder_quantity: Number(newItem.reorder_quantity ?? 0),
-              low_stock_threshold: Number(newItem.low_stock_threshold ?? 0),
+              min_quantity: Number(newItem.low_stock_threshold ?? newItem.min_quantity ?? 0),
               version: Number(newItem.version ?? 1),
               created_at: newItem.created_at || new Date().toISOString(),
               updated_at: new Date().toISOString(),
@@ -359,7 +359,8 @@ export const OfflineInventoryService = {
             if (updates.packaging !== undefined) mappedUpdates.packaging = updates.packaging;
             if (updates.expiry_date !== undefined) mappedUpdates.expiry_date = updates.expiry_date;
             if (updates.reorder_quantity !== undefined) mappedUpdates.reorder_quantity = Number(updates.reorder_quantity);
-            if (updates.low_stock_threshold !== undefined) mappedUpdates.low_stock_threshold = Number(updates.low_stock_threshold);
+            if (updates.low_stock_threshold !== undefined) mappedUpdates.min_quantity = Number(updates.low_stock_threshold);
+            if (updates.min_quantity !== undefined) mappedUpdates.min_quantity = Number(updates.min_quantity);
             mappedUpdates.updated_at = new Date().toISOString();
 
             const { error: supaErr } = await supabase

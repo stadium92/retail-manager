@@ -140,7 +140,7 @@ export class SupabaseSyncService {
               packaging: p.packaging || undefined,
               expiry_date: p.expiry_date || undefined,
               reorder_quantity: p.reorder_quantity || 0,
-              low_stock_threshold: p.low_stock_threshold || 0,
+              low_stock_threshold: p.min_quantity || p.low_stock_threshold || 0,
               updated_at: p.updated_at || new Date().toISOString(),
               synced: true
             });
