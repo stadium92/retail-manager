@@ -268,10 +268,29 @@ if (typeof window !== 'undefined' && !(window as any).__fetch_patched__) {
               // Clone original request with new URL to keep headers/method/body stream intact
               finalInput = new Request(urlStr, req);
               if (newInit && newInit.body) {
+                // Merge headers from the original request and newInit to avoid stripping auth tokens
+                const mergedHeaders: Record<string, string> = {};
+                req.headers.forEach((val, key) => {
+                  mergedHeaders[key] = val;
+                });
+                mergedHeaders['Content-Type'] = 'application/json';
+                if (init && init.headers) {
+                  const initHeaders = init.headers as any;
+                  if (typeof initHeaders.forEach === 'function') {
+                    initHeaders.forEach((val: string, key: string) => {
+                      mergedHeaders[key] = val;
+                    });
+                  } else {
+                    Object.keys(initHeaders).forEach(key => {
+                      mergedHeaders[key] = initHeaders[key];
+                    });
+                  }
+                }
+                
                 // If body was modified, override with newInit options
                 finalInput = new Request(urlStr, {
                   ...newInit,
-                  headers: newInit.headers as HeadersInit
+                  headers: mergedHeaders
                 });
               }
             } catch (e) {
