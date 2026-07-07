@@ -200,6 +200,31 @@ export class OfflineStoreService {
         
         if (supaErr) throw supaErr;
 
+        // First ensure the user has a global master role (store_id IS NULL)
+        // so that public.has_role(auth.uid(), 'master') evaluates to true for the RPC
+        try {
+          const { data: existingRoles } = await supabase
+            .from('user_roles')
+            .select('*')
+            .eq('user_id', ownerId)
+            .eq('role', 'master')
+            .is('store_id', null);
+
+          if (!existingRoles || existingRoles.length === 0) {
+            console.log('[OfflineStoreService] Assigning global master role for first-time store creator:', ownerId);
+            const { error: globalRoleErr } = await supabase
+              .from('user_roles')
+              .insert({
+                user_id: ownerId,
+                role: 'master',
+                store_id: null
+              });
+            if (globalRoleErr) throw globalRoleErr;
+          }
+        } catch (roleErr) {
+          console.warn('[OfflineStoreService] Failed to insert global master role:', roleErr);
+        }
+
         // Associate user with the new store in user_roles via security definer RPC (bypasses RLS insertion block)
         const { error: roleErr } = await supabase
           .rpc('assign_role_manually', {
