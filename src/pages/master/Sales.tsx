@@ -66,6 +66,20 @@ export default function SalesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedSale, setSelectedSale] = useState<SaleWithItems | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
+      const query = params.get('search');
+      if (query) {
+        setSearchQuery(query);
+      }
+    };
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
   const [selectedStoreFilter, setSelectedStoreFilter] = useState<string>('all');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
   const [minPrice, setMinPrice] = useState<string>('');

@@ -136,6 +136,17 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
     });
   }, [activeModule, storeId]);
 
+  useEffect(() => {
+    const handleModuleChange = (e: any) => {
+      const module = e.detail?.module;
+      if (module && isModuleAllowed(module, subRole)) {
+        setActiveModule(module);
+      }
+    };
+    window.addEventListener('worker-active-module-change', handleModuleChange);
+    return () => window.removeEventListener('worker-active-module-change', handleModuleChange);
+  }, [subRole, isModuleAllowed]);
+
   const moduleLabels: Record<WorkerModule, string> = {
     'kds': t('menu.restaurant.kds'),
     'tables': t('menu.restaurant.tables'),

@@ -33,7 +33,35 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
   const { t } = useTranslation();
   const { families, setFamilies, setSuppliers, setLoading, deleteProduct } = useMasterDataStore();
   const [localProducts, setLocalProducts] = useState<ProductMaster[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(() => {
+    const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+    return hashParams.get('search') || localStorage.getItem('worker_product_search_query') || '';
+  });
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+      const query = hashParams.get('search');
+      if (query) {
+        setSearchQuery(query);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    
+    const handleSearchUpdate = (e: any) => {
+      const query = e.detail?.query;
+      if (query !== undefined) {
+        setSearchQuery(query);
+      }
+    };
+    window.addEventListener('worker-product-search-update', handleSearchUpdate);
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+      window.removeEventListener('worker-product-search-update', handleSearchUpdate);
+    };
+  }, []);
+
   const [selectedFamily, setSelectedFamily] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLookupOpen, setIsLookupOpen] = useState(false);

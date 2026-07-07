@@ -14,6 +14,8 @@ import { cn } from '@/lib/utils';
 import { OfflineStoreService } from '@/services/OfflineStoreService';
 import { OfflineInventoryService } from '@/services/OfflineInventoryService';
 import { OfflineSalesService } from '@/services/OfflineSalesService';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Notification {
   id: string;
@@ -28,6 +30,8 @@ interface NotificationCenterProps {
 
 export function NotificationCenter({ className }: NotificationCenterProps = {}) {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   
   // Persistent list of read notification IDs
@@ -48,7 +52,42 @@ export function NotificationCenter({ className }: NotificationCenterProps = {}) 
 
   const loadNotifications = async () => {
     try {
+      const { data: storesList } = await OfflineStoreService.getStores();
       const allNotifications: Notification[] = [];
+      
+      if (storesList) {
+        await Promise.all(storesList.map(async (store) => {
+          // 1. Fetch low stock items for this store
+          const { data: inventory } = await OfflineInventoryService.getInventory(store.id);
+          const lowStock = inventory?.filter(item => item.quantity <= (item.low_stock_threshold || 10)) || [];
+          
+          lowStock.slice(0, 15).forEach(item => {
+            allNotifications.push({
+              id: `low-stock-${store.id}-${item.id}`,
+              type: 'low_stock',
+              message: `⚠️ [${store.name}] Rupture imminente : ${item.name} (${item.quantity} restants)`,
+              timestamp: item.updated_at || new Date().toISOString(),
+            });
+          });
+
+          // 2. Fetch sales from today
+          const sales = await OfflineSalesService.getSales(store.id);
+          const today = new Date().toISOString().split('T')[0];
+          const todaySales = sales.filter(s => s.created_at && s.created_at.startsWith(today) && s.sale_type !== 'proforma');
+          
+          todaySales.slice(0, 10).forEach(sale => {
+            allNotifications.push({
+              id: `sale-${sale.id}`,
+              type: 'new_sale',
+              message: `💰 Nouvelle vente à ${store.name} : ${sale.invoice_number || 'Facture'} (${Number(sale.total_price || 0).toLocaleString()} F CFA)`,
+              timestamp: sale.created_at,
+            });
+          });
+        }));
+      }
+
+      // Sort notifications by timestamp descending
+      allNotifications.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       setNotifications(allNotifications);
     } catch (err) {
       console.error('Failed to load notifications:', err);
@@ -67,6 +106,49 @@ export function NotificationCenter({ className }: NotificationCenterProps = {}) 
     const nextReadIds = [...readIds, id];
     setReadIds(nextReadIds);
     localStorage.setItem('djati_read_notification_ids', JSON.stringify(nextReadIds));
+  };
+
+  const handleNotificationClick = (notification: Notification) => {
+    markAsRead(notification.id);
+    const isMaster = user?.role === 'master';
+
+    if (notification.type === 'low_stock') {
+      let productName = '';
+      const colonIdx = notification.message.indexOf(':');
+      const parenIdx = notification.message.lastIndexOf('(');
+      if (colonIdx !== -1 && parenIdx !== -1 && parenIdx > colonIdx) {
+        productName = notification.message.substring(colonIdx + 1, parenIdx).trim();
+      }
+
+      if (isMaster) {
+        const query = productName ? `?search=${encodeURIComponent(productName)}` : '';
+        navigate(`/master/inventory${query}`);
+      } else {
+        localStorage.setItem('worker_active_module', 'produits');
+        if (productName) {
+          localStorage.setItem('worker_product_search_query', productName);
+          window.dispatchEvent(new CustomEvent('worker-product-search-update', { detail: { query: productName } }));
+        }
+        navigate('/worker/dashboard');
+        window.dispatchEvent(new CustomEvent('worker-active-module-change', { detail: { module: 'produits' } }));
+      }
+    } else if (notification.type === 'new_sale') {
+      let invoiceNumber = '';
+      const colonIdx = notification.message.indexOf(':');
+      const parenIdx = notification.message.lastIndexOf('(');
+      if (colonIdx !== -1 && parenIdx !== -1 && parenIdx > colonIdx) {
+        invoiceNumber = notification.message.substring(colonIdx + 1, parenIdx).trim();
+      }
+
+      if (isMaster) {
+        const query = invoiceNumber ? `?search=${encodeURIComponent(invoiceNumber)}` : '';
+        navigate(`/master/sales${query}`);
+      } else {
+        localStorage.setItem('worker_active_module', 'suivi-ventes-factures');
+        navigate('/worker/dashboard');
+        window.dispatchEvent(new CustomEvent('worker-active-module-change', { detail: { module: 'suivi-ventes-factures' } }));
+      }
+    }
   };
 
   const unreadCount = notifications.filter((n) => !readIds.includes(n.id)).length;
@@ -122,7 +204,7 @@ export function NotificationCenter({ className }: NotificationCenterProps = {}) 
                 return (
                   <div
                     key={notification.id}
-                    onClick={() => markAsRead(notification.id)}
+                    onClick={() => handleNotificationClick(notification)}
                     className={cn(
                       "p-3 rounded-xl border transition-all cursor-pointer",
                       isRead 
