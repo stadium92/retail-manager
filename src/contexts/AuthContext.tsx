@@ -577,7 +577,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         storeId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' 
           ? crypto.randomUUID() 
           : 'store-' + Math.random().toString(36).substring(2, 15);
-        storeName = 'STIHL Store';
+        storeName = 'Retail Store';
         console.log('[AuthContext] Dynamically generated storeId for master:', storeId);
       }
 

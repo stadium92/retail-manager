@@ -21,13 +21,6 @@ export interface InvoiceData {
 }
 
 
-const StihlLogo = () => (
-    <div className="flex items-center justify-center self-start shrink-0 mr-4">
-        {/* Make sure 'stihl-logo.jpg' exists in frontend/public */}
-        <img src="/stihl-logo.jpg" alt="STIHL Logo" className="h-[105px] object-contain" />
-    </div>
-);
-
 const QuincaillerieLogo = () => (
     <div className="flex items-center justify-center self-start shrink-0 mr-4">
         {/* Make sure 'quincaillerie-logo.jpg' exists in frontend/public */}
@@ -39,24 +32,16 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, { data: InvoiceData }>
     const isProforma = data.type === 'proforma';
     const { t } = useTranslation();
 
-    // Dynamically check if any product in the cart is a STIHL product to trigger the custom template
-    const hasStihlProduct = data.items.some(item => {
-        if (!item.product || !item.product.name) return false;
-        const name = item.product.name.toLowerCase();
-        // Check for both the correct spelling 'stihl' and the common pronunciation 'steel'
-        return name.includes('stihl') || name.includes('steel');
-    });
-
     return (
         <div ref={ref} className="p-8 max-w-[800px] mx-auto bg-white text-black font-sans hidden print:block">
             {/* Header */}
-            <div className={`flex justify-between items-start border-b pb-4 mb-4 ${hasStihlProduct ? 'border-[#f04e23] border-b-4' : 'border-black border-b-2'}`}>
+            <div className="flex justify-between items-start border-b pb-4 mb-4 border-black border-b-2">
                 <div className="flex items-center gap-4">
-                    {hasStihlProduct ? <StihlLogo /> : <QuincaillerieLogo />}
+                    <QuincaillerieLogo />
                     <div>
                         {/* Title adjusts based on template mode */}
-                        <h1 className={`text-2xl font-bold uppercase tracking-wider ${hasStihlProduct ? 'text-[#f04e23]' : 'text-gray-900'}`}>
-                            {hasStihlProduct ? 'Revendeur Agréé STIHL' : 'JATE'}
+                        <h1 className="text-2xl font-bold uppercase tracking-wider text-gray-900">
+                            JATE
                         </h1>
                         <p className="text-sm text-gray-700 font-bold mb-1">ETS Madjou Sylla - QUINCAILLERIE DE LA PAIX</p>
                         <p className="text-[11px] text-gray-600 font-medium tracking-tight mb-1 uppercase">Vente de machine tronçonneuse, disque, meule bosch</p>
@@ -66,7 +51,7 @@ export const InvoiceTemplate = forwardRef<HTMLDivElement, { data: InvoiceData }>
                     </div>
                 </div>
                 <div className="text-right">
-                    <h2 className={`text-xl font-bold uppercase ${hasStihlProduct ? 'text-[#f04e23]' : 'text-gray-800'}`}>
+                    <h2 className="text-xl font-bold uppercase text-gray-800">
                         {isProforma ? t('invoice.proforma') : (data.paymentMethod === 'credit' ? 'FACTURE À CRÉDIT' : t('invoice.cashReceipt'))}
                     </h2>
                     <p className="text-sm text-gray-500 font-mono mt-2">

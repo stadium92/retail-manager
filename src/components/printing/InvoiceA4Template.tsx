@@ -9,23 +9,12 @@ const QuincaillerieLogo = () => (
     </div>
 );
 
-const StihlLogo = () => (
-    <div className="w-[110px] shrink-0 text-right flex justify-end">
-        <img src="/stihl-logo.jpg" alt="STIHL" className="w-full h-auto object-contain" />
-    </div>
-);
-
 export const InvoiceA4Template = forwardRef<HTMLDivElement, { data: InvoiceData }>(({ data }, ref) => {
     const { t } = useTranslation();
 
     const formatCurrency = (amount: number) => {
         return amount.toLocaleString('fr-FR') + ' FCFA';
     };
-
-    const hasStihlProduct = data.items.some(item =>
-        item.product.name.toLowerCase().includes('stihl') ||
-        item.product.name.toLowerCase().includes('steel')
-    );
 
     return (
         <div
@@ -34,14 +23,14 @@ export const InvoiceA4Template = forwardRef<HTMLDivElement, { data: InvoiceData 
             style={{ width: '210mm', minHeight: '297mm', padding: '10mm 15mm' }}
         >
             {/* HEADER MODULE */}
-            <div className={`flex justify-between items-center mb-6 pb-4 border-b-4 ${hasStihlProduct ? 'border-[#f04e23]' : 'border-[#2c3e50]'}`}>
+            <div className="flex justify-between items-center mb-6 pb-4 border-b-4 border-[#2c3e50]">
                 <QuincaillerieLogo />
 
                 <div className="flex-1 text-center px-4">
                     <div className="inline-block bg-red-600 text-white text-xs font-bold px-2 py-1 rounded mb-1">
                         ETS Madjou Sylla
                     </div>
-                    <h1 className={`text-3xl font-black tracking-tight mb-1 leading-none uppercase ${hasStihlProduct ? 'text-[#f04e23]' : 'text-[#2c3e50]'}`}>
+                    <h1 className="text-3xl font-black tracking-tight mb-1 leading-none uppercase text-[#2c3e50]">
                         Quincaillerie De La Paix
                     </h1>
                     <p className="text-[13px] font-bold text-red-600 tracking-wide uppercase mb-2">
@@ -53,9 +42,7 @@ export const InvoiceA4Template = forwardRef<HTMLDivElement, { data: InvoiceData 
                     </div>
                 </div>
 
-                <div className="w-[110px] shrink-0 text-right flex justify-end">
-                    {hasStihlProduct ? <StihlLogo /> : <div className="w-full"></div>}
-                </div>
+                <div className="w-[100px] shrink-0"></div>
             </div>
 
             {/* INVOICE METADATA */}
