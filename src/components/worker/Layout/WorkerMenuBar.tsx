@@ -91,6 +91,7 @@ export function WorkerMenuBar({ activeModule, onModuleChange, className, isMaste
         { labelKey: 'menu.sales.closeCash', module: 'fermeture-caisse', shortcut: 'F12' },
         { labelKey: 'menu.sales.settlement', module: 'reglements-bons' },
         { labelKey: 'menu.sales.cashierCredits', module: 'credits-caisse' },
+        { labelKey: 'menu.edition.dailySales', module: 'suivi-ventes-jour' },
       ],
     },
     {
@@ -201,7 +202,8 @@ export function WorkerMenuBar({ activeModule, onModuleChange, className, isMaste
                 'facturation-detail', 
                 'facturation-gros', 
                 'proforma', 
-                'fermeture-caisse'
+                'fermeture-caisse',
+                'suivi-ventes-jour'
               ].includes(item.module))
             )
           };

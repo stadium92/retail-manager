@@ -115,7 +115,8 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
         ...section,
         items: section.items.filter(item =>
           item.id === 'vente-detail' ||
-          item.id === 'fermeture-caisse'
+          item.id === 'fermeture-caisse' ||
+          item.id === 'suivi-ventes-jour'
         )
       };
     }
@@ -125,7 +126,8 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
         title: 'Commandes',
         items: section.items.filter(item =>
           item.id === 'vente-detail' ||
-          item.id === 'fermeture-caisse'
+          item.id === 'fermeture-caisse' ||
+          item.id === 'suivi-ventes-jour'
         ).map(item => {
           if (item.id === 'vente-detail') {
             return { ...item, label: 'Ticket commande' };

@@ -178,6 +178,12 @@ export class OfflineStoreService {
 
       // Online Direct Supabase insert when running in Pure Cloud Mode
       try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const ownerId = storeData.owner_id || user?.id;
+        if (!ownerId) {
+          throw new Error('No authenticated user found for store creation.');
+        }
+
         const { error: supaErr } = await supabase
           .from('stores')
           .insert({
@@ -185,6 +191,7 @@ export class OfflineStoreService {
             name: storeData.name,
             address: storeData.address ?? null,
             phone: storeData.phone ?? null,
+            owner_id: ownerId,
             default_price_tier: storeData.default_price_tier || 1,
             is_active: true,
             created_at: now,
@@ -192,6 +199,18 @@ export class OfflineStoreService {
           });
         
         if (supaErr) throw supaErr;
+
+        // Associate user with the new store in user_roles via security definer RPC (bypasses RLS insertion block)
+        const { error: roleErr } = await supabase
+          .rpc('assign_role_manually', {
+            _user_id: ownerId,
+            _role: 'master',
+            _store_id: storeId
+          });
+
+        if (roleErr) {
+          console.warn('[OfflineStoreService] Failed to assign master role for store on Supabase:', roleErr);
+        }
         
         // Update local status as synced
         localStore.synced = true;

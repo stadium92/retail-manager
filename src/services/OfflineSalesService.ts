@@ -316,8 +316,25 @@ export const OfflineSalesService = {
                 .filter(s => s.created_at && s.created_at.startsWith(today) && s.sale_type !== 'proforma')
                 .reduce((sum, s) => sum + (s.total_price || 0), 0);
 
-            const weekSales = todaySales; 
-            const monthSales = todaySales;
+            const now = new Date();
+            const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+            const weekSales = sales
+                .filter(s => {
+                    if (!s.created_at || s.sale_type === 'proforma') return false;
+                    const date = new Date(s.created_at);
+                    return date >= startOfWeek;
+                })
+                .reduce((sum, s) => sum + (s.total_price || 0), 0);
+
+            const monthSales = sales
+                .filter(s => {
+                    if (!s.created_at || s.sale_type === 'proforma') return false;
+                    const date = new Date(s.created_at);
+                    return date >= startOfMonth;
+                })
+                .reduce((sum, s) => sum + (s.total_price || 0), 0);
 
             return { todaySales, weekSales, monthSales };
         } catch (error) {
