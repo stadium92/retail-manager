@@ -31,3 +31,5 @@ release/
 .env.production.local
 .vercel_backup
 scratch/
+
+testsprite_tests/tmp/config.json

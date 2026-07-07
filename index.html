@@ -24,6 +24,78 @@
 
   <body>
     <div id="root"></div>
+    <script>
+      function handleChunkLoadError(message, err) {
+        var strMsg = String(message || '');
+        var strErr = err && err.stack ? String(err.stack) : '';
+        var isChunkError = 
+          strMsg.indexOf('dynamically imported module') !== -1 ||
+          strMsg.indexOf('Importing a module script failed') !== -1 ||
+          strMsg.indexOf('ChunkLoadError') !== -1 ||
+          strErr.indexOf('dynamically imported module') !== -1 ||
+          strErr.indexOf('Importing a module script failed') !== -1 ||
+          strErr.indexOf('ChunkLoadError') !== -1;
+
+        if (isChunkError) {
+          try {
+            var lastReload = localStorage.getItem('last_chunk_error_reload');
+            var now = Date.now();
+            if (!lastReload || now - parseInt(lastReload, 10) > 15000) {
+              localStorage.setItem('last_chunk_error_reload', now.toString());
+              window.location.reload();
+              return true;
+            }
+          } catch (e) {
+            window.location.reload();
+            return true;
+          }
+        }
+        return false;
+      }
+
+      window.onerror = function(message, source, lineno, colno, error) {
+        if (handleChunkLoadError(message, error)) {
+          return true;
+        }
+        var errDiv = document.createElement('div');
+        errDiv.style.position = 'fixed';
+        errDiv.style.top = '0';
+        errDiv.style.left = '0';
+        errDiv.style.width = '100vw';
+        errDiv.style.height = '100vh';
+        errDiv.style.backgroundColor = 'rgba(255,0,0,0.9)';
+        errDiv.style.color = 'white';
+        errDiv.style.zIndex = '9999999';
+        errDiv.style.padding = '20px';
+        errDiv.style.overflow = 'auto';
+        errDiv.style.fontFamily = 'monospace';
+        errDiv.innerHTML = '<h1>RUNTIME ERROR</h1><p>' + message + '</p><pre>' + (error && error.stack ? error.stack : '') + '</pre>';
+        document.body.appendChild(errDiv);
+      };
+
+      window.addEventListener('unhandledrejection', function(event) {
+        var reason = event.reason || '';
+        var reasonStr = typeof reason === 'object' ? (reason.message || '') : String(reason);
+        if (handleChunkLoadError(reasonStr, reason)) {
+          event.preventDefault();
+          return;
+        }
+        var errDiv = document.createElement('div');
+        errDiv.style.position = 'fixed';
+        errDiv.style.top = '0';
+        errDiv.style.left = '0';
+        errDiv.style.width = '100vw';
+        errDiv.style.height = '100vh';
+        errDiv.style.backgroundColor = 'rgba(255,0,0,0.9)';
+        errDiv.style.color = 'white';
+        errDiv.style.zIndex = '9999999';
+        errDiv.style.padding = '20px';
+        errDiv.style.overflow = 'auto';
+        errDiv.style.fontFamily = 'monospace';
+        errDiv.innerHTML = '<h1>UNHANDLED PROMISE REJECTION</h1><p>' + event.reason + '</p>';
+        document.body.appendChild(errDiv);
+      });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -8,6 +8,8 @@ import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { useToast } from '@/hooks/use-toast';
 import { useProductSearch } from '@/hooks/useProductSearch';
 import { NotificationCenter } from '@/components/shared/NotificationCenter';
+import { BarcodeScanner } from '@/components/shared/BarcodeScanner';
+import { OfflineInventoryService } from '@/services/OfflineInventoryService';
 
 interface MobilePOSProps {
     onBack?: () => void;
@@ -36,7 +38,36 @@ export function MobilePOS({ onBack }: MobilePOSProps) {
     const [orderNotes, setOrderNotes] = useState('');
     const [serviceType, setServiceType] = useState<'table' | 'emporter'>('emporter');
     const [globalDiscount, setGlobalDiscount] = useState(0);
+    const [isDiscountDialogOpen, setIsDiscountDialogOpen] = useState(false);
+    const [discountInputValue, setDiscountInputValue] = useState('');
+    const [isOptionsOpen, setIsOptionsOpen] = useState(false);
+    const [isScannerOpen, setIsScannerOpen] = useState(false);
     const { toast } = useToast();
+
+    const handleScanResult = async (code: string) => {
+        try {
+            const items = await OfflineInventoryService.fetchInventory(storeId);
+            const product = items.find((p: any) => p.barcode === code || p.sku === code);
+            if (product) {
+                addItem(product);
+                toast({
+                    title: 'Produit ajouté',
+                    description: product.name,
+                    duration: 1500,
+                });
+                setIsScannerOpen(false);
+            } else {
+                toast({
+                    variant: "destructive",
+                    title: 'Produit non trouvé',
+                    description: `Code-barres: ${code}`,
+                });
+            }
+        } catch (error) {
+            console.error('Scan error:', error);
+        }
+    };
+
 
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -323,8 +354,8 @@ export function MobilePOS({ onBack }: MobilePOSProps) {
                 </div>
                 <div className="flex justify-between px-2 pt-2 pb-1 w-full">
                     <button className="shrink-0 flex flex-col items-center justify-center w-[72px] gap-1 text-rs-on-surface-variant hover:text-rs-surface-tint transition-colors" onClick={() => {
-                        const amt = prompt('Entrez le montant de la remise:', globalDiscount.toString());
-                        if (amt !== null) setGlobalDiscount(Number(amt) || 0);
+                        setDiscountInputValue(globalDiscount > 0 ? globalDiscount.toString() : '');
+                        setIsDiscountDialogOpen(true);
                     }}>
                         <div className="w-12 h-12 rounded-full bg-rs-surface-container-low border border-rs-surface-container-highest flex items-center justify-center shadow-sm">
                             <span className="material-symbols-outlined">percent</span>
@@ -352,7 +383,7 @@ export function MobilePOS({ onBack }: MobilePOSProps) {
                         <span className="text-[10px] text-center uppercase">Note</span>
                     </button>
                     <button className="shrink-0 flex flex-col items-center justify-center w-[72px] gap-1 text-rs-on-surface-variant hover:text-rs-surface-tint transition-colors" onClick={() => {
-                        alert('Plus d\'options à venir!');
+                        setIsOptionsOpen(true);
                     }}>
                         <div className="w-12 h-12 rounded-full bg-rs-surface-container-low border border-rs-surface-container-highest flex items-center justify-center shadow-sm">
                             <span className="material-symbols-outlined">more_vert</span>
@@ -368,6 +399,138 @@ export function MobilePOS({ onBack }: MobilePOSProps) {
                 onConfirm={handleCheckout}
                 isLoading={isProcessing}
             />
+
+            {/* Custom Discount Dialog */}
+            {isDiscountDialogOpen && (
+                <div 
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) setIsDiscountDialogOpen(false);
+                    }}
+                >
+                    <div className="bg-rs-surface border border-rs-outline/30 shadow-2xl rounded-2xl p-6 max-w-xs w-full mx-4 animate-in zoom-in duration-300">
+                        <h3 className="text-base font-bold text-white uppercase tracking-wider mb-1 text-center">Remise Globale</h3>
+                        <p className="text-xs text-rs-on-surface-variant mb-4 text-center">Entrez le montant de la remise (FCFA) :</p>
+                        <input
+                            type="number"
+                            value={discountInputValue}
+                            onChange={(e) => setDiscountInputValue(e.target.value)}
+                            placeholder="Ex: 1000..."
+                            className="w-full h-12 rounded-lg bg-rs-surface-container-low border border-rs-outline/40 px-4 text-white text-lg font-bold mb-4 text-center focus:outline-none focus:border-rs-surface-tint"
+                            autoFocus
+                        />
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setIsDiscountDialogOpen(false)}
+                                className="flex-1 h-11 rounded-lg border border-rs-outline text-rs-on-surface uppercase font-semibold text-xs active:scale-95 transition-transform"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setGlobalDiscount(Number(discountInputValue) || 0);
+                                    setIsDiscountDialogOpen(false);
+                                }}
+                                className="flex-1 h-11 rounded-lg bg-rs-surface-tint text-rs-on-primary uppercase font-bold text-xs active:scale-95 transition-all hover:bg-rs-primary-fixed"
+                            >
+                                Appliquer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Options Bottom Sheet */}
+            {isOptionsOpen && (
+                <div 
+                    className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm flex items-end justify-center animate-in fade-in duration-200"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) setIsOptionsOpen(false);
+                    }}
+                >
+                    <div className="bg-rs-surface border-t border-rs-outline/30 rounded-t-3xl p-6 w-full max-w-md animate-in slide-in-from-bottom duration-300">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-base font-bold text-white uppercase tracking-wider">Plus d'Options</h3>
+                            <button 
+                                onClick={() => setIsOptionsOpen(false)}
+                                className="p-2 rounded-full hover:bg-rs-surface-container-highest text-rs-on-surface-variant active:scale-95 transition-transform"
+                            >
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+
+                        <div className="space-y-3">
+                            {/* Barcode Scanner option */}
+                            <button 
+                                onClick={() => {
+                                    setIsOptionsOpen(false);
+                                    setIsScannerOpen(true);
+                                }}
+                                className="w-full h-14 bg-rs-surface-container-low border border-rs-outline/30 rounded-xl px-4 flex items-center justify-between text-white hover:bg-rs-surface-container-highest active:scale-[0.98] transition-all"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className="material-symbols-outlined text-rs-surface-tint">photo_camera</span>
+                                    <span className="font-semibold text-sm">Scanner Code-barres</span>
+                                </div>
+                                <span className="material-symbols-outlined text-rs-on-surface-variant text-sm">arrow_forward_ios</span>
+                            </button>
+
+                            {/* Sale Type toggle */}
+                            <button 
+                                onClick={() => {
+                                    const nextType = saleType === 'detail' ? 'gros' : saleType === 'gros' ? 'proforma' : 'detail';
+                                    setSaleType(nextType);
+                                    toast({
+                                        title: 'Type de vente mis à jour',
+                                        description: `Nouveau mode: ${nextType.toUpperCase()}`,
+                                    });
+                                }}
+                                className="w-full h-14 bg-rs-surface-container-low border border-rs-outline/30 rounded-xl px-4 flex items-center justify-between text-white hover:bg-rs-surface-container-highest active:scale-[0.98] transition-all"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className="material-symbols-outlined text-rs-surface-tint">swap_horiz</span>
+                                    <div className="flex flex-col items-start">
+                                        <span className="font-semibold text-sm">Type de Vente</span>
+                                        <span className="text-[10px] text-rs-on-surface-variant uppercase font-bold">Actuel: {saleType}</span>
+                                    </div>
+                                </div>
+                                <span className="material-symbols-outlined text-rs-on-surface-variant text-sm">arrow_forward_ios</span>
+                            </button>
+
+                            {/* Clear Cart option */}
+                            <button 
+                                onClick={() => {
+                                    if (confirm('Voulez-vous vraiment vider le panier actuel ?')) {
+                                        clearCart();
+                                        setIsOptionsOpen(false);
+                                        toast({
+                                            title: 'Panier vidé',
+                                            description: 'Tous les articles ont été retirés.',
+                                        });
+                                    }
+                                }}
+                                disabled={cart.length === 0}
+                                className="w-full h-14 bg-red-950/20 border border-red-500/20 rounded-xl px-4 flex items-center justify-between text-red-400 hover:bg-red-950/30 active:scale-[0.98] transition-all disabled:opacity-40 disabled:pointer-events-none"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className="material-symbols-outlined">delete_sweep</span>
+                                    <span className="font-semibold text-sm">Vider le Panier</span>
+                                </div>
+                                <span className="material-symbols-outlined text-sm">delete</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Camera Barcode Scanner Modal */}
+            {isScannerOpen && (
+                <BarcodeScanner 
+                    isScanning={isScannerOpen}
+                    onResult={handleScanResult}
+                    onClose={() => setIsScannerOpen(false)}
+                />
+            )}
         </div>
     );
 }

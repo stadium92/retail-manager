@@ -251,7 +251,7 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
           return <MobileBoutiques onBack={() => setActiveMobileModule(null)} />;
         case 'inventaire-stock':
           return (
-            <MasterPasswordGate moduleName="Inventaire Stock">
+            <MasterPasswordGate moduleName="Inventaire Stock" onCancel={() => setActiveMobileModule(null)}>
               <MobileInventaireStock onBack={() => setActiveMobileModule(null)} />
             </MasterPasswordGate>
           );

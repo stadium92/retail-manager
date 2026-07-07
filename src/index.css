@@ -489,6 +489,21 @@
       0 0 40px -15px hsl(var(--primary) / 0.2);
   }
 
+  @keyframes pulse-subtle {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.85;
+      transform: scale(1.05);
+    }
+  }
+
+  .animate-pulse-subtle {
+    animation: pulse-subtle 2s ease-in-out infinite;
+  }
+
   @keyframes shake {
     0%, 100% { transform: translateX(0); }
     25% { transform: translateX(-8px); }
@@ -499,6 +514,8 @@
     animation: shake 0.2s ease-in-out 0s 2;
   }
 }
+
+
 
 /* Component overrides for premium feel */
 @layer components {

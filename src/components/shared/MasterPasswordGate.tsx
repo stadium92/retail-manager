@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface MasterPasswordGateProps {
   children: React.ReactNode;
   moduleName?: string;
+  onCancel?: () => void;
 }
 
 // Session-based cache to keep modules unlocked until navigation resets them
@@ -23,7 +24,7 @@ export const resetMasterPasswordGates = () => {
   unlockedModules.clear();
 };
 
-export function MasterPasswordGate({ children, moduleName }: MasterPasswordGateProps) {
+export function MasterPasswordGate({ children, moduleName, onCancel }: MasterPasswordGateProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { hasRole, loading: authLoading } = useAuth();
@@ -66,6 +67,12 @@ export function MasterPasswordGate({ children, moduleName }: MasterPasswordGateP
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget && onCancel) {
+      onCancel();
     }
   };
 
@@ -116,8 +123,14 @@ export function MasterPasswordGate({ children, moduleName }: MasterPasswordGateP
       </div>
 
       {/* Lock Overlay */}
-      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm">
-        <div className="bg-background border shadow-2xl rounded-2xl p-8 max-w-md w-full mx-4 text-center animate-in fade-in zoom-in duration-300">
+      <div 
+        onClick={handleBackdropClick}
+        className={cn(
+          "absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm",
+          onCancel ? "cursor-pointer" : "cursor-default"
+        )}
+      >
+        <div className="bg-background border shadow-2xl rounded-2xl p-8 max-w-md w-full mx-4 text-center animate-in fade-in zoom-in duration-300 cursor-default">
           <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-6">
             <Lock className="w-8 h-8" />
           </div>
@@ -150,3 +163,4 @@ export function MasterPasswordGate({ children, moduleName }: MasterPasswordGateP
     </div>
   );
 }
+
