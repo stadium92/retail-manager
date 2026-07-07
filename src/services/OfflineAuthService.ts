@@ -1048,6 +1048,44 @@ export class OfflineAuthService {
     if (this.isLocalBridgeMode()) {
       return this.restoreLocalBridgeSession();
     }
+    
+    if (navigator.onLine) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && session.user) {
+          const { data: supaRoles, error: rolesErr } = await supabase
+            .from('user_roles')
+            .select('*')
+            .eq('user_id', session.user.id);
+            
+          if (!rolesErr && supaRoles && supaRoles.length > 0) {
+            const roles: UserRole[] = supaRoles.map(r => ({
+              id: r.id,
+              user_id: r.user_id,
+              role: r.role as AppRole,
+              store_id: r.store_id,
+              sub_role: r.sub_role,
+              created_at: r.created_at,
+            }));
+            
+            const storeId = roles.find(r => r.store_id)?.store_id;
+            if (storeId) {
+              session.user.user_metadata.store_id = storeId;
+            }
+            
+            return {
+              user: session.user,
+              session: session as any,
+              roles,
+              isOffline: false,
+            };
+          }
+        }
+      } catch (e) {
+        console.warn('[OfflineAuthService] Direct cloud check failed, falling back to IndexedDB:', e);
+      }
+    }
+    
     return this.legacyGetOfflineSession();
   }
 
