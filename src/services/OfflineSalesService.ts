@@ -63,6 +63,7 @@ async function syncTableStatusForSale(
 export const OfflineSalesService = {
     /**
      * Create a sale with items atomically on the local bridge
+     */
     async createSale(sale: any): Promise<{ data?: any; error?: any }> {
         const { items, ...saleData } = sale;
         return this.createSaleWithItems(saleData, items || []);
