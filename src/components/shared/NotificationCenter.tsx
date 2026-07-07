@@ -48,41 +48,7 @@ export function NotificationCenter({ className }: NotificationCenterProps = {}) 
 
   const loadNotifications = async () => {
     try {
-      const { data: storesList } = await OfflineStoreService.getStores();
       const allNotifications: Notification[] = [];
-      
-      if (storesList) {
-        await Promise.all(storesList.map(async (store) => {
-          // 1. Fetch low stock items for this store
-          const { data: inventory } = await OfflineInventoryService.getInventory(store.id);
-          const lowStock = inventory?.filter(item => item.quantity <= (item.low_stock_threshold || 10)) || [];
-          lowStock.forEach(item => {
-            allNotifications.push({
-              id: `low-stock-${store.id}-${item.id}`,
-              type: 'low_stock',
-              message: `⚠️ [${store.name}] Rupture imminente : ${item.name} (${item.quantity} restants)`,
-              timestamp: item.updated_at || new Date().toISOString(),
-            });
-          });
-
-          // 2. Fetch sales from today
-          const sales = await OfflineSalesService.getSales(store.id);
-          const today = new Date().toISOString().split('T')[0];
-          const todaySales = sales.filter(s => s.created_at && s.created_at.startsWith(today) && s.sale_type !== 'proforma');
-          
-          todaySales.slice(0, 5).forEach(sale => {
-            allNotifications.push({
-              id: `sale-${sale.id}`,
-              type: 'new_sale',
-              message: `💰 Nouvelle vente à ${store.name} : ${sale.invoice_number || 'Facture'} (${Number(sale.total_price || 0).toLocaleString()} F CFA)`,
-              timestamp: sale.created_at,
-            });
-          });
-        }));
-      }
-
-      // Sort notifications by timestamp descending
-      allNotifications.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       setNotifications(allNotifications);
     } catch (err) {
       console.error('Failed to load notifications:', err);
