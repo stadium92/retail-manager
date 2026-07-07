@@ -831,6 +831,7 @@ export class OfflineAuthService {
               sub_role: finalSubRole
             }
           });
+          await supabase.auth.refreshSession();
         } catch (metaErr) {
           console.error('[OfflineAuth] Failed to update user metadata on Supabase:', metaErr);
         }
@@ -920,6 +921,7 @@ export class OfflineAuthService {
               role: resolvedRole
             }
           });
+          await supabase.auth.refreshSession();
           console.log('[OfflineAuth] Supabase user metadata successfully updated post-sync.');
         } catch (metaErr) {
           console.error('[OfflineAuth] Failed to update user metadata on Supabase post-sync:', metaErr);

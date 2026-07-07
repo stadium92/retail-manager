@@ -81,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     role: role
                   }
                 });
+                await supabase.auth.refreshSession();
                 console.log('[AuthContext] Supabase metadata successfully updated on startup.');
               }
             }
@@ -317,6 +318,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                       role: role,
                       sub_role: bestRow.sub_role || undefined
                     }
+                  }).then(async () => {
+                    console.log('[AuthContext] fetchUserRoles successfully updated metadata, refreshing session...');
+                    await supabase.auth.refreshSession();
                   }).catch(err => console.error('[AuthContext] fetchUserRoles background metadata update failed:', err));
 
                   return {
@@ -632,9 +636,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               role: role
             }
           });
+          await supabase.auth.refreshSession();
         } catch (metaErr) {
           console.error('[AuthContext] Failed to update user metadata on Supabase during bootstrap:', metaErr);
         }
+      }
 
       if (dataClient.isLocalFirst) {
         // 3. Send credentials to local bridge
