@@ -1254,8 +1254,46 @@ export class OfflineAuthService {
   private static async legacyGetOfflineSession(): Promise<OfflineAuthResult | null> {
     try {
       await LocalDatabase.init();
-      const session = await LocalDatabase.getSession();
-      if (!session) return null;
+      let session = await LocalDatabase.getSession();
+      if (!session) {
+        // Fallback: Query active Supabase session (Cloud mode / Vercel web)
+        const { data: { session: supaSession } } = await supabase.auth.getSession();
+        if (supaSession) {
+          const user = supaSession.user;
+          const localRoles = await LocalDatabase.getRolesByUserId(user.id);
+          const roles: UserRole[] = localRoles.map(r => ({
+            id: r.id,
+            user_id: r.user_id,
+            role: r.role as AppRole,
+            store_id: r.store_id,
+            sub_role: r.sub_role,
+            created_at: r.created_at,
+          }));
+
+          const storeId = user.user_metadata?.store_id || localRoles.find(r => r.store_id)?.store_id;
+
+          return {
+            user: {
+              ...user,
+              user_metadata: {
+                ...user.user_metadata,
+                store_id: storeId
+              }
+            } as User,
+            session: supaSession,
+            roles: roles.length > 0 ? roles : [{
+              id: 'meta-role',
+              user_id: user.id,
+              role: (user.user_metadata?.role || 'master') as AppRole,
+              store_id: storeId || undefined,
+              sub_role: user.user_metadata?.sub_role || undefined,
+              created_at: user.created_at
+            }],
+            isOffline: false,
+          };
+        }
+        return null;
+      }
 
       const sessionAge = Date.now() - session.timestamp;
       if (sessionAge > 24 * 60 * 60 * 1000) {

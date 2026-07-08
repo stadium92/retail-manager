@@ -15,9 +15,10 @@ import { RecipeBuilder } from '@/components/recipe/RecipeBuilder';
 
 interface MobileFicheProduitsProps {
   onBack: () => void;
+  storeId?: string;
 }
 
-export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
+export function MobileFicheProduits({ onBack, storeId: propStoreId }: MobileFicheProduitsProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { formatCurrency } = useFormatters();
@@ -62,14 +63,21 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
   const [formData, setFormData] = useState(initialFormState);
 
   useEffect(() => {
+    if (propStoreId) {
+      setStoreId(propStoreId);
+      loadProducts(propStoreId);
+      loadFamilies(propStoreId);
+      return;
+    }
     OfflineAuthService.getOfflineSession().then(session => {
-      if (session?.user?.user_metadata?.store_id) {
-        setStoreId(session.user.user_metadata.store_id);
-        loadProducts(session.user.user_metadata.store_id);
-        loadFamilies(session.user.user_metadata.store_id);
+      const resolvedStoreId = session?.roles?.find(r => r.store_id)?.store_id || session?.user?.user_metadata?.store_id;
+      if (resolvedStoreId) {
+        setStoreId(resolvedStoreId);
+        loadProducts(resolvedStoreId);
+        loadFamilies(resolvedStoreId);
       }
     });
-  }, []);
+  }, [propStoreId]);
 
   const loadProducts = async (sid: string) => {
     setLoading(true);
