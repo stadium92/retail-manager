@@ -38,10 +38,11 @@ export function getDataClient(): DataClient {
   const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
   const tauri = isTauriDesktop();
   const forceCloud = typeof window !== 'undefined' && (window.location.search.includes('force_cloud=true') || window.location.hash.includes('force_cloud=true'));
+  const forceLocal = typeof window !== 'undefined' && (window.location.search.includes('force_local=true') || window.location.hash.includes('force_local=true'));
   
-  // On Android there is no local-bridge sidecar — use IndexedDB fallback (isLocalFirst = false)
-  // On HTTPS/browser (Vercel), Mixed Content rules block HTTP local-bridge requests, so use pure cloud
-  const localFirst = !android && (!isHttps || tauri) && !forceCloud;
+  // On web browser (non-Tauri), we must use pure cloud mode because the local-bridge sidecar is not available.
+  // We only run localFirst if we are running inside the Tauri desktop app itself, or if force_local is explicitly passed.
+  const localFirst = (tauri || forceLocal) && !android && !forceCloud;
   const baseUrl = localFirst 
     ? localBridgeBaseUrl 
     : (import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-project.supabase.co').replace(/\/$/, '');
