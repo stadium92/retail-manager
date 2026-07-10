@@ -67,16 +67,36 @@ export function MobileFicheProduits({ onBack, storeId: propStoreId }: MobileFich
       setStoreId(propStoreId);
       loadProducts(propStoreId);
       loadFamilies(propStoreId);
-      return;
+    } else {
+      OfflineAuthService.getOfflineSession().then(session => {
+        const resolvedStoreId = session?.roles?.find(r => r.store_id)?.store_id || session?.user?.user_metadata?.store_id;
+        if (resolvedStoreId) {
+          setStoreId(resolvedStoreId);
+          loadProducts(resolvedStoreId);
+          loadFamilies(resolvedStoreId);
+        }
+      });
     }
-    OfflineAuthService.getOfflineSession().then(session => {
-      const resolvedStoreId = session?.roles?.find(r => r.store_id)?.store_id || session?.user?.user_metadata?.store_id;
-      if (resolvedStoreId) {
-        setStoreId(resolvedStoreId);
-        loadProducts(resolvedStoreId);
-        loadFamilies(resolvedStoreId);
+
+    // Listen for custom search event
+    const handleSearchUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ query: string }>;
+      if (customEvent.detail && typeof customEvent.detail.query === 'string') {
+        setSearchQuery(customEvent.detail.query);
       }
-    });
+    };
+    window.addEventListener('worker-product-search-update', handleSearchUpdate);
+
+    // Check initial local storage if any
+    const storedSearch = localStorage.getItem('worker_product_search_query');
+    if (storedSearch) {
+      setSearchQuery(storedSearch);
+      localStorage.removeItem('worker_product_search_query'); // consume it
+    }
+
+    return () => {
+      window.removeEventListener('worker-product-search-update', handleSearchUpdate);
+    };
   }, [propStoreId]);
 
   const loadProducts = async (sid: string) => {

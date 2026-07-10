@@ -144,6 +144,25 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subRole]);
 
+  // Listen for worker-active-module-change events (e.g. from NotificationCenter)
+  useEffect(() => {
+    const handleModuleChange = (e: Event) => {
+      const customEvent = e as CustomEvent<{ module: string }>;
+      const targetModule = customEvent.detail?.module;
+      if (targetModule === 'produits') {
+        setActiveMobileModule('fiche-produits');
+      } else if (targetModule === 'suivi-ventes-factures') {
+        setActiveMobileModule('suivi-ventes-jour');
+      } else if (targetModule) {
+        setActiveMobileModule(targetModule);
+      }
+    };
+    window.addEventListener('worker-active-module-change', handleModuleChange);
+    return () => {
+      window.removeEventListener('worker-active-module-change', handleModuleChange);
+    };
+  }, []);
+
   // Intercept selection in Hamburger Menu to handle routing internally
   const handleSelectModule = (moduleId: string) => {
     if (moduleId === 'tableau-bord') {
