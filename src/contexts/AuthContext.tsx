@@ -31,6 +31,17 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/**
+ * Offline sign-in mints placeholder tokens ("offline_token_<ts>") that Supabase
+ * rejects with "Invalid JWT structure", silently leaving the client anonymous —
+ * which makes RLS reject writes. A real access token has three dot-separated
+ * base64url segments; guard setSession so a placeholder never clobbers a real
+ * (persisted) session.
+ */
+function isJwt(token?: string | null): boolean {
+  return typeof token === 'string' && token.split('.').length === 3;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const dataClient = getDataClient();
   console.log('ðŸ” AuthProvider Init - Mode:', dataClient.mode, 'isLocalFirst:', dataClient.isLocalFirst);
@@ -426,8 +437,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(offlineSession.user);
           setSession(offlineSession.session);
 
-          // Sync with global Supabase client in cloud mode
-          if (offlineSession.session && !dataClient.isLocalFirst) {
+          // Sync with global Supabase client in cloud mode. Skip placeholder
+          // offline tokens (not JWTs) so they can't clobber a real session that
+          // supabase-js already persisted/restored on its own.
+          if (offlineSession.session && !dataClient.isLocalFirst && isJwt(offlineSession.session.access_token)) {
             console.log('[AuthContext] Restoring Supabase client session');
             try {
               await supabase.auth.setSession({
@@ -689,16 +702,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(result.user);
       setSession(result.session);
 
-      // Sync with global Supabase client in cloud mode
+      // Sync with global Supabase client in cloud mode. A placeholder offline
+      // token would leave the client anonymous and make RLS reject writes, so
+      // only push a real JWT; warn otherwise instead of failing silently.
       if (result.session && !dataClient.isLocalFirst) {
-        console.log('[AuthContext] Syncing Supabase client session on sign in');
-        try {
-          await supabase.auth.setSession({
-            access_token: result.session.access_token,
-            refresh_token: result.session.refresh_token,
-          });
-        } catch (e) {
-          console.warn('[AuthContext] Failed to sync signed in session to Supabase client:', e);
+        if (isJwt(result.session.access_token)) {
+          console.log('[AuthContext] Syncing Supabase client session on sign in');
+          try {
+            await supabase.auth.setSession({
+              access_token: result.session.access_token,
+              refresh_token: result.session.refresh_token,
+            });
+          } catch (e) {
+            console.warn('[AuthContext] Failed to sync signed in session to Supabase client:', e);
+          }
+        } else {
+          console.warn('[AuthContext] Signed in without a Supabase JWT (offline cache) — cloud writes will be blocked by RLS until an online sign in.');
         }
       }
 

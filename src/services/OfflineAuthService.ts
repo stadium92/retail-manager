@@ -938,10 +938,13 @@ export class OfflineAuthService {
   }
 
   static async signIn(email: string, password: string): Promise<OfflineAuthResult> {
-    if (this.isLocalBridgeMode()) {
-      return this.localBridgeSignIn(email, password);
-    }
-    return this.legacyOfflineSignIn(email, password);
+    // Always go through localBridgeSignIn: it authenticates against Supabase first
+    // (establishing a real JWT on the global client) and branches internally for
+    // cloud vs local-bridge, falling back to the offline cache on failure. Routing
+    // cloud mode straight to legacyOfflineSignIn left the Supabase client on a
+    // placeholder "offline_token_" — so RLS rejected every write (e.g. recording a
+    // sale) with 42501, even though the login appeared to succeed.
+    return this.localBridgeSignIn(email, password);
   }
 
   static async offlineSignIn(email: string, password: string): Promise<OfflineAuthResult> {
