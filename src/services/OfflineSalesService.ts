@@ -121,6 +121,9 @@ export const OfflineSalesService = {
                 }
             } catch (supaErr) {
                 console.error('[OfflineSales] Supabase write failed:', supaErr);
+                if (!isLocalFirst) {
+                    localError = supaErr;
+                }
             }
         }
 

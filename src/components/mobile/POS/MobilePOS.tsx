@@ -76,8 +76,9 @@ export function MobilePOS({ onBack }: MobilePOSProps) {
 
     useEffect(() => {
         OfflineAuthService.getOfflineSession().then(offlineSession => {
-            if (offlineSession?.user?.user_metadata?.store_id) {
-                setStoreId(offlineSession.user.user_metadata.store_id);
+            const sid = offlineSession?.roles?.find((r: any) => r.store_id)?.store_id || offlineSession?.user?.user_metadata?.store_id;
+            if (sid) {
+                setStoreId(sid);
             }
         });
     }, []);
@@ -100,7 +101,7 @@ export function MobilePOS({ onBack }: MobilePOSProps) {
             const offlineSession = await OfflineAuthService.getOfflineSession();
             if (offlineSession?.user) {
                 userId = offlineSession.user.id;
-                sid = offlineSession.user.user_metadata?.store_id;
+                sid = offlineSession.roles?.find((r: any) => r.store_id)?.store_id || offlineSession.user.user_metadata?.store_id || storeId;
             }
 
             if (!sid) {
