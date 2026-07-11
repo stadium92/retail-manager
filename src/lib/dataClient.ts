@@ -186,10 +186,19 @@ if (typeof window !== 'undefined' && !(window as any).__fetch_patched__) {
         
         let newInit = init ? { ...init } : {};
         if (init && init.body && typeof init.body === 'string') {
-          newInit.headers = {
-            'Content-Type': 'application/json',
-            ...(init.headers || {})
-          };
+          // supabase-js's fetchWithAuth wrapper hands us init.headers as a real
+          // Headers instance (it builds one right before calling fetch, to
+          // inject apikey/Authorization). Spreading a Headers instance with
+          // `...` yields `{}` — it has no own enumerable properties — which
+          // silently dropped apikey/Authorization/Prefer and produced
+          // "No API key found in request" on every write. The Headers
+          // constructor normalizes any input shape (Headers, plain object,
+          // array of pairs) without that loss.
+          const mergedHeaders = new Headers(init.headers || {});
+          if (!mergedHeaders.has('Content-Type')) {
+            mergedHeaders.set('Content-Type', 'application/json');
+          }
+          newInit.headers = mergedHeaders;
           modified = true;
         }
         
@@ -209,20 +218,17 @@ if (typeof window !== 'undefined' && !(window as any).__fetch_patched__) {
               }
             } catch (e) {
               console.warn('[fetch patch] Request cloning failed, falling back to URL string:', e);
-              const reqHeaders: Record<string, string> = {};
-              req.headers.forEach((val, key) => {
-                reqHeaders[key] = val;
-              });
+              // Same Headers-instance hazard as above: merge via the Headers
+              // constructor, not object spread, so apikey/Authorization survive.
+              const mergedFallbackHeaders = new Headers(req.headers);
+              new Headers(newInit?.headers || {}).forEach((val, key) => mergedFallbackHeaders.set(key, val));
               newInit = {
                 method: req.method,
-                headers: {
-                  ...reqHeaders,
-                  ...(newInit?.headers || {})
-                },
                 credentials: req.credentials,
                 mode: req.mode,
                 referrer: req.referrer,
-                ...newInit
+                ...newInit,
+                headers: mergedFallbackHeaders
               };
               finalInput = urlStr;
             }
