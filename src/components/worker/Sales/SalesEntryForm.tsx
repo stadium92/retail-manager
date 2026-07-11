@@ -12,6 +12,7 @@ import { Product } from '@/types';
 import { Plus, Trash2, Check, ScanBarcode } from 'lucide-react';
 import { BarcodeScanner } from '@/components/shared/BarcodeScanner';
 import { toast } from '@/hooks/use-toast';
+import { explainSaleError } from '@/utils/saleError';
 import { OfflineManager } from '@/services/OfflineManager';
 import { useTranslation } from 'react-i18next';
 import {
@@ -258,8 +259,8 @@ export function SalesEntryForm() {
     } catch (error) {
       console.error('Sale error:', error);
       toast({
-        title: t('common.error'),
-        description: t('worker.sales.errorRecording'),
+        title: t('worker.sales.errorRecording'),
+        description: explainSaleError(error),
         variant: 'destructive',
       });
     } finally {

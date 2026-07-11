@@ -6,6 +6,7 @@ import { useMasterDataStore } from '@/stores/useMasterDataStore';
 import { OfflineSalesService } from '@/services/OfflineSalesService';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { useToast } from '@/hooks/use-toast';
+import { explainSaleError } from '@/utils/saleError';
 import { useProductSearch } from '@/hooks/useProductSearch';
 import { format } from 'date-fns';
 import { ChevronDown, Plus, Minus, Search, Trash2, User, ArrowLeft, ShoppingCart } from 'lucide-react';
@@ -135,7 +136,8 @@ export function MobileSalesModule({ mode, onBack }: { mode: 'vente-detail' | 'fa
             toast({ title: t('worker.sales.saleRecorded'), description: `${t('worker.sales.total')}: ${formatCurrency(total)}` });
             clearSession(mode);
         } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Erreur', description: err.message });
+            console.error('[MobileSalesModule] Sale recording failed:', err);
+            toast({ variant: 'destructive', title: 'Erreur', description: explainSaleError(err) });
         } finally {
             setIsProcessing(false);
         }

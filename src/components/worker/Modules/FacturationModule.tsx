@@ -9,6 +9,7 @@ import { Product } from '@/types';
 import { OfflineSalesService } from '@/services/OfflineSalesService';
 import { OfflineInventoryService } from '@/services/OfflineInventoryService';
 import { toast } from '@/hooks/use-toast';
+import { explainSaleError } from '@/utils/saleError';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { useFormatters } from '@/utils/formatting';
@@ -189,11 +190,12 @@ export function FacturationModule({ storeId, mode }: FacturationModuleProps) {
     }));
 
     const { error } = await OfflineSalesService.createSaleWithItems(saleData, saleItems);
-    
+
     if (error) {
-      toast({ 
-        title: t('common.error'), 
-        description: t('worker.sales.errorRecording'),
+      console.error('[FacturationModule] Sale recording failed:', error);
+      toast({
+        title: t('worker.sales.errorRecording'),
+        description: explainSaleError(error),
         variant: 'destructive',
       });
       return;

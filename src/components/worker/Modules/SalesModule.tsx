@@ -11,6 +11,7 @@ import { OfflineInventoryService } from '@/services/OfflineInventoryService';
 import { OfflineSalesService } from '@/services/OfflineSalesService';
 import { Product } from '@/types';
 import { toast } from 'sonner';
+import { explainSaleError } from '@/utils/saleError';
 import { format } from 'date-fns';
 import { useSalesStore, DEFAULT_SESSION } from '@/stores/useSalesStore';
 import { useMasterDataStore } from '@/stores/useMasterDataStore';
@@ -696,7 +697,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'sale' } }));
       updateSession(mode, { lineItems: [], customerCode: '', customerName: '', customerAddress: '', orderRef: '', invoiceNumber: generateInvoiceNumber() });
       setSelectedIndex(-1);
-    } catch (error) { toast.error(t('common.error')); }
+    } catch (error) { console.error('[SalesModule] Sale recording failed:', error); toast.error(explainSaleError(error), { duration: 10000 }); }
   }, [lineItems, storeId, user, netTotal, mode, customerName, currentSession.clientId, clients, customerAddress, invoiceNumber, orderRef, currentSession.clientDiscount, updateSession, t]);
 
   const handleSaveProforma = useCallback(async () => {
@@ -738,7 +739,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'sale' } }));
       updateSession(mode, { lineItems: [], customerCode: '', customerName: '', customerAddress: '', orderRef: '', invoiceNumber: generateInvoiceNumber() });
       setSelectedIndex(-1);
-    } catch (error) { toast.error(t('common.error')); }
+    } catch (error) { console.error('[SalesModule] Sale recording failed:', error); toast.error(explainSaleError(error), { duration: 10000 }); }
   }, [lineItems, storeId, user, netTotal, mode, customerName, currentSession.clientId, clients, customerAddress, invoiceNumber, orderRef, currentSession.clientDiscount, updateSession, t]);
 
   const openPaymentRef = useRef(openPayment);

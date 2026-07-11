@@ -7,6 +7,7 @@ import { ProductInfoPanel } from './components/ProductInfoPanel';
 import { OfflineSalesService } from '@/services/OfflineSalesService';
 import { OfflineInventoryService } from '@/services/OfflineInventoryService';
 import { useToast } from '@/hooks/use-toast';
+import { explainSaleError } from '@/utils/saleError';
 import { Product } from '@/types';
 import { CheckoutModal } from './components/CheckoutModal';
 import { Button } from '@/components/ui/button';
@@ -207,8 +208,8 @@ export default function POSPage() {
             setIsCheckoutOpen(false);
 
         } catch (err) {
-            console.error(err);
-            toast({ variant: "destructive", title: t('common.error'), description: t('worker.sales.errorRecording') });
+            console.error('[WorkerPOS] Sale recording failed:', err);
+            toast({ variant: "destructive", title: t('worker.sales.errorRecording'), description: explainSaleError(err) });
         } finally {
             setIsProcessing(false);
         }

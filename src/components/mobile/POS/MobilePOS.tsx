@@ -6,6 +6,7 @@ import { CheckoutModal } from '@/pages/worker/components/CheckoutModal';
 import { OfflineSalesService } from '@/services/OfflineSalesService';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { useToast } from '@/hooks/use-toast';
+import { explainSaleError } from '@/utils/saleError';
 import { useProductSearch } from '@/hooks/useProductSearch';
 import { NotificationCenter } from '@/components/shared/NotificationCenter';
 import { BarcodeScanner } from '@/components/shared/BarcodeScanner';
@@ -134,8 +135,8 @@ export function MobilePOS({ onBack }: MobilePOSProps) {
             onBack?.();
 
         } catch (err) {
-            console.error(err);
-            toast({ variant: "destructive", title: t('common.error'), description: t('worker.sales.errorRecording') });
+            console.error('[MobilePOS] Sale recording failed:', err);
+            toast({ variant: "destructive", title: t('worker.sales.errorRecording'), description: explainSaleError(err) });
         } finally {
             setIsProcessing(false);
         }

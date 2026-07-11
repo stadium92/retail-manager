@@ -9,6 +9,7 @@ import { BarcodeScanner } from '@/components/shared/BarcodeScanner';
 import { InventoryItem } from '@/types';
 import { OfflineSalesService } from '@/services/OfflineSalesService';
 import { toast } from '@/hooks/use-toast';
+import { explainSaleError } from '@/utils/saleError';
 import { Button } from '@/components/ui/button';
 import { LogOut, Zap } from 'lucide-react';
 import { getDataClient } from '@/lib/dataClient';
@@ -115,12 +116,13 @@ export default function StrategicPOS() {
     }));
 
     const { error } = await OfflineSalesService.createSaleWithItems(saleData, saleItems);
-    
+
     if (error) {
-      toast({ 
-        title: t('common.error'), 
-        description: t('worker.sales.errorRecording'), 
-        variant: 'destructive' 
+      console.error('[StrategicPOS] Sale recording failed:', error);
+      toast({
+        title: t('worker.sales.errorRecording'),
+        description: explainSaleError(error),
+        variant: 'destructive'
       });
       return;
     }
