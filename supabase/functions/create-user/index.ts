@@ -311,7 +311,7 @@ Deno.serve(async (req) => {
     }
 
     // Log the action for audit purposes
-    console.log(`User created: ${email} with role ${role} by master ${callerId}`);
+    console.log(`User created: ${email} with role ${role} (sub_role: ${sub_role}) by master ${callerId}`);
 
     return new Response(
       JSON.stringify({
@@ -323,6 +323,7 @@ Deno.serve(async (req) => {
           role,
           sub_role,
           store_id,
+          sub_role: sub_role || null,
         },
       }),
       { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

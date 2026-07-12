@@ -108,6 +108,7 @@ Deno.serve(async (req) => {
         full_name: profile?.full_name || profile?.email || 'Unknown',
         phone: profile?.phone || null,
         role: role.role,
+        sub_role: role.sub_role || null,
         store_id: role.store_id || null,
         sub_role: role.sub_role || null,
         store_name: restaurantName || null,
