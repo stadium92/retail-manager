@@ -39,16 +39,23 @@ export function getDataClient(): DataClient {
   const tauri = isTauriDesktop();
   const forceCloud = typeof window !== 'undefined' && (window.location.search.includes('force_cloud=true') || window.location.hash.includes('force_cloud=true'));
   const forceLocal = typeof window !== 'undefined' && (window.location.search.includes('force_local=true') || window.location.hash.includes('force_local=true'));
-  
-  // On web browser (non-Tauri), we must use pure cloud mode because the local-bridge sidecar is not available.
-  // We only run localFirst if we are running inside the Tauri desktop app itself, or if force_local is explicitly passed.
-  const localFirst = (tauri || forceLocal) && !android && !forceCloud;
-  const baseUrl = localFirst 
-    ? localBridgeBaseUrl 
+
+  let isLocalHost = true;
+  if (typeof window !== 'undefined') {
+    isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  }
+
+  // On web browser (non-Tauri), we must use pure cloud mode because the local-bridge sidecar is not available,
+  // unless we're running the web app locally (localhost/127.0.0.1) during development.
+  // We only run localFirst if we are running inside the Tauri desktop app itself, on a local dev host,
+  // or if force_local is explicitly passed — force_cloud always overrides back to cloud mode.
+  const localFirst = (tauri || forceLocal || (isLocalHost && !android)) && !android && !forceCloud;
+  const baseUrl = localFirst
+    ? localBridgeBaseUrl
     : (import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-project.supabase.co').replace(/\/$/, '');
 
   console.log(
-    `🔑 [DataClient] mode: offline, isLocalFirst: ${localFirst}, android: ${android}, isHttps: ${isHttps}, tauri: ${tauri}, baseUrl: ${baseUrl}`
+    `🔑 [DataClient] mode: offline, isLocalFirst: ${localFirst}, android: ${android}, isHttps: ${isHttps}, tauri: ${tauri}, localhost: ${isLocalHost}, baseUrl: ${baseUrl}`
   );
   return {
     mode: 'offline',

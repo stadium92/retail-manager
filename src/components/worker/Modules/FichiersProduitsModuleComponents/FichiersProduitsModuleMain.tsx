@@ -23,6 +23,7 @@ import { MasterPasswordGate } from '@/components/shared/MasterPasswordGate';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RecipeBuilder } from '@/components/recipe/RecipeBuilder';
+import { supabase } from '@/lib/supabase';
 
 interface FichiersProduitsModuleProps {
   storeId: string;
@@ -438,14 +439,42 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
             // Save recipe composition links — use pendingId for new items
             if (item._ui_itemType === 'dish') {
                 const dishId = editingProduct?.id ?? item._ui_pendingId;
-                await OfflineAuthService.localBridgeRequest('/rest/v1/recipes', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        dish_id: dishId,
-                        items: item._ui_recipeItems || [],
-                    }),
-                });
+                const dc = getDataClient();
+                if (dc.isLocalFirst) {
+                    await OfflineAuthService.localBridgeRequest('/rest/v1/recipes', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            dish_id: dishId,
+                            items: item._ui_recipeItems || [],
+                        }),
+                    });
+                } else {
+                    // Delete existing recipe composition for this dish
+                    const { error: delErr } = await supabase
+                        .from('dish_recipes')
+                        .delete()
+                        .eq('dish_id', dishId);
+                    if (delErr) throw delErr;
+
+                    // Insert new recipe items
+                    if (item._ui_recipeItems && item._ui_recipeItems.length > 0) {
+                        const now = new Date().toISOString();
+                        const insertPayload = item._ui_recipeItems.map((recipeItem: any) => ({
+                            id: crypto.randomUUID(),
+                            dish_id: dishId,
+                            ingredient_id: recipeItem.ingredient_id,
+                            quantity_needed: Number(recipeItem.quantity_needed),
+                            unit: recipeItem.unit,
+                            created_at: now,
+                            updated_at: now
+                        }));
+                        const { error: insErr } = await supabase
+                            .from('dish_recipes')
+                            .insert(insertPayload);
+                        if (insErr) throw insErr;
+                    }
+                }
             }
         }
 
@@ -495,7 +524,18 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
     });
 
     try {
-      const items = await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/recipes?dish_id=${p.id}`);
+      const dc = getDataClient();
+      let items: any[] = [];
+      if (dc.isLocalFirst) {
+        items = await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/recipes?dish_id=${p.id}`);
+      } else {
+        const { data, error } = await supabase
+          .from('dish_recipes')
+          .select('*')
+          .eq('dish_id', p.id);
+        if (error) throw error;
+        items = data || [];
+      }
       if (Array.isArray(items)) {
         setFormData(prev => ({
           ...prev,

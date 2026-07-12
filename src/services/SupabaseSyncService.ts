@@ -236,7 +236,7 @@ export class SupabaseSyncService {
               .from('dish_recipes')
               .delete()
               .eq('dish_id', payload.dish_id);
-            
+
             if (delErr) {
               error = delErr;
             } else if (payload.items && payload.items.length > 0) {
@@ -264,7 +264,7 @@ export class SupabaseSyncService {
           } else if (entry.op_type === 'delete') {
             const { error: delErr } = await supabase
               .from(supabaseTable)
-              .update({ deleted_at: new Date().toISOString() })
+              .delete()
               .eq('id', entry.entity_id);
             error = delErr;
           } else if (supabaseTable === 'edge_function_create_user') {

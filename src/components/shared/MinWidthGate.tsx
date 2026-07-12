@@ -79,7 +79,7 @@ export function MinWidthGate({ minWidth = 675, children }: MinWidthGateProps) {
             className="h-full rounded-full bg-red-500 transition-all duration-300"
             style={{
               width: `${Math.min((windowWidth / minWidth) * 100, 100)}%`,
-              backgroundColor: windowWidth >= minWidth * 0.8 ? 'rgb(var(--primary))' : '#ef4444',
+              backgroundColor: windowWidth >= minWidth * 0.8 ? 'hsl(var(--primary))' : '#ef4444',
             }}
           />
         </div>

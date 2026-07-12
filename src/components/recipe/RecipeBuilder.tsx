@@ -6,7 +6,7 @@ import { GripVertical, Plus, Trash2, Minus, ChevronUp, ChevronDown } from 'lucid
 import { useTranslation } from 'react-i18next';
 import { Ingredient, RecipeIngredient } from '@/types/ingredients';
 import { IngredientSearchDropdown } from './IngredientSearchDropdown';
-import { OfflineAuthService } from '@/services/OfflineAuthService';
+import { OfflineIngredientsService } from '@/services/OfflineIngredientsService';
 import {
   DndContext,
   closestCenter,
@@ -26,7 +26,7 @@ interface RecipeItemRow {
   tempId: string;
   ingredient_id: string;
   ingredient_name: string;
-  quantity_needed: number;
+  quantity_needed: number | string;
   unit: string;
   current_stock: number;
   cost_per_unit: number;
@@ -56,6 +56,117 @@ function convertQuantity(qty: number, from: string, to: string): number {
   return qty; // Fallback
 }
 
+interface SortableRecipeRowProps {
+  item: RecipeItemRow;
+  onUpdateField: (tempId: string, field: keyof RecipeItemRow, val: any) => void;
+  onRemoveRow: (tempId: string) => void;
+  stockBadge: React.ReactNode;
+}
+
+// Extracted to prevent re-creation on every render, solving the input focus loss bug
+const SortableRecipeRow = ({ item, onUpdateField, onRemoveRow, stockBadge }: SortableRecipeRowProps) => {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
+    id: item.tempId,
+  });
+
+  const style = transform
+    ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+        transition,
+      }
+    : undefined;
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className="border-b hover:bg-muted/20 transition-colors group"
+    >
+      <td className="p-3 align-middle">
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab text-muted-foreground/40 hover:text-muted-foreground active:cursor-grabbing p-1"
+        >
+          <GripVertical className="h-4 w-4" />
+        </div>
+      </td>
+      <td className="p-3 font-bold text-sm text-foreground align-middle">
+        {item.ingredient_name}
+      </td>
+      <td className="p-3 align-middle w-[220px]">
+        <div className="flex items-center gap-1.5">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-7 w-7 flex-shrink-0 text-muted-foreground"
+            onClick={() =>
+              onUpdateField(
+                item.tempId,
+                'quantity_needed',
+                Math.max(0.001, (Number(item.quantity_needed) || 0) - 1)
+              )
+            }
+          >
+            <Minus className="h-3 w-3" />
+          </Button>
+          <Input
+            type="text"
+            inputMode="decimal"
+            value={item.quantity_needed}
+            onChange={e =>
+              onUpdateField(item.tempId, 'quantity_needed', e.target.value)
+            }
+            className="h-8 text-xs font-bold text-center w-32 px-1"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-7 w-7 flex-shrink-0 text-muted-foreground"
+            onClick={() =>
+              onUpdateField(item.tempId, 'quantity_needed', (Number(item.quantity_needed) || 0) + 1)
+            }
+          >
+            <Plus className="h-3 w-3" />
+          </Button>
+        </div>
+      </td>
+      <td className="p-3 align-middle w-[120px]">
+        <select
+          value={item.unit}
+          onChange={e => onUpdateField(item.tempId, 'unit', e.target.value)}
+          className="h-8 w-full text-xs font-bold border rounded-md px-2 bg-card text-foreground"
+        >
+          <option value="g">g</option>
+          <option value="kg">kg</option>
+          <option value="ml">ml</option>
+          <option value="L">L</option>
+          <option value="pcs">pcs</option>
+        </select>
+      </td>
+      <td className="p-3 align-middle text-xs font-mono font-bold text-muted-foreground">
+        {item.current_stock} {item.default_unit}
+      </td>
+      <td className="p-3 align-middle">
+        {stockBadge}
+      </td>
+      <td className="p-3 align-middle text-right">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => onRemoveRow(item.tempId)}
+          className="text-red-500 hover:bg-red-500/10 hover:text-red-600 h-8 w-8"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </td>
+    </tr>
+  );
+};
+
 export function RecipeBuilder({ dishId, storeId, sellingPrice, onChange, onCostChange }: RecipeBuilderProps) {
   const { t } = useTranslation();
   const [items, setItems] = useState<RecipeItemRow[]>([]);
@@ -73,22 +184,13 @@ export function RecipeBuilder({ dishId, storeId, sellingPrice, onChange, onCostC
       }
       setLoading(true);
       try {
-        const res = await OfflineAuthService.localBridgeRequest<RecipeIngredient[]>(
-          `/rest/v1/recipes?dish_id=${dishId}`,
-          { method: 'GET' }
-        );
-        const mapped = (res || []).map(r => ({
+        const { data: mapped, error } = await OfflineIngredientsService.getRecipeIngredients(dishId);
+        if (error) throw error;
+        
+        setItems((mapped || []).map(r => ({
+          ...r,
           tempId: crypto.randomUUID(),
-          ingredient_id: r.ingredient_id,
-          ingredient_name: r.ingredient_name,
-          quantity_needed: r.quantity_needed,
-          unit: r.unit,
-          current_stock: r.current_stock,
-          cost_per_unit: r.cost_per_unit,
-          min_threshold: r.min_threshold,
-          default_unit: r.default_unit || r.unit,
-        }));
-        setItems(mapped);
+        })));
       } catch (err) {
         console.error('Failed to load recipe:', err);
       } finally {
@@ -101,8 +203,9 @@ export function RecipeBuilder({ dishId, storeId, sellingPrice, onChange, onCostC
 
   // Calculate estimated cost
   const totalCost = items.reduce((sum, item) => {
+    const qty = Number(item.quantity_needed) || 0;
     // Convert recipe quantity to database ingredient base unit for cost calculation
-    const baseQty = convertQuantity(item.quantity_needed, item.unit, item.default_unit);
+    const baseQty = convertQuantity(qty, item.unit, item.default_unit);
     return sum + baseQty * item.cost_per_unit;
   }, 0);
 
@@ -111,7 +214,7 @@ export function RecipeBuilder({ dishId, storeId, sellingPrice, onChange, onCostC
     onChange(
       items.map(i => ({
         ingredient_id: i.ingredient_id,
-        quantity_needed: i.quantity_needed,
+        quantity_needed: Number(i.quantity_needed) || 0,
         unit: i.unit,
       }))
     );
@@ -166,7 +269,7 @@ export function RecipeBuilder({ dishId, storeId, sellingPrice, onChange, onCostC
   };
 
   const getStockBadge = (item: RecipeItemRow) => {
-    const qty = item.quantity_needed;
+    const qty = Number(item.quantity_needed) || 0;
     if (qty <= 0) return <Badge variant="outline" className="text-gray-400">Inconnu</Badge>;
     
     // Convert to default stock unit
@@ -180,110 +283,6 @@ export function RecipeBuilder({ dishId, storeId, sellingPrice, onChange, onCostC
       return <Badge className="bg-amber-500 text-white border-none text-[10px] px-2 py-0.5">🟡 Faible</Badge>;
     }
     return <Badge className="bg-red-500 text-white border-none text-[10px] px-2 py-0.5">🔴 Insuffisant</Badge>;
-  };
-
-  // Sortable row component
-  const SortableRecipeRow = ({ item }: { item: RecipeItemRow }) => {
-    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
-      id: item.tempId,
-    });
-
-    const style = transform
-      ? {
-          transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-          transition,
-        }
-      : undefined;
-
-    return (
-      <tr
-        ref={setNodeRef}
-        style={style}
-        className="border-b hover:bg-muted/20 transition-colors group"
-      >
-        <td className="p-3 align-middle">
-          <div
-            {...attributes}
-            {...listeners}
-            className="cursor-grab text-muted-foreground/40 hover:text-muted-foreground active:cursor-grabbing p-1"
-          >
-            <GripVertical className="h-4 w-4" />
-          </div>
-        </td>
-        <td className="p-3 font-bold text-sm text-foreground align-middle">
-          {item.ingredient_name}
-        </td>
-        <td className="p-3 align-middle w-[150px]">
-          <div className="flex items-center gap-1.5">
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-7 w-7 text-muted-foreground"
-              onClick={() =>
-                handleUpdateField(
-                  item.tempId,
-                  'quantity_needed',
-                  Math.max(0.001, item.quantity_needed - 1)
-                )
-              }
-            >
-              <Minus className="h-3 w-3" />
-            </Button>
-            <Input
-              type="number"
-              step="any"
-              value={item.quantity_needed}
-              onChange={e =>
-                handleUpdateField(item.tempId, 'quantity_needed', Number(e.target.value))
-              }
-              className="h-8 text-xs font-bold text-center w-16"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-7 w-7 text-muted-foreground"
-              onClick={() =>
-                handleUpdateField(item.tempId, 'quantity_needed', item.quantity_needed + 1)
-              }
-            >
-              <Plus className="h-3 w-3" />
-            </Button>
-          </div>
-        </td>
-        <td className="p-3 align-middle w-[120px]">
-          <select
-            value={item.unit}
-            onChange={e => handleUpdateField(item.tempId, 'unit', e.target.value)}
-            className="h-8 text-xs font-bold border rounded-md px-2 bg-card text-foreground"
-          >
-            <option value="g">g</option>
-            <option value="kg">kg</option>
-            <option value="ml">ml</option>
-            <option value="L">L</option>
-            <option value="pcs">pcs</option>
-          </select>
-        </td>
-        <td className="p-3 align-middle text-xs font-mono font-bold text-muted-foreground">
-          {item.current_stock} {item.default_unit}
-        </td>
-        <td className="p-3 align-middle">
-          {getStockBadge(item)}
-        </td>
-        <td className="p-3 align-middle text-right">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => handleRemoveRow(item.tempId)}
-            className="text-red-500 hover:bg-red-500/10 hover:text-red-600 h-8 w-8"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </td>
-      </tr>
-    );
   };
 
   return (
@@ -326,7 +325,13 @@ export function RecipeBuilder({ dishId, storeId, sellingPrice, onChange, onCostC
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={items.map(i => i.tempId)} strategy={verticalListSortingStrategy}>
                   {items.map(item => (
-                    <SortableRecipeRow key={item.tempId} item={item} />
+                    <SortableRecipeRow 
+                      key={item.tempId} 
+                      item={item} 
+                      onUpdateField={handleUpdateField}
+                      onRemoveRow={handleRemoveRow}
+                      stockBadge={getStockBadge(item)}
+                    />
                   ))}
                 </SortableContext>
               </DndContext>

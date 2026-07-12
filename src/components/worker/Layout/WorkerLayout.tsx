@@ -147,6 +147,19 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
     return () => window.removeEventListener('worker-active-module-change', handleModuleChange);
   }, [subRole, isModuleAllowed]);
 
+  const [mountedModules, setMountedModules] = useState<Set<WorkerModule>>(() => {
+    return new Set([activeModule]);
+  });
+
+  useEffect(() => {
+    setMountedModules(prev => {
+      if (prev.has(activeModule)) return prev;
+      const newSet = new Set(prev);
+      newSet.add(activeModule);
+      return newSet;
+    });
+  }, [activeModule]);
+
   const moduleLabels: Record<WorkerModule, string> = {
     'kds': t('menu.restaurant.kds'),
     'tables': t('menu.restaurant.tables'),
@@ -265,16 +278,16 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const renderModule = useCallback(() => {
+  const renderModule = useCallback((moduleToRender: WorkerModule) => {
     // If we are on a mobile device, we intercept the complex desktop modules
     // and render their dedicated mobile equivalents instead.
     if (!isDesktop) {
-      switch (activeModule) {
+      switch (moduleToRender) {
         case 'vente-detail':
         case 'facturation-detail':
         case 'facturation-gros':
         case 'proforma':
-          return <MobileSalesModule mode={activeModule} />;
+          return <MobileSalesModule mode={moduleToRender} />;
         case 'fermeture-caisse':
         case 'consultation-caisse':
           return <MobileFicheCaisse />;
@@ -288,7 +301,7 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
       }
     }
 
-    switch (activeModule) {
+    switch (moduleToRender) {
       case 'kds':
         return <KitchenDisplay storeId={storeId} />;
 
@@ -299,7 +312,7 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
       case 'facturation-detail':
       case 'facturation-gros':
       case 'proforma':
-        return <SalesModule storeId={storeId} mode={activeModule} />;
+        return <SalesModule storeId={storeId} mode={moduleToRender} />;
 
       case 'produits':
         return <FichiersProduitsModule storeId={storeId} />;
@@ -334,7 +347,7 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
       case 'regularisation-stock':
       case 'valorisation-stock':
       case 'inventaire-stock':
-        return <StockModule storeId={storeId} mode={activeModule} />;
+        return <StockModule storeId={storeId} mode={moduleToRender} />;
 
       case 'reception-achats':
         return <ReceptionAchatsModule storeId={storeId} />;
@@ -359,29 +372,29 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
       case 'suivi-achats-famille':
       case 'suivi-achats-jour':
       case 'suivi-achats-periode':
-        return <EditionModule storeId={storeId} mode={activeModule} />;
+        return <EditionModule storeId={storeId} mode={moduleToRender} />;
 
       case 'journal-caisse':
       case 'tableau-bord':
       case 'statistiques':
       case 'sorties-pertes':
-        return <GestionModule storeId={storeId} mode={activeModule} />;
+        return <GestionModule storeId={storeId} mode={moduleToRender} />;
 
       case 'preferences':
       case 'programmation-touches':
       case 'mots-de-passe':
       case 'synchronisation':
-        return <SettingsModule storeId={storeId} mode={activeModule} />;
+        return <SettingsModule storeId={storeId} mode={moduleToRender} />;
 
       default:
         return (
           <PlaceholderModule
-            title={moduleLabels[activeModule]}
+            title={moduleLabels[moduleToRender]}
             description={t('common.loading')}
           />
         );
     }
-  }, [activeModule, storeId, t]);
+  }, [storeId, t, moduleLabels, isDesktop]);
 
   const handleLogout = async () => {
     await signOut();
@@ -468,8 +481,18 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
               </div>
             </div>
 
-            <div className="flex-1 overflow-hidden">
-              {renderModule()}
+            <div className="flex-1 relative overflow-hidden">
+              {Array.from(mountedModules).map(module => (
+                <div 
+                  key={module}
+                  className={cn(
+                    "absolute inset-0 h-full w-full",
+                    activeModule === module ? "block" : "hidden"
+                  )}
+                >
+                  {renderModule(module)}
+                </div>
+              ))}
             </div>
           </div>
         </div>

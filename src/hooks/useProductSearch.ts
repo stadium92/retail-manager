@@ -31,7 +31,7 @@ export function useProductSearch(storeId: string, enabled: boolean = true) {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
-    }, 300);
+    }, 150);
     return () => clearTimeout(timer);
   }, [search]);
 

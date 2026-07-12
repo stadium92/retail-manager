@@ -9,6 +9,7 @@ import { toast } from '@/hooks/use-toast';
 import { getDataClient } from '@/lib/dataClient';
 import { TokenManager } from '@/utils/tokenManager';
 import { smartFetch } from '@/lib/dataClient';
+import { supabase } from '@/lib/supabase';
 import i18n from '@/i18n/config';
 import { supabase } from '../lib/supabase';
 
@@ -934,7 +935,7 @@ export class OfflineAuthService {
     } catch (onlineError: any) {
       console.log('[OfflineAuth] Online login failed (offline or invalid). Attempting local fallback...', onlineError);
       toast({ title: 'Cloud unavailable', description: 'Logging in offline...', variant: 'destructive' });
-      
+
       if (!getDataClient().isLocalFirst) {
         // Pure Cloud: Call legacy offline sign-in directly using IndexedDB cached session
         return this.legacyOfflineSignIn(email, password);

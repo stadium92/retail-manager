@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils';
 import { getDataClient } from '@/lib/dataClient';
 import { RecipeBuilder, RecipeIngredient } from '@/components/recipe/RecipeBuilder';
 import { ImageUpload } from '@/components/shared/ImageUpload';
+import { supabase } from '@/lib/supabase';
 
 interface FicheProduitsModuleProps {
   storeId: string;
@@ -267,14 +268,40 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
 
           // Save composition
           if (item.recipeItems && item.recipeItems.length > 0) {
-              await OfflineAuthService.localBridgeRequest('/rest/v1/recipes', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  dish_id: item.id,
-                  items: item.recipeItems,
-                }),
-              });
+              const dc = getDataClient();
+              if (dc.isLocalFirst) {
+                  await OfflineAuthService.localBridgeRequest('/rest/v1/recipes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      dish_id: item.id,
+                      items: item.recipeItems,
+                    }),
+                  });
+              } else {
+                  // Delete existing recipe composition for this dish
+                  const { error: delErr } = await supabase
+                      .from('dish_recipes')
+                      .delete()
+                      .eq('dish_id', item.id);
+                  if (delErr) throw delErr;
+
+                  // Insert new recipe items
+                  const now = new Date().toISOString();
+                  const insertPayload = item.recipeItems.map((recipeItem: any) => ({
+                      id: crypto.randomUUID(),
+                      dish_id: item.id,
+                      ingredient_id: recipeItem.ingredient_id,
+                      quantity_needed: Number(recipeItem.quantity_needed),
+                      unit: recipeItem.unit,
+                      created_at: now,
+                      updated_at: now
+                  }));
+                  const { error: insErr } = await supabase
+                      .from('dish_recipes')
+                      .insert(insertPayload);
+                  if (insErr) throw insErr;
+              }
           }
       }
 
