@@ -444,7 +444,7 @@ export function WorkerLayout({ className }: WorkerLayoutProps) {
       <main className={cn(
         'flex-1 overflow-hidden',
         subRole === 'cashier'
-          ? 'bg-[#F5C518]'
+          ? 'bg-[#111111]'
           : 'bg-[hsl(50,90%,55%)] dark:bg-background'
       )}>
         <div className="h-full p-4">
