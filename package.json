@@ -6,10 +6,10 @@
   "scripts": {
     "dev": "tauri dev",
     "build": "tauri build",
-    "install:all": "npm install && cd frontend && npm install && cd ../backend/local-bridge && npm install",
-    "clean:dist": "rm -rf frontend/dist",
+    "install:all": "npm install && cd retail-manager-stores && npm install && cd ../backend/local-bridge && npm install",
+    "clean:dist": "rm -rf retail-manager-stores/dist",
     "build:backend": "./scripts/build-sidecar.sh",
-    "tauri:build": "npm run clean:dist && npm run build:backend && npm run build --prefix frontend && tauri build && mkdir -p release && cp -R src-tauri/target/release/bundle/macos/*.app release/ && cp -R src-tauri/target/release/bundle/dmg/*.dmg release/"
+    "tauri:build": "npm run clean:dist && npm run build:backend && npm run build --prefix retail-manager-stores && tauri build && mkdir -p release && cp -R src-tauri/target/release/bundle/macos/*.app release/ && cp -R src-tauri/target/release/bundle/dmg/*.dmg release/"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.2.0"

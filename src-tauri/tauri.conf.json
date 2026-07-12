@@ -4,9 +4,9 @@
   "version": "0.2.5",
   "identifier": "com.retailmanager.app",
   "build": {
-    "frontendDist": "../frontend/dist",
+    "frontendDist": "../retail-manager-stores/dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "npm --prefix ../frontend run dev",
+    "beforeDevCommand": "npm --prefix ../retail-manager-stores run dev",
     "beforeBuildCommand": ""
   },
   "app": {
