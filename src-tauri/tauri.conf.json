@@ -4,9 +4,9 @@
   "version": "0.2.5",
   "identifier": "com.retailmanager.app",
   "build": {
-    "frontendDist": "../retail-manager-stores/dist",
+    "frontendDist": "../Djati-stores/dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "npm --prefix ../retail-manager-stores run dev",
+    "beforeDevCommand": "npm --prefix ../Djati-stores run dev",
     "beforeBuildCommand": ""
   },
   "app": {
