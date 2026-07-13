@@ -3,4 +3,4 @@
 	url = https://github.com/mohcly/retail-manager-stores.git
 [submodule "retail-manager-restaurant"]
 	path = Djati-restaurants
-	url = https://github.com/mohcly/retail-manager-restaurant.git
+	url = https://github.com/mohcly/Djati-restaurant.git
