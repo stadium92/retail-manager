@@ -1,9 +1,6 @@
 [submodule "retail-manager-stores"]
 	path = retail-manager-stores
 	url = https://github.com/mohcly/retail-manager-stores.git
-[submodule "retail-manager-mobile"]
-	path = retail-manager-mobile
-	url = https://github.com/mohcly/retail-manager-mobile.git
 [submodule "retail-manager-restaurant"]
 	path = retail-manager-restaurant
 	url = https://github.com/mohcly/retail-manager-restaurant.git
