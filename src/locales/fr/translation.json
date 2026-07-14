@@ -63,7 +63,14 @@
     "enterConfirm": "ENTRÉE: Confirmer",
     "escClose": "ESC: Fermer",
     "itemsFound": "{{count}} articles trouvés",
-    "totalPage": "TOTAL PAGE"
+    "totalPage": "TOTAL PAGE",
+    "allStores": "Tous les magasins",
+    "details": "Détails",
+    "dueAmount": "Montant Dû",
+    "saveSuccess": "Enregistré avec succès",
+    "select": "Sélectionner",
+    "selectStore": "Sélectionner un magasin",
+    "unknownError": "Une erreur est survenue"
   },
   "helpCenter": {
     "title": "Centre d'Aide",
@@ -222,6 +229,10 @@
       "motorbike": "Moto",
       "van": "Camionnette",
       "truck": "Camion"
+    },
+    "dialogs": {
+      "deleteTitle": "Supprimer le membre",
+      "deleteDesc": "Êtes-vous sûr de vouloir supprimer ce membre de l'équipe ? Cette action est irréversible."
     }
   },
   "dashboard": {
@@ -261,6 +272,9 @@
       "status1": "Ventes mensuelles : {{amount}}",
       "status2": "Magasins actifs : {{count}}",
       "status3": "Articles nécessitant une attention : {{count}}"
+    },
+    "metrics": {
+      "inventoryValue": "Valeur de l'inventaire"
     }
   },
   "analytics": {
@@ -402,7 +416,8 @@
       "familyOrCategory": "Famille / Catégorie",
       "price2": "2ème Prix",
       "price3": "3ème Prix",
-      "price4": "4ème Prix"
+      "price4": "4ème Prix",
+      "unit": "Unité"
     },
     "failedToDeleteItem": "Échec de la suppression de l'article",
     "itemDeletedSuccessfully": "Article supprimé avec succès",
@@ -430,7 +445,8 @@
       "updateItem": "Échec de la mise à jour",
       "createItem": "Échec de la création",
       "deleteItem": "Échec de la suppression",
-      "bulkDelete": "Échec de la suppression de {{count}} article(s)"
+      "bulkDelete": "Échec de la suppression de {{count}} article(s)",
+      "authRequired": "Authentification requise"
     },
     "success": {
       "updateItem": "Article mis à jour avec succès",
@@ -490,7 +506,9 @@
     "sellingPrice": "Prix de vente",
     "purchasePrice": "Prix d'achat",
     "currentLine": "Ligne actuelle",
-    "lineTotal": "Total ligne"
+    "lineTotal": "Total ligne",
+    "packaging": "Conditionnement",
+    "selectItemDetails": "Sélectionnez un article pour voir les détails"
   },
   "stores": {
     "title": "Magasins",
@@ -639,9 +657,21 @@
         "phone": "Téléphone",
         "address": "Adresse",
         "status": "Statut",
-        "deliverer": "Livreur"
+        "deliverer": "Livreur",
+        "date": "Date"
       }
-    }
+    },
+    "allStatuses": "Tous les statuts",
+    "completed": "Terminé",
+    "customerPhone": "Téléphone du client",
+    "date": "Date",
+    "deletedDeliveries": "{{count}} livraison(s) supprimée(s)",
+    "failedToDelete": "Échec de la suppression de {{count}} livraison(s)",
+    "filterByStatus": "Filtrer par statut",
+    "inProgress": "En cours",
+    "noDeliveriesMatch": "Aucune livraison ne correspond à votre recherche",
+    "searchPlaceholder": "Rechercher une livraison...",
+    "status": "Statut"
   },
   "deliverer": {
     "dashboard": {
@@ -687,6 +717,16 @@
         "call": "Appeler",
         "viewDetails": "Voir les détails"
       }
+    },
+    "map": {
+      "loadingMap": "Chargement de la carte...",
+      "loadingLocations": "Chargement des emplacements...",
+      "geocodingError": "Impossible de charger les emplacements de livraison",
+      "noDeliveries": "Aucune livraison à afficher",
+      "yourLocation": "Votre emplacement",
+      "navigate": "Naviguer",
+      "call": "Appeler",
+      "viewDetails": "Voir les détails"
     }
   },
   "deliverers": {
@@ -862,7 +902,9 @@
     "description": "Votre plateforme intelligente de gestion de vente au détail",
     "devLoginMaster": "Connexion Dev (Master)",
     "devLoginWorker": "Dev Employé",
-    "devLoginDeliverer": "Dev Livreur"
+    "devLoginDeliverer": "Dev Livreur",
+    "accessGranted": "Accès autorisé",
+    "invalidPassword": "Mot de passe incorrect"
   },
   "export": {
     "title": "Exporter les données",
@@ -965,7 +1007,8 @@
         "items": "{{count}} articles au panier",
         "pay": "Payer / Finaliser",
         "clear": "Vider le panier"
-      }
+      },
+      "quantityTooHigh": "Quantité plafonnée à 9999"
     },
     "inventory": {
       "search": "Rechercher dans l'inventaire...",
@@ -1005,7 +1048,8 @@
         "discountAmount": "Remise (Montant)",
         "total": "Total"
       },
-      "stock": "Stock"
+      "stock": "Stock",
+      "searchPrompt": "Rechercher un crédit..."
     },
     "totals": {
       "customer": "Client",
@@ -1029,7 +1073,8 @@
     "stockLow": "Stock Bas",
     "stockNormal": "En Stock",
     "currentLine": "Ligne actuelle",
-    "lineTotal": "Total ligne"
+    "lineTotal": "Total ligne",
+    "searchPrompt": "Tapez au moins 2 lettres pour rechercher..."
   },
   "menu": {
     "sales": {
@@ -1120,7 +1165,10 @@
         "broken": "Cassé / Endommagé",
         "theft": "Vol",
         "other": "Autre"
-      }
+      },
+      "saleShort": "Vente",
+      "paymentShort": "Paiement",
+      "purchaseShort": "Achat"
     },
     "stock": {
       "trigger": "Stock",
@@ -1386,7 +1434,10 @@
       "sectionHistory": "Historique (Achats & Paiements)",
       "refresh": "Actualiser",
       "selectDate": "Choisir une date",
-      "minStock": "Stock Minimum"
+      "minStock": "Stock Minimum",
+      "keyboardShortcuts": "Raccourcis Clavier",
+      "revenue": "Chiffre d'Affaires",
+      "stockListing": "Listing du Stock"
     }
   },
   "customer": {
@@ -1435,7 +1486,8 @@
     "cameraAccessDenied": "Accès à la caméra requis",
     "enableCamera": "Veuillez activer l'accès à la caméra dans les paramètres de votre navigateur pour scanner les produits.",
     "instructions": "Dirigez la caméra vers le code-barres",
-    "scanError": "Erreur lors du scan"
+    "scanError": "Erreur lors du scan",
+    "codeScanned": "Code scanné"
   },
   "audit": {
     "actionType": "Type d'Action",
@@ -1452,7 +1504,10 @@
     "resetMessage": "Base de données réinitialisée. Actualisation...",
     "wiped": "Effacé",
     "sessionExpired": "Session expirée. Veuillez vous reconnecter.",
-    "errorLoadingLogs": "Erreur lors du chargement des journaux"
+    "errorLoadingLogs": "Erreur lors du chargement des journaux",
+    "productCreation": "Création Produit",
+    "productUpdate": "Mise à jour Produit",
+    "repairConfirm": "Voulez-vous vraiment lancer la réparation de la base de données ?"
   },
   "printer": {
     "printSuccess": "Impression réussie",

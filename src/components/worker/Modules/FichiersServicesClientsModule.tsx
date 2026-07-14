@@ -158,7 +158,7 @@ export function FichiersServicesClientsModule({ storeId }: FichiersServicesClien
   };
 
   return (
-    <MasterPasswordGate moduleName={t('menu.files.clientGroups')}>
+    <MasterPasswordGate moduleName={t('menu.files.clientServices')}>
     <div className="h-full flex flex-col p-4 gap-4">
       {/* Header */}
       <div className="flex items-center gap-4">

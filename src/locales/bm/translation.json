@@ -63,7 +63,14 @@
     "enterConfirm": "ENTER: Dɔn",
     "escClose": "ESC: Datugu",
     "itemsFound": "{{count}} bɛnɛ sɔrɔla",
-    "totalPage": "Bɛɛ fan bɛɛ"
+    "totalPage": "Bɛɛ fan bɛɛ",
+    "allStores": "Magasin bɛɛ",
+    "details": "Kunnafoniw",
+    "dueAmount": "Sara hakɛ",
+    "saveSuccess": "Mara kɛra ka ɲɛ",
+    "select": "Sugandi",
+    "selectStore": "Ka magasin sugandi",
+    "unknownError": "Foli kɛra"
   },
   "helpCenter": {
     "title": "Dɛmɛ Yɔrɔ",
@@ -232,6 +239,10 @@
       "motorbike": "Moto",
       "van": "Camionnette",
       "truck": "Camion"
+    },
+    "dialogs": {
+      "deleteTitle": "Mɔgɔ bɔ",
+      "deleteDesc": "I b'a fɛ ka jɛkulu mɔgɔ in bɔ cogo min tɛ se ka segin?"
     }
   },
   "dashboard": {
@@ -271,6 +282,9 @@
       "status1": "Kalo sɔrɔ: {{amount}}",
       "status2": "Magasin bɛ baara la: {{count}}",
       "status3": "Bɛnɛ minnu bɛ ka ɲɛnabɔ: {{count}}"
+    },
+    "metrics": {
+      "inventoryValue": "Bɛnɛ sɔngɔ"
     }
   },
   "analytics": {
@@ -420,7 +434,9 @@
       "familyOrCategory": "Jamu / Bɔlɔ",
       "price2": "Sɔngɔ 2nan",
       "price3": "Sɔngɔ 3nan",
-      "price4": "Sɔngɔ 4nan"
+      "price4": "Sɔngɔ 4nan",
+      "unit": "Unité",
+      "minStock": "Stock dɔgɔman"
     },
     "selectStore": "Ka magasin sugandi",
     "editItemDescription": "Ka bɛnɛ kunnafoni yɛlɛma",
@@ -436,7 +452,8 @@
       "updateItem": "Bɛnɛ yɛlɛmali tɛ ɲɛ",
       "createItem": "Bɛnɛ dabɔli tɛ ɲɛ",
       "deleteItem": "Bɛnɛ bɔli tɛ ɲɛ",
-      "bulkDelete": "Bɛnɛ {{count}} bɔli tɛ ɲɛ"
+      "bulkDelete": "Bɛnɛ {{count}} bɔli tɛ ɲɛ",
+      "authRequired": "Donni ka kan ka kɛ"
     },
     "success": {
       "updateItem": "Bɛnɛ yɛlɛmara ka ɲɛ",
@@ -498,7 +515,10 @@
     "sellingPrice": "Feere sɔngɔ",
     "purchasePrice": "San sɔngɔ",
     "currentLine": "Sira bɛ yen",
-    "lineTotal": "Sira bɛɛ"
+    "lineTotal": "Sira bɛɛ",
+    "packaging": "Conditionnement",
+    "selectItemDetails": "Bɛnɛ sugandi ka kunnafoni lajɛ",
+    "allFamilies": "Dugu bɛɛ"
   },
   "stores": {
     "title": "Magasin",
@@ -644,12 +664,24 @@
         "phone": "Telefɔni",
         "address": "Adɛrɛsi",
         "status": "Ka ɲɛ",
-        "deliverer": "Di kɛla"
+        "deliverer": "Di kɛla",
+        "date": "Don"
       }
     },
     "awaitingAssignment": "Ka bila bila",
     "inTransit": "Ka taa",
-    "trackAndManage": "Di ɲɛnabɔ"
+    "trackAndManage": "Di ɲɛnabɔ",
+    "allStatuses": "Ka ɲɛ bɛɛ",
+    "completed": "Ka kɛ",
+    "customerPhone": "Jatigɛ telefɔni",
+    "date": "Don",
+    "deletedDeliveries": "Di {{count}} bɔra",
+    "failedToDelete": "Di {{count}} bɔli tɛ ɲɛ",
+    "filterByStatus": "Ka ɲɛ fili",
+    "inProgress": "Ka taa",
+    "noDeliveriesMatch": "Di si tɛ sɔrɔ",
+    "searchPlaceholder": "Ka di ɲini...",
+    "status": "Ka ɲɛ"
   },
   "deliverer": {
     "dashboard": {
@@ -695,6 +727,16 @@
         "call": "Ka wele",
         "viewDetails": "Ka kunnafoni lajɛ"
       }
+    },
+    "map": {
+      "loadingMap": "Ka karti kɛ...",
+      "loadingLocations": "Ka yɔrɔw kɛ...",
+      "geocodingError": "Di yɔrɔw ma se ka sɔrɔ",
+      "noDeliveries": "Di tɛ yen",
+      "yourLocation": "I ka yɔrɔ",
+      "navigate": "Ka taa",
+      "call": "Ka wele",
+      "viewDetails": "Ka kunnafoni lajɛ"
     }
   },
   "deliverers": {
@@ -870,7 +912,9 @@
     "description": "I ka retail ɲɛnabɔli sira",
     "devLoginMaster": "Dev Don (Master)",
     "devLoginWorker": "Dev Baarakɛla",
-    "devLoginDeliverer": "Dev Di kɛla"
+    "devLoginDeliverer": "Dev Di kɛla",
+    "accessGranted": "Donni sɔnna",
+    "invalidPassword": "Gafɛ tɛ bɛn"
   },
   "export": {
     "title": "Ka kunnafoni bɔ",
@@ -973,7 +1017,8 @@
         "items": "Fen {{count}} panyi kɔnɔ",
         "pay": "Sara / Da",
         "clear": "Panyi bɔ"
-      }
+      },
+      "quantityTooHigh": "Jɛlen dan ye 9999 ye"
     },
     "inventory": {
       "search": "Ka bɛnɛ ɲini...",
@@ -1013,7 +1058,8 @@
         "discountAmount": "Dɔgɔyali (Wari)",
         "total": "Bɛɛ"
       },
-      "stock": "Bɛnɛ"
+      "stock": "Bɛnɛ",
+      "searchPrompt": "Ka juru ɲini..."
     },
     "totals": {
       "customer": "Jatigɛ",
@@ -1037,7 +1083,8 @@
     "stockLow": "Bɛnɛ dɔgɔma",
     "stockNormal": "Bɛnɛ bɛ",
     "currentLine": "Sira bɛ yen",
-    "lineTotal": "Sira bɛɛ"
+    "lineTotal": "Sira bɛɛ",
+    "searchPrompt": "Sɛbɛn lɛta fila (2) walasa ka ɲini..."
   },
   "menu": {
     "sales": {
@@ -1141,7 +1188,8 @@
       "recordExpenseDescription": "Wari bɔli kunnafoni...",
       "saleShort": "FEERE",
       "paymentShort": "SARA",
-      "purchaseShort": "SANNI"
+      "purchaseShort": "SANNI",
+      "confirmLoss": "Ka bɔli dafa: {{name}} (hakɛ {{qty}})?"
     },
     "stock": {
       "trigger": "Stock",
@@ -1391,7 +1439,25 @@
       "scheduleDayPlaceholder": "Don (1-7) wala Don",
       "sectionPricesConditions": "Songo ani Ɲɛtaa",
       "sectionHistory": "Tariku (Sɔrɔ & Sara)",
-      "refresh": "Ka Kura"
+      "refresh": "Ka Kura",
+      "keyboardShortcuts": "Digi Programm",
+      "revenue": "Sɔrɔ",
+      "stockListing": "Stock Lisiti",
+      "actual": "JATELEN",
+      "billCounting": "WARI JATE (BILLETAGE)",
+      "bills": "Fakitiriw",
+      "cashClosing": "CAISSE DABILA",
+      "cashClosingDetails": "CAISSE DABILA JATE",
+      "credit": "Crédit",
+      "debit": "Débit",
+      "difference": "DANNA",
+      "expected": "KƆNƆ",
+      "items": "Bɛnɛw",
+      "last7Days": "Don 7 Laban",
+      "runningBalance": "Solde Yɛlɛmali",
+      "selectDate": "Don sugandi",
+      "today": "Bi",
+      "transaction": "Baara"
     }
   },
   "customer": {
@@ -1440,7 +1506,8 @@
     "cameraAccessDenied": "Kamera sɔrɔ ka kan",
     "enableCamera": "I ka kamera sɔrɔ bila ka se ka fenw scan.",
     "instructions": "Kamera bila barcode kan",
-    "scanError": "Scan juguman"
+    "scanError": "Scan juguman",
+    "codeScanned": "Code scan kɛra"
   },
   "audit": {
     "actionType": "Baara cogo",
@@ -1457,7 +1524,10 @@
     "resetMessage": "Database bɔra. Ka page kura daminɛ...",
     "wiped": "Bɔra",
     "sessionExpired": "Tuma banna. Ka don kura.",
-    "errorLoadingLogs": "Journaux kɛli tɛ ɲɛ"
+    "errorLoadingLogs": "Journaux kɛli tɛ ɲɛ",
+    "productCreation": "Bɛnɛ dabɔli",
+    "productUpdate": "Bɛnɛ yɛlɛmali",
+    "repairConfirm": "I b'a fɛ ka database ladigi wa?"
   },
   "printer": {
     "printSuccess": "Ka bɔ papye kan ka ɲɛ",
