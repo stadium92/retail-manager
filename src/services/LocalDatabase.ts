@@ -3,7 +3,7 @@
  */
 
 const DB_NAME = 'retail_manager_offline';
-const DB_VERSION = 9; // Upgraded for cash_closings
+const DB_VERSION = 10; // Upgraded for cashier_credits + stock_adjustments
 
 export interface LocalCashClosing {
   id: string;
@@ -114,6 +114,31 @@ export interface LocalInventory {
   synced: boolean;
 }
 
+export interface LocalCashierCredit {
+  id: string;
+  store_id: string;
+  worker_id?: string;
+  client_name: string;
+  amount: number;
+  status: string;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+  synced: boolean;
+}
+
+export interface LocalStockAdjustment {
+  id: string;
+  store_id: string;
+  worker_id?: string;
+  product_id: string;
+  adjustment_type: string;
+  quantity_adjusted: number;
+  reason?: string | null;
+  created_at: string;
+  synced: boolean;
+}
+
 export interface LocalPurchaseOrder {
   id: string;
   store_id: string;
@@ -129,7 +154,7 @@ export interface LocalPurchaseOrder {
 
 export interface SyncQueueItem {
   id: string;
-  type: 'user_create' | 'user_update' | 'user_delete' | 'role_create' | 'role_delete' | 'sale' | 'sale_delete' | 'inventory_update' | 'inventory_delete' | 'delivery_update' | 'store_create' | 'store_update' | 'pending_mutation' | 'supplier_create' | 'supplier_update' | 'supplier_payment' | 'purchase_create' | 'purchase_update' | 'password_change';
+  type: 'user_create' | 'user_update' | 'user_delete' | 'role_create' | 'role_delete' | 'sale' | 'sale_delete' | 'inventory_update' | 'inventory_delete' | 'delivery_update' | 'store_create' | 'store_update' | 'store_delete' | 'pending_mutation' | 'supplier_create' | 'supplier_update' | 'supplier_payment' | 'purchase_create' | 'purchase_update' | 'password_change';
   data: any;
   timestamp: number;
   retries: number;
@@ -186,6 +211,8 @@ class LocalDatabaseService {
             { name: 'purchase_orders', indexes: ['store_id', 'status', 'synced'] },
             { name: 'purchase_items', indexes: ['order_id'] },
             { name: 'cash_closings', indexes: ['store_id', 'synced'] },
+            { name: 'cashier_credits', indexes: ['store_id', 'synced'] },
+            { name: 'stock_adjustments', indexes: ['store_id', 'synced'] },
             { name: 'sync_queue', indexes: ['type', 'timestamp'] },
             { name: 'system_settings', indexes: [] }
         ];
@@ -229,6 +256,81 @@ class LocalDatabaseService {
       const req = storeId ? store.index('store_id').getAll(storeId) : store.getAll();
       req.onsuccess = () => r(req.result || []);
     });
+  }
+
+  async markCashClosingSynced(id: string): Promise<void> {
+    const db = await this.ensureDb();
+    const tx = db.transaction('cash_closings', 'readwrite');
+    const store = tx.objectStore('cash_closings');
+    const req = store.get(id);
+    req.onsuccess = () => {
+        if (req.result) {
+            req.result.synced = true;
+            store.put(req.result);
+        }
+    };
+  }
+
+  // ==================== CASHIER CREDITS ====================
+
+  async saveCashierCredit(credit: LocalCashierCredit): Promise<void> {
+    const db = await this.ensureDb();
+    const tx = db.transaction('cashier_credits', 'readwrite');
+    tx.objectStore('cashier_credits').put(credit);
+  }
+
+  async getCashierCredits(storeId?: string): Promise<LocalCashierCredit[]> {
+    const db = await this.ensureDb();
+    return new Promise(r => {
+      const store = db.transaction('cashier_credits', 'readonly').objectStore('cashier_credits');
+      const req = storeId ? store.index('store_id').getAll(storeId) : store.getAll();
+      req.onsuccess = () => r(req.result || []);
+      req.onerror = () => r([]);
+    });
+  }
+
+  async markCashierCreditSynced(id: string): Promise<void> {
+    const db = await this.ensureDb();
+    const tx = db.transaction('cashier_credits', 'readwrite');
+    const store = tx.objectStore('cashier_credits');
+    const req = store.get(id);
+    req.onsuccess = () => {
+        if (req.result) {
+            req.result.synced = true;
+            store.put(req.result);
+        }
+    };
+  }
+
+  // ==================== STOCK ADJUSTMENTS ====================
+
+  async saveStockAdjustment(adjustment: LocalStockAdjustment): Promise<void> {
+    const db = await this.ensureDb();
+    const tx = db.transaction('stock_adjustments', 'readwrite');
+    tx.objectStore('stock_adjustments').put(adjustment);
+  }
+
+  async getStockAdjustments(storeId?: string): Promise<LocalStockAdjustment[]> {
+    const db = await this.ensureDb();
+    return new Promise(r => {
+      const store = db.transaction('stock_adjustments', 'readonly').objectStore('stock_adjustments');
+      const req = storeId ? store.index('store_id').getAll(storeId) : store.getAll();
+      req.onsuccess = () => r(req.result || []);
+      req.onerror = () => r([]);
+    });
+  }
+
+  async markStockAdjustmentSynced(id: string): Promise<void> {
+    const db = await this.ensureDb();
+    const tx = db.transaction('stock_adjustments', 'readwrite');
+    const store = tx.objectStore('stock_adjustments');
+    const req = store.get(id);
+    req.onsuccess = () => {
+        if (req.result) {
+            req.result.synced = true;
+            store.put(req.result);
+        }
+    };
   }
 
   // ==================== PURCHASE ORDERS ====================
@@ -402,11 +504,37 @@ class LocalDatabaseService {
     });
   }
 
+  async markUserSynced(id: string): Promise<void> {
+    const db = await this.ensureDb();
+    const tx = db.transaction('users', 'readwrite');
+    const store = tx.objectStore('users');
+    const req = store.get(id);
+    req.onsuccess = () => {
+        if (req.result) {
+            req.result.synced = true;
+            store.put(req.result);
+        }
+    };
+  }
+
   // ==================== ROLES ====================
 
   async saveRole(role: LocalRole): Promise<void> {
     const db = await this.ensureDb();
     db.transaction('roles', 'readwrite').objectStore('roles').put(role);
+  }
+
+  async markRoleSynced(id: string): Promise<void> {
+    const db = await this.ensureDb();
+    const tx = db.transaction('roles', 'readwrite');
+    const store = tx.objectStore('roles');
+    const req = store.get(id);
+    req.onsuccess = () => {
+        if (req.result) {
+            req.result.synced = true;
+            store.put(req.result);
+        }
+    };
   }
 
   async getAllRoles(): Promise<LocalRole[]> {
@@ -523,6 +651,19 @@ class LocalDatabaseService {
     db.transaction('inventory', 'readwrite').objectStore('inventory').delete(id);
   }
 
+  async markInventorySynced(id: string): Promise<void> {
+    const db = await this.ensureDb();
+    const tx = db.transaction('inventory', 'readwrite');
+    const store = tx.objectStore('inventory');
+    const req = store.get(id);
+    req.onsuccess = () => {
+        if (req.result) {
+            req.result.synced = true;
+            store.put(req.result);
+        }
+    };
+  }
+
   // ==================== SYNC QUEUE ====================
 
   async addToSyncQueue(item: SyncQueueItem): Promise<void> {
@@ -612,6 +753,19 @@ class LocalDatabaseService {
       const req = storeId ? store.index('store_id').getAll(storeId) : store.getAll();
       req.onsuccess = () => r(req.result || []);
     });
+  }
+
+  async markProductFamilySynced(id: string): Promise<void> {
+    const db = await this.ensureDb();
+    const tx = db.transaction('product_families', 'readwrite');
+    const store = tx.objectStore('product_families');
+    const req = store.get(id);
+    req.onsuccess = () => {
+        if (req.result) {
+            req.result.synced = true;
+            store.put(req.result);
+        }
+    };
   }
 
   // ==================== UTILITIES ====================
