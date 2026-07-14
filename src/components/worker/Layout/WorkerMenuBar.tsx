@@ -183,42 +183,11 @@ export function WorkerMenuBar({ activeModule, onModuleChange, className, isMaste
     },
   ];
 
-  const filteredMenuStructure = menuStructure
-    .filter(section => {
-      if (!isMaster) {
-        // Workers only see Sales and Stock menus
-        return section.triggerKey === 'menu.sales.trigger' || section.triggerKey === 'menu.stock.trigger';
-      }
-      return true;
-    })
-    .map(section => {
-      if (!isMaster) {
-        if (section.triggerKey === 'menu.sales.trigger') {
-          return {
-            ...section,
-            items: section.items.filter(item => 
-              item.separator || (item.module && [
-                'vente-detail', 
-                'facturation-detail', 
-                'facturation-gros', 
-                'proforma', 
-                'fermeture-caisse',
-                'suivi-ventes-jour'
-              ].includes(item.module))
-            )
-          };
-        }
-        if (section.triggerKey === 'menu.stock.trigger') {
-          return {
-            ...section,
-            items: section.items.filter(item => 
-              item.module === 'inventaire-stock'
-            )
-          };
-        }
-      }
-      return section;
-    });
+  // WorkerMenuBar only ever renders on desktop (WorkerLayout branches to
+  // MobileWorkerLayout/MobileMenuScreen on mobile, which has its own,
+  // separate Ventes+Stock-only restriction for non-master workers). Desktop
+  // always shows the full worker menu regardless of role.
+  const filteredMenuStructure = menuStructure;
 
   const isModuleInSection = (section: MenuSection) => {
     return section.items.some((item) => {
