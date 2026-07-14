@@ -356,8 +356,23 @@ export class OfflineAuthService {
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             };
-            const { error } = await supabase.from('cashier_credits').insert(mapped);
-            if (error) throw error;
+            // Try the direct write when online; if that fails (or we're
+            // offline to begin with) fall back to IndexedDB so the credit
+            // isn't lost - SyncService.syncUnsyncedCashierCredits() pushes
+            // it once back online, mirroring OfflineSalesService.createSale().
+            if (navigator.onLine) {
+              try {
+                const { error } = await supabase.from('cashier_credits').insert(mapped);
+                if (error) throw error;
+                return mapped as any;
+              } catch (e) {
+                console.warn('[OfflineAuthService] cashier_credits insert failed, saving locally for retry:', e);
+              }
+            }
+            const { LocalDatabase } = await import('./LocalDatabase');
+            await LocalDatabase.init();
+            await LocalDatabase.saveCashierCredit({ ...mapped, synced: false });
+            window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'cashier_credit' } }));
             return mapped as any;
           } else if (init.method === 'PATCH' && id) {
             const body = JSON.parse(init.body as string);
@@ -377,19 +392,25 @@ export class OfflineAuthService {
               return { success: true } as any;
             }
           } else {
+            const urlObj = new URL(`http://localhost${path}`);
+            const storeId = urlObj.searchParams.get('store_id') || undefined;
+            const { LocalDatabase } = await import('./LocalDatabase');
+            await LocalDatabase.init();
             try {
-              const urlObj = new URL(`http://localhost${path}`);
-              const storeId = urlObj.searchParams.get('store_id');
               let query = supabase.from('cashier_credits').select('*');
               if (storeId) {
                 query = query.eq('store_id', storeId);
               }
               const { data, error } = await query;
               if (error) throw error;
-              return data as any;
+              // Merge in any locally-saved credits that haven't synced yet
+              // (created offline, or whose direct write above just failed)
+              // so they don't vanish from the list until the next sync.
+              const localUnsynced = (await LocalDatabase.getCashierCredits(storeId)).filter(c => !c.synced);
+              return [...(data || []), ...localUnsynced] as any;
             } catch (e) {
-              console.warn('[OfflineAuthService] Failed to query cashier_credits (may not exist in Supabase):', e);
-              return [] as any;
+              console.warn('[OfflineAuthService] Failed to query cashier_credits, falling back to local cache:', e);
+              return await LocalDatabase.getCashierCredits(storeId) as any;
             }
           }
         }
@@ -408,23 +429,40 @@ export class OfflineAuthService {
               reason: body.reason || null,
               created_at: new Date().toISOString()
             };
-            const { error } = await supabase.from('stock_adjustments').insert(mapped);
-            if (error) throw error;
+            // Same online-then-local-fallback pattern as cashier_credits
+            // above - a failed/offline stock adjustment used to throw
+            // straight out to the caller with nothing saved anywhere.
+            if (navigator.onLine) {
+              try {
+                const { error } = await supabase.from('stock_adjustments').insert(mapped);
+                if (error) throw error;
+                return mapped as any;
+              } catch (e) {
+                console.warn('[OfflineAuthService] stock_adjustments insert failed, saving locally for retry:', e);
+              }
+            }
+            const { LocalDatabase } = await import('./LocalDatabase');
+            await LocalDatabase.init();
+            await LocalDatabase.saveStockAdjustment({ ...mapped, synced: false });
+            window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'stock_adjustment' } }));
             return mapped as any;
           } else {
+            const urlObj = new URL(`http://localhost${path}`);
+            const storeId = urlObj.searchParams.get('store_id') || undefined;
+            const { LocalDatabase } = await import('./LocalDatabase');
+            await LocalDatabase.init();
             try {
-              const urlObj = new URL(`http://localhost${path}`);
-              const storeId = urlObj.searchParams.get('store_id');
               let query = supabase.from('stock_adjustments').select('*');
               if (storeId) {
                 query = query.eq('store_id', storeId);
               }
               const { data, error } = await query;
               if (error) throw error;
-              return data as any;
+              const localUnsynced = (await LocalDatabase.getStockAdjustments(storeId)).filter(a => !a.synced);
+              return [...(data || []), ...localUnsynced] as any;
             } catch (e) {
-              console.warn('[OfflineAuthService] Failed to query stock_adjustments (may not exist in Supabase):', e);
-              return [] as any;
+              console.warn('[OfflineAuthService] Failed to query stock_adjustments, falling back to local cache:', e);
+              return await LocalDatabase.getStockAdjustments(storeId) as any;
             }
           }
         }
@@ -433,11 +471,13 @@ export class OfflineAuthService {
         if (path.startsWith('/rest/v1/cash_register_closures')) {
           if (init.method === 'POST') {
             const body = JSON.parse(init.body as string);
-            const userRes = await supabase.auth.getUser();
+            // getSession() reads the cached session (no network round-trip),
+            // unlike getUser() - keeps this working while offline.
+            const { data: { session } } = await supabase.auth.getSession();
             const mapped = {
               id: crypto.randomUUID(),
               store_id: body.store_id,
-              worker_id: userRes.data.user?.id || null,
+              worker_id: session?.user?.id || null,
               opening_balance: Number(body.fonds_caisse || 0),
               expected_balance: Number(body.total_informatique || 0),
               actual_balance: Number(body.total_billetage || 0),
@@ -448,8 +488,24 @@ export class OfflineAuthService {
               created_at: body.date || new Date().toISOString(),
               updated_at: new Date().toISOString()
             };
-            const { error } = await supabase.from('cash_closings').insert(mapped);
-            if (error) throw error;
+            // Register closings are end-of-shift records - losing one because
+            // the connection dropped mid-submit is exactly the kind of data
+            // loss this pass is meant to close. Try direct write when online,
+            // otherwise (or on failure) persist locally for SyncService to
+            // push once back online (LocalCashClosing already tracks `synced`).
+            if (navigator.onLine) {
+              try {
+                const { error } = await supabase.from('cash_closings').insert(mapped);
+                if (error) throw error;
+                return { success: true } as any;
+              } catch (e) {
+                console.warn('[OfflineAuthService] cash_closings insert failed, saving locally for retry:', e);
+              }
+            }
+            const { LocalDatabase } = await import('./LocalDatabase');
+            await LocalDatabase.init();
+            await LocalDatabase.saveCashClosing({ ...mapped, synced: false });
+            window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'cash_closing' } }));
             return { success: true } as any;
           }
         }
