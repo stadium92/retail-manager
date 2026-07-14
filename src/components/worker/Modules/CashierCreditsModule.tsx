@@ -320,7 +320,7 @@ export function CashierCreditsModule({ storeId }: CashierCreditsModuleProps) {
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-background border-b-2 shadow-sm">
                 <TableRow className="bg-muted/50 border-b-2">
-                  <TableHead className="text-[10px] uppercase font-bold w-32">{t('program.date')}</TableHead>
+                  <TableHead className="text-[10px] uppercase font-bold w-32">{t('menu.program.date')}</TableHead>
                   <TableHead className="text-[10px] uppercase font-bold">{t('common.name')}</TableHead>
                   <TableHead className="text-[10px] uppercase font-bold text-right">{t('common.amount')}</TableHead>
                   <TableHead className="text-[10px] uppercase font-bold">Notes</TableHead>

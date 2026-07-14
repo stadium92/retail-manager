@@ -63,7 +63,14 @@
     "enterConfirm": "ENTER: Confirm",
     "escClose": "ESC: Close",
     "itemsFound": "{{count}} items found",
-    "totalPage": "TOTAL PAGE"
+    "totalPage": "TOTAL PAGE",
+    "allStores": "All Stores",
+    "details": "Details",
+    "dueAmount": "Amount Due",
+    "saveSuccess": "Saved successfully",
+    "select": "Select",
+    "selectStore": "Select a store",
+    "unknownError": "An error occurred"
   },
   "helpCenter": {
     "title": "Help Center",
@@ -182,6 +189,9 @@
       "status1": "Month Sales: {{amount}}",
       "status2": "Active Stores: {{count}}",
       "status3": "Items Needing Attention: {{count}}"
+    },
+    "metrics": {
+      "inventoryValue": "Inventory Value"
     }
   },
   "analytics": {
@@ -334,7 +344,8 @@
       "familyOrCategory": "Family / Category",
       "price2": "Price 2",
       "price3": "Price 3",
-      "price4": "Price 4"
+      "price4": "Price 4",
+      "unit": "Unit"
     },
     "selectStore": "Select store",
     "editItemDescription": "Update inventory item information",
@@ -350,7 +361,8 @@
       "updateItem": "Failed to update item",
       "createItem": "Failed to create item",
       "deleteItem": "Failed to delete item",
-      "bulkDelete": "Failed to delete {{count}} item(s)"
+      "bulkDelete": "Failed to delete {{count}} item(s)",
+      "authRequired": "Authentication required"
     },
     "success": {
       "updateItem": "Item updated successfully",
@@ -411,7 +423,9 @@
     "sellingPrice": "Selling Price",
     "purchasePrice": "Purchase Price",
     "currentLine": "Current Line",
-    "lineTotal": "Line Total"
+    "lineTotal": "Line Total",
+    "packaging": "Packaging",
+    "selectItemDetails": "Select an item to see details"
   },
   "stores": {
     "title": "Stores",
@@ -560,9 +574,21 @@
         "phone": "Phone",
         "address": "Address",
         "status": "Status",
-        "deliverer": "Deliverer"
+        "deliverer": "Deliverer",
+        "date": "Date"
       }
-    }
+    },
+    "allStatuses": "All Statuses",
+    "completed": "Completed",
+    "customerPhone": "Customer Phone",
+    "date": "Date",
+    "deletedDeliveries": "{{count}} deliveries deleted",
+    "failedToDelete": "Failed to delete {{count}} deliveries",
+    "filterByStatus": "Filter by status",
+    "inProgress": "In Progress",
+    "noDeliveriesMatch": "No deliveries match your search",
+    "searchPlaceholder": "Search deliveries...",
+    "status": "Status"
   },
   "deliverer": {
     "dashboard": {
@@ -608,6 +634,16 @@
         "call": "Call",
         "viewDetails": "View Details"
       }
+    },
+    "map": {
+      "loadingMap": "Loading map...",
+      "loadingLocations": "Loading locations...",
+      "geocodingError": "Could not load delivery locations",
+      "noDeliveries": "No deliveries to display",
+      "yourLocation": "Your Location",
+      "navigate": "Navigate",
+      "call": "Call",
+      "viewDetails": "View Details"
     }
   },
   "deliverers": {
@@ -783,7 +819,9 @@
     "description": "Your intelligent retail management platform",
     "devLoginMaster": "Dev Login (Master)",
     "devLoginWorker": "Dev Worker",
-    "devLoginDeliverer": "Dev Deliverer"
+    "devLoginDeliverer": "Dev Deliverer",
+    "accessGranted": "Access granted",
+    "invalidPassword": "Incorrect password"
   },
   "export": {
     "title": "Export Data",
@@ -886,7 +924,8 @@
         "items": "{{count}} items in cart",
         "pay": "Pay / Finalize",
         "clear": "Clear Cart"
-      }
+      },
+      "quantityTooHigh": "Quantity capped at 9999"
     },
     "inventory": {
       "search": "Search inventory...",
@@ -926,7 +965,8 @@
         "discountAmount": "Discount Amount",
         "total": "Total"
       },
-      "stock": "Stock"
+      "stock": "Stock",
+      "searchPrompt": "Search credits..."
     },
     "totals": {
       "customer": "Customer",
@@ -950,7 +990,8 @@
     "stockLow": "Low Stock",
     "stockNormal": "In Stock",
     "currentLine": "Current Line",
-    "lineTotal": "Line Total"
+    "lineTotal": "Line Total",
+    "searchPrompt": "Type at least 2 letters to search..."
   },
   "menu": {
     "sales": {
@@ -1040,7 +1081,11 @@
       "confirmLoss": "Confirm loss of {{qty}} units of {{name}}?",
       "lossHistory": "Loss History (Today)",
       "noLossToday": "No losses recorded today",
-      "currentStock": "Current Stock"
+      "currentStock": "Current Stock",
+      "recordExpense": "Record Expense",
+      "saleShort": "Sale",
+      "paymentShort": "Payment",
+      "purchaseShort": "Purchase"
     },
     "stock": {
       "trigger": "Stock",
@@ -1306,7 +1351,10 @@
       "runningBalance": "Running Balance",
       "transaction": "Transaction",
       "items": "Items",
-      "selectDate": "Select a date"
+      "selectDate": "Select a date",
+      "keyboardShortcuts": "Keyboard Shortcuts",
+      "revenue": "Revenue",
+      "stockListing": "Stock Listing"
     }
   },
   "customer": {
@@ -1355,7 +1403,8 @@
     "cameraAccessDenied": "Camera Access Required",
     "enableCamera": "Please enable camera access in your browser settings to scan products.",
     "instructions": "Point camera at barcode",
-    "scanError": "Scan error"
+    "scanError": "Scan error",
+    "codeScanned": "Code scanned"
   },
   "team": {
     "title": "Team Management",
@@ -1429,6 +1478,10 @@
       "createWorker": "Worker account created successfully",
       "createDeliverer": "Deliverer account created successfully",
       "deleteMember": "Team member removed successfully"
+    },
+    "dialogs": {
+      "deleteTitle": "Remove Team Member",
+      "deleteDesc": "Are you sure you want to remove this team member? This action cannot be undone."
     }
   },
   "audit": {
@@ -1446,7 +1499,10 @@
     "resetMessage": "Database has been reset. Refreshing...",
     "wiped": "Wiped",
     "sessionExpired": "Session expired. Please sign in again.",
-    "errorLoadingLogs": "Error loading logs"
+    "errorLoadingLogs": "Error loading logs",
+    "productCreation": "Product Creation",
+    "productUpdate": "Product Update",
+    "repairConfirm": "Are you sure you want to repair the database?"
   },
   "printer": {
     "printSuccess": "Print successful",
