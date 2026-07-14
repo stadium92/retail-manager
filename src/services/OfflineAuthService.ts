@@ -10,7 +10,8 @@ import { getDataClient } from '@/lib/dataClient';
 import { TokenManager } from '@/utils/tokenManager';
 import { smartFetch } from '@/lib/dataClient';
 import i18n from '@/i18n/config';
-import { supabase } from '../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+import { supabase, FALLBACK_SUPABASE_URL, FALLBACK_SUPABASE_ANON_KEY } from '../lib/supabase';
 
 /** Minimal User type replacing @supabase/supabase-js User */
 export interface User {
@@ -602,7 +603,7 @@ export class OfflineAuthService {
       
       if (!store_object && !store_id && finalRole === 'master') {
           const { data: stores } = await supabase
-            .from('restaurants')
+            .from('stores')
             .select('*')
             .eq('owner_id', data.user.id)
             .limit(1);
@@ -914,7 +915,26 @@ export class OfflineAuthService {
       }
     }
 
-    // Pure Cloud mode: Verify against master password cached in browser IndexedDB
+    // Pure Cloud mode: verify against the store's actual master account via
+    // the verify-master-password edge function (checks the real Supabase
+    // password server-side, since the client has no way to check another
+    // user's credentials directly). Falls back to the local IndexedDB cache
+    // (populated when this device's own login was a master) if the network
+    // call fails, so verification still works while briefly offline.
+    if (navigator.onLine) {
+      try {
+        const { data, error } = await supabase.functions.invoke('verify-master-password', {
+          body: { password },
+        });
+        if (!error && typeof data?.valid === 'boolean') {
+          return data.valid;
+        }
+        console.warn('[OfflineAuth] verify-master-password edge function error, falling back to local cache:', error);
+      } catch (e) {
+        console.warn('[OfflineAuth] verify-master-password call failed, falling back to local cache:', e);
+      }
+    }
+
     try {
       await LocalDatabase.init();
       const users = await LocalDatabase.getAllUsers();
@@ -932,6 +952,93 @@ export class OfflineAuthService {
       console.error('[OfflineAuth] verifyMasterPassword cloud fallback error:', e);
       return false;
     }
+  }
+
+  /**
+   * Change the current user's own password. Cloud mode verifies the current
+   * password via a stateless throwaway client (so it never disturbs the
+   * caller's live session), then updates the real Supabase Auth record, and
+   * also updates the local IndexedDB cache so verifyMasterPassword()'s
+   * offline fallback and any future offline login see the new password
+   * immediately. If offline, the local cache is updated right away and the
+   * Supabase update is retried automatically once back online.
+   */
+  static async changePassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
+    if (this.isLocalBridgeMode()) {
+      try {
+        const headers = await this.getAuthHeaders();
+        if (!headers) return { success: false, error: 'Session expired' };
+        const res = await this.localBridgeRequest<any>('/rest/v1/auth/update-password', {
+          method: 'POST',
+          body: JSON.stringify({ currentPassword, newPassword }),
+        });
+        return { success: true };
+      } catch (e: any) {
+        return { success: false, error: e?.message || 'Password update failed' };
+      }
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.email) {
+      return { success: false, error: 'No active session' };
+    }
+
+    if (navigator.onLine) {
+      try {
+        const verifyClient = createClient(
+          (import.meta.env.VITE_SUPABASE_URL as string) || FALLBACK_SUPABASE_URL,
+          (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || FALLBACK_SUPABASE_ANON_KEY,
+          { auth: { autoRefreshToken: false, persistSession: false } }
+        );
+        const { error: verifyErr } = await verifyClient.auth.signInWithPassword({
+          email: user.email,
+          password: currentPassword,
+        });
+        if (verifyErr) {
+          return { success: false, error: 'Current password is incorrect' };
+        }
+
+        const { error: updateErr } = await supabase.auth.updateUser({ password: newPassword });
+        if (updateErr) {
+          return { success: false, error: updateErr.message };
+        }
+
+        await this.cacheLocalPassword(user.id, user.email, newPassword);
+        return { success: true };
+      } catch (e: any) {
+        return { success: false, error: e?.message || 'Password update failed' };
+      }
+    }
+
+    // Offline: cache locally now, sync to Supabase on the next reconnect via
+    // the standard sync queue.
+    try {
+      await this.cacheLocalPassword(user.id, user.email, newPassword);
+      const { SyncService } = await import('./SyncService');
+      await SyncService.addToQueue({
+        type: 'password_change',
+        data: { userId: user.id, newPassword },
+      } as any);
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Failed to save password change offline' };
+    }
+  }
+
+  private static async cacheLocalPassword(userId: string, email: string, newPassword: string): Promise<void> {
+    await LocalDatabase.init();
+    const existing = await LocalDatabase.getUser(userId);
+    const passwordHash = LocalDatabase.hashPassword(newPassword);
+    await LocalDatabase.saveUser({
+      id: userId,
+      email,
+      password_hash: passwordHash,
+      full_name: existing?.full_name || '',
+      created_at: existing?.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      synced: existing?.synced ?? true,
+      is_active: existing?.is_active ?? true,
+    });
   }
 
   static async signIn(email: string, password: string): Promise<OfflineAuthResult> {
@@ -1057,7 +1164,7 @@ export class OfflineAuthService {
             .from('user_roles')
             .select('*')
             .eq('user_id', session.user.id);
-            
+
           if (!rolesErr && supaRoles && supaRoles.length > 0) {
             const roles: UserRole[] = supaRoles.map(r => ({
               id: r.id,
@@ -1067,12 +1174,43 @@ export class OfflineAuthService {
               sub_role: r.sub_role,
               created_at: r.created_at,
             }));
-            
+
             const storeId = roles.find(r => r.store_id)?.store_id;
             if (storeId) {
               session.user.user_metadata.store_id = storeId;
             }
-            
+
+            return {
+              user: session.user,
+              session: session as any,
+              roles,
+              isOffline: false,
+            };
+          }
+
+          // No explicit user_roles row - store owners are tracked via
+          // stores.owner_id instead, same fallback localBridgeSignIn() uses.
+          // Without this, an owner who signed in successfully (which does
+          // apply this fallback) gets logged out on the very next reload,
+          // since this function only ever checked user_roles.
+          const { data: ownedStores, error: storesErr } = await supabase
+            .from('stores')
+            .select('*')
+            .eq('owner_id', session.user.id)
+            .limit(1);
+
+          if (!storesErr && ownedStores && ownedStores.length > 0) {
+            const store = ownedStores[0];
+            session.user.user_metadata.store_id = store.id;
+
+            const roles: UserRole[] = [{
+              id: `${session.user.id}-master`,
+              user_id: session.user.id,
+              role: 'master' as AppRole,
+              store_id: store.id,
+              created_at: new Date().toISOString(),
+            }];
+
             return {
               user: session.user,
               session: session as any,
@@ -1085,7 +1223,7 @@ export class OfflineAuthService {
         console.warn('[OfflineAuthService] Direct cloud check failed, falling back to IndexedDB:', e);
       }
     }
-    
+
     return this.legacyGetOfflineSession();
   }
 

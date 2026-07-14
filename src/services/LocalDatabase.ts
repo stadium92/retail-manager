@@ -129,7 +129,7 @@ export interface LocalPurchaseOrder {
 
 export interface SyncQueueItem {
   id: string;
-  type: 'user_create' | 'user_update' | 'user_delete' | 'role_create' | 'role_delete' | 'sale' | 'sale_delete' | 'inventory_update' | 'inventory_delete' | 'delivery_update' | 'store_create' | 'store_update' | 'pending_mutation' | 'supplier_create' | 'supplier_update' | 'supplier_payment' | 'purchase_create' | 'purchase_update';
+  type: 'user_create' | 'user_update' | 'user_delete' | 'role_create' | 'role_delete' | 'sale' | 'sale_delete' | 'inventory_update' | 'inventory_delete' | 'delivery_update' | 'store_create' | 'store_update' | 'pending_mutation' | 'supplier_create' | 'supplier_update' | 'supplier_payment' | 'purchase_create' | 'purchase_update' | 'password_change';
   data: any;
   timestamp: number;
   retries: number;
