@@ -590,6 +590,28 @@ export class OfflineStoreService {
         return {};
       }
 
+      // Pure Cloud mode: previously this only removed the local cache entry
+      // and never touched Supabase, so a "deleted" store would reappear the
+      // next time getStores()/getWorkers() re-fetched from Supabase. Attempt
+      // the real delete now, and queue it for retry if offline or if it fails.
+      if (navigator.onLine) {
+        try {
+          const { error: supaErr } = await supabase.from('stores').delete().eq('id', id);
+          if (supaErr) throw supaErr;
+          return {};
+        } catch (supaErr) {
+          console.error('[OfflineStoreService] Supabase delete failed, queued for retry:', supaErr);
+        }
+      }
+
+      await LocalDatabase.addToSyncQueue({
+        id: crypto.randomUUID(),
+        type: 'store_delete',
+        data: { id },
+        timestamp: Date.now(),
+        retries: 0,
+      });
+
       return {};
     } catch (error) {
       return { error };
