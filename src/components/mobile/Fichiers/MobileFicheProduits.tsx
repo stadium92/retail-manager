@@ -215,17 +215,40 @@ export function MobileFicheProduits({ onBack }: MobileFicheProduitsProps) {
                 }
               }
             } else {
-              // Pure cloud mode
-              const { data: newFam, error: supaErr } = await supabase
-                .from('product_families')
-                .insert({ name: formData.family_id, store_id: storeId })
-                .select()
-                .single();
-              if (supaErr) throw supaErr;
-              if (newFam) {
-                finalFamilyId = newFam.id;
-                setFamilies(prev => [...prev, newFam]);
+              // Pure cloud mode: try the direct write when online; if that
+              // fails (or we're offline to begin with) fall back to
+              // IndexedDB rather than silently dropping the family and
+              // leaving the product without one - SyncService.
+              // syncUnsyncedProductFamilies() pushes it once back online.
+              let created: any = null;
+              if (navigator.onLine) {
+                try {
+                  const { data: newFam, error: supaErr } = await supabase
+                    .from('product_families')
+                    .insert({ name: formData.family_id, store_id: storeId })
+                    .select()
+                    .single();
+                  if (supaErr) throw supaErr;
+                  created = newFam;
+                } catch (supaErr) {
+                  console.warn('[MobileFicheProduits] product_families insert failed, saving locally for retry:', supaErr);
+                }
               }
+              if (!created) {
+                const { LocalDatabase } = await import('@/services/LocalDatabase');
+                await LocalDatabase.init();
+                const now = new Date().toISOString();
+                created = {
+                  id: crypto.randomUUID(),
+                  store_id: storeId,
+                  name: formData.family_id,
+                  created_at: now,
+                  updated_at: now,
+                };
+                await LocalDatabase.saveProductFamily({ ...created, synced: false });
+              }
+              finalFamilyId = created.id;
+              setFamilies(prev => [...prev, created]);
             }
           } catch(e) {
             console.error("Failed to create family on the fly", e);
