@@ -240,7 +240,12 @@ export const OfflineInventoryService = {
           await LocalDatabase.saveInventoryItem(mapToLocalInventory(newItem, true));
         }
       } else {
-        await LocalDatabase.saveInventoryItem(mapToLocalInventory(newItem, true));
+        // Web/Cloud fallback: save locally as unsynced first. Only flipped to
+        // synced:true below once the direct Supabase write actually succeeds -
+        // previously this always saved synced:true here, so an offline create
+        // (or one whose online write failed) was silently marked "done" and
+        // never retried.
+        await LocalDatabase.saveInventoryItem(mapToLocalInventory(newItem, false));
 
         if (navigator.onLine) {
           try {
@@ -278,13 +283,16 @@ export const OfflineInventoryService = {
               .from('products')
               .upsert(mapped);
 
-            if (supaErr) {
-              console.error('[OfflineInventory] Supabase product creation failed:', supaErr);
-            }
+            if (supaErr) throw supaErr;
+
+            await LocalDatabase.markInventorySynced(newItem.id);
           } catch (supaErr) {
-            console.error('[OfflineInventory] Supabase product creation exception:', supaErr);
+            console.error('[OfflineInventory] Supabase product creation failed, left unsynced for retry:', supaErr);
           }
         }
+        // If offline (or the write above failed), the item stays in
+        // IndexedDB with synced:false - SyncService.syncUnsyncedInventory()
+        // picks it up and pushes it once back online.
       }
       
       window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
@@ -326,7 +334,10 @@ export const OfflineInventoryService = {
           await LocalDatabase.saveInventoryItem(mapToLocalInventory(updated, true));
         }
       } else {
-        await LocalDatabase.saveInventoryItem(mapToLocalInventory(updated, true));
+        // Web/Cloud fallback: save locally as unsynced first, same rationale
+        // as createItem above - only mark synced once the Supabase update
+        // actually succeeds.
+        await LocalDatabase.saveInventoryItem(mapToLocalInventory(updated, false));
 
         if (navigator.onLine) {
           try {
@@ -368,13 +379,16 @@ export const OfflineInventoryService = {
               .update(mappedUpdates)
               .eq('id', id);
 
-            if (supaErr) {
-              console.error('[OfflineInventory] Supabase update failed:', supaErr);
-            }
+            if (supaErr) throw supaErr;
+
+            await LocalDatabase.markInventorySynced(id);
           } catch (supaErr) {
-            console.error('[OfflineInventory] Supabase update exception:', supaErr);
+            console.error('[OfflineInventory] Supabase update failed, left unsynced for retry:', supaErr);
           }
         }
+        // If offline (or the write above failed), the item stays in
+        // IndexedDB with synced:false - SyncService.syncUnsyncedInventory()
+        // picks it up and pushes it once back online.
       }
       
       window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'inventory' } }));
@@ -404,8 +418,14 @@ export const OfflineInventoryService = {
         }
         await LocalDatabase.deleteInventoryItem(id);
       } else {
+        // Remove from the local cache immediately (optimistic), but if the
+        // Supabase delete doesn't happen right now (offline, or it throws),
+        // queue it so SyncService retries it once back online - otherwise
+        // the product reappears locally on the next cloud fetch while never
+        // actually being removed from Supabase.
         await LocalDatabase.deleteInventoryItem(id);
 
+        let deletedOnline = false;
         if (navigator.onLine) {
           try {
             const { error: supaErr } = await supabase
@@ -413,12 +433,21 @@ export const OfflineInventoryService = {
               .delete()
               .eq('id', id);
 
-            if (supaErr) {
-              console.error('[OfflineInventory] Supabase delete failed:', supaErr);
-            }
+            if (supaErr) throw supaErr;
+            deletedOnline = true;
           } catch (supaErr) {
-            console.error('[OfflineInventory] Supabase delete exception:', supaErr);
+            console.error('[OfflineInventory] Supabase delete failed, queued for retry:', supaErr);
           }
+        }
+
+        if (!deletedOnline) {
+          await LocalDatabase.addToSyncQueue({
+            id: crypto.randomUUID(),
+            type: 'inventory_delete',
+            data: { id },
+            timestamp: Date.now(),
+            retries: 0,
+          });
         }
       }
 
