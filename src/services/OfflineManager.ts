@@ -114,6 +114,14 @@ export class OfflineManager {
   }
 
   static setupAutoSync(syncHandlers: any): void {
+    // Drain anything left over from a previous session immediately, rather
+    // than only on the next offline->online transition - otherwise items
+    // queued while online (e.g. a direct write that failed) sit untouched
+    // for the rest of a session that never toggles network state.
+    if (navigator.onLine && this.getQueueSize() > 0) {
+      this.syncQueue(syncHandlers);
+    }
+
     window.addEventListener('online', () => {
       toast({
         title: i18n.t('sync.backOnline'),
