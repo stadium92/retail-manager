@@ -1,6 +1,6 @@
 [submodule "retail-manager-stores"]
 	path = Djati-stores
-	url = https://github.com/mohcly/retail-manager-stores.git
+	url = https://github.com/mohcly/Djati-stores.git
 [submodule "retail-manager-restaurant"]
 	path = Djati-restaurants
 	url = https://github.com/mohcly/Djati-restaurant.git

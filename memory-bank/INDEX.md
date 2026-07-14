@@ -47,8 +47,21 @@ Located in: `chat/`
 ## 🎯 Core Operations Hub
 
 ### Core Directory Structure
-Located in: `core/`
-- Ready for project context, progress tracking, and task management
+Located in: `core/` — **populated 2026-07-13**. Canonical Cline-style context files now live at the
+`core/` root (older copies remain under `core/context/` and `core/progress/` for history).
+- **[`core/projectbrief.md`](core/projectbrief.md)** — mission, objectives, product surfaces, success criteria.
+- **[`core/productContext.md`](core/productContext.md)** — why it exists, problems solved, four-sided users, monetization.
+- **[`core/activeContext.md`](core/activeContext.md)** — current branch/versions, focus (monorepo, Edition/Sales refactor, STIHL builds, PRD-014 sync), blockers, next steps.
+- **[`core/systemPatterns.md`](core/systemPatterns.md)** — repo/submodule topology, Tauri sidecar + repository patterns, offline-first, Windows-VM safety protocols.
+- **[`core/techContext.md`](core/techContext.md)** — stack, versions, backend layout, multi-platform build.
+- **[`core/progress.md`](core/progress.md)** — done / in-progress / backlog snapshot.
+- **[`core/tasks.md`](core/tasks.md)** — detailed granular roadmap (see 2026-07-13 status reconciliation at top).
+- **Legacy**: `core/context/` (projectbrief, activeContext, systemPatterns, techContext, incident_build_macos, windows_build_pattern) and `core/progress/progress.md`.
+
+### Parent Portfolio & Sibling Projects
+- **Parent portfolio bank**: [`../../memory-bank/`](../../memory-bank/INDEX.md) (`MVP/Pro/memory-bank/`) — the umbrella that lists this project as a child.
+- **Sibling `retail-manager-stores`** (git submodule; React/Vite web app, Vercel-deployable): has its own bank at [`../retail-manager-stores/memory-bank/`](../retail-manager-stores/memory-bank/INDEX.md).
+- **Sibling `retail-manager-restaurant`** (git submodule; `restomanager` restaurant variant): shares this architecture.
 
 ---
 
@@ -161,7 +174,8 @@ Located in: `van-docs/`
 | **Feature Brainstorming** | `docs/` | `feature_brainstorming.md` |
 | **Offline/Hybrid PRD** | `docs/` | `offline_hybrid_refactor_prd.md` |
 | **Offline/Hybrid Plan** | `docs/` | `offline_hybrid_refactor_plan.md` |
-| **Core Operations** | `core/` | Future core files |
+| **Core Context (brief/product/active/system/tech/progress)** | `core/` | `core/activeContext.md` |
+| **Detailed Roadmap** | `core/` | `core/tasks.md` |
 | **Planning** | `planning/` | Future planning docs |
 | **AI Features** | `ai/` | Future AI implementations |
 | **Analysis** | `analysis/` | Future research data |
@@ -188,7 +202,7 @@ Located in: `van-docs/`
 
 ## 📝 Index Maintenance
 
-**Last Updated**: Split Lovable.dev prompt into 3 phases for incremental development
+**Last Updated**: 2026-07-13 — populated `core/` canonical context files (projectbrief, productContext, activeContext, systemPatterns, techContext, progress) and reconciled `core/tasks.md` with the monorepo/submodule restructure, completed db.ts repository refactor, and partial PRD-014 sync. (Prior: split Lovable.dev prompt into 3 phases.)
 **Total Files Indexed**: 8 files (PRD + Frontend Prompt Complete + 3 Phase Prompts + Interface Architecture + Four-Sided Architecture + Feature Brainstorming)
 **Categories**: 6 main functional categories
 **Status**: Memory bank initialized, ready for development

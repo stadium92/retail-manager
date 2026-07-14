@@ -4,6 +4,32 @@ This document tracks granular progress toward the v1.0 release. All technical lo
 
 ---
 
+## 🔄 Status Reconciliation — 2026-07-13
+
+*Added to correct stale checkboxes below without rewriting history. Ground truth from the repo:*
+
+- **Branch**: `chore/monorepo-submodules` (not the STIHL feature branches, which exist separately:
+  `feat/stihl-dibidani`, `feat/stihl-niamakoro`, `feat/stihl-centenary-edition`, `feat/moe-stihl-templates`,
+  `feat/niamanan-dubai`). Versions: root `1.0.0`, Tauri app `0.2.5`, `retail-manager-stores` frontend `0.5.5`.
+- **Repo topology**: now a **monorepo with git submodules** — `retail-manager-stores` (React/Vite frontend,
+  also Vercel-deployable) and `retail-manager-restaurant` (restaurant variant). `retail-manager-mobile`
+  was retired and folded into stores.
+- **Phase 8 (Tasks 30–33: split `db.ts` into repositories) — ✅ COMPLETE.** `backend/local-bridge/src/db.ts`
+  no longer exists; it is replaced by `db/{connection,schema,migrations,types,index}.ts` plus ~19
+  `db/repositories/*.repo.ts` (auth, stores, products, sales, purchasing, suppliers, clients,
+  client_services, deliveries, inventory, analytics, scheduling, replenishment, invitations, audit,
+  sync, sync_outbox, cash, + sync_helpers). The unchecked `[ ]` boxes in Phase 8 are stale — treat as done.
+- **Phase 10 (Task 35: PRD-014 Offline→Online Sync) — 🚧 PARTIALLY DONE.** `sync_outbox.repo.ts`,
+  `sync_helpers.ts`, and `cash.repo.ts` are present (35.1–35.3 scaffolded). Still open: version columns on
+  synced entities, cloud `/sync/handshake|push|pull` endpoints, idempotency/conflict rules, background
+  worker, admin diagnostics, and the 48h-offline pilot (35.4–35.8).
+- **Current focus**: monorepo submodule hygiene, `EditionModule.tsx` / `SalesModule.tsx` refactor
+  (`retail-manager-stores/src/components/worker/Modules/`), STIHL client-branded builds, and finishing
+  PRD-014 sync. Recently completed: currency GHS/XOF, stock-valuation fix, product-family fix,
+  client-service auto-discount.
+
+---
+
 ## ✅ Recent Completed (P0)
 
 ### 0. Currency Support (Ghanaian Cedis)
