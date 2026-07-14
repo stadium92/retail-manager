@@ -43,6 +43,15 @@ export function ShortcutsProvider({ children }: { children: React.ReactNode }) {
   // Global Key Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Safari's autofill (iOS in particular) dispatches synthetic keydown-like
+      // events with no .key string set - e.g. from its internal
+      // _autoFillControlWithValueRecursively machinery when filling saved
+      // credentials on the login form. Bail out rather than crash on
+      // e.key.startsWith()/.toLowerCase() below.
+      if (typeof e.key !== 'string') {
+        return;
+      }
+
       // Always allow F1 for help
       if (e.key === 'F1') {
         e.preventDefault();

@@ -75,6 +75,12 @@ export function ScannerProvider({ children }: { children: React.ReactNode }) {
 
     // 2. Global Key Listener (for HID Keyboard Emulation scanners)
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Safari's autofill (iOS in particular) dispatches synthetic keydown-like
+      // events with no .key string set. Bail out rather than crash below on
+      // e.key.length for one of these (this listener is mounted globally,
+      // active on the login page too).
+      if (typeof e.key !== 'string') return;
+
       // Ignore modifier keys
       if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) return;
 
