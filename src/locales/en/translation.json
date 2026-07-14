@@ -125,7 +125,12 @@
     "analytics": "Analytics",
     "invitations": "Invitations",
     "team": "Team",
-    "systemLogs": "System Logs"
+    "systemLogs": "System Logs",
+    "groupOverview": "Overview",
+    "groupOperations": "Operations",
+    "groupLogistics": "Logistics",
+    "groupTeam": "Team",
+    "groupSystem": "System"
   },
   "purchases": {
     "title": "Purchases & Procurement",

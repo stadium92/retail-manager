@@ -124,76 +124,45 @@ export function MasterLayout() {
     }
   };
 
-  const navItems = [
+  const navGroups = [
     {
-      title: t('sidebar.dashboard'),
-      url: '/master/dashboard',
-      icon: LayoutDashboard,
+      label: t('sidebar.groupOverview'),
+      items: [
+        { title: t('sidebar.dashboard'), url: '/master/dashboard', icon: LayoutDashboard },
+        { title: t('sidebar.analytics'), url: '/master/analytics', icon: BarChart3 },
+      ],
     },
     {
-      title: t('sidebar.stores'),
-      url: '/master/stores',
-      icon: StoreIcon,
+      label: t('sidebar.groupOperations'),
+      items: [
+        { title: t('sidebar.stores'), url: '/master/stores', icon: StoreIcon },
+        { title: t('sidebar.inventory'), url: '/master/inventory', icon: Package },
+        { title: t('sidebar.sales'), url: '/master/sales', icon: ShoppingCart },
+        { title: t('sidebar.purchases'), url: '/master/purchases', icon: ShoppingBag },
+        { title: t('menu.files.title') || 'Fichiers', url: '/master/files', icon: ScrollText },
+      ],
     },
     {
-      title: t('sidebar.inventory'),
-      url: '/master/inventory',
-      icon: Package,
+      label: t('sidebar.groupLogistics'),
+      items: [
+        { title: t('sidebar.deliverers'), url: '/master/deliverers', icon: Truck },
+        { title: t('sidebar.deliveries'), url: '/master/deliveries', icon: TruckIcon },
+      ],
     },
     {
-      title: t('sidebar.sales'),
-      url: '/master/sales',
-      icon: ShoppingCart,
+      label: t('sidebar.groupTeam'),
+      items: [
+        { title: t('sidebar.team'), url: '/master/team', icon: UsersRound },
+        { title: t('sidebar.invitations'), url: '/master/invitations', icon: Mail },
+      ],
     },
     {
-      title: t('sidebar.purchases'),
-      url: '/master/purchases',
-      icon: ShoppingBag,
-    },
-    {
-      title: t('sidebar.deliverers'),
-      url: '/master/deliverers',
-      icon: Truck,
-    },
-    {
-      title: t('sidebar.deliveries'),
-      url: '/master/deliveries',
-      icon: TruckIcon,
-    },
-    {
-      title: t('sidebar.analytics'),
-      url: '/master/analytics',
-      icon: BarChart3,
-    },
-    {
-      title: t('menu.files.title') || 'Fichiers',
-      url: '/master/files',
-      icon: ScrollText, 
-    },
-    {
-      title: t('sidebar.invitations'),
-      url: '/master/invitations',
-      icon: Mail,
-    },
-    {
-      title: t('sidebar.team'),
-      url: '/master/team',
-      icon: UsersRound,
-    },
-    {
-      title: t('sidebar.systemLogs'),
-      url: '/master/audit-logs',
-      icon: ScrollText,
-    },
-    {
-      title: 'Cloud Sync',
-      url: '/master/cloud-sync',
-      icon: Cloud,
-    },
-    {
-      title: t('common.help'),
-      url: '/master/help',
-      icon: HelpCircle,
+      label: t('sidebar.groupSystem'),
+      items: [
+        { title: t('sidebar.systemLogs'), url: '/master/audit-logs', icon: ScrollText },
+        { title: 'Cloud Sync', url: '/master/cloud-sync', icon: Cloud },
+        { title: t('common.help'), url: '/master/help', icon: HelpCircle },
+      ],
     },
   ];
 
@@ -211,19 +180,28 @@ export function MasterLayout() {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1 p-4">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.url}
-            to={item.url}
-            end
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-            onClick={() => mobile && setMobileMenuOpen(false)}
-          >
-            <item.icon className="h-5 w-5" />
-            <span>{item.title}</span>
-          </NavLink>
+      <nav className="flex-1 space-y-4 p-4 overflow-y-auto">
+        {navGroups.map((group) => (
+          <div key={group.label}>
+            <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/50">
+              {group.label}
+            </p>
+            <div className="space-y-1">
+              {group.items.map((item) => (
+                <NavLink
+                  key={item.url}
+                  to={item.url}
+                  end
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  onClick={() => mobile && setMobileMenuOpen(false)}
+                >
+                  <item.icon className="h-5 w-5" />
+                  <span>{item.title}</span>
+                </NavLink>
+              ))}
+            </div>
+          </div>
         ))}
       </nav>
 

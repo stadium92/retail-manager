@@ -135,7 +135,12 @@
     "analytics": "Sɔrɔ lajɛ",
     "invitations": "Weleli",
     "team": "Jɛkulu",
-    "systemLogs": "Système Gafɛw"
+    "systemLogs": "Système Gafɛw",
+    "groupOverview": "Aperçu",
+    "groupOperations": "Opérations",
+    "groupLogistics": "Di ɲɛnabɔ",
+    "groupTeam": "Jɛkulu",
+    "groupSystem": "Système"
   },
   "purchases": {
     "title": "Achats & Approvisionnement",

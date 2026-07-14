@@ -125,7 +125,12 @@
     "analytics": "Analyses",
     "invitations": "Invitations",
     "team": "Équipe",
-    "systemLogs": "Journaux Système"
+    "systemLogs": "Journaux Système",
+    "groupOverview": "Aperçu",
+    "groupOperations": "Opérations",
+    "groupLogistics": "Livraisons",
+    "groupTeam": "Équipe",
+    "groupSystem": "Système"
   },
   "purchases": {
     "title": "Achats & Approvisionnement",
