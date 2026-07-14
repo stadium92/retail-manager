@@ -39,9 +39,9 @@ function checkIsTauri(): boolean {
 }
 
 // ─── Breakpoint Classification ────────────────────────────────────────────────
-// These breakpoints are intentional for a restaurant/retail context (reduced by 25%):
+// These breakpoints are intentional for a retail context (reduced by 25%):
 //   - Mobile (< 576px)
-//   - Tablets (576-767px) run in kitchens and at counters — they need touch UI
+//   - Tablets (576-767px) run on the shop floor and at the counter — they need touch UI
 //   - Laptops/monitors (≥768px) and Tauri get the dense desktop UI
 function classifyWidth(width: number): 'mobile' | 'tablet' | 'desktop' {
   if (width < 576)  return 'mobile';

@@ -17,7 +17,7 @@ export interface TeamMember {
   full_name: string;
   phone?: string;
   role: AppRole;
-  sub_role?: 'cook' | 'cashier' | 'waiter' | null;
+  sub_role?: 'cashier' | null;
   store_id?: string;
   store_name?: string;
   vehicle_type?: string;
@@ -35,7 +35,7 @@ export interface CreateUserPayload {
   full_name: string;
   phone?: string;
   role: 'worker' | 'deliverer';
-  sub_role?: 'cook' | 'cashier' | 'waiter' | null;
+  sub_role?: 'cashier' | null;
   store_id?: string;
   store_name?: string;
   vehicle_type?: string;

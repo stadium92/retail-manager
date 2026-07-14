@@ -156,7 +156,7 @@ export function MobileDashboard({ onNavigate }: MobileDashboardProps) {
                             activeStoreIds.map(sid => (
                                 <div key={`mobile-anal-${sid}`} className="bg-rs-surface-container-low border border-rs-outline rounded-2xl p-4 flex flex-col gap-3 shadow-md">
                                     <h3 className="text-sm font-bold uppercase tracking-wider text-rs-surface-tint border-b border-rs-outline/35 pb-2">
-                                        {allStores.find(s => s.id === sid)?.name || "Restaurant"}
+                                        {allStores.find(s => s.id === sid)?.name || "Boutique"}
                                     </h3>
                                     <div className="h-[350px] overflow-hidden rounded-xl border border-rs-outline bg-[#141414] mt-2">
                                         <GestionModule storeId={sid} mode="tableau-bord" />
@@ -197,7 +197,7 @@ export function MobileDashboard({ onNavigate }: MobileDashboardProps) {
                             <div className={`col-span-2 rounded-xl p-3 flex items-center justify-between min-h-[72px] ${metrics.lowStockItems > 0 ? 'bg-rs-error-container/20 border border-rs-error/30' : 'bg-rs-surface-container-low border border-rs-outline'}`}>
                                 <div className="flex items-center gap-2">
                                     <span className={`material-symbols-outlined ${metrics.lowStockItems > 0 ? 'text-rs-error' : 'text-rs-on-surface-variant'}`}>warning</span>
-                                    <h3 className={`font-medium ${metrics.lowStockItems > 0 ? 'text-rs-error' : 'text-rs-on-surface-variant'}`}>Plats en rupture de stock</h3>
+                                    <h3 className={`font-medium ${metrics.lowStockItems > 0 ? 'text-rs-error' : 'text-rs-on-surface-variant'}`}>Produits en rupture de stock</h3>
                                 </div>
                                 <span className={`text-2xl font-bold ${metrics.lowStockItems > 0 ? 'text-rs-error' : 'text-rs-on-surface'}`}>{loading ? "..." : metrics.lowStockItems}</span>
                             </div>
@@ -227,8 +227,8 @@ export function MobileDashboard({ onNavigate }: MobileDashboardProps) {
                                             onClick={() => onNavigate?.('fiche-produits')}
                                         >
                                             <div className="flex items-center gap-2">
-                                                <span className="material-symbols-outlined text-rs-surface-tint">restaurant_menu</span>
-                                                <span className="text-rs-on-surface font-medium">Consulter le Menu / Produits</span>
+                                                <span className="material-symbols-outlined text-rs-surface-tint">inventory_2</span>
+                                                <span className="text-rs-on-surface font-medium">Consulter les Produits</span>
                                             </div>
                                             <span className="material-symbols-outlined text-rs-on-surface-variant text-sm">arrow_forward</span>
                                         </li>

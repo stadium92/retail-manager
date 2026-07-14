@@ -4,23 +4,16 @@
 // Mobile Worker Layout — Bottom Tab Bar + Module Orchestrator
 //
 // This component is the mobile equivalent of WorkerLayout.tsx. It:
-//   1. Reads the worker's sub-role to build the visible tab list.
-//   2. Manages activeTab state (persisted to localStorage).
-//   3. Renders the correct mobile module (MobilePOS / MobileKDS / MobileDashboard).
-//   4. Renders a Material Design 3–style Bottom Tab Bar (fixed, 64 px tall).
+//   1. Manages activeTab state (persisted to localStorage).
+//   2. Renders the correct mobile module (MobilePOS / MobileDashboard).
+//   3. Renders a Material Design 3–style Bottom Tab Bar (fixed, 64 px tall).
 //
 // The 64 px bar height intentionally matches the pb-[64px] padding that each
 // mobile component already sets on its outermost container, so content is
 // never hidden behind the nav.
-//
-// Sub-role → visible tabs:
-//   cook     → KDS only      (bar hidden — single-screen experience)
-//   cashier  → POS + KDS
-//   waiter / manager / null → POS + KDS + Dashboard
 // ──────────────────────────────────────────────────────────────────────────────
 
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { MobilePOS } from './POS/MobilePOS';
 import { MobileDashboard } from './Dashboard/MobileDashboard';
 import { MobileMenuScreen } from './MobileMenuScreen';
@@ -74,29 +67,16 @@ const ALL_TABS: TabConfig[] = [
 
 const STORAGE_KEY = 'worker_mobile_active_tab';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function getVisibleTabs(subRole: string | null | undefined): TabConfig[] {
-  return ALL_TABS;
-}
-
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutProps) {
-  const { roles, user } = useAuth();
   const [activeMobileModule, setActiveMobileModule] = useState<string | null>(null);
   const [storeId, setStoreId] = useState<string>('');
 
-  const workerRole = roles.find(r => r.role === 'worker');
-  const rawSubRole = roles.find(r => ['cook', 'cashier', 'waiter', 'waiters'].includes(r.role))?.role
-    || workerRole?.sub_role
-    || (user?.user_metadata?.sub_role as string | null | undefined);
-  const subRole = (rawSubRole === 'waiters' ? 'waiter' : rawSubRole) as 'cook' | 'cashier' | 'waiter' | null | undefined;
-
-  const visibleTabs = getVisibleTabs(subRole);
+  const visibleTabs = ALL_TABS;
   const defaultTab: MobileTab = visibleTabs[0]?.id ?? 'pos';
 
-  // Restore the last-used tab if it is still accessible for this role
+  // Restore the last-used tab if it is still accessible
   const [activeTab, setActiveTab] = useState<MobileTab>(() => {
     const saved = localStorage.getItem(STORAGE_KEY) as MobileTab | null;
     return (saved && visibleTabs.some(t => t.id === saved)) ? saved : defaultTab;
@@ -120,15 +100,6 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
     localStorage.setItem(STORAGE_KEY, activeTab);
   }, [activeTab]);
 
-  // If the role changes after login (rare but possible) and the current tab is
-  // no longer accessible, reset to the first permitted tab.
-  useEffect(() => {
-    if (!visibleTabs.some(t => t.id === activeTab)) {
-      setActiveTab(defaultTab);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subRole]);
-
   // Intercept selection in Hamburger Menu to handle routing internally
   const handleSelectModule = (moduleId: string) => {
     if (moduleId === 'tableau-bord') {
@@ -150,7 +121,6 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
       // Programme and settings modules open via desktop overlay
       const desktopOnlyModules = [
         'preferences', 'programmation-touches',
-        'kds',
         'facturation-detail', 'reglements-bons',
       ];
       

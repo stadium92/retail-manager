@@ -202,7 +202,7 @@ export function MobilePOS({ onBack }: MobilePOSProps) {
                         </button>
                     ) : (
                         <button className="active:scale-95 transition-transform duration-150 p-2 -ml-2 rounded-full hover:bg-rs-surface-container-highest text-rs-on-surface-variant">
-                            <span className="material-symbols-outlined">restaurant</span>
+                            <span className="material-symbols-outlined">storefront</span>
                         </button>
                     )}
                     <div className="flex flex-col">

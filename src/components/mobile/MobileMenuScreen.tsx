@@ -80,14 +80,14 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
     },
   ];
 
-  // Resolve subRole: direct role rows (cashier/cook/waiter) take precedence over
-  // the legacy worker+sub_role pattern and user_metadata fallback.
+  // Resolve subRole: direct role rows (cashier) take precedence over the
+  // legacy worker+sub_role pattern and user_metadata fallback.
   const workerRole = roles.find(r => r.role === 'worker');
-  const rawSubRole =
-    roles.find(r => ['cook', 'cashier', 'waiter', 'waiters'].includes(r.role))?.role ??
+  const subRole = (
+    roles.find(r => r.role === 'cashier')?.role ??
     workerRole?.sub_role ??
-    (user?.user_metadata?.sub_role as string | null | undefined);
-  const subRole = (rawSubRole === 'waiters' ? 'waiter' : rawSubRole) as 'cook' | 'cashier' | 'waiter' | null | undefined;
+    (user?.user_metadata?.sub_role as string | null | undefined)
+  ) as 'cashier' | null | undefined;
 
   let finalSections = menuSections.filter(section => {
     // Workers (non-master) should only access Ventes (sales) and Stock (inventory)
@@ -96,17 +96,9 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
         return false;
       }
     }
-    if (subRole === 'cook') {
-      // Cook: only Paramètres section
-      return section.title === 'Paramètres';
-    }
     if (subRole === 'cashier') {
       // Cashier: Ventes (renamed to Commandes) + Paramètres
       return section.title === 'Ventes' || section.title === 'Paramètres';
-    }
-    if (subRole === 'waiter') {
-      // Waiter: Ventes + Fichiers + Paramètres
-      return section.title === 'Ventes' || section.title === 'Fichiers' || section.title === 'Paramètres';
     }
     return true;
   }).map(section => {
@@ -136,24 +128,8 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
         })
       };
     }
-    if (subRole === 'waiter') {
-      if (section.title === 'Ventes') {
-        return {
-          ...section,
-          items: section.items.filter(item => item.id === 'vente-detail')
-        };
-      }
-      if (section.title === 'Fichiers') {
-        return {
-          ...section,
-          items: section.items.filter(item => item.id === 'fiche-produits')
-        };
-      }
-    }
     return section;
   });
-
-  // No waiter plan additions needed for retail app
 
   return (
     <div className="flex flex-col h-full bg-[#0a0a0a] pb-[80px]">

@@ -47,7 +47,7 @@ interface LocalBridgeUserPayload {
   full_name: string;
   role: LocalBridgeRole;
   store_id?: string | null;
-  sub_role?: 'cook' | 'cashier' | 'waiter' | null;
+  sub_role?: 'cashier' | null;
 }
 
 interface LocalBridgeLoginResponse {
@@ -72,9 +72,6 @@ const ROLE_PRIORITY: Record<string, number> = {
   master: 4,
   worker: 3,
   cashier: 3,
-  cook: 3,
-  waiter: 3,
-  waiters: 3,
   deliverer: 2,
   customer: 1,
 };
