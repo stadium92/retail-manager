@@ -584,7 +584,7 @@ export class OfflineAuthService {
       if (!userRole || userRole === 'worker') {
           try {
              const { data: ownedStores, error: storesError } = await supabase
-               .from('restaurants')
+               .from('stores')
                .select('*')
                .eq('owner_id', data.user.id)
                .limit(1);

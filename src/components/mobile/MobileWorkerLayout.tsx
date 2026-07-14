@@ -140,7 +140,7 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
     } else {
       const mobileSupportedModules = [
         'fermeture-caisse', 'suivi-ventes-jour', 'fiche-produits', 'clients',
-        'fournisseurs', 'restaurants', 'inventaire-stock',
+        'fournisseurs', 'boutiques', 'inventaire-stock',
         'reception-achats', 'commande-manuelle', 'reglement-fournisseurs',
         'besoins-achats', 'historique-achats', 'situation-client',
         'situation-fournisseur', 'audit-logs', 'invitations', 'team',
@@ -247,7 +247,7 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
           return <MobileClients onBack={() => setActiveMobileModule(null)} />;
         case 'fournisseurs':
           return <MobileFournisseurs onBack={() => setActiveMobileModule(null)} />;
-        case 'restaurants':
+        case 'boutiques':
           return <MobileBoutiques onBack={() => setActiveMobileModule(null)} />;
         case 'inventaire-stock':
           return (

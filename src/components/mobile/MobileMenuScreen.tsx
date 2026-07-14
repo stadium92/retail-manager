@@ -32,7 +32,7 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
         { id: 'fiche-produits', label: '📦 Produits' },
         { id: 'clients', label: t('menu.files.clients') || 'Clients' },
         { id: 'fournisseurs', label: t('menu.files.suppliers') || 'Fournisseurs' },
-        { id: 'restaurants', label: '🏪 Boutiques' },
+        { id: 'boutiques', label: '🏪 Boutiques' },
       ],
     },
     {
