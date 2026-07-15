@@ -144,23 +144,23 @@ export function MobilePOS({ onBack }: MobilePOSProps) {
 
     if (isProductSheetOpen) {
         return (
-            <div className="antialiased min-h-screen flex flex-col pt-safe bg-[#0C0C0C] text-rs-on-surface dark">
-                <header className="fixed top-0 w-full h-[56px] border-b border-rs-surface-container-highest bg-rs-surface flex items-center px-4 z-50 pt-safe gap-3">
+            <div className="antialiased h-dvh flex flex-col pt-safe pb-[64px] md:pb-0 bg-[#0C0C0C] text-rs-on-surface dark">
+                <header className="shrink-0 h-[56px] border-b border-rs-surface-container-highest bg-rs-surface flex items-center px-4 z-50 gap-3">
                     <button onClick={() => setIsProductSheetOpen(false)} className="active:scale-95 transition-transform duration-150 p-2 -ml-2 rounded-full hover:bg-rs-surface-container-highest text-rs-on-surface-variant">
                         <span className="material-symbols-outlined">arrow_back</span>
                     </button>
                     <div className="flex-1 relative">
-                        <input 
+                        <input
                             autoFocus
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            placeholder="Rechercher un article..." 
+                            placeholder="Rechercher un article..."
                             className="w-full bg-rs-surface-container-low text-rs-on-surface h-[40px] rounded-full px-4 pl-10 focus:outline-none border border-rs-surface-container-highest focus:border-rs-surface-tint"
                         />
                         <span className="material-symbols-outlined absolute left-3 top-2.5 text-rs-on-surface-variant">search</span>
                     </div>
                 </header>
-                <main className="flex-1 mt-[56px] overflow-y-auto px-4 py-4 flex flex-col gap-2">
+                <main className="flex-1 min-h-0 overflow-y-auto px-4 py-4 flex flex-col gap-2">
                     {isLoading ? (
                         <div className="text-center text-rs-on-surface-variant mt-10 flex flex-col items-center">
                             <span className="material-symbols-outlined animate-spin text-[32px] text-rs-surface-tint mb-2">refresh</span>
@@ -192,9 +192,9 @@ export function MobilePOS({ onBack }: MobilePOSProps) {
     }
 
     return (
-        <div className="antialiased min-h-screen flex flex-col pt-safe bg-[#0C0C0C] text-rs-on-surface dark">
+        <div className="antialiased h-dvh flex flex-col pt-safe pb-[64px] md:pb-0 bg-[#0C0C0C] text-rs-on-surface dark">
             {/* TopAppBar */}
-            <header className="fixed top-0 w-full h-[56px] border-b border-rs-surface-container-highest bg-rs-surface flex justify-between items-center px-4 z-50 pt-safe">
+            <header className="shrink-0 h-[56px] border-b border-rs-surface-container-highest bg-rs-surface flex justify-between items-center px-4 z-50">
                 <div className="flex items-center gap-3">
                     {onBack ? (
                         <button onClick={onBack} className="active:scale-95 transition-transform duration-150 p-2 -ml-2 rounded-full hover:bg-rs-surface-container-highest text-rs-on-surface-variant">
@@ -219,7 +219,7 @@ export function MobilePOS({ onBack }: MobilePOSProps) {
             </header>
 
             {/* Main Canvas */}
-            <main className="flex-1 mt-[56px] mb-[240px] md:mb-[56px] overflow-y-auto px-4 py-5 flex flex-col gap-5">
+            <main className="flex-1 min-h-0 overflow-y-auto px-4 py-5 flex flex-col gap-5">
                 
                 {/* Ticket Meta Row */}
                 <section className="bg-[#141414] rounded-lg p-3 flex flex-wrap gap-3 justify-between items-center border border-rs-surface-container-highest">
@@ -325,8 +325,8 @@ export function MobilePOS({ onBack }: MobilePOSProps) {
                 </section>
             </main>
 
-            {/* Fixed Bottom Panel */}
-            <div className="fixed bottom-[64px] left-0 w-full bg-[#141414] border-t border-rs-surface-container-highest px-4 py-3 flex flex-col gap-3 z-40 pb-safe md:bottom-0">
+            {/* Bottom Panel */}
+            <div className="shrink-0 max-h-[50vh] overflow-y-auto bg-[#141414] border-t border-rs-surface-container-highest px-4 py-3 flex flex-col gap-3 z-40 pb-safe">
                 <div className="flex justify-between items-end">
                     <span className="font-bold tracking-tight text-rs-on-surface text-xl">NET À PAYER</span>
                     <div className="flex flex-col items-end">
