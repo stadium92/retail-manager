@@ -16,6 +16,37 @@ export const createSyncOutboxRepo = (db: Database.Database) => ({
     return rows as SyncOutboxEntry[];
   },
 
+  /**
+   * Cross-store pending outbox entries, oldest first. Used by /sync/push,
+   * which (like the existing pending_mutations drain) processes the whole
+   * device's backlog in one call rather than filtering by a single store.
+   */
+  listPendingOutboxAll(limit: number = 300): SyncOutboxEntry[] {
+    const rows = db
+      .prepare('SELECT * FROM sync_outbox WHERE status = ? ORDER BY created_at ASC LIMIT ?')
+      .all('pending', limit);
+    return rows as SyncOutboxEntry[];
+  },
+
+  /**
+   * Idempotency check for the backfill sweep: has this local record already
+   * been captured in the outbox (in any status)? Backed by
+   * idx_sync_outbox_entity so this stays cheap even as the table grows.
+   */
+  outboxEntryExistsForRecord(entityType: string, entityId: string): boolean {
+    const row = db
+      .prepare('SELECT 1 FROM sync_outbox WHERE entity_type = ? AND entity_id = ? LIMIT 1')
+      .get(entityType, entityId);
+    return row !== undefined;
+  },
+
+  countPendingOutbox(): number {
+    const row = db
+      .prepare("SELECT COUNT(*) as count FROM sync_outbox WHERE status = 'pending'")
+      .get() as { count: number };
+    return row.count;
+  },
+
   insertOutboxEntry(entry: SyncOutboxEntry) {
     db.prepare(
       `

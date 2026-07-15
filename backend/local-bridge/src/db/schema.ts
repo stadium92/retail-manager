@@ -391,6 +391,7 @@ export const initializeSchema = (db: Database.Database) => {
 
     CREATE INDEX IF NOT EXISTS idx_sync_outbox_store_status_created ON sync_outbox(store_id, status, created_at);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_sync_outbox_idempotency ON sync_outbox(idempotency_key);
+    CREATE INDEX IF NOT EXISTS idx_sync_outbox_entity ON sync_outbox(entity_type, entity_id);
 
     CREATE TABLE IF NOT EXISTS sync_state (
       store_id TEXT PRIMARY KEY,

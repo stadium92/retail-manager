@@ -111,10 +111,20 @@ export const createClientsRepo = (db: Database.Database) => {
 
   updateClientBalance(clientId: string, amount: number) {
     db.prepare(`
-      UPDATE clients 
-      SET current_balance = current_balance + ?, updated_at = ?
+      UPDATE clients
+      SET current_balance = current_balance + ?, updated_at = ?, version = version + 1
       WHERE id = ?
     `).run(amount, new Date().toISOString(), clientId);
+
+    // Balance changes (credit sales, client payments) previously left no
+    // trace in the outbox at all, so a client's current_balance in Supabase
+    // would silently drift from the local value. Emit an update event like
+    // every other client mutation does.
+    const row = db.prepare('SELECT * FROM clients WHERE id = ? LIMIT 1').get(clientId);
+    const updated = row as LocalClient | undefined;
+    if (updated) {
+      emitOutbox(db, updated.store_id, 'client', clientId, 'update', updated as unknown as Record<string, unknown>, (updated as any).version - 1);
+    }
   },
 
   listClientTransactions(storeId: string, clientId: string): any[] {

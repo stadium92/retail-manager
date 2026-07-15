@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import { LocalStore } from '../types.js';
+import { emitOutbox } from './sync_helpers.js';
 
 export const createStoresRepo = (db: Database.Database) => ({
   getStoreById(storeId: string): LocalStore | undefined {
@@ -58,6 +59,9 @@ export const createStoresRepo = (db: Database.Database) => ({
       owner_id: store.owner_id ?? null,
       default_price_tier: store.default_price_tier ?? 1,
     });
+    // A store's own id is used as the outbox store_id - there's no other
+    // store to attribute the mutation to.
+    emitOutbox(db, store.id, 'store', store.id, 'create', store as unknown as Record<string, unknown>);
   },
 
   updateStore(
@@ -71,16 +75,21 @@ export const createStoresRepo = (db: Database.Database) => ({
       return row as LocalStore | undefined;
     }
     const assignments = normalizedEntries.map(([key]) => `${key} = @${key}`).join(', ');
-    db.prepare(`UPDATE stores SET ${assignments} WHERE id = @id`).run({
+    db.prepare(`UPDATE stores SET ${assignments}, version = version + 1 WHERE id = @id`).run({
       id: storeId,
       ...Object.fromEntries(normalizedEntries),
     });
-    
+
     const row = db.prepare('SELECT * FROM stores WHERE id = ? LIMIT 1').get(storeId);
-    return row as LocalStore | undefined;
+    const updated = row as LocalStore | undefined;
+    if (updated) {
+      emitOutbox(db, storeId, 'store', storeId, 'update', updated as unknown as Record<string, unknown>, (updated as any).version - 1);
+    }
+    return updated;
   },
 
   deleteStore(storeId: string) {
     db.prepare('DELETE FROM stores WHERE id = ?').run(storeId);
+    emitOutbox(db, storeId, 'store', storeId, 'delete', { id: storeId });
   },
 });

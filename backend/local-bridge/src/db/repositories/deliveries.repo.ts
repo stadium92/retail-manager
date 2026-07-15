@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import { LocalDelivery } from '../types.js';
+import { emitOutbox } from './sync_helpers.js';
 
 export const createDeliveriesRepo = (db: Database.Database) => ({
   listDeliveries(storeId?: string, delivererId?: string): LocalDelivery[] {
@@ -65,6 +66,9 @@ export const createDeliveriesRepo = (db: Database.Database) => ({
       scheduled_at: delivery.scheduled_at ?? null,
       delivered_at: delivery.delivered_at ?? null,
     });
+    if (delivery.store_id) {
+      emitOutbox(db, delivery.store_id, 'delivery', delivery.id, 'create', delivery as unknown as Record<string, unknown>);
+    }
   },
 
   updateDelivery(
@@ -81,12 +85,20 @@ export const createDeliveriesRepo = (db: Database.Database) => ({
       id: deliveryId,
       ...Object.fromEntries(normalizedEntries),
     });
-    
+
     const row = db.prepare('SELECT * FROM deliveries WHERE id = ? LIMIT 1').get(deliveryId);
-    return row as LocalDelivery | undefined;
+    const updated = row as LocalDelivery | undefined;
+    if (updated?.store_id) {
+      emitOutbox(db, updated.store_id, 'delivery', deliveryId, 'update', updated as unknown as Record<string, unknown>);
+    }
+    return updated;
   },
 
   deleteDelivery(deliveryId: string) {
+    const existing = db.prepare('SELECT * FROM deliveries WHERE id = ? LIMIT 1').get(deliveryId) as LocalDelivery | undefined;
     db.prepare('DELETE FROM deliveries WHERE id = ?').run(deliveryId);
+    if (existing?.store_id) {
+      emitOutbox(db, existing.store_id, 'delivery', deliveryId, 'delete', { id: deliveryId });
+    }
   },
 });
