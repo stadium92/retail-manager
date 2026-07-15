@@ -38,7 +38,7 @@ export function MobileSuiviVentesJour({ onBack }: MobileSuiviVentesJourProps) {
       // Filter for today's sales
       const todayStr = new Date().toISOString().split('T')[0];
       const todaySales = allSales.filter(s => s.created_at?.startsWith(todayStr));
-      setSales(todaySales || allSales.slice(0, 50)); // Fallback to recent 50 if none today
+      setSales(todaySales.length > 0 ? todaySales : allSales.slice(0, 50)); // Fallback to recent 50 if none today
     } catch (err) {
       console.error(err);
       toast({ title: t('common.error'), description: 'Erreur lors du chargement des ventes journalières', variant: 'destructive' });

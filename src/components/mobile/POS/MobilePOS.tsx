@@ -149,7 +149,7 @@ export function MobilePOS({ onBack }: MobilePOSProps) {
                                     <span className="text-rs-helper-xs text-rs-on-surface-variant uppercase tracking-wide">{product.category || product.category_name || 'Général'}</span>
                                 </div>
                                 <div className="flex flex-col items-end">
-                                    <span className="text-rs-surface-tint font-mono font-bold text-rs-body-base">{formatCurrency(product.unit_price || product.price)}</span>
+                                    <span className="text-rs-surface-tint font-mono font-bold text-rs-body-base">{formatCurrency(product.unit_price ?? 0)}</span>
                                     <span className={`text-[10px] ${product.quantity > 0 ? 'text-rs-secondary-container' : 'text-rs-error'}`}>{product.quantity > 0 ? `Stock: ${product.quantity}` : 'Rupture'}</span>
                                 </div>
                             </div>
