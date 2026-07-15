@@ -4,8 +4,26 @@ import crypto from 'crypto';
 import { env } from '../env.js';
 import { db } from '../db/index.js';
 import { authenticateRequest } from './utils/auth.js';
+import { buildSupabasePayload, getSupabaseTableForEntity } from '../db/repositories/sync_payload_map.js';
 
 type SupabaseHeaders = Record<string, string>;
+
+// After this many failed attempts, a sync_outbox entry is parked in a
+// terminal 'failed' state instead of being retried again on every future
+// /sync/push call. Without a cap, an entry that can never succeed (e.g. its
+// target table doesn't exist yet in Supabase) would be retried forever,
+// burning a request on every single app launch indefinitely.
+const MAX_OUTBOX_RETRIES = 8;
+
+// Cap on how many sync_outbox entries are actually pushed to Supabase (i.e.
+// how many outbound HTTP calls are made) in a single /sync/push call. The
+// backfill sweep that runs first can queue thousands of historical records
+// in one local DB pass (cheap - no network calls); draining that whole
+// backlog in one HTTP request per record could make a single /sync/push
+// call take minutes on a large existing dataset. Leftover pending entries
+// are simply picked up by the next call (every app launch, or a manual
+// retry), so a large backlog drains over a few launches rather than one.
+const MAX_OUTBOX_PUSH_PER_CALL = 300;
 
 const pushSchema = z.object({
   supabase_service_key: z.string().min(1),
@@ -78,6 +96,23 @@ export async function registerSyncRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'ConfigMissing', message: 'SUPABASE_URL not configured.' });
     }
 
+    // One-time (idempotent, safe to re-run every call) catch-up sweep for
+    // records that predate the outbox wiring on their table - see
+    // outbox_backfill.repo.ts. Runs before both drains below so newly
+    // queued historical records get picked up in the same call.
+    let backfill: { totalScanned: number; totalQueued: number } | null = null;
+    try {
+      backfill = db.runOutboxBackfill();
+    } catch (err) {
+      request.log.error({ err }, '[sync] outbox backfill sweep failed');
+    }
+
+    let pushed = 0;
+    let failed = 0;
+
+    // --- Drain 1: pending_mutations (legacy queue - inventory_movements,
+    // product cost/qty updates from purchase receiving, and the ad-hoc
+    // single-mutation push below). Unchanged from before this fix. ---
     let pending = db.listPendingMutations('pending');
     if (parsed.data.entity && parsed.data.payload) {
       const now = new Date().toISOString();
@@ -92,13 +127,6 @@ export async function registerSyncRoutes(app: FastifyInstance) {
       });
       pending = db.listPendingMutations('pending');
     }
-
-    if (pending.length == 0) {
-      return reply.send({ pushed: 0, failed: 0, pending: 0 });
-    }
-
-    let pushed = 0;
-    let failed = 0;
 
     for (const mutation of pending) {
       try {
@@ -126,8 +154,80 @@ export async function registerSyncRoutes(app: FastifyInstance) {
       }
     }
 
-    const remaining = db.listPendingMutations('pending').length;
-    return reply.send({ pushed, failed, pending: remaining });
+    // --- Drain 2: sync_outbox. This table has been populated by every
+    // create/update/delete in sales/clients/deliveries/stores/cash/products/
+    // suppliers/purchase_orders/purchase_items (via emitOutbox()) since
+    // those repositories were written, but until this fix nothing ever read
+    // it back out - it was a dead letter queue. This loop is what actually
+    // makes that data reach Supabase. ---
+    const outboxBatch = db.listPendingOutboxAll(MAX_OUTBOX_PUSH_PER_CALL);
+    for (const entry of outboxBatch) {
+      const table = getSupabaseTableForEntity(entry.entity_type);
+      if (!table) {
+        // Unknown entity_type - nothing we can map it to. Don't retry.
+        failed += 1;
+        db.updateOutboxStatus(entry.id, 'failed', `No Supabase table mapping for entity_type "${entry.entity_type}"`);
+        continue;
+      }
+
+      try {
+        let res: Response;
+        if (entry.op_type === 'delete') {
+          res = await fetch(
+            `${env.supabaseUrl}/rest/v1/${table}?id=eq.${encodeURIComponent(entry.entity_id)}`,
+            { method: 'DELETE', headers: buildSupabaseHeaders() }
+          );
+        } else {
+          const raw = JSON.parse(entry.payload_json) as Record<string, unknown>;
+          const payload = buildSupabasePayload(entry.entity_type, raw);
+          if (!payload) {
+            failed += 1;
+            db.updateOutboxStatus(entry.id, 'failed', `No payload mapping for entity_type "${entry.entity_type}"`);
+            continue;
+          }
+          res = await fetch(
+            `${env.supabaseUrl}/rest/v1/${table}`,
+            {
+              method: 'POST',
+              headers: buildSupabaseHeaders(),
+              body: JSON.stringify([payload]),
+            }
+          );
+        }
+
+        if (!res.ok) {
+          const errorText = await res.text().catch(() => res.statusText);
+          failed += 1;
+          if (entry.retry_count + 1 >= MAX_OUTBOX_RETRIES) {
+            db.updateOutboxStatus(entry.id, 'failed', errorText.slice(0, 2000));
+          } else {
+            db.incrementOutboxRetry(entry.id, errorText.slice(0, 2000));
+          }
+          continue;
+        }
+
+        pushed += 1;
+        db.updateOutboxStatus(entry.id, 'acked');
+      } catch (err) {
+        failed += 1;
+        const message = err instanceof Error ? err.message : String(err);
+        if (entry.retry_count + 1 >= MAX_OUTBOX_RETRIES) {
+          db.updateOutboxStatus(entry.id, 'failed', message.slice(0, 2000));
+        } else {
+          db.incrementOutboxRetry(entry.id, message.slice(0, 2000));
+        }
+      }
+    }
+
+    const remainingPendingMutations = db.listPendingMutations('pending').length;
+    const remainingOutbox = db.countPendingOutbox();
+
+    return reply.send({
+      pushed,
+      failed,
+      pending: remainingPendingMutations + remainingOutbox,
+      backfill: backfill ? { scanned: backfill.totalScanned, queued: backfill.totalQueued } : null,
+    });
   });
 
   app.get('/sync/pull', async (request, reply) => {

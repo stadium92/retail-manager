@@ -155,16 +155,24 @@ export const createSalesRepo = (db: Database.Database) => {
       id: saleId,
       ...Object.fromEntries(normalizedEntries),
     });
-    
-    return stmts.getSale.get(saleId) as LocalSale | undefined;
+
+    const updated = stmts.getSale.get(saleId) as LocalSale | undefined;
+    if (updated) {
+      emitOutbox(db, updated.store_id, 'sale', saleId, 'update', updated as unknown as Record<string, unknown>);
+    }
+    return updated;
   },
 
   deleteSale(saleId: string) {
+    const existing = stmts.getSale.get(saleId) as LocalSale | undefined;
     const transaction = db.transaction((id: string) => {
       db.prepare('DELETE FROM sale_items WHERE sale_id = ?').run(id);
       db.prepare('DELETE FROM sales WHERE id = ?').run(id);
     });
     transaction(saleId);
+    if (existing) {
+      emitOutbox(db, existing.store_id, 'sale', saleId, 'delete', { id: saleId });
+    }
   },
 
   listSaleItems(saleId: string): LocalSaleItem[] {
