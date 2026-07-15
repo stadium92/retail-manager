@@ -991,7 +991,18 @@ export class OfflineTeamService {
     try {
       const dataClient = getDataClient();
       if (!dataClient.isLocalFirst) {
-        return { success: false, error: new Error('Cannot update role directly via Supabase API from offline service yet.') };
+        // id is user_roles.id here (see getWorkers()'s direct-table-select fallback,
+        // which is the path actually in effect since the get-team edge function
+        // doesn't exist in this project and its invoke() always errors).
+        const { error } = await supabase
+          .from('user_roles')
+          .update({ role })
+          .eq('id', id);
+
+        if (error) {
+          return { success: false, error };
+        }
+        return { success: true };
       }
 
       const headers = await OfflineAuthService.getAuthHeaders();
