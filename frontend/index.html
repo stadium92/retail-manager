@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>retailscope-pro</title>
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="description" content="Djati - Votre plateforme intelligente de gestion de vente au détail" />
+    <meta name="author" content="Djati Technologies SARL" />
+
+    <meta property="og:title" content="retailscope-pro" />
+    <meta property="og:description" content="Djati - Votre plateforme intelligente de gestion de vente au détail" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://retail-manager-mobile.vercel.app/og-image.png" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@Djati" />
+    <meta name="twitter:image" content="https://retail-manager-mobile.vercel.app/og-image.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Anybody:wght@700;800&family=Hanken+Grotesk:wght@400;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet"/>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script>
+      function handleChunkLoadError(message, err) {
+        var strMsg = String(message || '');
+        var strErr = err && err.stack ? String(err.stack) : '';
+        var isChunkError = 
+          strMsg.indexOf('dynamically imported module') !== -1 ||
+          strMsg.indexOf('Importing a module script failed') !== -1 ||
+          strMsg.indexOf('ChunkLoadError') !== -1 ||
+          strErr.indexOf('dynamically imported module') !== -1 ||
+          strErr.indexOf('Importing a module script failed') !== -1 ||
+          strErr.indexOf('ChunkLoadError') !== -1;
+
+        if (isChunkError) {
+          try {
+            var lastReload = localStorage.getItem('last_chunk_error_reload');
+            var now = Date.now();
+            if (!lastReload || now - parseInt(lastReload, 10) > 15000) {
+              localStorage.setItem('last_chunk_error_reload', now.toString());
+              window.location.reload();
+              return true;
+            }
+          } catch (e) {
+            window.location.reload();
+            return true;
+          }
+        }
+        return false;
+      }
+
+      window.onerror = function(message, source, lineno, colno, error) {
+        if (handleChunkLoadError(message, error)) {
+          return true;
+        }
+        var errDiv = document.createElement('div');
+        errDiv.style.position = 'fixed';
+        errDiv.style.top = '0';
+        errDiv.style.left = '0';
+        errDiv.style.width = '100vw';
+        errDiv.style.height = '100vh';
+        errDiv.style.backgroundColor = 'rgba(255,0,0,0.9)';
+        errDiv.style.color = 'white';
+        errDiv.style.zIndex = '9999999';
+        errDiv.style.padding = '20px';
+        errDiv.style.overflow = 'auto';
+        errDiv.style.fontFamily = 'monospace';
+        errDiv.innerHTML = '<h1>RUNTIME ERROR</h1><p>' + message + '</p><pre>' + (error && error.stack ? error.stack : '') + '</pre>';
+        document.body.appendChild(errDiv);
+      };
+
+      window.addEventListener('unhandledrejection', function(event) {
+        var reason = event.reason || '';
+        var reasonStr = typeof reason === 'object' ? (reason.message || '') : String(reason);
+        if (handleChunkLoadError(reasonStr, reason)) {
+          event.preventDefault();
+          return;
+        }
+        var errDiv = document.createElement('div');
+        errDiv.style.position = 'fixed';
+        errDiv.style.top = '0';
+        errDiv.style.left = '0';
+        errDiv.style.width = '100vw';
+        errDiv.style.height = '100vh';
+        errDiv.style.backgroundColor = 'rgba(255,0,0,0.9)';
+        errDiv.style.color = 'white';
+        errDiv.style.zIndex = '9999999';
+        errDiv.style.padding = '20px';
+        errDiv.style.overflow = 'auto';
+        errDiv.style.fontFamily = 'monospace';
+        errDiv.innerHTML = '<h1>UNHANDLED PROMISE REJECTION</h1><p>' + event.reason + '</p>';
+        document.body.appendChild(errDiv);
+      });
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
