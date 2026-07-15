@@ -445,14 +445,30 @@ export class OfflineStoreService {
         };
       }
 
-      // Cloud sync disabled - queue for later sync
-      await LocalDatabase.addToSyncQueue({
-        id: crypto.randomUUID(),
-        type: 'store_update',
-        data: localStore,
-        timestamp: Date.now(),
-        retries: 0,
-      });
+      // Direct online update. Previously this unconditionally queued the
+      // change for a later sync that never actually ran a Supabase write -
+      // renaming a store appeared to succeed (toast + local cache updated)
+      // but never landed in the database or reflected for other sessions.
+      // Mirror the corrected Djati-stores behavior: attempt the real write,
+      // and propagate a genuine error instead of masking failures.
+      const { error: supabaseError } = await supabase
+        .from('stores')
+        .update({
+          name: localStore.name,
+          address: localStore.address ?? null,
+          phone: localStore.phone ?? null,
+          default_price_tier: localStore.default_price_tier,
+          updated_at: now,
+        })
+        .eq('id', id);
+
+      if (supabaseError) {
+        console.error('[OfflineStoreService] Supabase update failed:', supabaseError);
+        return { error: supabaseError };
+      }
+
+      localStore.synced = true;
+      await LocalDatabase.saveStore(localStore);
 
       return { 
         data: {
