@@ -5,6 +5,11 @@ import { config } from 'dotenv';
 const envPath = process.env.LOCALBRIDGE_ENV || path.resolve(process.cwd(), '.env');
 config({ path: envPath, override: true });
 
+// Non-secret: which Supabase project this branch's backend syncs to by
+// default. SUPABASE_SERVICE_KEY has no fallback - it's a real secret and
+// must come from the environment (never commit it).
+const FALLBACK_SUPABASE_URL = 'https://fpvrbxmbrotowdlyebqv.supabase.co';
+
 const numberFromEnv = (value: string | undefined, fallback: number) => {
   if (!value) return fallback;
   const parsed = Number(value);
@@ -25,7 +30,7 @@ export const env = {
   port: numberFromEnv(process.env.PORT, 8787),
   dataDir: process.env.DATA_DIR || getDefaultDataDir(),
   jwtSecret: process.env.JWT_SECRET || 'dev-secret',
-  supabaseUrl: process.env.SUPABASE_URL || '',
+  supabaseUrl: process.env.SUPABASE_URL || FALLBACK_SUPABASE_URL,
   supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY || '',
 
 };
