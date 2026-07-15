@@ -1,7 +1,68 @@
 # Active Context - Retail Manager
 
-*Last updated: 2026-07-13*
+*Last updated: 2026-07-15*
 *Canonical core file. Consolidates and supersedes `core/context/activeContext.md` (kept for history).*
+
+## Status Update — 2026-07-15 (dibidani/Supabase/CI/Vercel session)
+
+**Two Supabase projects now confirmed in play**: `onsqvduklnwffugsiybs` (shared, used by
+`Djati-stores` `main`) and `fpvrbxmbrotowdlyebqv` ("the stihl store" — the STIHL Dibidani
+client's own dedicated project, live production data: 278 products, 1 store/company/worker/sale).
+These are separate physical databases, not git branches of one project.
+
+- **`fpvrbxmbrotowdlyebqv` schema reconciled with main's auth model**: it had no `profiles`/
+  `user_roles`/`role_audit_log` tables at all (only legacy `companies`/`workers`, unused by current
+  app code) — meaning every login was silently failing past the auth step. Created the full set
+  (tables + `has_role`/`get_user_stores`/`assign_role_from_email`/`auto_assign_role_on_profile_create`/
+  `log_role_assignment` functions + triggers + RLS policies, RLS left disabled to match main's actual
+  live state), sourced by live-introspecting `onsqvduklnwffugsiybs` (not by trusting migration files,
+  which can drift from live state). Backfilled 3 pre-existing `auth.users` accounts that predated the
+  fix (`madjousylla@gmail.com`→master, `bahsyllah223@gmail.com`/`imsnsylla@gmail.com`→worker) with
+  profiles + passwords reset to `12345678@`. Store's `owner_id` is still NULL (flagged, not yet
+  fixed — user confirmed this is not the cause of a separate "Master modules look empty" symptom
+  currently under investigation).
+- **`Djati-stores`' own `feat/stihl-dibidani` branch** (repo `mohcly/Djati-stores`, NOT a branch of
+  `onsqvduklnwffugsiybs`'s `main`) had a mismatched Supabase project-ID typo in `AIService.ts` fixed,
+  matching the fix already on `main`.
+- **CI (Tauri Windows build)**: `retail-manager`'s `.github/workflows/build.yml` had three real bugs
+  blocking it, all fixed on `feat/stihl-dibidani`: (1) default `GITHUB_TOKEN` can't check out the
+  private cross-account `Djati-stores` submodule — added a `SUBMODULE_PAT` secret + split submodule
+  checkout into its own step; (2) an orphaned `frontend_backup` gitlink (mode 160000, no `.gitmodules`
+  entry) broke `submodule update --init --recursive` outright; (3) `tauri.conf.json`'s
+  `beforeDevCommand`/`beforeBuildCommand` need `Djati-stores` (no `../`) since Tauri runs those as
+  shell commands from repo root, not from `src-tauri/` — `frontendDist` correctly keeps `../Djati-stores/dist`
+  since path *fields* resolve relative to the config file, unlike command *hooks*. **Built successfully**
+  on `stadium93/retail-manager` (a repo the user pushed this branch to specifically to use that
+  account's `windows-latest` Actions runner — earlier concern about a new-account runner hold turned
+  out to be resolved/not applicable). Artifact at that repo's Actions run history.
+- **Vercel**: new project `djati-dibidani` (team `mohclys-projects`) serves the STIHL web portal.
+  `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` set as `sensitive`-type production env vars pointing at
+  `fpvrbxmbrotowdlyebqv` — sensitive vars can't be pulled locally (`vercel pull` returns empty), so
+  deploys MUST use `vercel deploy --prod` (remote build) rather than `--prebuilt` after a local build.
+  GitHub App authorization for Vercel↔`mohcly/Djati-stores` got resolved mid-session (was blocked
+  earlier). **The dashboard's "Production Branch" setting could not be changed via the public API** —
+  every method tried (PATCH variants, re-link, disconnect+reconnect) silently reverts it to `main`;
+  best-effort read is that Vercel derives it from GitHub's actual default branch and doesn't expose
+  full override via the public REST surface. Workaround in active use: `vercel deploy --prod` from
+  whichever branch's worktree, which ignores that setting entirely and always deploys to production.
+- **Three dibidani branch variants now exist** on `Djati-stores` (repo `mohcly/Djati-stores`):
+  `feat/stihl-dibidani` (the original/legacy line, patched per above), `feat/stihl-dibidani-v2`
+  (fresh fork from `main` + ported standalone invoice/ticket HTML templates from the legacy branch
+  + Supabase repointed to `fpvrbxmbrotowdlyebqv`), `feat/stihl-dibidani-v3` (pure unmodified `main`
+  checkout, no code changes — deployed as-is to diagnose whether an "empty Master modules" symptom
+  the user is seeing is inherent to `main` itself or specific to the dibidani lineage). All three have
+  been deployed to `djati-dibidani`'s production alias at different points this session for comparison.
+- **Open bug, unresolved**: user reports Master-side modules appear empty in the deployed app. Ruled
+  out: wrong branch checkout (verified `main` is a real ancestor... at time of v2's creation), missing
+  files (all `src/pages/master/*.tsx` present), store-ownership/data (`owner_id` fix was proposed but
+  user said that's not it — "it is not about the stores owners, but the code in the modules, they look
+  empty"). Still needs a fresh look, likely in the actual Master module component code/data-fetching
+  logic itself — v3 (pure `main`) is deployed specifically to test this.
+- **Concurrent-session note**: another Claude Code session/agent was independently active on this same
+  `retail-manager` repo during this period (observed: main checkout branch changed unprompted, new
+  worktrees appeared under `.claude/worktrees/` that weren't created here, a commit landed on
+  `feat/stihl-dibidani` mid-session with the exact CI fixes this session was about to make
+  independently). No conflicts arose, but be aware of this when reasoning about "who changed what."
 
 ## Current State (grounded in the repo)
 - **Branch**: `chore/monorepo-submodules` (default/main lineage). Working tree has the

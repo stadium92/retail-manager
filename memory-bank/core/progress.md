@@ -1,8 +1,28 @@
 # Progress Tracking - Retail Manager
 
-*Last updated: 2026-07-13*
+*Last updated: 2026-07-15*
 *Canonical core file. Consolidates and supersedes `core/progress/progress.md` (kept for history).*
 *Granular task-by-task tracking lives in `core/tasks.md`.*
+
+## 2026-07-15 additions (see activeContext.md for full detail)
+- [x] `fpvrbxmbrotowdlyebqv` (STIHL Dibidani's own Supabase project) given the full `profiles`/
+      `user_roles`/`role_audit_log` auth schema it was missing entirely; 3 real pre-existing accounts
+      backfilled with profiles/roles/reset passwords.
+- [x] `retail-manager`'s Tauri Windows CI build (`build.yml`) fixed (3 real bugs: cross-account
+      private-submodule auth, orphaned gitlink, Tauri hook-command path resolution) and confirmed
+      **building successfully** end-to-end on `stadium93/retail-manager`.
+- [x] New Vercel project `djati-dibidani` stood up for the STIHL web portal, git-linked to
+      `mohcly/Djati-stores`, production env vars wired to the correct Supabase project.
+- [ ] Vercel "Production Branch" dashboard setting can't be changed via public API — open annoyance,
+      not a blocker (CLI `vercel deploy --prod` works around it every time).
+- [ ] **New bug, unresolved**: Master-side modules reportedly render empty in the deployed dibidani
+      app. Not a branch/file/data-ownership issue (all ruled out) — likely in module code/data-fetching
+      itself. `feat/stihl-dibidani-v3` (pure unmodified `main`) deployed to isolate whether this is a
+      `main`-inherent bug or dibidani-specific.
+- [x] Three dibidani branch variants exist on `Djati-stores` now: `feat/stihl-dibidani` (legacy,
+      patched), `feat/stihl-dibidani-v2` (fresh from `main` + templates + stihl Supabase), and
+      `feat/stihl-dibidani-v3` (pure `main`, diagnostic). Not yet consolidated into one — pick a
+      canonical one once the empty-modules bug is understood.
 
 ## Snapshot
 - **Branch**: `chore/monorepo-submodules` · **Frontend version**: 0.5.5 · **Tauri app**: 0.2.5 · **Root**: 1.0.0
