@@ -5,10 +5,12 @@ on:
     branches:
       - main
       - frontend-test-1
+      - main-restaurants
   pull_request:
     branches:
       - main
       - frontend-test-1
+      - main-restaurants
   workflow_dispatch:
 
 jobs:
@@ -40,7 +42,7 @@ jobs:
           npm run build
 
       - name: Build Frontend
-        working-directory: Djati-stores
+        working-directory: frontend
         run: |
           npm install
           npm run build
