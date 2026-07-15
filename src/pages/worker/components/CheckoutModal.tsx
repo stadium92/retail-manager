@@ -98,21 +98,21 @@ export function CheckoutModal({ open, onOpenChange, onConfirm, isLoading }: Chec
                         <div className="flex gap-2 p-1 bg-muted rounded-lg">
                             <Button
                                 variant={currentSaleType === 'detail' ? 'default' : 'ghost'}
-                                className="flex-1 h-8 text-xs"
+                                className="flex-1 min-w-0 h-auto min-h-8 py-1.5 px-1 text-xs whitespace-normal leading-tight"
                                 onClick={() => handleTypeChange('detail')}
                             >
                                 {t('menu.sales.retail')}
                             </Button>
                             <Button
                                 variant={currentSaleType === 'gros' ? 'default' : 'ghost'}
-                                className="flex-1 h-8 text-xs"
+                                className="flex-1 min-w-0 h-auto min-h-8 py-1.5 px-1 text-xs whitespace-normal leading-tight"
                                 onClick={() => handleTypeChange('gros')}
                             >
                                 {t('menu.sales.billingWholesale')}
                             </Button>
                             <Button
                                 variant={currentSaleType === 'proforma' ? 'secondary' : 'ghost'}
-                                className={`flex-1 h-8 text-xs ${currentSaleType === 'proforma' ? 'bg-amber-100 text-amber-900 font-bold' : ''}`}
+                                className={`flex-1 min-w-0 h-auto min-h-8 py-1.5 px-1 text-xs whitespace-normal leading-tight ${currentSaleType === 'proforma' ? 'bg-amber-100 text-amber-900 font-bold' : ''}`}
                                 onClick={() => handleTypeChange('proforma')}
                             >
                                 {t('menu.sales.proforma')}
@@ -124,10 +124,10 @@ export function CheckoutModal({ open, onOpenChange, onConfirm, isLoading }: Chec
                         <div className="space-y-2">
                             <Label>{t('menu.program.receptionTitle')}</Label>
                             <Tabs value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as any)} className="w-full">
-                                <TabsList className="grid w-full grid-cols-3">
-                                    <TabsTrigger value="cash"><Banknote className="w-4 h-4 mr-2" />{t('common.cash')}</TabsTrigger>
-                                    <TabsTrigger value="card"><CreditCard className="w-4 h-4 mr-2" />{t('common.card')}</TabsTrigger>
-                                    <TabsTrigger value="credit"><FileText className="w-4 h-4 mr-2" />{t('common.credit')}</TabsTrigger>
+                                <TabsList className="grid w-full grid-cols-3 h-auto">
+                                    <TabsTrigger value="cash" className="min-w-0 whitespace-normal px-1 py-1.5 leading-tight"><Banknote className="w-4 h-4 mr-1 shrink-0" />{t('common.cash')}</TabsTrigger>
+                                    <TabsTrigger value="card" className="min-w-0 whitespace-normal px-1 py-1.5 leading-tight"><CreditCard className="w-4 h-4 mr-1 shrink-0" />{t('common.card')}</TabsTrigger>
+                                    <TabsTrigger value="credit" className="min-w-0 whitespace-normal px-1 py-1.5 leading-tight"><FileText className="w-4 h-4 mr-1 shrink-0" />{t('common.credit')}</TabsTrigger>
                                 </TabsList>
                             </Tabs>
                         </div>
