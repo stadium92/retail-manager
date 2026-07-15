@@ -1,0 +1,518 @@
+/**
+ * OfflineStoreService - Handles store operations with offline support
+ */
+
+import { LocalDatabase, LocalStore } from './LocalDatabase';
+import { Store } from '@/types';
+import i18n from '@/i18n/config';
+import { toast } from '@/hooks/use-toast';
+import { storeSchema } from '@/schemas/validation';
+import { getDataClient, smartFetch } from '@/lib/dataClient';
+import { OfflineAuthService } from './OfflineAuthService';
+import { supabase } from '@/lib/supabase';
+
+type TimeoutResult<T> =
+  | { timedOut: true; promise: Promise<T> }
+  | { timedOut: false; value: T };
+
+async function raceWithSoftTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number
+): Promise<TimeoutResult<T>> {
+  let timeoutId: number | undefined;
+  const timeoutPromise = new Promise<{ __timeout: true }>((resolve) => {
+    timeoutId = window.setTimeout(() => resolve({ __timeout: true }), timeoutMs);
+  });
+
+  const result = await Promise.race([promise, timeoutPromise]);
+  if (timeoutId) window.clearTimeout(timeoutId);
+
+  if ((result as any)?.__timeout) {
+    return { timedOut: true, promise };
+  }
+
+  return { timedOut: false, value: result as T };
+}
+
+function mapLocalStoreToStore(s: LocalStore): Store {
+  return {
+    id: s.id,
+    name: s.name,
+    address: s.address,
+    phone: s.phone,
+    owner_id: undefined,
+    default_price_tier: s.default_price_tier || 1,
+    created_at: s.created_at,
+    updated_at: s.updated_at,
+  } as Store;
+}
+
+export class OfflineStoreService {
+  /**
+   * Create a store (works offline)
+   */
+  static async createStore(
+    storeData: Omit<Store, 'id' | 'created_at' | 'updated_at'>
+  ): Promise<{ data?: Store; error?: any }> {
+    const isOnline = navigator.onLine;
+    const dataClient = getDataClient();
+    const storeId = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    // Skip validation when offline to allow more flexible data entry
+    if (isOnline) {
+      const validationResult = storeSchema.safeParse(storeData);
+      if (!validationResult.success) {
+        return { error: { message: validationResult.error.errors[0].message } };
+      }
+    } else {
+      // Basic validation for offline mode - just ensure name exists
+      if (!storeData.name || storeData.name.trim().length === 0) {
+        return { error: { message: 'Store name is required' } };
+      }
+    }
+
+    try {
+      await LocalDatabase.init();
+
+      if (dataClient.isLocalFirst) {
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (!headers) {
+          return { error: { message: 'LocalBridge session required.' } };
+        }
+
+        const response = await smartFetch(`${dataClient.localBridgeBaseUrl}/rest/v1/stores`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...headers },
+          body: JSON.stringify({
+            name: storeData.name,
+            address: storeData.address ?? null,
+            phone: storeData.phone ?? null,
+            default_price_tier: storeData.default_price_tier || 1,
+          }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          return { error: payload };
+        }
+
+        const createdAt = payload.created_at || now;
+        const updatedAt = payload.updated_at || createdAt;
+        const localStore: LocalStore = {
+          id: payload.id,
+          name: payload.name,
+          address: payload.address || undefined,
+          city: undefined,
+          phone: payload.phone || undefined,
+          email: undefined,
+          default_price_tier: payload.default_price_tier || 1,
+          is_active: true,
+          created_at: createdAt,
+          updated_at: updatedAt,
+          synced: true,
+        };
+        await LocalDatabase.saveStore(localStore);
+
+        toast({
+          title: i18n.t('sync.storeCreated'),
+          description: 'Store created in local backend.',
+        });
+
+        return {
+          data: {
+            id: localStore.id,
+            name: localStore.name,
+            address: localStore.address,
+            phone: localStore.phone,
+            owner_id: storeData.owner_id,
+            created_at: localStore.created_at,
+            updated_at: localStore.updated_at,
+          } as Store,
+        };
+      }
+
+      const localStore: LocalStore = {
+        id: storeId,
+        name: storeData.name,
+        address: storeData.address,
+        city: undefined,
+        phone: storeData.phone,
+        email: undefined,
+        default_price_tier: storeData.default_price_tier || 1,
+        is_active: true,
+        created_at: now,
+        updated_at: now,
+        synced: false,
+      };
+
+      // Always save locally first
+      await LocalDatabase.saveStore(localStore);
+
+      if (!isOnline) {
+        // Queue for later sync
+        await LocalDatabase.addToSyncQueue({
+          id: crypto.randomUUID(),
+          type: 'store_create',
+          data: localStore,
+          timestamp: Date.now(),
+          retries: 0,
+        });
+
+        toast({
+          title: i18n.t('sync.storeCreatedOffline'),
+          description: i18n.t('sync.willSyncWhenOnline'),
+        });
+
+        return {
+          data: {
+            id: localStore.id,
+            name: localStore.name,
+            address: localStore.address,
+            phone: localStore.phone,
+            owner_id: storeData.owner_id,
+            created_at: now,
+            updated_at: now,
+          } as Store,
+        };
+      }
+
+      // Cloud sync disabled - queue for later sync
+      await LocalDatabase.addToSyncQueue({
+        id: crypto.randomUUID(),
+        type: 'store_create',
+        data: localStore,
+        timestamp: Date.now(),
+        retries: 0,
+      });
+
+      toast({
+        title: i18n.t('sync.storeCreatedLocally'),
+        description: i18n.t('sync.willSyncWhenOnline'),
+      });
+
+      return {
+        data: {
+          id: localStore.id,
+          name: localStore.name,
+          address: localStore.address,
+          phone: localStore.phone,
+          owner_id: storeData.owner_id,
+          created_at: now,
+          updated_at: now,
+        } as Store,
+      };
+    } catch (error) {
+      console.error('Create store error:', error);
+      return { error: { message: 'Failed to create store' } };
+    }
+  }
+
+  static async getStore(id: string): Promise<{ data?: Store; error?: any }> {
+    try {
+      await LocalDatabase.init();
+      const localStore = await LocalDatabase.getStore(id);
+      
+      const dataClient = getDataClient();
+      if (dataClient.isLocalFirst) {
+        if (!navigator.onLine && localStore) {
+          return { data: mapLocalStoreToStore(localStore) };
+        }
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (headers) {
+          const response = await smartFetch(`${dataClient.localBridgeBaseUrl}/rest/v1/stores/${id}`, { headers });
+          if (response.ok) {
+            const data = await response.json();
+            return { data: data as Store };
+          }
+        }
+        if (localStore) return { data: mapLocalStoreToStore(localStore) };
+        return { error: new Error('Store not found') };
+      }
+
+      if (localStore) {
+        return { data: mapLocalStoreToStore(localStore) };
+      }
+
+      return { error: new Error('Store not found') };
+    } catch (error) {
+      console.error('getStore error:', error);
+      return { error };
+    }
+  }
+
+  /**
+   * Get all stores (merges local and remote)
+   */
+  static async getStores(
+    options?: { notify?: boolean; timeoutMs?: number }
+  ): Promise<{ data?: Store[]; error?: any }> {
+    try {
+      await LocalDatabase.init();
+      const localStores = await LocalDatabase.getAllStores();
+      const localAsStores = localStores.map(mapLocalStoreToStore);
+
+      const dataClient = getDataClient();
+      
+      // Pure Cloud mode online fetching
+      if (!dataClient.isLocalFirst && navigator.onLine) {
+        try {
+          const { data, error } = await supabase
+            .from('restaurants')
+            .select('*')
+            .is('deleted_at', null)
+            .order('name');
+          
+          if (error) throw error;
+          
+          if (data) {
+            await this.cacheRemoteStores(data, localStores);
+            return { data: data.map(s => ({
+              id: s.id,
+              name: s.name,
+              address: s.address || undefined,
+              phone: s.phone || undefined,
+              owner_id: s.owner_id || undefined,
+              default_price_tier: s.default_price_tier || 1,
+              created_at: s.created_at,
+              updated_at: s.updated_at,
+            })) };
+          }
+        } catch (e) {
+          console.warn('[OfflineStoreService] Failed to fetch stores from Supabase:', e);
+        }
+      }
+
+      if (dataClient.isLocalFirst) {
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (!headers) {
+          return { data: localAsStores };
+        }
+        const response = await smartFetch(`${dataClient.localBridgeBaseUrl}/rest/v1/stores`, { headers });
+        const payload = await response.json().catch(() => []);
+        if (!response.ok) {
+          return { data: localAsStores, error: payload };
+        }
+
+        await this.cacheRemoteStores(payload || [], localStores);
+        const unsyncedLocalIds = new Set(localStores.filter((s) => !s.synced).map((s) => s.id));
+        const mergedById = new Map<string, Store>();
+        for (const s of localAsStores) mergedById.set(s.id, s);
+        for (const s of payload || []) {
+          if (!unsyncedLocalIds.has(s.id)) mergedById.set(s.id, s as Store);
+        }
+
+        const merged = Array.from(mergedById.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        return { data: merged };
+      }
+
+      // Pure Cloud mode fallback: return local stores
+      return { data: localAsStores };
+    } catch (error) {
+      console.error('Get stores error:', error);
+      return { error };
+    }
+  }
+
+  private static async cacheRemoteStores(remoteStores: any[], localStores: LocalStore[]) {
+    for (const store of remoteStores || []) {
+      const existingLocal = localStores.find((ls) => ls.id === store.id);
+      // Never overwrite local unsynced edits
+      if (existingLocal && !existingLocal.synced) continue;
+
+      await LocalDatabase.saveStore({
+        id: store.id,
+        name: store.name,
+        address: store.address || undefined,
+        city: store.city || undefined,
+        phone: store.phone || undefined,
+        email: store.email || undefined,
+        default_price_tier: store.default_price_tier || 1,
+        is_active: store.is_active ?? true,
+        created_at: store.created_at,
+        updated_at: store.updated_at || store.created_at,
+        synced: true,
+      });
+    }
+  }
+
+  /**
+   * Update a store (works offline)
+   */
+  static async updateStore(
+    id: string,
+    updates: Partial<Store>
+  ): Promise<{ data?: Store; error?: any }> {
+    try {
+      await LocalDatabase.init();
+      const now = new Date().toISOString();
+      const dataClient = getDataClient();
+
+      if (dataClient.isLocalFirst) {
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (!headers) {
+          return { error: { message: 'LocalBridge session required.' } };
+        }
+
+        const response = await smartFetch(`${dataClient.localBridgeBaseUrl}/rest/v1/stores/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', ...headers },
+          body: JSON.stringify({
+            name: updates.name,
+            address: updates.address ?? null,
+            phone: updates.phone ?? null,
+            default_price_tier: updates.default_price_tier,
+          }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          return { error: payload };
+        }
+
+        const localStore: LocalStore = {
+          id: payload.id,
+          name: payload.name,
+          address: payload.address || undefined,
+          city: undefined,
+          phone: payload.phone || undefined,
+          email: undefined,
+          default_price_tier: payload.default_price_tier || 1,
+          is_active: true,
+          created_at: payload.created_at || now,
+          updated_at: payload.updated_at || now,
+          synced: true,
+        };
+        await LocalDatabase.saveStore(localStore);
+
+        return { data: payload as Store };
+      }
+
+      // Get existing local store or create from updates
+      let localStore = await LocalDatabase.getStore(id);
+      
+      if (localStore) {
+        localStore = {
+          ...localStore,
+          name: updates.name ?? localStore.name,
+          address: updates.address ?? localStore.address,
+          phone: updates.phone ?? localStore.phone,
+          default_price_tier: updates.default_price_tier ?? localStore.default_price_tier,
+          updated_at: now,
+          synced: false,
+        };
+      } else {
+        localStore = {
+          id,
+          name: updates.name || '',
+          address: updates.address,
+          city: undefined,
+          phone: updates.phone,
+          email: undefined,
+          default_price_tier: updates.default_price_tier ?? 1,
+          is_active: true,
+          created_at: now,
+          updated_at: now,
+          synced: false,
+        };
+      }
+
+      await LocalDatabase.saveStore(localStore);
+
+      if (!navigator.onLine) {
+        await LocalDatabase.addToSyncQueue({
+          id: crypto.randomUUID(),
+          type: 'store_update',
+          data: localStore,
+          timestamp: Date.now(),
+          retries: 0,
+        });
+
+        toast({
+          title: i18n.t('sync.storeUpdatedOffline'),
+          description: i18n.t('sync.willSyncWhenOnline'),
+        });
+
+        return { 
+          data: {
+            id: localStore.id,
+            name: localStore.name,
+            address: localStore.address,
+            phone: localStore.phone,
+            owner_id: undefined,
+            default_price_tier: localStore.default_price_tier,
+            created_at: localStore.created_at,
+            updated_at: localStore.updated_at,
+          } as Store 
+        };
+      }
+
+      // Direct online update. Previously this unconditionally queued the
+      // change for a later sync that never actually ran a Supabase write -
+      // renaming a store appeared to succeed (toast + local cache updated)
+      // but never landed in the database or reflected for other sessions.
+      // Mirror the corrected Djati-stores behavior: attempt the real write,
+      // and propagate a genuine error instead of masking failures.
+      const { error: supabaseError } = await supabase
+        .from('stores')
+        .update({
+          name: localStore.name,
+          address: localStore.address ?? null,
+          phone: localStore.phone ?? null,
+          default_price_tier: localStore.default_price_tier,
+          updated_at: now,
+        })
+        .eq('id', id);
+
+      if (supabaseError) {
+        console.error('[OfflineStoreService] Supabase update failed:', supabaseError);
+        return { error: supabaseError };
+      }
+
+      localStore.synced = true;
+      await LocalDatabase.saveStore(localStore);
+
+      return { 
+        data: {
+          id: localStore.id,
+          name: localStore.name,
+          address: localStore.address,
+          phone: localStore.phone,
+          owner_id: undefined,
+          default_price_tier: localStore.default_price_tier,
+          created_at: localStore.created_at,
+          updated_at: localStore.updated_at,
+        } as Store 
+      };
+    } catch (error) {
+      console.error('Update store error:', error);
+      return { error };
+    }
+  }
+
+  static async deleteStore(id: string): Promise<{ error?: any }> {
+    try {
+      await LocalDatabase.init();
+      await LocalDatabase.deleteStore(id);
+
+      const dataClient = getDataClient();
+      if (dataClient.isLocalFirst) {
+        const headers = await OfflineAuthService.getAuthHeaders();
+        if (!headers) {
+          return { error: { message: 'LocalBridge session required.' } };
+        }
+        const response = await smartFetch(`${dataClient.localBridgeBaseUrl}/rest/v1/stores/${id}`, {
+          method: 'DELETE',
+          headers,
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          return { error: payload };
+        }
+        return {};
+      }
+
+      return {};
+    } catch (error) {
+      return { error };
+    }
+  }
+}
