@@ -522,32 +522,27 @@ export class OfflineStoreService {
           description: i18n.t('sync.willSyncWhenOnline'),
         });
       } else {
-        // Direct online update
-        try {
-          const { error } = await supabase
-            .from('stores')
-            .update({
-              name: localStore.name,
-              address: localStore.address ?? null,
-              phone: localStore.phone ?? null,
-              default_price_tier: localStore.default_price_tier,
-              updated_at: now
-            })
-            .eq('id', id);
-          if (error) throw error;
-          
-          localStore.synced = true;
-          await LocalDatabase.saveStore(localStore);
-        } catch (err) {
-          console.error('[OfflineStoreService] Supabase update failed:', err);
-          await LocalDatabase.addToSyncQueue({
-            id: crypto.randomUUID(),
-            type: 'store_update',
-            data: localStore,
-            timestamp: Date.now(),
-            retries: 0,
-          });
+        // Direct online update. Do NOT silently swallow failures here: if this
+        // throws, the caller (Stores.tsx) needs a real error so it can show it
+        // instead of a false success toast while the DB write never landed.
+        const { error: supabaseError } = await supabase
+          .from('stores')
+          .update({
+            name: localStore.name,
+            address: localStore.address ?? null,
+            phone: localStore.phone ?? null,
+            default_price_tier: localStore.default_price_tier,
+            updated_at: now
+          })
+          .eq('id', id);
+
+        if (supabaseError) {
+          console.error('[OfflineStoreService] Supabase update failed:', supabaseError);
+          return { error: supabaseError };
         }
+
+        localStore.synced = true;
+        await LocalDatabase.saveStore(localStore);
       }
 
       return { 
