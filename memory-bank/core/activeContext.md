@@ -64,6 +64,52 @@ These are separate physical databases, not git branches of one project.
   `feat/stihl-dibidani` mid-session with the exact CI fixes this session was about to make
   independently). No conflicts arose, but be aware of this when reasoning about "who changed what."
 
+## Status Update — 2026-07-15 (this is the other concurrent session referenced above — Djati-stores
+legacy-restore, monorepo main promotion, auth/sync/mobile-UI fixes)
+
+- **`Djati-stores` (repo `mohcly/Djati-stores`, submodule of this repo) had its `main` branch entirely
+  replaced** with a more complete "legacy" codebase recovered from the old standalone
+  `retail-manager-mobile` repo, per explicit user direction after confirming it had working login/sales/
+  full sidebar that the prior `main` lacked. Old `main` preserved as `main-pre-legacy-restore` (not
+  deleted). This repo's `retail-manager-stores` submodule pointer/URL updated to match
+  (`retail-manager-stores` → `Djati-stores` repo rename).
+- **`retail-manager`'s own `main` branch promoted from `chore/monorepo-submodules`**: old `main`
+  preserved as `main-pre-monorepo-submodules`, pushed to all four GitHub mirrors (`stadium91`/origin,
+  `boop-moon`, `stadium92`, `stadium93`), default branch reset to `main` on each.
+- **Backend sync-outbox was a dead letter queue**: `sync_outbox` (populated by sales/clients/deliveries/
+  stores/cash/products/suppliers/purchase_orders repos via `emitOutbox()`) was never actually read by
+  `/sync/push` — only a separate, mostly-unused `pending_mutations` table was drained. Real local-bridge
+  client data had no path to Supabase. Fixed: `/sync/push` now drains both, plus a one-time idempotent
+  backfill sweep for historical data that predates the fix, triggered automatically on every app launch.
+  `clients`/`cash_transactions` Supabase tables don't exist yet (queue correctly, fail cleanly until
+  created); team/worker sync intentionally not implemented (needs real Supabase Auth provisioning, not
+  a generic push — local-bridge workers only have local bcrypt-hash accounts).
+- **Frontend auth/session bugs fixed on `Djati-stores` `main`**: session not persisting across reloads
+  for store owners without an explicit `user_roles` row (owner-lookup fallback existed at login but not
+  at session-restore); master-password verification always failing in Cloud mode (only checked an
+  IndexedDB cache Cloud logins never populate — added a `verify-master-password` Supabase Edge Function);
+  password-change silently broken in both modes (was calling a nonexistent endpoint).
+- **iOS Safari autofill crash on login** (real client-reported bug, iPhone 11): global `keydown`
+  listeners (`ShortcutsContext`, `ScannerContext`, both mounted at the App root, active on `/auth`)
+  crashed on `e.key.startsWith(...)`/`e.key.length` when Safari's autofill dispatches synthetic events
+  with no `.key` string. Guarded both.
+- **Mobile POS/checkout layout redesigned**: `MobilePOS.tsx` used `fixed` header/footer with hardcoded
+  pixel-offset magic numbers to coordinate with the parent tab bar — replaced with proper flexbox
+  (`h-dvh flex flex-col`, `flex-1 min-h-0 overflow-y-auto` middle). Separately, and more impactfully: the
+  **shared `DialogContent`/`AlertDialogContent`/`SheetContent` UI primitives had no `max-height` or
+  `overflow-y-auto` at all** (34 call sites across the app) — any dialog taller than the viewport
+  (e.g. `CheckoutModal`) overflowed off-screen with the confirm button unreachable, on any device. Fixed
+  at the shared-component level (`max-h-[90dvh] overflow-y-auto`), not per-dialog.
+- **`feat/stihl-dibidani` and `feat/niamanan-dubai` (`Djati-stores` branches) both wired to build as
+  Windows `.exe`s via `retail-manager`'s Tauri CI**, confirmed with real successful `windows-latest`
+  builds on `stadium93/retail-manager` (artifacts in that repo's Actions run history). `boop-moon` is
+  the historically-proven CI account if `stadium93` ever needs to be avoided.
+- **Data-safety fix for `feat/stihl-niamakoro`** (real client already running this build, real
+  accumulated local data): removed a `main.tsx` one-time `localStorage.clear()` + full IndexedDB wipe
+  gated on a version flag the existing install wouldn't have set — would have forced a jarring
+  re-login/cache-wipe on next launch. Real business data lives in local-bridge's SQLite, unaffected
+  either way, but the wipe itself served no purpose for a controlled update and was removed outright.
+
 ## Current State (grounded in the repo)
 - **Branch**: `chore/monorepo-submodules` (default/main lineage). Working tree has the
   `retail-manager-stores` submodule pointer modified; untracked `docs/FINANCIAL_STRATEGY.md`,
