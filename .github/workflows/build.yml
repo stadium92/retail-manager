@@ -64,5 +64,18 @@ jobs:
           prerelease: false
           args: --target x86_64-pc-windows-msvc
 
+      - name: Publish installer to stadium94/app-releases
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.STADIUM94_RELEASE_TOKEN }}
+        run: |
+          $files = Get-ChildItem -Path "src-tauri/target/x86_64-pc-windows-msvc/release/bundle" -Recurse -Include *.msi,*.exe
+          if ($files.Count -eq 0) {
+            Write-Error "No installer files found under src-tauri/target/x86_64-pc-windows-msvc/release/bundle"
+            exit 1
+          }
+          $tag = "${{ github.ref_name }}-${{ github.run_number }}"
+          gh release create $tag $($files.FullName) --repo stadium94/app-releases --title "${{ github.ref_name }} build ${{ github.run_number }}" --notes "Automated build from stadium93/retail-manager @ ${{ github.sha }}"
+
 
 
