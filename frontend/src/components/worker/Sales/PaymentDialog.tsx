@@ -76,9 +76,13 @@ export function PaymentDialog({
       
       const timer = setTimeout(() => {
         if (inputRef.current) {
+          // NumericInput selects its own text on focus (see numeric-input.tsx)
+          // via .select() - do NOT also call setSelectionRange() here: it's
+          // redundant, and the input is type="number", which does not support
+          // setSelectionRange at all (throws InvalidStateError, crashing the
+          // payment dialog the instant a worker opens it).
           inputRef.current.focus();
-          inputRef.current.setSelectionRange(0, inputRef.current.value.length);
-          console.log('[PaymentDialog] Input focused and selected');
+          console.log('[PaymentDialog] Input focused');
         }
       }, 150);
       return () => clearTimeout(timer);
