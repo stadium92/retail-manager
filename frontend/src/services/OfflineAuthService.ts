@@ -1231,9 +1231,35 @@ export class OfflineAuthService {
               created_at: r.created_at,
             }));
 
-            const storeId = roles.find(r => r.store_id)?.store_id;
+            let storeId = roles.find(r => r.store_id)?.store_id;
+
+            // A master's own user_roles row can exist with store_id: null
+            // (an account-level master not individually linked to any one
+            // store - distinct from a store-linked master or a worker, who
+            // always have a store_id here). Previously this returned early
+            // with no resolvable store_id at all, silently breaking every
+            // store-scoped mobile query (products, cart, sales...) for that
+            // master, while the identical-looking worker account worked
+            // fine. Masters can see/manage every store via the "Masters can
+            // manage all stores" RLS policy regardless of ownership or
+            // user_roles linkage, so fall back to the first store they can
+            // actually see - correct for the common single-store deployment,
+            // and still a reasonable default if there's ever more than one
+            // (an explicit store switcher is the real long-term answer for
+            // masters overseeing multiple stores, not in scope here).
+            if (!storeId && roles.some(r => r.role === 'master')) {
+              const { data: visibleStores } = await supabase
+                .from('stores')
+                .select('id')
+                .limit(1);
+              storeId = visibleStores?.[0]?.id;
+            }
+
             if (storeId) {
               session.user.user_metadata.store_id = storeId;
+              for (const r of roles) {
+                if (r.role === 'master' && !r.store_id) r.store_id = storeId;
+              }
             }
 
             return {
