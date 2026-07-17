@@ -525,7 +525,11 @@ export class OfflineStoreService {
         // Direct online update. Do NOT silently swallow failures here: if this
         // throws, the caller (Stores.tsx) needs a real error so it can show it
         // instead of a false success toast while the DB write never landed.
-        const { error: supabaseError } = await supabase
+        // .select() is required: an UPDATE that matches zero rows (e.g. blocked
+        // by RLS) is NOT reported as an error by Postgres/PostgREST - without
+        // selecting back the affected row, there is no way to tell "updated"
+        // apart from "silently matched nothing".
+        const { data: updatedRows, error: supabaseError } = await supabase
           .from('stores')
           .update({
             name: localStore.name,
@@ -534,11 +538,17 @@ export class OfflineStoreService {
             default_price_tier: localStore.default_price_tier,
             updated_at: now
           })
-          .eq('id', id);
+          .eq('id', id)
+          .select();
 
         if (supabaseError) {
           console.error('[OfflineStoreService] Supabase update failed:', supabaseError);
           return { error: supabaseError };
+        }
+
+        if (!updatedRows || updatedRows.length === 0) {
+          console.error('[OfflineStoreService] Update matched no rows (likely blocked by RLS):', id);
+          return { error: { message: 'Update rejected: you do not have permission to edit this store.' } };
         }
 
         localStore.synced = true;
