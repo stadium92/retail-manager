@@ -451,7 +451,11 @@ export class OfflineStoreService {
       // but never landed in the database or reflected for other sessions.
       // Mirror the corrected Djati-stores behavior: attempt the real write,
       // and propagate a genuine error instead of masking failures.
-      const { error: supabaseError } = await supabase
+      // .select() is required: an UPDATE that matches zero rows (e.g. blocked
+      // by RLS) is NOT reported as an error by Postgres/PostgREST - without
+      // selecting back the affected row, there is no way to tell "updated"
+      // apart from "silently matched nothing".
+      const { data: updatedRows, error: supabaseError } = await supabase
         .from('stores')
         .update({
           name: localStore.name,
@@ -460,11 +464,17 @@ export class OfflineStoreService {
           default_price_tier: localStore.default_price_tier,
           updated_at: now,
         })
-        .eq('id', id);
+        .eq('id', id)
+        .select();
 
       if (supabaseError) {
         console.error('[OfflineStoreService] Supabase update failed:', supabaseError);
         return { error: supabaseError };
+      }
+
+      if (!updatedRows || updatedRows.length === 0) {
+        console.error('[OfflineStoreService] Update matched no rows (likely blocked by RLS):', id);
+        return { error: { message: 'Update rejected: you do not have permission to edit this store.' } };
       }
 
       localStore.synced = true;
