@@ -162,9 +162,9 @@ export function SanifereFooter({
 
   return (
     <div className="bg-[hsl(220,20%,90%)] border-t-2 border-black/30 font-mono select-none">
-      <div className="flex items-center justify-end px-4 py-0.5 bg-white/80 border-b border-black/10">
-        <span className="text-base font-bold text-black mr-4 uppercase">{t('menu.program.netToPay')}</span>
-        <span className="text-xl font-bold text-black bg-[hsl(50,100%,60%)] px-6 py-0.5 min-w-[200px] text-right shadow-inner border border-black/20">
+      <div className="flex items-center justify-end px-4 py-0 bg-white/80">
+        <span className="text-sm leading-none font-bold text-black mr-4 uppercase">{t('menu.program.netToPay')}</span>
+        <span className="text-lg leading-none font-bold text-black bg-[hsl(50,100%,60%)] px-6 py-1 min-w-[200px] text-right shadow-inner border border-black/20">
           {formatCurrency(netTotal)}
         </span>
       </div>
