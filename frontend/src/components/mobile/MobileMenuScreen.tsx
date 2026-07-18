@@ -1,12 +1,51 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronRight, ShoppingCart, ShoppingBag, FolderOpen, FileText, BarChart3, Package, LogOut, RefreshCw, Layout } from 'lucide-react';
+import {
+  ChevronRight, ShoppingCart, ShoppingBag, FolderOpen, FileText, BarChart3, Package,
+  LogOut, RefreshCw, Layout, Receipt, Lock, CalendarDays, Boxes, Users, Truck, Store,
+  ClipboardList, PackageCheck, PenLine, CreditCard, AlertTriangle, History, UserCog,
+  ScrollText, Mail, LayoutDashboard, KeyRound,
+} from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { LocalDatabase } from '@/services/LocalDatabase';
 
 interface MobileMenuScreenProps {
   onSelect: (moduleId: string) => void;
 }
+
+// One accent per section — used for the section header chip, the card's
+// top accent bar, and each item's icon tint within that section.
+const SECTION_ACCENTS: Record<string, string> = {
+  'Ventes': 'hsl(150,70%,45%)',
+  'Commandes': 'hsl(150,70%,45%)',
+  'Fichiers': 'hsl(270,70%,62%)',
+  'Stock': 'hsl(30,90%,55%)',
+  'Achats': 'hsl(210,90%,58%)',
+  'Settings': 'hsl(350,80%,62%)',
+  'Gestion': 'hsl(190,80%,50%)',
+  'Paramètres': 'hsl(220,10%,62%)',
+};
+
+const ITEM_ICONS: Record<string, React.ReactNode> = {
+  'vente-detail': <Receipt className="w-[18px] h-[18px]" />,
+  'fermeture-caisse': <Lock className="w-[18px] h-[18px]" />,
+  'suivi-ventes-jour': <CalendarDays className="w-[18px] h-[18px]" />,
+  'fiche-produits': <Boxes className="w-[18px] h-[18px]" />,
+  'clients': <Users className="w-[18px] h-[18px]" />,
+  'fournisseurs': <Truck className="w-[18px] h-[18px]" />,
+  'boutiques': <Store className="w-[18px] h-[18px]" />,
+  'inventaire-stock': <ClipboardList className="w-[18px] h-[18px]" />,
+  'reception-achats': <PackageCheck className="w-[18px] h-[18px]" />,
+  'commande-manuelle': <PenLine className="w-[18px] h-[18px]" />,
+  'reglement-fournisseurs': <CreditCard className="w-[18px] h-[18px]" />,
+  'besoins-achats': <AlertTriangle className="w-[18px] h-[18px]" />,
+  'historique-achats': <History className="w-[18px] h-[18px]" />,
+  'team': <UserCog className="w-[18px] h-[18px]" />,
+  'audit-logs': <ScrollText className="w-[18px] h-[18px]" />,
+  'invitations': <Mail className="w-[18px] h-[18px]" />,
+  'tableau-bord': <LayoutDashboard className="w-[18px] h-[18px]" />,
+  'mots-de-passe': <KeyRound className="w-[18px] h-[18px]" />,
+};
 
 export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
   const { t } = useTranslation();
@@ -29,10 +68,10 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
       title: 'Fichiers',
       icon: <FolderOpen className="w-5 h-5" />,
       items: [
-        { id: 'fiche-produits', label: '📦 Produits' },
+        { id: 'fiche-produits', label: 'Produits' },
         { id: 'clients', label: t('menu.files.clients') || 'Clients' },
         { id: 'fournisseurs', label: t('menu.files.suppliers') || 'Fournisseurs' },
-        { id: 'boutiques', label: '🏪 Boutiques' },
+        { id: 'boutiques', label: 'Boutiques' },
       ],
     },
     {
@@ -58,9 +97,9 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
       icon: <FileText className="w-5 h-5" />,
       items: [
         ...(isMaster ? [
-          { id: 'team', label: `👥 ${t('sidebar.team') || 'Gestion Équipe'}` },
-          { id: 'audit-logs', label: '📜 Logs Système' },
-          { id: 'invitations', label: '✉️ Invitations' }
+          { id: 'team', label: t('sidebar.team') || 'Gestion Équipe' },
+          { id: 'audit-logs', label: 'Logs Système' },
+          { id: 'invitations', label: 'Invitations' }
         ] : [])
       ],
     },
@@ -131,34 +170,65 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
     return section;
   });
 
+  const roleLabel = isMaster
+    ? (t('roles.master') || 'Master')
+    : subRole === 'cashier' ? (t('roles.cashier') || 'Caissier')
+    : (t('roles.worker') || 'Vendeur');
+
   return (
     <div className="flex flex-col h-full bg-[#0a0a0a] pb-[80px]">
-      <header className="flex-shrink-0 h-[56px] bg-[#141414] border-b border-rs-surface-container flex items-center px-4 z-10 sticky top-0">
-        <h1 className="text-xl font-bold tracking-tight text-white flex-1">Modules DJATI</h1>
-      </header>
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
-        {finalSections.filter(s => s.items.length > 0).map((section, idx) => (
-          <div key={idx} className="space-y-3">
-            <div className="flex items-center gap-2 text-rs-surface-tint font-bold text-sm tracking-wider uppercase pl-2">
-              {section.icon}
-              <span>{section.title}</span>
-            </div>
-            <div className="bg-[#141414] rounded-2xl overflow-hidden border border-rs-surface-container">
-              {section.items.map((item, itemIdx) => (
-                <button
-                  key={item.id}
-                  onClick={() => onSelect(item.id)}
-                  className={`w-full flex items-center justify-between p-4 text-left hover:bg-rs-surface-container-highest transition-colors active:scale-95 ${
-                    itemIdx !== section.items.length - 1 ? 'border-b border-rs-surface-container' : ''
-                  }`}
-                >
-                  <span className="text-rs-on-surface font-medium">{item.label}</span>
-                  <ChevronRight className="w-5 h-5 text-rs-on-surface-variant" />
-                </button>
-              ))}
-            </div>
+      <header className="flex-shrink-0 bg-[#141414] border-b border-rs-surface-container px-4 pt-safe sticky top-0 z-10">
+        <div className="h-[64px] flex items-center justify-between">
+          <div className="flex flex-col">
+            <h1 className="text-xl font-bold tracking-tight text-white leading-tight">Modules DJATI</h1>
+            <span className="text-xs text-rs-on-surface-variant font-medium">{roleLabel}</span>
           </div>
-        ))}
+          <div className="w-9 h-9 rounded-full bg-rs-surface-tint/15 border border-rs-surface-tint/30 flex items-center justify-center text-rs-surface-tint font-bold text-sm">
+            {(user?.email?.[0] || roleLabel[0] || '?').toUpperCase()}
+          </div>
+        </div>
+      </header>
+
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+        {finalSections.filter(s => s.items.length > 0).map((section, idx) => {
+          const accent = SECTION_ACCENTS[section.title] ?? 'hsl(220,10%,62%)';
+          return (
+            <div key={idx} className="space-y-2.5">
+              <div className="flex items-center gap-2 pl-1">
+                <div
+                  className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0"
+                  style={{ backgroundColor: `${accent}1f`, color: accent }}
+                >
+                  {section.icon}
+                </div>
+                <span className="font-bold text-sm tracking-wider uppercase text-rs-on-surface">{section.title}</span>
+              </div>
+              <div
+                className="bg-[#141414] rounded-2xl overflow-hidden border border-rs-surface-container border-l-[3px]"
+                style={{ borderLeftColor: accent }}
+              >
+                {section.items.map((item, itemIdx) => (
+                  <button
+                    key={item.id}
+                    onClick={() => onSelect(item.id)}
+                    className={`w-full flex items-center gap-3 p-4 text-left hover:bg-rs-surface-container-highest transition-colors active:scale-[0.98] ${
+                      itemIdx !== section.items.length - 1 ? 'border-b border-rs-surface-container' : ''
+                    }`}
+                  >
+                    <div
+                      className="flex items-center justify-center w-9 h-9 rounded-xl shrink-0"
+                      style={{ backgroundColor: `${accent}1f`, color: accent }}
+                    >
+                      {ITEM_ICONS[item.id] ?? <ChevronRight className="w-[18px] h-[18px]" />}
+                    </div>
+                    <span className="flex-1 text-rs-on-surface font-medium">{item.label}</span>
+                    <ChevronRight className="w-5 h-5 text-rs-on-surface-variant shrink-0" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
 
         <div className="pt-4 pb-8 space-y-3">
           <button
