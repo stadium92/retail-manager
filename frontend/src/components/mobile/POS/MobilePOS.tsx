@@ -144,7 +144,7 @@ export function MobilePOS({ onBack }: MobilePOSProps) {
 
     if (isProductSheetOpen) {
         return (
-            <div className="antialiased h-dvh flex flex-col pt-safe pb-[64px] md:pb-0 bg-[#0C0C0C] text-rs-on-surface dark">
+            <div className="antialiased h-dvh flex flex-col pt-safe pb-[var(--mobile-tabbar-h)] md:pb-0 bg-[#0C0C0C] text-rs-on-surface dark">
                 <header className="shrink-0 h-[56px] border-b border-rs-surface-container-highest bg-rs-surface flex items-center px-4 z-50 gap-3">
                     <button onClick={() => setIsProductSheetOpen(false)} className="active:scale-95 transition-transform duration-150 p-2 -ml-2 rounded-full hover:bg-rs-surface-container-highest text-rs-on-surface-variant">
                         <span className="material-symbols-outlined">arrow_back</span>
@@ -192,7 +192,7 @@ export function MobilePOS({ onBack }: MobilePOSProps) {
     }
 
     return (
-        <div className="antialiased h-dvh flex flex-col pt-safe pb-[64px] md:pb-0 bg-[#0C0C0C] text-rs-on-surface dark">
+        <div className="antialiased h-dvh flex flex-col pt-safe pb-[var(--mobile-tabbar-h)] md:pb-0 bg-[#0C0C0C] text-rs-on-surface dark">
             {/* TopAppBar */}
             <header className="shrink-0 h-[56px] border-b border-rs-surface-container-highest bg-rs-surface flex justify-between items-center px-4 z-50">
                 <div className="flex items-center gap-3">

@@ -11,6 +11,12 @@
 
 @layer base {
   :root {
+    /* Mobile bottom tab bar height - single source of truth. Any fixed-position
+       panel that needs to sit flush above the tab bar (e.g. MobilePOS's net-a-payer
+       panel) must reference this instead of a hardcoded 64px, so they can never
+       drift out of sync. */
+    --mobile-tabbar-h: 64px;
+
     /* Base - Light mode (fallback) */
     --background: 220 20% 97%;
     --foreground: 220 40% 13%;

@@ -294,7 +294,7 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
         <nav
           className={[
             'fixed bottom-0 left-0 right-0 z-50',
-            'h-[64px]',
+            'h-[var(--mobile-tabbar-h)]',
             'bg-rs-surface border-t border-rs-outline',
             'flex items-stretch',
           ].join(' ')}
