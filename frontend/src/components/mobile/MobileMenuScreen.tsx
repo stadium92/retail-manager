@@ -14,17 +14,23 @@ interface MobileMenuScreenProps {
 }
 
 // One accent per section — used for the section header chip, the card's
-// top accent bar, and each item's icon tint within that section.
+// top accent bar, and each item's icon tint within that section. Stored as
+// bare "H S% L%" triplets (CSS Color 4 syntax) so both a solid `hsl(${a})`
+// and a translucent `hsl(${a} / 16%)` can be built from the same value —
+// appending a hex alpha suffix directly onto a full `hsl(...)` string isn't
+// valid CSS and silently produces an opaque background, which is why icons
+// were invisible (icon and its own background rendered as the same solid color).
 const SECTION_ACCENTS: Record<string, string> = {
-  'Ventes': 'hsl(150,70%,45%)',
-  'Commandes': 'hsl(150,70%,45%)',
-  'Fichiers': 'hsl(270,70%,62%)',
-  'Stock': 'hsl(30,90%,55%)',
-  'Achats': 'hsl(210,90%,58%)',
-  'Settings': 'hsl(350,80%,62%)',
-  'Gestion': 'hsl(190,80%,50%)',
-  'Paramètres': 'hsl(220,10%,62%)',
+  'Ventes': '150 70% 45%',
+  'Commandes': '150 70% 45%',
+  'Fichiers': '270 70% 62%',
+  'Stock': '30 90% 55%',
+  'Achats': '210 90% 58%',
+  'Settings': '350 80% 62%',
+  'Gestion': '190 80% 50%',
+  'Paramètres': '220 10% 62%',
 };
+const DEFAULT_ACCENT = '220 10% 62%';
 
 const ITEM_ICONS: Record<string, React.ReactNode> = {
   'vente-detail': <Receipt className="w-[18px] h-[18px]" />,
@@ -191,13 +197,13 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
         {finalSections.filter(s => s.items.length > 0).map((section, idx) => {
-          const accent = SECTION_ACCENTS[section.title] ?? 'hsl(220,10%,62%)';
+          const accent = SECTION_ACCENTS[section.title] ?? DEFAULT_ACCENT;
           return (
             <div key={idx} className="space-y-2.5">
               <div className="flex items-center gap-2 pl-1">
                 <div
                   className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0"
-                  style={{ backgroundColor: `${accent}1f`, color: accent }}
+                  style={{ backgroundColor: `hsl(${accent} / 16%)`, color: `hsl(${accent})` }}
                 >
                   {section.icon}
                 </div>
@@ -205,7 +211,7 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
               </div>
               <div
                 className="bg-[#141414] rounded-2xl overflow-hidden border border-rs-surface-container border-l-[3px]"
-                style={{ borderLeftColor: accent }}
+                style={{ borderLeftColor: `hsl(${accent})` }}
               >
                 {section.items.map((item, itemIdx) => (
                   <button
@@ -217,7 +223,7 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
                   >
                     <div
                       className="flex items-center justify-center w-9 h-9 rounded-xl shrink-0"
-                      style={{ backgroundColor: `${accent}1f`, color: accent }}
+                      style={{ backgroundColor: `hsl(${accent} / 16%)`, color: `hsl(${accent})` }}
                     >
                       {ITEM_ICONS[item.id] ?? <ChevronRight className="w-[18px] h-[18px]" />}
                     </div>
