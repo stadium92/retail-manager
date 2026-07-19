@@ -14,9 +14,19 @@ import { OfflineInventoryService } from '@/services/OfflineInventoryService';
 
 interface MobilePOSProps {
     onBack?: () => void;
+    /**
+     * The bottom tab row, fused directly into this screen's own fixed-bottom
+     * panel instead of being rendered as a separate, independently-fixed
+     * sibling. Two independently-positioned elements that merely calculate
+     * matching offsets can still visibly desync (e.g. during a mobile
+     * browser's address-bar collapse mid-scroll); rendering them as one
+     * continuous box removes the seam entirely rather than trying to keep
+     * both sides of it in sync.
+     */
+    tabBar?: React.ReactNode;
 }
 
-export function MobilePOS({ onBack }: MobilePOSProps) {
+export function MobilePOS({ onBack, tabBar }: MobilePOSProps) {
     const { t } = useTranslation();
     const { formatCurrency } = useFormatters();
     const {
@@ -144,7 +154,7 @@ export function MobilePOS({ onBack }: MobilePOSProps) {
 
     if (isProductSheetOpen) {
         return (
-            <div className="antialiased h-[100svh] flex flex-col pt-safe pb-[var(--mobile-tabbar-h)] md:pb-0 bg-[#0C0C0C] text-rs-on-surface dark">
+            <div className="antialiased h-[100svh] flex flex-col pt-safe md:pb-0 bg-[#0C0C0C] text-rs-on-surface dark">
                 <header className="shrink-0 h-[56px] border-b border-rs-surface-container-highest bg-rs-surface flex items-center px-4 z-50 gap-3">
                     <button onClick={() => setIsProductSheetOpen(false)} className="active:scale-95 transition-transform duration-150 p-2 -ml-2 rounded-full hover:bg-rs-surface-container-highest text-rs-on-surface-variant">
                         <span className="material-symbols-outlined">arrow_back</span>
@@ -187,12 +197,13 @@ export function MobilePOS({ onBack }: MobilePOSProps) {
                         ))
                     )}
                 </main>
+                {tabBar}
             </div>
         );
     }
 
     return (
-        <div className="antialiased h-[100svh] flex flex-col pt-safe pb-[var(--mobile-tabbar-h)] md:pb-0 bg-[#0C0C0C] text-rs-on-surface dark">
+        <div className="antialiased h-[100svh] flex flex-col pt-safe md:pb-0 bg-[#0C0C0C] text-rs-on-surface dark">
             {/* TopAppBar */}
             <header className="shrink-0 h-[56px] border-b border-rs-surface-container-highest bg-rs-surface flex justify-between items-center px-4 z-50">
                 <div className="flex items-center gap-3">
@@ -385,6 +396,8 @@ export function MobilePOS({ onBack }: MobilePOSProps) {
                     </button>
                 </div>
             </div>
+
+            {tabBar}
 
             <CheckoutModal
                 open={isCheckoutOpen}

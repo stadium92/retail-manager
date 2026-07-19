@@ -47,9 +47,9 @@ export interface MobileWorkerLayoutProps {
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type MobileTab = 'pos' | 'dashboard' | 'menu';
+export type MobileTab = 'pos' | 'dashboard' | 'menu';
 
-interface TabConfig {
+export interface TabConfig {
   id: MobileTab;
   /** Label shown below the icon */
   label: string;
@@ -66,6 +66,84 @@ const ALL_TABS: TabConfig[] = [
 ];
 
 const STORAGE_KEY = 'worker_mobile_active_tab';
+
+// ─── Shared tab-row content ──────────────────────────────────────────────────
+//
+// Just the row of tab buttons, no positioning of its own. Callers decide how
+// to place it:
+//   - MobileWorkerLayout wraps it in a `fixed bottom-0` <nav> for every screen
+//     that doesn't have its own bottom panel to coordinate with.
+//   - Screens with their own fixed-bottom panel (currently MobilePOS) instead
+//     render this as the last flex child of that SAME panel, so the panel and
+//     the tab row are literally one continuous box with no separate
+//     positioning to keep in sync - there is no gap to open because there is
+//     no seam between two independently-positioned elements anymore.
+export function MobileBottomTabRow({
+  tabs,
+  activeTab,
+  onTabChange,
+}: {
+  tabs: TabConfig[];
+  activeTab: MobileTab;
+  onTabChange: (tab: MobileTab) => void;
+}) {
+  return (
+    <div
+      className="h-[var(--mobile-tabbar-h)] bg-rs-surface border-t border-rs-outline flex items-stretch"
+      role="navigation"
+      aria-label="Navigation principale"
+    >
+      {tabs.map(tab => {
+        const isActive = activeTab === tab.id;
+
+        return (
+          <button
+            key={tab.id}
+            onClick={() => onTabChange(tab.id)}
+            aria-label={tab.label}
+            aria-current={isActive ? 'page' : undefined}
+            className={[
+              'flex-1 flex flex-col items-center justify-center gap-0.5',
+              'transition-colors duration-150 active:scale-95 select-none',
+              isActive
+                ? 'text-rs-primary'
+                : 'text-rs-on-surface-variant hover:text-rs-on-surface',
+            ].join(' ')}
+          >
+            {/*
+             * MD3 Navigation Bar spec: a 56×32 indicator pill appears behind
+             * the icon of the active destination.
+             */}
+            <div
+              className={[
+                'w-14 h-8 rounded-full flex items-center justify-center',
+                'transition-colors duration-150',
+                isActive ? 'bg-rs-secondary-container' : 'bg-transparent',
+              ].join(' ')}
+            >
+              <span
+                className="material-symbols-outlined"
+                style={{
+                  fontSize: 24,
+                  // FILL 1 = filled icon when active; FILL 0 = outlined otherwise
+                  fontVariationSettings: isActive
+                    ? "'FILL' 1, 'wght' 400"
+                    : "'FILL' 0, 'wght' 400",
+                }}
+              >
+                {tab.icon}
+              </span>
+            </div>
+
+            <span className="text-[10px] font-medium leading-none tracking-tight">
+              {tab.label}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -259,11 +337,12 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
             onBack={() => {
               setActiveTab('dashboard');
             }}
+            tabBar={fusedTabBar}
           />
         );
-      case 'dashboard': 
+      case 'dashboard':
         return (
-          <MobileDashboard 
+          <MobileDashboard
             onNavigate={(target) => {
               if (target === 'pos' || target === 'menu' || target === 'dashboard') {
                 setActiveTab(target as any);
@@ -271,16 +350,31 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
               } else {
                 setActiveMobileModule(target);
               }
-            }} 
+            }}
           />
         );
       case 'menu':      return <MobileMenuScreen onSelect={handleSelectModule} />;
-      default:          return <MobilePOS onBack={() => setActiveTab('dashboard')} />;
+      default:          return <MobilePOS onBack={() => setActiveTab('dashboard')} tabBar={fusedTabBar} />;
     }
   };
 
   // Cooks land on a single screen — no navigation bar needed
   const showTabBar = visibleTabs.length > 1 && !activeMobileModule;
+
+  const handleTabChange = (tab: MobileTab) => {
+    setActiveTab(tab);
+    setActiveMobileModule(null);
+  };
+
+  // MobilePOS has its own fixed-bottom checkout panel; rather than also
+  // rendering a SEPARATE fixed-bottom nav below it (two independently
+  // positioned elements that have to happen to land flush against each
+  // other), MobilePOS fuses this same tab row directly into its own panel as
+  // one continuous box. Every other screen still gets the standalone,
+  // independently-fixed nav below.
+  const fusedTabBar = showTabBar
+    ? <MobileBottomTabRow tabs={visibleTabs} activeTab={activeTab} onTabChange={handleTabChange} />
+    : undefined;
 
   // ── JSX ──────────────────────────────────────────────────────────────────
 
@@ -290,67 +384,10 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
       {renderContent()}
 
       {/* ── Bottom Navigation Bar (Material Design 3) ─────────────────── */}
-      {showTabBar && (
-        <nav
-          className={[
-            'fixed bottom-0 left-0 right-0 z-50',
-            'h-[var(--mobile-tabbar-h)]',
-            'bg-rs-surface border-t border-rs-outline',
-            'flex items-stretch',
-          ].join(' ')}
-          aria-label="Navigation principale"
-        >
-          {visibleTabs.map(tab => {
-            const isActive = activeTab === tab.id;
-
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  setActiveMobileModule(null);
-                }}
-                aria-label={tab.label}
-                aria-current={isActive ? 'page' : undefined}
-                className={[
-                  'flex-1 flex flex-col items-center justify-center gap-0.5',
-                  'transition-colors duration-150 active:scale-95 select-none',
-                  isActive
-                    ? 'text-rs-primary'
-                    : 'text-rs-on-surface-variant hover:text-rs-on-surface',
-                ].join(' ')}
-              >
-                {/*
-                 * MD3 Navigation Bar spec: a 56×32 indicator pill appears behind
-                 * the icon of the active destination.
-                 */}
-                <div
-                  className={[
-                    'w-14 h-8 rounded-full flex items-center justify-center',
-                    'transition-colors duration-150',
-                    isActive ? 'bg-rs-secondary-container' : 'bg-transparent',
-                  ].join(' ')}
-                >
-                  <span
-                    className="material-symbols-outlined"
-                    style={{
-                      fontSize: 24,
-                      // FILL 1 = filled icon when active; FILL 0 = outlined otherwise
-                      fontVariationSettings: isActive
-                        ? "'FILL' 1, 'wght' 400"
-                        : "'FILL' 0, 'wght' 400",
-                    }}
-                  >
-                    {tab.icon}
-                  </span>
-                </div>
-
-                <span className="text-[10px] font-medium leading-none tracking-tight">
-                  {tab.label}
-                </span>
-              </button>
-            );
-          })}
+      {/* Suppressed for 'pos': MobilePOS renders fusedTabBar itself, fused to its own panel. */}
+      {showTabBar && activeTab !== 'pos' && (
+        <nav className="fixed bottom-0 left-0 right-0 z-50">
+          <MobileBottomTabRow tabs={visibleTabs} activeTab={activeTab} onTabChange={handleTabChange} />
         </nav>
       )}
     </>
