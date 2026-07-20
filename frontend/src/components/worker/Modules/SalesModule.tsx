@@ -518,14 +518,21 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     const item = newItems[index];
     if (!item) return;
     stableValueRef.current = { row: index, col: 5, value: quantity };
+    // Coerce only for the total calculation below - storing the coerced
+    // number back into item.quantity (instead of the raw incoming value)
+    // fed a freshly-reparsed value straight back into the controlled input
+    // on every keystroke, which reset cursor position and dropped digits
+    // typed in quick succession ("can't type successive numbers"). This
+    // mirrors how discountAmount is already handled two lines down.
     let numQty = quantity === '' ? 0 : Number(quantity);
     if (numQty > 9999) {
       toast.warning(t('worker.sales.quantityTooHigh') || 'Quantity capped.');
       numQty = 1;
+      quantity = 1;
     }
     newItems[index] = {
       ...item,
-      quantity: numQty,
+      quantity,
       lineTotal: calculateLineTotal(Number(item.unitPrice) || 0, numQty, Number(item.discountPercent) || 0, item.isBox, item.conditionnement),
     };
     updateSession(mode, { lineItems: newItems });
