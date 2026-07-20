@@ -43,6 +43,17 @@ jobs:
 
       - name: Build Frontend
         working-directory: frontend
+        # Vite inlines VITE_* at build time - without these the client falls
+        # back to FALLBACK_SUPABASE_URL in src/lib/supabase.ts
+        # (onsqvduklnwffugsiybs, the shared stores project), while
+        # local-bridge's own default (env.ts) targets fpvrbxmbrotowdlyebqv
+        # (this product's own dedicated project) - a real project mismatch
+        # that makes login fail for any account that only exists in the
+        # project local-bridge actually syncs to. Values are the client-safe
+        # publishable key, not a secret.
+        env:
+          VITE_SUPABASE_URL: https://fpvrbxmbrotowdlyebqv.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_3GUAh6Utm-V9SNLOTBOsxw_XQaNT1d2
         run: |
           npm install
           npm run build
