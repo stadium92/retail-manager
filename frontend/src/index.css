@@ -251,11 +251,13 @@
 
   html {
     font-family: 'Hanken Grotesk', system-ui, sans-serif;
+    overscroll-behavior-y: none;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "ss01", "ss02", "cv01";
+    overscroll-behavior-y: none;
   }
 
   /* Force dark mode for the terminal aesthetic */
