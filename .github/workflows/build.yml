@@ -94,16 +94,18 @@ jobs:
           # triggers neither, so this is the only way to publish an installer
           # here without that link appearing next to it. One branch per
           # product, force-pushed fresh each build (no history to accumulate,
-          # always just the latest build) - filenames are fixed so the
-          # download URL never changes across builds/version bumps.
+          # always just the latest build) - filenames include the semantic
+          # version (from tauri.conf.json) so it's visible at a glance which
+          # build is current without opening the file.
           $branch = "${{ github.ref_name }}"
           $publishDir = "publish-releases-repo"
           New-Item -ItemType Directory -Path $publishDir | Out-Null
 
+          $version = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
           $exe = $files | Where-Object { $_.Extension -eq ".exe" } | Select-Object -First 1
           $msi = $files | Where-Object { $_.Extension -eq ".msi" } | Select-Object -First 1
-          if ($exe) { Copy-Item $exe.FullName -Destination (Join-Path $publishDir "retail-manager-setup.exe") }
-          if ($msi) { Copy-Item $msi.FullName -Destination (Join-Path $publishDir "retail-manager-installer.msi") }
+          if ($exe) { Copy-Item $exe.FullName -Destination (Join-Path $publishDir "retail-manager-setup-$version.exe") }
+          if ($msi) { Copy-Item $msi.FullName -Destination (Join-Path $publishDir "retail-manager-installer-$version.msi") }
 
           Push-Location $publishDir
           git init -q
