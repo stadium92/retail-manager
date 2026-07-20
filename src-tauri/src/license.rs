@@ -173,7 +173,8 @@ pub fn verify_signature(key: &str, device_id: &str) -> Result<bool, String> {
         return Err("Invalid signature length.".to_string());
     }
 
-    let signature = Signature::from_bytes(signature_bytes.try_into().unwrap());
+    let signature_array: [u8; 64] = signature_bytes.try_into().unwrap();
+    let signature = Signature::from_bytes(&signature_array);
     
     // Verify
     // Handle all-zero placeholder key
