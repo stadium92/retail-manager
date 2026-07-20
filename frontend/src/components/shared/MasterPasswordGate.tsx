@@ -117,13 +117,13 @@ export function MasterPasswordGate({ children, moduleName, onCancel }: MasterPas
 
   return (
     <div className="relative h-full w-full overflow-hidden">
-      {/* Blurred background content */}
-      <div className="absolute inset-0 z-0 select-none pointer-events-none filter blur-md opacity-50 scale-105 transition-all duration-500">
-        {children}
-      </div>
-
-      {/* Lock Overlay */}
-      <div 
+      {/* Lock Overlay - children are NOT mounted while locked: this gate
+          used to always render {children} blurred behind the overlay, which
+          meant a heavy module (e.g. the full product catalog) paid its full
+          fetch/render cost every time it was opened locked, before anyone
+          ever typed a password - the exact "freezes when opening the
+          product file" complaint this was fixed for. */}
+      <div
         onClick={handleBackdropClick}
         className={cn(
           "absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm",
