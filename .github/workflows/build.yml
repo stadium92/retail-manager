@@ -48,6 +48,8 @@ jobs:
           npm run build
 
       - name: Prepare Sidecar Payload
+        env:
+          SUPABASE_SERVICE_KEY_BUILD: ${{ secrets.STIHL_SUPABASE_SERVICE_KEY }}
         run: powershell -ExecutionPolicy Bypass -File scripts/prepare-sidecar-payload.ps1
 
       - name: Build Tauri Application

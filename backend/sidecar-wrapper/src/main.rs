@@ -141,11 +141,18 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         { std::process::id() }
     };
 
+    // Baked in at compile time from the SUPABASE_SERVICE_KEY_BUILD build-time
+    // env var (set by CI from a repo secret) — the sidecar has no other way
+    // to reach a key on a machine it's freshly installed on. See env.ts for
+    // the corresponding fallback SUPABASE_URL (no secret needed there).
+    let supabase_service_key = option_env!("SUPABASE_SERVICE_KEY_BUILD").unwrap_or("");
+
     // Spawn the node process
     let mut child = Command::new(&node_path)
         .arg(&script_path)
         .args(args)
         .current_dir(&temp_dir) // Important for require() resolution
+        .env("SUPABASE_SERVICE_KEY", supabase_service_key)
         .spawn();
 
     match child {
