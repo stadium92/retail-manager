@@ -9,12 +9,15 @@ import { useMasterDashboardStore } from '@/stores/useMasterDashboardStore';
 import { GestionModule } from '@/components/shared/GestionModule';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { NotificationCenter } from '@/components/shared/NotificationCenter';
+import { MobileScreenShell } from '@/components/mobile/MobileScreenShell';
 
 interface MobileDashboardProps {
     onNavigate?: (target: string) => void;
+    /** Fused directly into this screen's shell, same convention as MobilePOS — see MobileScreenShell. */
+    tabBar?: React.ReactNode;
 }
 
-export function MobileDashboard({ onNavigate }: MobileDashboardProps) {
+export function MobileDashboard({ onNavigate, tabBar }: MobileDashboardProps) {
     const { t } = useTranslation();
     const { formatCurrency } = useFormatters();
     const navigate = useNavigate();
@@ -95,30 +98,34 @@ export function MobileDashboard({ onNavigate }: MobileDashboardProps) {
     };
 
     return (
-        <div className="bg-rs-surface text-rs-on-surface min-h-screen flex flex-col pt-[56px] pb-[64px] dark">
-            {/* TopAppBar */}
-            <header className="fixed top-0 w-full h-[56px] bg-rs-surface border-b border-rs-surface-container-highest flex justify-between items-center px-4 z-50">
-                <div className="flex items-center gap-2">
-                    <button 
-                        onClick={() => setIsStoreSheetOpen(true)}
-                        className="bg-rs-surface-container-highest rounded-full px-3 py-1 flex items-center gap-1 text-rs-on-surface border border-rs-outline/50 text-xs font-semibold hover:bg-rs-surface-variant transition-all h-[32px] active:scale-95"
-                    >
-                        <span className="truncate max-w-[130px]">
-                            {isAllStoresSelected 
-                                ? "Toutes les boutiques" 
-                                : selectedStoreIds.length === 1 
-                                    ? (allStores.find(s => s.id === selectedStoreIds[0])?.name || "Boutique filtrée")
-                                    : `${selectedStoreIds.length} boutiques`}
-                        </span>
-                        <span className="material-symbols-outlined text-[16px]">expand_more</span>
-                    </button>
-                </div>
-                <div className="flex items-center gap-3">
-                    <NotificationCenter />
-                </div>
-            </header>
-
-            <main className="flex-1 px-4 py-5 flex flex-col gap-6 overflow-y-auto">
+        <>
+        <MobileScreenShell
+            className="bg-rs-surface text-rs-on-surface dark"
+            contentClassName="px-4 py-5 flex flex-col gap-6"
+            tabBar={tabBar}
+            header={
+                <header className="shrink-0 h-[56px] bg-rs-surface border-b border-rs-surface-container-highest flex justify-between items-center px-4 z-50">
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setIsStoreSheetOpen(true)}
+                            className="bg-rs-surface-container-highest rounded-full px-3 py-1 flex items-center gap-1 text-rs-on-surface border border-rs-outline/50 text-xs font-semibold hover:bg-rs-surface-variant transition-all h-[32px] active:scale-95"
+                        >
+                            <span className="truncate max-w-[130px]">
+                                {isAllStoresSelected
+                                    ? "Toutes les boutiques"
+                                    : selectedStoreIds.length === 1
+                                        ? (allStores.find(s => s.id === selectedStoreIds[0])?.name || "Boutique filtrée")
+                                        : `${selectedStoreIds.length} boutiques`}
+                            </span>
+                            <span className="material-symbols-outlined text-[16px]">expand_more</span>
+                        </button>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <NotificationCenter />
+                    </div>
+                </header>
+            }
+        >
                 {/* Status Bar */}
                 <div className="flex items-center justify-between">
                     <span className="text-rs-on-surface-variant">Statut des commandes:</span>
@@ -259,7 +266,7 @@ export function MobileDashboard({ onNavigate }: MobileDashboardProps) {
                         </div>
                     </>
                 )}
-            </main>
+        </MobileScreenShell>
 
             {/* Store Filtering Sheet */}
             <Sheet open={isStoreSheetOpen} onOpenChange={setIsStoreSheetOpen}>
@@ -321,6 +328,6 @@ export function MobileDashboard({ onNavigate }: MobileDashboardProps) {
                     </div>
                 </SheetContent>
             </Sheet>
-        </div>
+        </>
     );
 };

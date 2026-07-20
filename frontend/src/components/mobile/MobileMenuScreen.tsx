@@ -8,9 +8,12 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { LocalDatabase } from '@/services/LocalDatabase';
+import { MobileScreenShell } from '@/components/mobile/MobileScreenShell';
 
 interface MobileMenuScreenProps {
   onSelect: (moduleId: string) => void;
+  /** Fused directly into this screen's shell, same convention as MobilePOS — see MobileScreenShell. */
+  tabBar?: React.ReactNode;
 }
 
 // One accent per section — used for the section header chip, the card's
@@ -53,7 +56,7 @@ const ITEM_ICONS: Record<string, React.ReactNode> = {
   'mots-de-passe': <KeyRound className="w-[18px] h-[18px]" />,
 };
 
-export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
+export function MobileMenuScreen({ onSelect, tabBar }: MobileMenuScreenProps) {
   const { t } = useTranslation();
   const { signOut } = useAuth();
 
@@ -182,20 +185,24 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
     : (t('roles.worker') || 'Vendeur');
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0a] pb-[80px]">
-      <header className="flex-shrink-0 bg-[#141414] border-b border-rs-surface-container px-4 pt-safe sticky top-0 z-10">
-        <div className="h-[64px] flex items-center justify-between">
-          <div className="flex flex-col">
-            <h1 className="text-xl font-bold tracking-tight text-white leading-tight">Modules DJATI</h1>
-            <span className="text-xs text-rs-on-surface-variant font-medium">{roleLabel}</span>
+    <MobileScreenShell
+      className="bg-[#0a0a0a]"
+      contentClassName="px-4 py-4 space-y-6"
+      tabBar={tabBar}
+      header={
+        <header className="shrink-0 bg-[#141414] border-b border-rs-surface-container px-4 pt-safe z-10">
+          <div className="h-[64px] flex items-center justify-between">
+            <div className="flex flex-col">
+              <h1 className="text-xl font-bold tracking-tight text-white leading-tight">Modules DJATI</h1>
+              <span className="text-xs text-rs-on-surface-variant font-medium">{roleLabel}</span>
+            </div>
+            <div className="w-9 h-9 rounded-full bg-rs-surface-tint/15 border border-rs-surface-tint/30 flex items-center justify-center text-rs-surface-tint font-bold text-sm">
+              {(user?.email?.[0] || roleLabel[0] || '?').toUpperCase()}
+            </div>
           </div>
-          <div className="w-9 h-9 rounded-full bg-rs-surface-tint/15 border border-rs-surface-tint/30 flex items-center justify-center text-rs-surface-tint font-bold text-sm">
-            {(user?.email?.[0] || roleLabel[0] || '?').toUpperCase()}
-          </div>
-        </div>
-      </header>
-
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+        </header>
+      }
+    >
         {finalSections.filter(s => s.items.length > 0).map((section, idx) => {
           const accent = SECTION_ACCENTS[section.title] ?? DEFAULT_ACCENT;
           return (
@@ -264,7 +271,6 @@ export function MobileMenuScreen({ onSelect }: MobileMenuScreenProps) {
             <span>{t('auth.signOut') || 'Déconnexion'}</span>
           </button>
         </div>
-      </div>
-    </div>
+    </MobileScreenShell>
   );
 }

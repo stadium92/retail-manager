@@ -351,9 +351,10 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
                 setActiveMobileModule(target);
               }
             }}
+            tabBar={fusedTabBar}
           />
         );
-      case 'menu':      return <MobileMenuScreen onSelect={handleSelectModule} />;
+      case 'menu':      return <MobileMenuScreen onSelect={handleSelectModule} tabBar={fusedTabBar} />;
       default:          return <MobilePOS onBack={() => setActiveTab('dashboard')} tabBar={fusedTabBar} />;
     }
   };
@@ -366,30 +367,18 @@ export function MobileWorkerLayout({ onOpenDesktopModule }: MobileWorkerLayoutPr
     setActiveMobileModule(null);
   };
 
-  // MobilePOS has its own fixed-bottom checkout panel; rather than also
-  // rendering a SEPARATE fixed-bottom nav below it (two independently
-  // positioned elements that have to happen to land flush against each
-  // other), MobilePOS fuses this same tab row directly into its own panel as
-  // one continuous box. Every other screen still gets the standalone,
-  // independently-fixed nav below.
+  // Every screen fuses this same tab row as the literal last flex child of
+  // its own MobileScreenShell instead of a SEPARATE fixed-bottom <nav> below
+  // it — two independently-positioned elements that merely calculate
+  // matching offsets can still visibly desync (this used to be POS-only; the
+  // standalone fixed <nav> below was also masking a document-level
+  // rubber-band bounce on every other screen, invisibly, until POS's
+  // fusion removed that mask and made the bounce visible as a gap).
   const fusedTabBar = showTabBar
     ? <MobileBottomTabRow tabs={visibleTabs} activeTab={activeTab} onTabChange={handleTabChange} />
     : undefined;
 
   // ── JSX ──────────────────────────────────────────────────────────────────
 
-  return (
-    <>
-      {/* ── Active module ─────────────────────────────────────────────── */}
-      {renderContent()}
-
-      {/* ── Bottom Navigation Bar (Material Design 3) ─────────────────── */}
-      {/* Suppressed for 'pos': MobilePOS renders fusedTabBar itself, fused to its own panel. */}
-      {showTabBar && activeTab !== 'pos' && (
-        <nav className="fixed bottom-0 left-0 right-0 z-50">
-          <MobileBottomTabRow tabs={visibleTabs} activeTab={activeTab} onTabChange={handleTabChange} />
-        </nav>
-      )}
-    </>
-  );
+  return renderContent();
 }
