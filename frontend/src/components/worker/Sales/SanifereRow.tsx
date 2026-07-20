@@ -174,7 +174,7 @@ export function SanifereRow({
           type="number"
           min={1}
           value={item.quantity === 0 ? '' : item.quantity}
-          onChange={(e) => onQuantityChange(index, e.target.value === '' ? '' : parseInt(e.target.value))}
+          onChange={(e) => onQuantityChange(index, e.target.value)}
           onBlur={() => { if (item.quantity === '') onQuantityChange(index, 1); }}
           onKeyDown={(e) => {
             // SELECTION GUARD: If a scanner is typing AND the text is highlighted, 
@@ -199,7 +199,7 @@ export function SanifereRow({
           type="number"
           min={0}
           value={item.discountAmount === 0 ? '' : item.discountAmount}
-          onChange={(e) => onDiscountChange(index, e.target.value === '' ? '' : parseFloat(e.target.value))}
+          onChange={(e) => onDiscountChange(index, e.target.value)}
           onBlur={() => { if (item.discountAmount === '') onDiscountChange(index, 0); }}
           onClick={(e) => {
             e.stopPropagation();

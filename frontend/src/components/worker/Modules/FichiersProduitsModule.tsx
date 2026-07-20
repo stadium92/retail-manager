@@ -157,17 +157,23 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
 
 
 
+  // Keep the raw string in state while typing - coercing to Number() on
+  // every keystroke (the previous behavior) re-renders the controlled
+  // input with a freshly-parsed value on every character, which resets
+  // cursor position and effectively drops keystrokes typed in quick
+  // succession (reported as "can't type successive numbers"). Every reader
+  // of these fields elsewhere in this file already defensively wraps them
+  // in Number(...), so a string mid-typing was always tolerated downstream
+  // - only this handler needed to stop coercing early.
   const handleNumChange = (field: keyof typeof initialFormState, index?: number) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    const finalVal = val === '' ? '' : Number(val);
-    updateField(field, finalVal, index);
+    updateField(field, e.target.value, index);
   };
 
   const handleNumBlur = (field: keyof typeof initialFormState, index?: number) => () => {
     if (index !== undefined) {
-        setMultiItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: item[field] === '' ? 0 : item[field] } : item));
+        setMultiItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: item[field] === '' ? 0 : Number(item[field]) || 0 } : item));
     } else {
-        setFormData(f => ({ ...f, [field]: f[field] === '' ? 0 : f[field] }));
+        setFormData(f => ({ ...f, [field]: f[field] === '' ? 0 : Number(f[field]) || 0 }));
     }
   };
 
