@@ -226,13 +226,26 @@
 
   html {
     font-family: 'Hanken Grotesk', system-ui, sans-serif;
-    overscroll-behavior-y: none;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "ss01", "ss02", "cv01";
-    overscroll-behavior-y: none;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  /* The document itself never scrolls (locked above) — every screen owns its
+     own internal scroll region instead. overscroll-behavior alone is not
+     reliable for suppressing iOS Safari's root-scroller rubber-band; the
+     height+overflow lock is what actually stops it. */
+  #root {
+    height: 100%;
+    overflow: hidden;
   }
 
   /* Force dark mode for the terminal aesthetic */

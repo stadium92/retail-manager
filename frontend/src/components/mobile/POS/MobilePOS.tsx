@@ -11,6 +11,7 @@ import { useProductSearch } from '@/hooks/useProductSearch';
 import { NotificationCenter } from '@/components/shared/NotificationCenter';
 import { BarcodeScanner } from '@/components/shared/BarcodeScanner';
 import { OfflineInventoryService } from '@/services/OfflineInventoryService';
+import { MobileScreenShell } from '@/components/mobile/MobileScreenShell';
 
 interface MobilePOSProps {
     onBack?: () => void;
@@ -154,75 +155,152 @@ export function MobilePOS({ onBack, tabBar }: MobilePOSProps) {
 
     if (isProductSheetOpen) {
         return (
-            <div className="antialiased h-dvh flex flex-col pt-safe md:pb-0 bg-[#0C0C0C] text-rs-on-surface dark">
-                <header className="shrink-0 h-[56px] border-b border-rs-surface-container-highest bg-rs-surface flex items-center px-4 z-50 gap-3">
-                    <button onClick={() => setIsProductSheetOpen(false)} className="active:scale-95 transition-transform duration-150 p-2 -ml-2 rounded-full hover:bg-rs-surface-container-highest text-rs-on-surface-variant">
-                        <span className="material-symbols-outlined">arrow_back</span>
-                    </button>
-                    <div className="flex-1 relative">
-                        <input
-                            autoFocus
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            placeholder="Rechercher un article..."
-                            className="w-full bg-rs-surface-container-low text-rs-on-surface h-[40px] rounded-full px-4 pl-10 focus:outline-none border border-rs-surface-container-highest focus:border-rs-surface-tint"
-                        />
-                        <span className="material-symbols-outlined absolute left-3 top-2.5 text-rs-on-surface-variant">search</span>
-                    </div>
-                </header>
-                <main className="flex-1 min-h-0 overflow-y-auto px-4 py-4 flex flex-col gap-2">
-                    {isLoading ? (
-                        <div className="text-center text-rs-on-surface-variant mt-10 flex flex-col items-center">
-                            <span className="material-symbols-outlined animate-spin text-[32px] text-rs-surface-tint mb-2">refresh</span>
-                            Recherche en cours...
+            <MobileScreenShell
+                className="antialiased pt-safe md:pb-0 bg-[#0C0C0C] text-rs-on-surface dark"
+                contentClassName="px-4 py-4 flex flex-col gap-2"
+                tabBar={tabBar}
+                header={
+                    <header className="shrink-0 h-[56px] border-b border-rs-surface-container-highest bg-rs-surface flex items-center px-4 z-50 gap-3">
+                        <button onClick={() => setIsProductSheetOpen(false)} className="active:scale-95 transition-transform duration-150 p-2 -ml-2 rounded-full hover:bg-rs-surface-container-highest text-rs-on-surface-variant">
+                            <span className="material-symbols-outlined">arrow_back</span>
+                        </button>
+                        <div className="flex-1 relative">
+                            <input
+                                autoFocus
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                placeholder="Rechercher un article..."
+                                className="w-full bg-rs-surface-container-low text-rs-on-surface h-[40px] rounded-full px-4 pl-10 focus:outline-none border border-rs-surface-container-highest focus:border-rs-surface-tint"
+                            />
+                            <span className="material-symbols-outlined absolute left-3 top-2.5 text-rs-on-surface-variant">search</span>
                         </div>
-                    ) : results.length === 0 ? (
-                        <div className="text-center text-rs-on-surface-variant mt-10">Aucun produit trouvé</div>
-                    ) : (
-                        results.map((product: any) => (
-                            <div 
-                                key={product.id} 
-                                onClick={() => { addItem(product, 1); setIsProductSheetOpen(false); }} 
-                                className="bg-rs-surface border border-rs-surface-container-highest p-3 rounded-lg flex justify-between items-center active:bg-rs-surface-container-low transition-colors shadow-sm"
-                            >
-                                <div className="flex flex-col">
-                                    <span className="font-semibold text-rs-on-surface text-rs-body-base">{product.name}</span>
-                                    <span className="text-rs-helper-xs text-rs-on-surface-variant uppercase tracking-wide">{product.category || product.category_name || 'Général'}</span>
-                                </div>
-                                <div className="flex flex-col items-end">
-                                    <span className="text-rs-surface-tint font-mono font-bold text-rs-body-base">{formatCurrency(product.unit_price ?? 0)}</span>
-                                    <span className={`text-[10px] ${product.quantity > 0 ? 'text-rs-secondary-container' : 'text-rs-error'}`}>{product.quantity > 0 ? `Stock: ${product.quantity}` : 'Rupture'}</span>
-                                </div>
+                    </header>
+                }
+            >
+                {isLoading ? (
+                    <div className="text-center text-rs-on-surface-variant mt-10 flex flex-col items-center">
+                        <span className="material-symbols-outlined animate-spin text-[32px] text-rs-surface-tint mb-2">refresh</span>
+                        Recherche en cours...
+                    </div>
+                ) : results.length === 0 ? (
+                    <div className="text-center text-rs-on-surface-variant mt-10">Aucun produit trouvé</div>
+                ) : (
+                    results.map((product: any) => (
+                        <div
+                            key={product.id}
+                            onClick={() => { addItem(product, 1); setIsProductSheetOpen(false); }}
+                            className="bg-rs-surface border border-rs-surface-container-highest p-3 rounded-lg flex justify-between items-center active:bg-rs-surface-container-low transition-colors shadow-sm"
+                        >
+                            <div className="flex flex-col">
+                                <span className="font-semibold text-rs-on-surface text-rs-body-base">{product.name}</span>
+                                <span className="text-rs-helper-xs text-rs-on-surface-variant uppercase tracking-wide">{product.category || product.category_name || 'Général'}</span>
                             </div>
-                        ))
-                    )}
-                </main>
-                {tabBar}
-            </div>
+                            <div className="flex flex-col items-end">
+                                <span className="text-rs-surface-tint font-mono font-bold text-rs-body-base">{formatCurrency(product.unit_price ?? 0)}</span>
+                                <span className={`text-[10px] ${product.quantity > 0 ? 'text-rs-secondary-container' : 'text-rs-error'}`}>{product.quantity > 0 ? `Stock: ${product.quantity}` : 'Rupture'}</span>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </MobileScreenShell>
         );
     }
 
-    return (
-        <div className="antialiased h-dvh flex flex-col pt-safe md:pb-0 bg-[#0C0C0C] text-rs-on-surface dark">
-            {/* TopAppBar */}
-            <header className="shrink-0 h-[56px] border-b border-rs-surface-container-highest bg-rs-surface flex justify-between items-center px-4 z-50">
-                <div className="flex items-center gap-3">
-                    <div className="flex flex-col">
-                        <h1 className="font-bold text-rs-surface-tint uppercase tracking-tight text-lg">TICKET COMMANDE</h1>
-                        <span className="text-sm text-rs-on-surface-variant font-mono">Mobile POS</span>
+    const footer = (
+        <div className="shrink-0 max-h-[50vh] overflow-y-auto bg-[#141414] border-t border-rs-surface-container-highest px-4 py-3 flex flex-col gap-3 z-40 pb-safe">
+            <div className="flex justify-between items-end">
+                <span className="font-bold tracking-tight text-rs-on-surface text-xl">NET À PAYER</span>
+                <div className="flex flex-col items-end">
+                    {globalDiscount > 0 && <span className="text-xs text-rs-surface-tint line-through opacity-70 mb-1">{formatCurrency(getTotal())}</span>}
+                    <div className="bg-[#0C0C0C] px-5 py-2 rounded border border-rs-surface-container-highest">
+                        <span className="font-mono text-2xl font-bold leading-none text-rs-surface-tint tracking-tight">{formatCurrency(grandTotal > 0 ? grandTotal : getTotal())}</span>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <button className="active:scale-95 transition-transform duration-150 p-2 rounded-full hover:bg-rs-surface-container-highest text-rs-on-surface-variant" onClick={() => window.print()}>
-                        <span className="material-symbols-outlined">print</span>
-                    </button>
-                    <NotificationCenter />
-                </div>
-            </header>
+            </div>
+            <div className="flex gap-3">
+                <button
+                    disabled={cart.length === 0}
+                    onClick={() => handleCheckout({
+                        amountData: { total: grandTotal > 0 ? grandTotal : getTotal() },
+                        paymentMethod: 'cash',
+                        saleType: 'proforma'
+                    })}
+                    className="flex-1 h-[48px] rounded-lg border border-rs-outline text-rs-on-surface flex items-center justify-center hover:bg-rs-surface-container-highest active:scale-95 transition-all uppercase tracking-wide disabled:opacity-50 font-bold text-sm">
+                    F2 · VALIDER
+                </button>
+                <button
+                    disabled={cart.length === 0}
+                    onClick={() => setIsCheckoutOpen(true)}
+                    className="flex-[2] h-[48px] rounded-lg bg-rs-surface-tint text-rs-on-primary font-bold flex items-center justify-center hover:bg-rs-primary-fixed active:scale-95 transition-all shadow-lg shadow-[#ffba41]/20 uppercase tracking-wide disabled:opacity-50 text-sm">
+                    F4 · PAYER
+                </button>
+            </div>
+            <div className="flex justify-between px-2 pt-2 pb-1 w-full">
+                <button className="shrink-0 flex flex-col items-center justify-center w-[72px] gap-1 text-rs-on-surface-variant hover:text-rs-surface-tint transition-colors" onClick={() => {
+                    setDiscountInputValue(globalDiscount > 0 ? globalDiscount.toString() : '');
+                    setIsDiscountDialogOpen(true);
+                }}>
+                    <div className="w-12 h-12 rounded-full bg-rs-surface-container-low border border-rs-surface-container-highest flex items-center justify-center shadow-sm">
+                        <span className="material-symbols-outlined">percent</span>
+                    </div>
+                    <span className="text-[10px] text-center uppercase">Remise</span>
+                </button>
+                <button className="shrink-0 flex flex-col items-center justify-center w-[72px] gap-1 text-rs-on-surface-variant hover:text-rs-surface-tint transition-colors" onClick={() => {
+                    const el = document.getElementById('client-info-details') as HTMLDetailsElement;
+                    if (el) {
+                        el.open = true;
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }}>
+                    <div className="w-12 h-12 rounded-full bg-rs-surface-container-low border border-rs-surface-container-highest flex items-center justify-center shadow-sm">
+                        <span className="material-symbols-outlined">person_add</span>
+                    </div>
+                    <span className="text-[10px] text-center uppercase">Client</span>
+                </button>
+                <button className="shrink-0 flex flex-col items-center justify-center w-[72px] gap-1 text-rs-on-surface-variant hover:text-rs-surface-tint transition-colors" onClick={() => {
+                    document.getElementById('order-notes')?.focus();
+                }}>
+                    <div className="w-12 h-12 rounded-full bg-rs-surface-container-low border border-rs-surface-container-highest flex items-center justify-center shadow-sm">
+                        <span className="material-symbols-outlined">note_add</span>
+                    </div>
+                    <span className="text-[10px] text-center uppercase">Note</span>
+                </button>
+                <button className="shrink-0 flex flex-col items-center justify-center w-[72px] gap-1 text-rs-on-surface-variant hover:text-rs-surface-tint transition-colors" onClick={() => {
+                    setIsOptionsOpen(true);
+                }}>
+                    <div className="w-12 h-12 rounded-full bg-rs-surface-container-low border border-rs-surface-container-highest flex items-center justify-center shadow-sm">
+                        <span className="material-symbols-outlined">more_vert</span>
+                    </div>
+                    <span className="text-[10px] text-center uppercase">Options</span>
+                </button>
+            </div>
+        </div>
+    );
 
-            {/* Main Canvas */}
-            <main className="flex-1 min-h-0 overflow-y-auto px-4 py-5 flex flex-col gap-5">
-                
+    return (
+        <>
+        <MobileScreenShell
+            className="antialiased pt-safe md:pb-0 bg-[#0C0C0C] text-rs-on-surface dark"
+            contentClassName="px-4 py-5 flex flex-col gap-5"
+            footer={footer}
+            tabBar={tabBar}
+            header={
+                <header className="shrink-0 h-[56px] border-b border-rs-surface-container-highest bg-rs-surface flex justify-between items-center px-4 z-50">
+                    <div className="flex items-center gap-3">
+                        <div className="flex flex-col">
+                            <h1 className="font-bold text-rs-surface-tint uppercase tracking-tight text-lg">TICKET COMMANDE</h1>
+                            <span className="text-sm text-rs-on-surface-variant font-mono">Mobile POS</span>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button className="active:scale-95 transition-transform duration-150 p-2 rounded-full hover:bg-rs-surface-container-highest text-rs-on-surface-variant" onClick={() => window.print()}>
+                            <span className="material-symbols-outlined">print</span>
+                        </button>
+                        <NotificationCenter />
+                    </div>
+                </header>
+            }
+        >
                 {/* Ticket Meta Row */}
                 <section className="bg-[#141414] rounded-lg p-3 flex flex-wrap gap-3 justify-between items-center border border-rs-surface-container-highest">
                     <div className="flex flex-col gap-1">
@@ -318,86 +396,14 @@ export function MobilePOS({ onBack, tabBar }: MobilePOSProps) {
                             </div>
                         </div>
                     ))}
-                    <button 
+                    <button
                         onClick={() => setIsProductSheetOpen(true)}
                         className="w-full h-[56px] rounded-lg border-2 border-dashed border-rs-outline/50 hover:border-rs-surface-tint/50 text-rs-on-surface-variant hover:text-rs-surface-tint transition-colors flex items-center justify-center gap-2 active:scale-[0.98]">
                         <span className="material-symbols-outlined text-rs-title-lg">add_circle</span>
                         + Ajouter un article
                     </button>
                 </section>
-            </main>
-
-            {/* Bottom Panel */}
-            <div className="shrink-0 max-h-[50vh] overflow-y-auto bg-[#141414] border-t border-rs-surface-container-highest px-4 py-3 flex flex-col gap-3 z-40 pb-safe">
-                <div className="flex justify-between items-end">
-                    <span className="font-bold tracking-tight text-rs-on-surface text-xl">NET À PAYER</span>
-                    <div className="flex flex-col items-end">
-                        {globalDiscount > 0 && <span className="text-xs text-rs-surface-tint line-through opacity-70 mb-1">{formatCurrency(getTotal())}</span>}
-                        <div className="bg-[#0C0C0C] px-5 py-2 rounded border border-rs-surface-container-highest">
-                            <span className="font-mono text-2xl font-bold leading-none text-rs-surface-tint tracking-tight">{formatCurrency(grandTotal > 0 ? grandTotal : getTotal())}</span>
-                        </div>
-                    </div>
-                </div>
-                <div className="flex gap-3">
-                    <button 
-                        disabled={cart.length === 0}
-                        onClick={() => handleCheckout({
-                            amountData: { total: grandTotal > 0 ? grandTotal : getTotal() },
-                            paymentMethod: 'cash',
-                            saleType: 'proforma'
-                        })}
-                        className="flex-1 h-[48px] rounded-lg border border-rs-outline text-rs-on-surface flex items-center justify-center hover:bg-rs-surface-container-highest active:scale-95 transition-all uppercase tracking-wide disabled:opacity-50 font-bold text-sm">
-                        F2 · VALIDER
-                    </button>
-                    <button 
-                        disabled={cart.length === 0}
-                        onClick={() => setIsCheckoutOpen(true)}
-                        className="flex-[2] h-[48px] rounded-lg bg-rs-surface-tint text-rs-on-primary font-bold flex items-center justify-center hover:bg-rs-primary-fixed active:scale-95 transition-all shadow-lg shadow-[#ffba41]/20 uppercase tracking-wide disabled:opacity-50 text-sm">
-                        F4 · PAYER
-                    </button>
-                </div>
-                <div className="flex justify-between px-2 pt-2 pb-1 w-full">
-                    <button className="shrink-0 flex flex-col items-center justify-center w-[72px] gap-1 text-rs-on-surface-variant hover:text-rs-surface-tint transition-colors" onClick={() => {
-                        setDiscountInputValue(globalDiscount > 0 ? globalDiscount.toString() : '');
-                        setIsDiscountDialogOpen(true);
-                    }}>
-                        <div className="w-12 h-12 rounded-full bg-rs-surface-container-low border border-rs-surface-container-highest flex items-center justify-center shadow-sm">
-                            <span className="material-symbols-outlined">percent</span>
-                        </div>
-                        <span className="text-[10px] text-center uppercase">Remise</span>
-                    </button>
-                    <button className="shrink-0 flex flex-col items-center justify-center w-[72px] gap-1 text-rs-on-surface-variant hover:text-rs-surface-tint transition-colors" onClick={() => {
-                        const el = document.getElementById('client-info-details') as HTMLDetailsElement;
-                        if (el) {
-                            el.open = true;
-                            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                    }}>
-                        <div className="w-12 h-12 rounded-full bg-rs-surface-container-low border border-rs-surface-container-highest flex items-center justify-center shadow-sm">
-                            <span className="material-symbols-outlined">person_add</span>
-                        </div>
-                        <span className="text-[10px] text-center uppercase">Client</span>
-                    </button>
-                    <button className="shrink-0 flex flex-col items-center justify-center w-[72px] gap-1 text-rs-on-surface-variant hover:text-rs-surface-tint transition-colors" onClick={() => {
-                        document.getElementById('order-notes')?.focus();
-                    }}>
-                        <div className="w-12 h-12 rounded-full bg-rs-surface-container-low border border-rs-surface-container-highest flex items-center justify-center shadow-sm">
-                            <span className="material-symbols-outlined">note_add</span>
-                        </div>
-                        <span className="text-[10px] text-center uppercase">Note</span>
-                    </button>
-                    <button className="shrink-0 flex flex-col items-center justify-center w-[72px] gap-1 text-rs-on-surface-variant hover:text-rs-surface-tint transition-colors" onClick={() => {
-                        setIsOptionsOpen(true);
-                    }}>
-                        <div className="w-12 h-12 rounded-full bg-rs-surface-container-low border border-rs-surface-container-highest flex items-center justify-center shadow-sm">
-                            <span className="material-symbols-outlined">more_vert</span>
-                        </div>
-                        <span className="text-[10px] text-center uppercase">Options</span>
-                    </button>
-                </div>
-            </div>
-
-            {tabBar}
+        </MobileScreenShell>
 
             <CheckoutModal
                 open={isCheckoutOpen}
@@ -531,12 +537,12 @@ export function MobilePOS({ onBack, tabBar }: MobilePOSProps) {
 
             {/* Camera Barcode Scanner Modal */}
             {isScannerOpen && (
-                <BarcodeScanner 
+                <BarcodeScanner
                     isScanning={isScannerOpen}
                     onResult={handleScanResult}
                     onClose={() => setIsScannerOpen(false)}
                 />
             )}
-        </div>
+        </>
     );
 }
