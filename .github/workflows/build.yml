@@ -76,8 +76,34 @@ jobs:
             Write-Error "No installer files found under src-tauri/target/x86_64-pc-windows-msvc/release/bundle"
             exit 1
           }
-          $tag = "${{ github.ref_name }}-${{ github.run_number }}"
-          gh release create $tag $($files.FullName) --repo stadium94/app-releases --title "${{ github.ref_name }} build ${{ github.run_number }}" --notes "Automated build from stadium93/retail-manager @ ${{ github.sha }}"
+
+          # Plain branch push, not a GitHub Release/tag - GitHub auto-attaches
+          # a "Source code (zip/tar.gz)" download to every Release AND every
+          # tag, with no way to turn it off. A bare branch with no tag
+          # triggers neither, so this is the only way to publish an installer
+          # here without that link appearing next to it. One branch per
+          # product, force-pushed fresh each build (no history to accumulate,
+          # always just the latest build) - filenames are fixed so the
+          # download URL never changes across builds/version bumps.
+          $branch = "${{ github.ref_name }}"
+          $publishDir = "publish-releases-repo"
+          New-Item -ItemType Directory -Path $publishDir | Out-Null
+
+          $exe = $files | Where-Object { $_.Extension -eq ".exe" } | Select-Object -First 1
+          $msi = $files | Where-Object { $_.Extension -eq ".msi" } | Select-Object -First 1
+          if ($exe) { Copy-Item $exe.FullName -Destination (Join-Path $publishDir "retail-manager-setup.exe") }
+          if ($msi) { Copy-Item $msi.FullName -Destination (Join-Path $publishDir "retail-manager-installer.msi") }
+
+          Push-Location $publishDir
+          git init -q
+          git config user.email "ci@retail-manager.local"
+          git config user.name "retail-manager CI"
+          git checkout -q -b $branch
+          git add -A
+          git commit -q -m "Automated build from stadium93/retail-manager @ ${{ github.sha }} (run ${{ github.run_number }})"
+          git remote add origin "https://x-access-token:$env:GH_TOKEN@github.com/stadium94/app-releases.git"
+          git push --force origin "HEAD:$branch"
+          Pop-Location
 
 
 
