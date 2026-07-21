@@ -3,10 +3,13 @@ import { OfflineAuthService } from './OfflineAuthService';
 
 export type NetworkHealthStatus = 'ONLINE' | 'OFFLINE' | 'CLOCK_SKEW' | 'FIREWALL_BLOCKED' | 'ISP_BLOCKED' | 'RATE_LIMITED';
 
+const PUSH_INTERVAL_MS = 30_000;
+
 export class LocalBridgeSyncService {
   private static running = false;
   private static eventSource: EventSource | null = null;
   private static currentStoreId: string | null = null;
+  private static pushIntervalId: ReturnType<typeof setInterval> | null = null;
 
   // Diagnostics & Health State
   private static currentHealth: NetworkHealthStatus = 'ONLINE';
@@ -57,6 +60,15 @@ export class LocalBridgeSyncService {
     void this.pushPendingMutations(storeId);
     void this.pullData(storeId);
 
+    // pushPendingMutations otherwise only ran once per app launch (plus the
+    // manual retry button in Settings) - anything created/edited afterward
+    // (e.g. a new product) sat queued in the local outbox until the next
+    // restart. Re-trigger on an interval so it actually drains during a
+    // normal open-ended session.
+    this.pushIntervalId = setInterval(() => {
+      void this.pushPendingMutations(storeId);
+    }, PUSH_INTERVAL_MS);
+
     // Setup Server-Sent Events (SSE) listener
     const dataClient = getDataClient();
     try {
@@ -103,6 +115,10 @@ export class LocalBridgeSyncService {
     if (this.eventSource) {
       this.eventSource.close();
       this.eventSource = null;
+    }
+    if (this.pushIntervalId) {
+      clearInterval(this.pushIntervalId);
+      this.pushIntervalId = null;
     }
     this.currentStoreId = null;
 
