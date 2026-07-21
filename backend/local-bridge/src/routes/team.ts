@@ -43,6 +43,32 @@ export async function registerTeamRoutes(app: FastifyInstance) {
     return reply.send(roles);
   });
 
+  // Path-param :id, matching every other /rest/v1/<resource>/:id delete
+  // route in this backend (products, clients, stores, ...) - didn't exist
+  // at all before, so every team-member delete from the master dashboard
+  // 404'd. Also removes the user record itself once their last role is
+  // gone, matching the "backend also deletes the user if no other roles
+  // remain" behavior the frontend already assumes.
+  app.delete('/rest/v1/user_roles/:id', async (request, reply) => {
+    const claims = authenticateRequest(request, reply, ['master']);
+    if (!claims) return;
+
+    const { id } = request.params as { id: string };
+    const role = db.getRoleById(id);
+    if (!role) {
+      return reply.status(404).send({ error: 'NotFound', message: 'Role not found.' });
+    }
+
+    db.deleteRole(id);
+
+    const remaining = db.getRolesForUser(role.user_id);
+    if (remaining.length === 0) {
+      db.deleteUser(role.user_id);
+    }
+
+    return reply.send({ message: 'Deleted' });
+  });
+
   app.get('/rest/v1/deliverer_stats', async (request, reply) => {
     const claims = authenticateRequest(request, reply, ['master']);
     if (!claims) return;

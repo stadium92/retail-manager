@@ -853,9 +853,13 @@ export class OfflineTeamService {
 
       const baseUrl = getDataClient().localBridgeBaseUrl;
 
-      // DELETE the role (backend also deletes the user if no other roles remain)
+      // DELETE the role (backend also deletes the user if no other roles remain).
+      // Path-param :id, matching every other local-bridge delete route
+      // (products/:id, clients/:id, ...) - this used to be a PostgREST-style
+      // ?id=eq.X query string, which local-bridge never registered a route
+      // for, so this always 404'd.
       const res = await smartFetch(
-        `${baseUrl}/rest/v1/user_roles?id=eq.${encodeURIComponent(roleId)}`,
+        `${baseUrl}/rest/v1/user_roles/${encodeURIComponent(roleId)}`,
         { method: 'DELETE', headers }
       );
 

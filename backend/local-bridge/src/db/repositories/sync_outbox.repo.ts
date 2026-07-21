@@ -77,6 +77,13 @@ export const createSyncOutboxRepo = (db: Database.Database) => ({
     ).run(status, lastError ?? null, id);
   },
 
+  resetFailedOutboxEntries(): number {
+    const result = db
+      .prepare("UPDATE sync_outbox SET status = 'pending', retry_count = 0, last_error = NULL WHERE status = 'failed'")
+      .run();
+    return result.changes;
+  },
+
   incrementOutboxRetry(id: string, error: string) {
     db.prepare(
       'UPDATE sync_outbox SET retry_count = retry_count + 1, last_error = ?, status = ? WHERE id = ?'

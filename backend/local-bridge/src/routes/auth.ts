@@ -23,6 +23,127 @@ const tokenSchema = z.object({
   refresh_token: z.string().min(1),
 });
 
+const roleUpdateSchema = z.object({
+  role: z.enum(['master', 'worker', 'deliverer']),
+});
+
+const verifyMasterSchema = z.object({
+  password: z.string().min(1),
+});
+
+/**
+ * Creates a real Supabase Auth account (+ profile + role) for a worker/
+ * deliverer created on the desktop app, mirroring the cloud app's own
+ * `create-user` edge function (frontend/supabase/functions/create-user).
+ * Before this, local-bridge accounts were never provisioned in Supabase at
+ * all (a prior, deliberate scope cut - see sync_payload_map.ts) - every
+ * device kept its own siloed local account for the same person, which is
+ * how the "many login conflicts" and "creds not pushed to Supabase"
+ * symptoms happened. This runs synchronously at creation time (needs the
+ * plaintext password, which must never be persisted to disk) rather than
+ * via the async outbox, so it requires connectivity at the moment a
+ * master adds a worker.
+ */
+async function provisionSupabaseWorker(params: {
+  email: string;
+  password: string;
+  full_name: string;
+  role: 'worker' | 'deliverer';
+  store_id?: string;
+  created_by: string;
+}): Promise<{ userId: string }> {
+  if (!env.supabaseUrl || !env.supabaseServiceKey) {
+    throw new Error('Supabase is not configured on this build (missing URL/service key).');
+  }
+
+  const adminHeaders: Record<string, string> = {
+    apikey: env.supabaseServiceKey,
+    Authorization: `Bearer ${env.supabaseServiceKey}`,
+    'Content-Type': 'application/json',
+  };
+
+  // Cross-device conflict check - a worker created on a different install
+  // with the same email must reuse/refuse, not get a second siloed
+  // identity (every device used to only ever check its own local SQLite).
+  const listRes = await fetch(`${env.supabaseUrl}/auth/v1/admin/users?per_page=1000`, {
+    headers: adminHeaders,
+  });
+  if (!listRes.ok) {
+    throw new Error(`Could not reach Supabase to check for existing accounts (HTTP ${listRes.status}).`);
+  }
+  const listBody = (await listRes.json()) as { users?: Array<{ email?: string }> };
+  const emailExists = (listBody.users ?? []).some(
+    (u) => u.email?.toLowerCase() === params.email.toLowerCase()
+  );
+  if (emailExists) {
+    const err = new Error('A Supabase account with that email already exists.') as Error & { code?: string };
+    err.code = 'SUPABASE_EMAIL_EXISTS';
+    throw err;
+  }
+
+  // created_by (any non-empty string, not necessarily a real user id) stops
+  // the handle_new_user_role() trigger from defaulting this account to role
+  // 'master' - see Djati-stores migration
+  // 20260125170000_fix_handle_new_user_role.sql.
+  const createRes = await fetch(`${env.supabaseUrl}/auth/v1/admin/users`, {
+    method: 'POST',
+    headers: adminHeaders,
+    body: JSON.stringify({
+      email: params.email,
+      password: params.password,
+      email_confirm: true,
+      user_metadata: { full_name: params.full_name, created_by: params.created_by },
+    }),
+  });
+  if (!createRes.ok) {
+    const body = await createRes.text().catch(() => createRes.statusText);
+    throw new Error(`Supabase rejected the new account: ${body.slice(0, 500)}`);
+  }
+  const created = (await createRes.json()) as { id: string };
+  const supabaseUserId = created.id;
+
+  const rollback = async () => {
+    await fetch(`${env.supabaseUrl}/auth/v1/admin/users/${supabaseUserId}`, {
+      method: 'DELETE',
+      headers: adminHeaders,
+    }).catch(() => {});
+  };
+
+  const profileRes = await fetch(`${env.supabaseUrl}/rest/v1/profiles`, {
+    method: 'POST',
+    headers: { ...adminHeaders, Prefer: 'resolution=merge-duplicates' },
+    body: JSON.stringify({ id: supabaseUserId, email: params.email, full_name: params.full_name }),
+  });
+  if (!profileRes.ok) {
+    await rollback();
+    const body = await profileRes.text().catch(() => profileRes.statusText);
+    throw new Error(`Failed to create Supabase profile: ${body.slice(0, 500)}`);
+  }
+
+  let roleRes = await fetch(`${env.supabaseUrl}/rest/v1/user_roles`, {
+    method: 'POST',
+    headers: adminHeaders,
+    body: JSON.stringify({ user_id: supabaseUserId, role: params.role, store_id: params.store_id ?? null }),
+  });
+  if (!roleRes.ok && params.store_id) {
+    // The store may not have reached Supabase yet (its own sync is async
+    // via the outbox) - store_id is a nullable FK there, so retry without
+    // it rather than fail the whole account creation over a timing gap.
+    roleRes = await fetch(`${env.supabaseUrl}/rest/v1/user_roles`, {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify({ user_id: supabaseUserId, role: params.role, store_id: null }),
+    });
+  }
+  if (!roleRes.ok) {
+    await rollback();
+    const body = await roleRes.text().catch(() => roleRes.statusText);
+    throw new Error(`Failed to assign Supabase role: ${body.slice(0, 500)}`);
+  }
+
+  return { userId: supabaseUserId };
+}
+
 const workerProvisionSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8, 'Password must be at least 8 characters'),
@@ -350,9 +471,37 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         });
       }
     }
-    const userId = crypto.randomUUID();
+    let userId: string;
+    try {
+      const provisioned = await provisionSupabaseWorker({
+        email,
+        password,
+        full_name,
+        role,
+        store_id: assignedStore,
+        created_by: claims.sub,
+      });
+      userId = provisioned.userId;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if ((err as { code?: string })?.code === 'SUPABASE_EMAIL_EXISTS') {
+        return reply.status(409).send({
+          error: 'UserExists',
+          message: 'A user with that email already exists.',
+        });
+      }
+      request.log.error({ err }, '[auth] Supabase worker provisioning failed');
+      return reply.status(502).send({
+        error: 'SupabaseProvisionFailed',
+        message: `Could not create this account in Supabase: ${message}`,
+      });
+    }
+
     const now = new Date().toISOString();
 
+    // userId is the real Supabase Auth id (not a locally-generated one) so
+    // this account is the same identity on both sides from the start,
+    // instead of two disconnected records that can never be reconciled.
     db.insertUser({
       id: userId,
       email,
@@ -374,7 +523,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       created_at: now,
     });
 
-    request.log.info('Worker %s created by %s', email, claims.sub);
+    request.log.info('Worker %s created by %s (Supabase id %s)', email, claims.sub, userId);
 
     return reply.status(201).send({
       id: userId,
@@ -385,5 +534,54 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       store_id: assignedStore ?? null,
       created_at: now,
     });
+  });
+
+  // Route didn't exist at all - the MasterPasswordGate dialog's fetch always
+  // 404'd, so `res.ok` was always false and NO password (not even the real
+  // master's own) could ever unlock a gated module on the installed app.
+  // No bearer token required, same as /auth/login: this only ever listens
+  // on localhost and the caller has no session yet at the point they'd use
+  // it. Checks the password against every master account on this device
+  // (not just one), so any master's password unlocks it for a worker.
+  app.post('/rest/v1/auth/verify-master', async (request, reply) => {
+    const parsed = verifyMasterSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'ValidationFailed', details: parsed.error.flatten() });
+    }
+
+    const masterRoles = db.listUserRoles('master');
+    for (const role of masterRoles) {
+      const user = db.getUserById(role.user_id);
+      if (user && bcrypt.compareSync(parsed.data.password, user.password_hash)) {
+        return reply.send({ valid: true });
+      }
+    }
+    return reply.send({ valid: false });
+  });
+
+  // id here is user_roles.id, matching OfflineTeamService.updateWorkerRole's
+  // local-bridge branch. This route didn't exist at all - every promote/
+  // demote attempt from the master dashboard 404'd.
+  app.patch('/auth/workers/:id/role', async (request, reply) => {
+    const claims = authenticateRequest(request, reply, ['master']);
+    if (!claims) return;
+
+    const { id } = request.params as { id: string };
+    const parsed = roleUpdateSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({
+        error: 'ValidationFailed',
+        details: parsed.error.flatten(),
+      });
+    }
+
+    const existingRole = db.getRoleById(id);
+    if (!existingRole) {
+      return reply.status(404).send({ error: 'NotFound', message: 'Role not found.' });
+    }
+
+    db.updateRole(id, parsed.data.role);
+
+    return reply.send({ id, role: parsed.data.role });
   });
 }
