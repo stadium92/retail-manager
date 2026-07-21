@@ -77,7 +77,10 @@ export async function registerSyncRoutes(app: FastifyInstance) {
       const res = await fetch(`${env.supabaseUrl}/rest/v1/`, {
         headers: { apikey: env.supabaseServiceKey },
       });
-      if (res.status >= 500) {
+      // Anything outside 2xx (not just 5xx) means the same call /sync/push
+      // and /sync/pull make would also fail - notably 401/403, which is
+      // exactly what a wrong or revoked service key looks like here.
+      if (!res.ok) {
         return reply.send({ status: 'OFFLINE', message: `Supabase injoignable (HTTP ${res.status}).` });
       }
       return reply.send({ status: 'ONLINE', message: 'Connected to local sync bridge' });
