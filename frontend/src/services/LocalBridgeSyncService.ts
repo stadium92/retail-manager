@@ -4,12 +4,14 @@ import { OfflineAuthService } from './OfflineAuthService';
 export type NetworkHealthStatus = 'ONLINE' | 'OFFLINE' | 'CLOCK_SKEW' | 'FIREWALL_BLOCKED' | 'ISP_BLOCKED' | 'RATE_LIMITED';
 
 const PUSH_INTERVAL_MS = 30_000;
+const HEALTH_INTERVAL_MS = 30_000;
 
 export class LocalBridgeSyncService {
   private static running = false;
   private static eventSource: EventSource | null = null;
   private static currentStoreId: string | null = null;
   private static pushIntervalId: ReturnType<typeof setInterval> | null = null;
+  private static healthIntervalId: ReturnType<typeof setInterval> | null = null;
 
   // Diagnostics & Health State
   private static currentHealth: NetworkHealthStatus = 'ONLINE';
@@ -69,6 +71,15 @@ export class LocalBridgeSyncService {
       void this.pushPendingMutations(storeId);
     }, PUSH_INTERVAL_MS);
 
+    // checkNetworkHealth() otherwise only ran once at launch and was never
+    // called again - the indicator was a one-shot snapshot that couldn't
+    // reflect Supabase (or the bridge itself) actually going down or
+    // recovering mid-session. The SSE open/error handlers below only ever
+    // reflected the LOCAL bridge connection, not the Supabase leg.
+    this.healthIntervalId = setInterval(() => {
+      void this.checkNetworkHealth();
+    }, HEALTH_INTERVAL_MS);
+
     // Setup Server-Sent Events (SSE) listener
     const dataClient = getDataClient();
     try {
@@ -119,6 +130,10 @@ export class LocalBridgeSyncService {
     if (this.pushIntervalId) {
       clearInterval(this.pushIntervalId);
       this.pushIntervalId = null;
+    }
+    if (this.healthIntervalId) {
+      clearInterval(this.healthIntervalId);
+      this.healthIntervalId = null;
     }
     this.currentStoreId = null;
 
