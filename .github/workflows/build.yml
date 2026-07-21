@@ -11,7 +11,33 @@ jobs:
         with:
           submodules: recursive
           token: ${{ secrets.GITHUB_TOKEN }}
-      
+
+      - name: Bump patch version
+        shell: pwsh
+        # tauri.conf.json's version was a static number nobody bumped, so
+        # every build published the same filename to stadium94/app-releases
+        # and silently overwrote the previous one. Auto-increment the patch
+        # component here, before the build steps, so the version baked into
+        # the app AND the published filename are both unique per build.
+        run: |
+          $confPath = "src-tauri/tauri.conf.json"
+          $content = Get-Content $confPath -Raw
+          if ($content -notmatch '"version":\s*"(\d+)\.(\d+)\.(\d+)"') {
+            Write-Error "Could not find a version field in $confPath"
+            exit 1
+          }
+          $newPatch = [int]$matches[3] + 1
+          $newVersion = "$($matches[1]).$($matches[2]).$newPatch"
+          $newContent = $content -replace '"version":\s*"\d+\.\d+\.\d+"', "`"version`": `"$newVersion`""
+          Set-Content -Path $confPath -Value $newContent -NoNewline
+          Write-Host "Bumped version to $newVersion"
+
+          git config user.email "ci@retail-manager.local"
+          git config user.name "retail-manager CI"
+          git add $confPath
+          git commit -q -m "chore: bump version to $newVersion"
+          git push origin "HEAD:${{ github.ref_name }}"
+
       - name: Setup Node.js v18
         uses: actions/setup-node@v4
         with:
