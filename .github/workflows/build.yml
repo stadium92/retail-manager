@@ -1,16 +1,6 @@
 name: "CI/CD Pipeline: Build Windows Application"
 
 on:
-  push:
-    branches:
-      - main
-      - frontend-test-1
-      - main-stihl-dibidani
-  pull_request:
-    branches:
-      - main
-      - frontend-test-1
-      - main-stihl-dibidani
   workflow_dispatch:
 
 jobs:
