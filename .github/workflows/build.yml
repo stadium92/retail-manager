@@ -1,27 +1,49 @@
 name: "CI/CD Pipeline: Build Windows Application"
 
 on:
-  push:
-    branches:
-      - main
-      - frontend-test-1
-      - main-niamana-dubai
-  pull_request:
-    branches:
-      - main
-      - frontend-test-1
-      - main-niamana-dubai
   workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
           token: ${{ secrets.GITHUB_TOKEN }}
-      
+
+      - name: Bump patch version
+        shell: pwsh
+        # tauri.conf.json's version was a static number nobody bumped, so
+        # every build published the same filename to stadium94/app-releases
+        # and silently overwrote the previous one. Auto-increment the patch
+        # component here, before the build steps, so the version baked into
+        # the app AND the published filename are both unique per build.
+        run: |
+          $confPath = "src-tauri/tauri.conf.json"
+          $content = Get-Content $confPath -Raw
+          if ($content -notmatch '"version":\s*"(\d+)\.(\d+)\.(\d+)"') {
+            Write-Error "Could not find a version field in $confPath"
+            exit 1
+          }
+          $newPatch = [int]$matches[3] + 1
+          $newVersion = "$($matches[1]).$($matches[2]).$newPatch"
+          $newContent = $content -replace '"version":\s*"\d+\.\d+\.\d+"', "`"version`": `"$newVersion`""
+          Set-Content -Path $confPath -Value $newContent -NoNewline
+          Write-Host "Bumped version to $newVersion"
+
+          git config user.email "ci@retail-manager.local"
+          git config user.name "retail-manager CI"
+          git add $confPath
+          git commit -q -m "chore: bump version to $newVersion"
+          git push origin "HEAD:${{ github.ref_name }}"
+
       - name: Setup Node.js v18
         uses: actions/setup-node@v4
         with:
@@ -81,14 +103,25 @@ jobs:
           # a "Source code (zip/tar.gz)" download to every Release AND every
           # tag, with no way to turn it off. A bare branch with no tag
           # triggers neither, so this is the only way to publish an installer
-          # here without that link appearing next to it. One branch per
-          # product, force-pushed fresh each build (no history to accumulate,
-          # always just the latest build) - filenames include the semantic
-          # version (from tauri.conf.json) so it's visible at a glance which
-          # build is current without opening the file.
+          # here without that link appearing next to it. Filenames include
+          # the semantic version (from tauri.conf.json, auto-bumped by the
+          # earlier step) so every build lands as its own file and old
+          # versions are never overwritten - clone the existing branch
+          # (if any) and commit on top of it, instead of force-pushing a
+          # fresh orphan commit each time, so version history piles up.
           $branch = "${{ github.ref_name }}"
           $publishDir = "publish-releases-repo"
-          New-Item -ItemType Directory -Path $publishDir | Out-Null
+          $remoteUrl = "https://x-access-token:$env:GH_TOKEN@github.com/stadium94/app-releases.git"
+
+          git clone --branch $branch --single-branch $remoteUrl $publishDir 2>$null
+          if (-not (Test-Path (Join-Path $publishDir ".git"))) {
+            Remove-Item -Recurse -Force $publishDir -ErrorAction SilentlyContinue
+            New-Item -ItemType Directory -Path $publishDir | Out-Null
+            Push-Location $publishDir
+            git init -q
+            git checkout -q -b $branch
+            Pop-Location
+          }
 
           $version = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
           $exe = $files | Where-Object { $_.Extension -eq ".exe" } | Select-Object -First 1
@@ -97,15 +130,11 @@ jobs:
           if ($msi) { Copy-Item $msi.FullName -Destination (Join-Path $publishDir "retail-manager-installer-$version.msi") }
 
           Push-Location $publishDir
-          git init -q
           git config user.email "ci@retail-manager.local"
           git config user.name "retail-manager CI"
-          git checkout -q -b $branch
+          git remote remove origin 2>$null
+          git remote add origin $remoteUrl
           git add -A
-          git commit -q -m "Automated build from stadium93/retail-manager @ ${{ github.sha }} (run ${{ github.run_number }})"
-          git remote add origin "https://x-access-token:$env:GH_TOKEN@github.com/stadium94/app-releases.git"
-          git push --force origin "HEAD:$branch"
+          git commit -q -m "Automated build from stadium92/retail-manager @ ${{ github.sha }} (run ${{ github.run_number }})"
+          git push origin "HEAD:$branch"
           Pop-Location
-
-
-

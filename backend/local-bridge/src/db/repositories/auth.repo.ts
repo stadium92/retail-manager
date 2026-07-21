@@ -68,6 +68,23 @@ export const createAuthRepo = (db: Database.Database) => ({
       .run(role);
   },
 
+  getRoleById(roleId: string): LocalRole | undefined {
+    const row = db.prepare('SELECT * FROM user_roles WHERE id = ? LIMIT 1').get(roleId);
+    return row as LocalRole | undefined;
+  },
+
+  updateRole(roleId: string, role: string) {
+    db.prepare('UPDATE user_roles SET role = ? WHERE id = ?').run(role, roleId);
+  },
+
+  deleteRole(roleId: string) {
+    db.prepare('DELETE FROM user_roles WHERE id = ?').run(roleId);
+  },
+
+  deleteUser(userId: string) {
+    db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+  },
+
   getSessionByRefreshToken(refreshToken: string): LocalSession | undefined {
     const row = db
       .prepare('SELECT * FROM sessions WHERE refresh_token = ? LIMIT 1')

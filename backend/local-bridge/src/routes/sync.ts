@@ -26,7 +26,6 @@ const MAX_OUTBOX_RETRIES = 8;
 const MAX_OUTBOX_PUSH_PER_CALL = 300;
 
 const pushSchema = z.object({
-  supabase_service_key: z.string().min(1),
   entity: z.string().optional(),
   payload: z.any().optional(),
   store_id: z.string().optional(),
@@ -51,6 +50,44 @@ export async function registerSyncRoutes(app: FastifyInstance) {
         conflict_resolution: 'server_wins',
       },
     });
+  });
+
+  // Health check for the "local bridge reachable" indicator - the frontend
+  // (LocalBridgeSyncService.checkNetworkHealth) polls this exact path. It
+  // used to poll a path that was never registered here, so the indicator
+  // always read OFFLINE regardless of the bridge's real state.
+  app.get('/sync/health', async (_request, reply) => {
+    return reply.send({ status: 'ONLINE', message: 'Connected to local sync bridge' });
+  });
+
+  // Minimal SSE stream so the frontend's EventSource actually connects -
+  // it also used to point at an unregistered path, whose permanent
+  // connection failure kept flipping the health indicator back to OFFLINE
+  // seconds after every successful health check. No live data_merged
+  // events are emitted yet (push/pull still work via polling), this only
+  // keeps the connection open so onopen/onerror reflect real reachability.
+  app.get('/sync/events', (request, reply) => {
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    });
+    reply.raw.write(':ok\n\n');
+    const heartbeat = setInterval(() => {
+      reply.raw.write(':heartbeat\n\n');
+    }, 20000);
+    request.raw.on('close', () => {
+      clearInterval(heartbeat);
+    });
+  });
+
+  // Manual "retry failed" button in Settings - resets failed outbox
+  // entries back to pending so the next push drain picks them up again.
+  app.post('/sync/outbox/retry', async (request, reply) => {
+    const claims = authenticateRequest(request, reply, ['any']);
+    if (!claims) return;
+    const reset_count = db.resetFailedOutboxEntries();
+    return reply.send({ reset_count });
   });
 
   // Sync diagnostics endpoint for admins
@@ -80,7 +117,14 @@ export async function registerSyncRoutes(app: FastifyInstance) {
   });
 
   app.post('/sync/push', async (request, reply) => {
-    const claims = authenticateRequest(request, reply, ['supabase-sync']);
+    // Was gated on role 'supabase-sync', a role no real login ever issues
+    // (users only ever get master/worker/deliverer) - every call from the
+    // actual app 403'd unconditionally. The Supabase service key itself
+    // isn't a caller-supplied credential at all - it's baked into this
+    // process's own env at build time and used directly below via
+    // buildSupabaseHeaders(); any authenticated local session may trigger
+    // a push/pull, same as every other local-bridge endpoint.
+    const claims = authenticateRequest(request, reply, ['any']);
     if (!claims) return;
 
     const parsed = pushSchema.safeParse(request.body ?? {});
@@ -88,8 +132,8 @@ export async function registerSyncRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'ValidationFailed', details: parsed.error.flatten() });
     }
 
-    if (!env.supabaseServiceKey || parsed.data.supabase_service_key !== env.supabaseServiceKey) {
-      return reply.status(401).send({ error: 'Unauthorized', message: 'Invalid Supabase service key.' });
+    if (!env.supabaseServiceKey) {
+      return reply.status(400).send({ error: 'ConfigMissing', message: 'SUPABASE_SERVICE_KEY not configured on this build.' });
     }
 
     if (!env.supabaseUrl) {
@@ -231,7 +275,9 @@ export async function registerSyncRoutes(app: FastifyInstance) {
   });
 
   app.get('/sync/pull', async (request, reply) => {
-    const claims = authenticateRequest(request, reply, ['supabase-sync']);
+    // Same fix as /sync/push above - 'supabase-sync' is not a role any
+    // real login ever has.
+    const claims = authenticateRequest(request, reply, ['any']);
     if (!claims) return;
 
     if (!env.supabaseUrl || !env.supabaseServiceKey) {
