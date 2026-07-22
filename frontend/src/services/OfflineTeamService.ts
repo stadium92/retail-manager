@@ -1032,4 +1032,48 @@ export class OfflineTeamService {
       return { success: false, error };
     }
   }
+
+  /**
+   * Reassign a worker/deliverer to a different store. id is user_roles.id,
+   * same as updateWorkerRole. Store assignment was write-once (only set at
+   * creation time) before this - there was no way to move someone.
+   */
+  static async updateWorkerStore(id: string, storeId: string): Promise<{ success: boolean; error?: any }> {
+    try {
+      const dataClient = getDataClient();
+      if (!dataClient.isLocalFirst) {
+        const { error } = await supabase
+          .from('user_roles')
+          .update({ store_id: storeId })
+          .eq('id', id);
+
+        if (error) {
+          return { success: false, error };
+        }
+        return { success: true };
+      }
+
+      const headers = await OfflineAuthService.getAuthHeaders();
+      if (!headers) throw new Error('Not authenticated');
+
+      const response = await smartFetch(
+        `${dataClient.localBridgeBaseUrl}/auth/workers/${id}/store`,
+        {
+          method: 'PATCH',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ store_id: storeId }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update store');
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Update worker store error:', error);
+      return { success: false, error };
+    }
+  }
 }

@@ -27,6 +27,10 @@ const roleUpdateSchema = z.object({
   role: z.enum(['master', 'worker', 'deliverer']),
 });
 
+const storeAssignSchema = z.object({
+  store_id: z.string().min(1),
+});
+
 const verifyMasterSchema = z.object({
   password: z.string().min(1),
 });
@@ -583,5 +587,35 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     db.updateRole(id, parsed.data.role);
 
     return reply.send({ id, role: parsed.data.role });
+  });
+
+  // Store assignment was write-once (only set at POST /auth/workers time) -
+  // there was no way to move an existing worker/deliverer to a different
+  // store afterward. Same shape as the /role route above.
+  app.patch('/auth/workers/:id/store', async (request, reply) => {
+    const claims = authenticateRequest(request, reply, ['master']);
+    if (!claims) return;
+
+    const { id } = request.params as { id: string };
+    const parsed = storeAssignSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({
+        error: 'ValidationFailed',
+        details: parsed.error.flatten(),
+      });
+    }
+
+    const existingRole = db.getRoleById(id);
+    if (!existingRole) {
+      return reply.status(404).send({ error: 'NotFound', message: 'Role not found.' });
+    }
+
+    if (!db.getStoreById(parsed.data.store_id)) {
+      return reply.status(400).send({ error: 'InvalidStore', message: 'Selected store does not exist.' });
+    }
+
+    db.updateRoleStore(id, parsed.data.store_id);
+
+    return reply.send({ id, store_id: parsed.data.store_id });
   });
 }

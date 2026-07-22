@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Users, Truck, UserPlus, Loader2, Trash2, Building, WifiOff, RefreshCw, Eye, Shield } from 'lucide-react';
+import { Users, Truck, UserPlus, Loader2, Trash2, Building, WifiOff, RefreshCw, Eye, Shield, ArrowLeftRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -26,6 +26,7 @@ import { OfflineTeamService, TeamMember } from '@/services/OfflineTeamService';
 import { Store } from '@/types';
 import { AddWorkerDialog } from '@/components/master/Team/AddWorkerDialog';
 import { AddDelivererDialog } from '@/components/master/Team/AddDelivererDialog';
+import { ChangeStoreDialog } from '@/components/master/Team/ChangeStoreDialog';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
@@ -52,6 +53,7 @@ export default function TeamPage() {
   const [deleteTarget, setDeleteTarget] = useState<TeamMember | null>(null);
   const [viewTarget, setViewTarget] = useState<TeamMember | null>(null);
   const [promoteTarget, setPromoteTarget] = useState<TeamMember | null>(null);
+  const [changeStoreTarget, setChangeStoreTarget] = useState<TeamMember | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [promoting, setPromoting] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
@@ -422,6 +424,14 @@ export default function TeamPage() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              onClick={() => setChangeStoreTarget(worker)}
+                              title={t('team.dialog.changeStoreTitle')}
+                            >
+                              <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               onClick={() => setDeleteTarget(worker)}
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
@@ -486,13 +496,23 @@ export default function TeamPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleteTarget(deliverer)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setChangeStoreTarget(deliverer)}
+                              title={t('team.dialog.changeStoreTitle')}
+                            >
+                              <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeleteTarget(deliverer)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -518,6 +538,18 @@ export default function TeamPage() {
         open={showAddDeliverer}
         onOpenChange={setShowAddDeliverer}
         onSuccess={handleDelivererCreated}
+      />
+
+      {/* Change Store Dialog */}
+      <ChangeStoreDialog
+        open={!!changeStoreTarget}
+        onOpenChange={(open) => !open && setChangeStoreTarget(null)}
+        member={changeStoreTarget}
+        stores={stores}
+        onSuccess={() => {
+          setChangeStoreTarget(null);
+          loadData();
+        }}
       />
 
       {/* Worker Details Dialog */}
