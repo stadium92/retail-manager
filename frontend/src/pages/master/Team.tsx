@@ -371,7 +371,7 @@ export default function TeamPage() {
                       <TableHead>{t('team.table.sales')}</TableHead>
                       <TableHead>{t('team.table.revenue')}</TableHead>
                       <TableHead>{t('team.table.status')}</TableHead>
-                      <TableHead className="w-[100px]">{t('team.table.actions')}</TableHead>
+                      <TableHead className="w-[140px]">{t('team.table.actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -427,7 +427,7 @@ export default function TeamPage() {
                               onClick={() => setChangeStoreTarget(worker)}
                               title={t('team.dialog.changeStoreTitle')}
                             >
-                              <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
+                              <ArrowLeftRight className="h-4 w-4 text-indigo-500" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -465,7 +465,7 @@ export default function TeamPage() {
                       <TableHead>{t('team.table.deliveries')}</TableHead>
                       <TableHead>{t('team.table.completed')}</TableHead>
                       <TableHead>{t('team.table.status')}</TableHead>
-                      <TableHead className="w-[100px]">{t('team.table.actions')}</TableHead>
+                      <TableHead className="w-[140px]">{t('team.table.actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -503,7 +503,7 @@ export default function TeamPage() {
                               onClick={() => setChangeStoreTarget(deliverer)}
                               title={t('team.dialog.changeStoreTitle')}
                             >
-                              <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
+                              <ArrowLeftRight className="h-4 w-4 text-indigo-500" />
                             </Button>
                             <Button
                               variant="ghost"
