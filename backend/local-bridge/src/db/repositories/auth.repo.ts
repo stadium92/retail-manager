@@ -77,6 +77,10 @@ export const createAuthRepo = (db: Database.Database) => ({
     db.prepare('UPDATE user_roles SET role = ? WHERE id = ?').run(role, roleId);
   },
 
+  updateRoleStore(roleId: string, storeId: string) {
+    db.prepare('UPDATE user_roles SET store_id = ? WHERE id = ?').run(storeId, roleId);
+  },
+
   deleteRole(roleId: string) {
     db.prepare('DELETE FROM user_roles WHERE id = ?').run(roleId);
   },

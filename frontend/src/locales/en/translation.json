@@ -1447,7 +1447,9 @@
       "addWorkerTitle": "Add New Worker",
       "addWorkerDescription": "Create a new worker account. They will be able to log in with these credentials.",
       "addDelivererTitle": "Add New Deliverer",
-      "addDelivererDescription": "Create a new deliverer account. They will be able to log in with these credentials."
+      "addDelivererDescription": "Create a new deliverer account. They will be able to log in with these credentials.",
+      "changeStoreTitle": "Change Store",
+      "changeStoreDescription": "Reassign {{name}} to a different store."
     },
     "form": {
       "fullName": "Full Name",
@@ -1477,12 +1479,14 @@
       "loadTeam": "Failed to load team members",
       "createWorker": "Failed to create worker account",
       "createDeliverer": "Failed to create deliverer account",
-      "deleteMember": "Failed to remove team member"
+      "deleteMember": "Failed to remove team member",
+      "changeStore": "Failed to reassign store"
     },
     "success": {
       "createWorker": "Worker account created successfully",
       "createDeliverer": "Deliverer account created successfully",
-      "deleteMember": "Team member removed successfully"
+      "deleteMember": "Team member removed successfully",
+      "changeStore": "Store reassigned successfully"
     },
     "dialogs": {
       "deleteTitle": "Remove Team Member",
