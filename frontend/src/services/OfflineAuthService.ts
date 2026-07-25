@@ -964,7 +964,12 @@ export class OfflineAuthService {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ password }),
         });
-        return res.ok;
+        // The endpoint always answers 200 with a { valid: boolean } body -
+        // it's a real, successful check either way. res.ok alone was always
+        // true regardless of the password, so ANY input unlocked the gate.
+        if (!res.ok) return false;
+        const data = await res.json().catch(() => null);
+        return data?.valid === true;
       } catch (e) {
         console.error('[OfflineAuth] verifyMasterPassword error:', e);
         return false;
