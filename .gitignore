@@ -43,3 +43,9 @@ backend/local-bridge/dist
 backend/local-bridge/payload.zip
 backend/local-bridge/*.exe
 backend/local-bridge/retail-manager-logs/
+
+# Playwright E2E (frontend/e2e)
+.e2e-data/
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
