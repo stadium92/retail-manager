@@ -194,13 +194,29 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     // the corresponding fallback SUPABASE_URL (no secret needed there).
     let supabase_service_key = option_env!("SUPABASE_SERVICE_KEY_BUILD").unwrap_or("");
 
-    // Spawn the node process
-    let mut child = Command::new(&node_path)
-        .arg(&script_path)
+    // Capture the child's stderr to its own file. Without this, node's output
+    // was simply inherited and lost: when the backend died during startup all
+    // we ever saw here was "spawned successfully" followed by "exited with
+    // status 1", with no reason recorded anywhere. Anything that throws while
+    // node is still loading modules - a corrupt or locked SQLite file, a
+    // missing native binding - happens before the backend can install its own
+    // logging, so this file is the ONLY place that error can appear.
+    let stderr_path = get_log_path().with_file_name("backend-stderr.log");
+    let stderr_file = OpenOptions::new().create(true).append(true).open(&stderr_path);
+    writeln!(log_file, "Capturing backend stderr to {:?}", stderr_path)?;
+
+    let mut cmd = Command::new(&node_path);
+    cmd.arg(&script_path)
         .args(args)
         .current_dir(&temp_dir) // Important for require() resolution
-        .env("SUPABASE_SERVICE_KEY", supabase_service_key)
-        .spawn();
+        .env("SUPABASE_SERVICE_KEY", supabase_service_key);
+
+    if let Ok(f) = stderr_file {
+        cmd.stderr(std::process::Stdio::from(f));
+    }
+
+    // Spawn the node process
+    let child = cmd.spawn();
 
     match child {
         Ok(mut child) => {

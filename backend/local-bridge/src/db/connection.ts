@@ -36,7 +36,55 @@ if ((process as any).pkg) {
     }
 }
 
-export const rawDb = new Database(dbPath, options);
-rawDb.pragma('journal_mode = WAL');
+// This runs at MODULE LOAD time, which in ES modules means it executes before
+// any code in index.ts - including the uncaughtException handler and the EPIPE
+// guards. So an exception thrown here escapes with no handler installed: node
+// prints to stderr and exits 1, and backend-startup.log records nothing at
+// all. From the outside that looks exactly like "the backend spawns and
+// immediately dies for no reason", which is unfixable without this log line.
+//
+// Real causes seen in the wild: a corrupted SQLite file (power loss during a
+// write), the file locked by an orphaned backend still holding it, a stale
+// .sqlite-wal/.sqlite-shm pair from an unclean shutdown, or the native
+// better_sqlite3 binding missing/quarantined. All of them fail identically on
+// every relaunch, so the app never recovers on its own.
+const emergencyLog = (msg: string) => {
+  try {
+    const dir = path.join(process.env.LOCALAPPDATA || '', 'retail-manager-logs');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.appendFileSync(
+      path.join(dir, 'backend-startup.log'),
+      `[${new Date().toISOString()}] ${msg}\n`
+    );
+  } catch {
+    /* logging must never be the thing that takes the process down */
+  }
+};
+
+let db: Database.Database;
+try {
+  db = new Database(dbPath, options);
+} catch (err) {
+  emergencyLog(
+    `CRITICAL: could not open the database at ${dbPath}: ${err}\n` +
+      `  This happens before any error handling is installed, so the process ` +
+      `will exit immediately. Usual causes: the file is corrupt, it is locked ` +
+      `by another running copy of the backend, a stale -wal/-shm pair is next ` +
+      `to it, or better_sqlite3.node was removed by antivirus.`
+  );
+  throw err;
+}
+
+try {
+  db.pragma('journal_mode = WAL');
+} catch (err) {
+  // WAL can fail where the plain open succeeded - notably on network/OneDrive
+  // backed folders, which do not support the shared-memory file WAL needs.
+  // Journal mode is a performance choice, not a correctness one, so fall back
+  // to the default rather than refusing to start over it.
+  emergencyLog(`WARNING: could not enable WAL mode (${err}). Continuing with the default journal mode.`);
+}
+
+export const rawDb = db;
 
 export const dbFile = dbPath;
