@@ -33,6 +33,7 @@ export function MobileFicheCaisse({ onBack }: { onBack?: () => void }) {
     credits: 0,
     ventesCredit: 0,
   });
+  const [totalVentesJour, setTotalVentesJour] = useState(0);
 
   useEffect(() => {
     OfflineAuthService.getOfflineSession().then(session => {
@@ -61,8 +62,10 @@ export function MobileFicheCaisse({ onBack }: { onBack?: () => void }) {
       if (sales) {
         const todaySales = sales.filter(s => s.created_at && new Date(s.created_at) >= todayStart && s.sale_type !== 'proforma');
         const cashTotal = todaySales.filter(s => s.payment_method === 'cash').reduce((sum, s) => sum + (s.total_price || 0), 0);
-        
+        const salesTotal = todaySales.reduce((sum, s) => sum + (s.total_price || 0), 0);
+
         setComputerValues(prev => ({ ...prev, especes: cashTotal }));
+        setTotalVentesJour(salesTotal);
       }
     } catch (error) {
       console.error('[MobileFicheCaisse] Failed to fetch sales:', error);
@@ -100,20 +103,24 @@ export function MobileFicheCaisse({ onBack }: { onBack?: () => void }) {
     try {
       const payload = {
         store_id: storeId,
-        date: new Date().toISOString(),
-        fonds_caisse: fondsCaisse,
+        opening_balance: fondsCaisse,
+        total_sales: totalVentesJour,
+        expected_balance: computerValues.especes,
+        actual_balance: totalBilletage,
+        difference: ecart,
+        bill_details_json: JSON.stringify({ bills, depensesJour }),
         observations,
-        total_billetage: totalBilletage,
-        total_informatique: computerValues.especes,
-        ecart: ecart,
-        billets_details: bills,
       };
-      
-      const res = await OfflineAuthService.localBridgeRequest('/rest/v1/cash_register_closures', {
+
+      // This used to post to /rest/v1/cash_register_closures, which never
+      // existed - the request 404'd but the success toast fired anyway,
+      // regardless of the result. Uses the same real endpoint as the
+      // desktop Fermeture de Caisse module now.
+      await OfflineAuthService.localBridgeRequest('/rest/v1/cash_closings', {
         method: 'POST',
         body: JSON.stringify(payload)
       });
-      
+
       toast({ title: "Fermeture Enregistrée", description: "La fiche de caisse a été enregistrée avec succès." });
       // Reset
       setBills(bills.map(b => ({...b, count: 0})));
@@ -149,6 +156,10 @@ export function MobileFicheCaisse({ onBack }: { onBack?: () => void }) {
         {/* Summary Card */}
         <div className="bg-[#141414] border border-rs-surface-container-highest rounded-xl p-4 flex flex-col gap-3">
           <h2 className="font-bold text-rs-surface-tint uppercase tracking-wider text-sm">Bilan Informatique</h2>
+          <div className="flex justify-between items-center">
+            <span className="text-rs-on-surface-variant font-medium">Total Ventes du Jour</span>
+            <span className="text-white font-mono font-bold">{formatCurrency(totalVentesJour)}</span>
+          </div>
           <div className="flex justify-between items-center">
             <span className="text-rs-on-surface-variant font-medium">Ventes Espèces (Jour)</span>
             <span className="text-white font-mono font-bold">{formatCurrency(computerValues.especes)}</span>
