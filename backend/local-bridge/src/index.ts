@@ -153,13 +153,33 @@ async function start() {
   // 8787 - that used to be a hard, immediate crash (EADDRINUSE), confirmed
   // in the field, requiring the user to notice and relaunch a second time.
   // Retry a few times with a short backoff instead of giving up instantly.
+  // Bind loopback only, NOT 0.0.0.0. Two reasons, both bad:
+  //
+  // 1. Listening on a non-loopback interface is what makes Windows pop the
+  //    "allow this app to communicate on your network" firewall dialog on
+  //    first run. If anyone ever answers Cancel/Block on that dialog (easy to
+  //    do - it looks scary and it is not obviously part of the POS), Windows
+  //    writes a persistent block rule and then NEVER ASKS AGAIN, it just
+  //    silently blocks from then on. That matches the report exactly: the
+  //    prompt used to appear, now nothing appears and the bridge is
+  //    unreachable. Loopback traffic is never firewalled on Windows, so
+  //    binding 127.0.0.1 sidesteps the dialog - and any pre-existing block
+  //    rule - entirely.
+  // 2. 0.0.0.0 published the whole POS API - auth, sales, the entire local
+  //    database - to every device on the same network. On shop or shared
+  //    wifi that is a genuine exposure, and nothing needs it: the frontend
+  //    only ever talks to 127.0.0.1:8787 (see dataClient.ts, which even
+  //    rewrites localhost to 127.0.0.1 explicitly).
+  //
+  // Still overridable via HOST for anyone who deliberately wants LAN access.
+  const bindHost = process.env.HOST || '127.0.0.1';
   const maxListenAttempts = 5;
   for (let attempt = 1; attempt <= maxListenAttempts; attempt++) {
     try {
-      log(`Attempting to listen on port ${env.port} (attempt ${attempt}/${maxListenAttempts})...`);
-      await app.listen({ port: env.port, host: '0.0.0.0' });
-      log(`LocalBridge listening on http://localhost:${env.port}`);
-      app.log.info(`LocalBridge listening on http://localhost:${env.port}`);
+      log(`Attempting to listen on ${bindHost}:${env.port} (attempt ${attempt}/${maxListenAttempts})...`);
+      await app.listen({ port: env.port, host: bindHost });
+      log(`LocalBridge listening on http://${bindHost}:${env.port}`);
+      app.log.info(`LocalBridge listening on http://${bindHost}:${env.port}`);
       return;
     } catch (err: any) {
       const isPortConflict = err?.code === 'EADDRINUSE';
