@@ -64,7 +64,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     // VERSION CHECK: Compare version.txt in zip with version.txt in temp_dir
     let mut needs_extraction = true;
     let local_version_path = temp_dir.join("version.txt");
-    
+
     if local_version_path.exists() {
         if let Ok(mut zip_version_file) = archive.by_name("version.txt") {
             let mut zip_version = String::new();
@@ -82,8 +82,40 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // INTEGRITY CHECK - must run AFTER the version check and be able to
+    // override it. A matching version.txt only proves *a* payload of this
+    // version was extracted here once, NOT that it is still intact. This
+    // directory lives in %TEMP%, where Windows Storage Sense, "Disk Cleanup",
+    // third-party cleaners and antivirus quarantine all delete files freely -
+    // and they delete selectively, so version.txt routinely survives while
+    // node.exe or dist/ do not. In that state the old logic saw a version
+    // match, skipped extraction, then failed on missing node.exe and returned
+    // the same error on every relaunch forever: a permanently broken install
+    // that reinstalling the app does not fix, because the stale temp dir is
+    // never touched. Re-extract whenever anything we actually need is absent.
+    if !needs_extraction {
+        let required = [
+            temp_dir.join("node.exe"),
+            temp_dir.join("dist").join("index.js"),
+        ];
+        if let Some(missing) = required.iter().find(|p| !p.exists()) {
+            writeln!(
+                log_file,
+                "Version matched but {:?} is missing (temp dir was cleaned or quarantined). Forcing re-extraction.",
+                missing
+            )?;
+            needs_extraction = true;
+        }
+    }
+
     // EXTRACTION
     if needs_extraction {
+        // Drop the version marker first so a run that dies partway through
+        // (disk full, antivirus grabbing a file mid-write, power loss) cannot
+        // leave a directory that still *claims* to be a complete install of
+        // this version. Worst case we re-extract once more next launch.
+        let _ = fs::remove_file(&local_version_path);
+
         writeln!(log_file, "Extracting {} files...", archive.len())?;
         for i in 0..archive.len() {
             let mut file = archive.by_index(i)?;
@@ -116,8 +148,23 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     writeln!(log_file, "Script Path: {:?}", script_path)?;
 
     if !node_path.exists() {
-        writeln!(log_file, "CRITICAL: node.exe not found!")?;
-        return Err(format!("Critical Error: node.exe not found at {:?}", node_path).into());
+        // Reaching here means node.exe is absent even though extraction just
+        // ran (the integrity check above forces that). Overwhelmingly the
+        // cause is antivirus quarantining an unsigned node.exe the instant it
+        // lands in %TEMP%, which no amount of retrying will beat.
+        writeln!(
+            log_file,
+            "CRITICAL: node.exe missing at {:?} immediately after extraction. \
+             Almost certainly quarantined by antivirus - add an exclusion for \
+             this folder, or reinstall with real-time protection paused.",
+            node_path
+        )?;
+        return Err(format!(
+            "Backend runtime (node.exe) was removed from {:?} right after being written. \
+             This is normally antivirus quarantine - add an exclusion for that folder and relaunch.",
+            temp_dir
+        )
+        .into());
     }
 
     // Collect args passed to this executable
