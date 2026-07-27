@@ -275,6 +275,24 @@ export const initializeSchema = (db: Database.Database) => {
       updated_at TEXT NOT NULL
     );
 
+    -- End-of-day cash register closing (Fermeture de Caisse). Was posted to
+    -- by the frontend already but no route/table ever existed for it - the
+    -- save button 404'd silently and nothing was ever actually persisted.
+    CREATE TABLE IF NOT EXISTS cash_closings (
+      id TEXT PRIMARY KEY,
+      store_id TEXT NOT NULL,
+      worker_id TEXT,
+      cashier_name TEXT,
+      opening_balance REAL NOT NULL DEFAULT 0,
+      total_sales REAL NOT NULL DEFAULT 0,
+      expected_balance REAL NOT NULL DEFAULT 0,
+      actual_balance REAL NOT NULL DEFAULT 0,
+      difference REAL NOT NULL DEFAULT 0,
+      bill_details_json TEXT,
+      observations TEXT,
+      created_at TEXT NOT NULL
+    );
+
     -- Trigger to deduct inventory when a sale item is recorded
     DROP TRIGGER IF EXISTS sale_items_ai;
     CREATE TRIGGER sale_items_ai AFTER INSERT ON sale_items

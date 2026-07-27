@@ -70,6 +70,11 @@ export function FicheCaisseModule({ storeId }: FicheCaisseModuleProps) {
     ventesCredit: 0,
   });
 
+  // Total amount sold today (gross sales, all payment methods combined) -
+  // distinct from especesJour/cheques/etc, which only track cash actually
+  // collected. This is what a closing needs to log per the client's request.
+  const [totalVentesJour, setTotalVentesJour] = useState(0);
+
   const currentDate = new Date();
 
   // Fetch today's sales and payments
@@ -93,7 +98,10 @@ export function FicheCaisseModule({ storeId }: FicheCaisseModuleProps) {
 
       if (salesRes.ok) {
         const todaySales = (sales as any[]).filter(s => s.created_at && new Date(s.created_at) >= todayStart && s.sale_type !== 'proforma');
-        
+
+        const salesTotal = todaySales.reduce((sum, s) => sum + (s.total_price || 0), 0);
+        setTotalVentesJour(salesTotal);
+
         const cashTotal = todaySales
           .filter(s => s.payment_method === 'cash')
           .reduce((sum, s) => sum + (s.total_price || 0), 0);
@@ -169,7 +177,9 @@ export function FicheCaisseModule({ storeId }: FicheCaisseModuleProps) {
     try {
       const closingData = {
         store_id: storeId,
+        cashier_name: cashierName || null,
         opening_balance: fondsCaisse,
+        total_sales: totalVentesJour,
         expected_balance: computerValues.especes,
         actual_balance: billTotal,
         difference: billTotal - computerValues.especes,
@@ -200,6 +210,7 @@ export function FicheCaisseModule({ storeId }: FicheCaisseModuleProps) {
           { Libelle: 'Jetons', Montant: formatCurrency(jetons) },
           { Libelle: 'TOTAL BILLETAGE', Montant: formatCurrency(billTotal) },
           { Libelle: '----------------', Montant: '----------------' },
+          { Libelle: 'TOTAL VENTES DU JOUR', Montant: formatCurrency(totalVentesJour) },
           { Libelle: 'Especes Jour', Montant: formatCurrency(dayData.especesJour) },
           { Libelle: 'Depenses', Montant: formatCurrency(dayData.depensesJour) },
           { Libelle: 'Ecart', Montant: formatCurrency(billTotal - computerValues.especes) }
@@ -233,7 +244,7 @@ export function FicheCaisseModule({ storeId }: FicheCaisseModuleProps) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [storeId, billTotal, bills, jetons, computerValues, fondsCaisse, observations, cashierName, i18n.language, currency, t, formatCurrency]);
+  }, [storeId, billTotal, bills, jetons, computerValues, totalVentesJour, fondsCaisse, observations, cashierName, i18n.language, currency, t, formatCurrency]);
 
   // Keyboard Shortcuts
   useEffect(() => {
@@ -297,10 +308,18 @@ export function FicheCaisseModule({ storeId }: FicheCaisseModuleProps) {
             </div>
             <div className="flex items-center gap-2">
               <Label className="font-bold whitespace-nowrap">{t('menu.program.cashFund')}:</Label>
-              <NumericInput 
+              <NumericInput
                 value={fondsCaisse}
                 onValueChange={(v) => setFondsCaisse(v)}
                 className="w-24 h-8 bg-success/30 text-right"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="font-bold whitespace-nowrap text-[hsl(300,70%,50%)]">{t('menu.program.totalSalesDay')}:</Label>
+              <Input
+                value={formatCurrency(totalVentesJour)}
+                className="w-28 h-8 bg-success/30 text-right font-bold"
+                readOnly
               />
             </div>
           </div>

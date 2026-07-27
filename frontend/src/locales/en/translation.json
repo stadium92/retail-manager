@@ -1136,6 +1136,7 @@
       "dailyTransactions": "DAILY TRANSACTIONS",
       "collections": "COLLECTIONS",
       "cashOfDay": "Cash of the day",
+      "totalSalesDay": "TOTAL SALES TODAY",
       "checks": "Checks",
       "creditSettlement": "Credit Settlement",
       "creditSale": "Credit Sale",
