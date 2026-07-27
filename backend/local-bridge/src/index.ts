@@ -34,6 +34,24 @@ function log(msg: string) {
   }
 }
 
+// A stdout/stderr pipe to the Tauri parent process can drop (window backgrounded,
+// OS pipe hiccup, quick relaunch) at any moment. When that happens, an ordinary
+// console.log/console.error call - and there are hundreds throughout this
+// codebase - throws EPIPE with NO listeners on the stream's own 'error' event,
+// which Node's EventEmitter then rethrows as an uncaught exception. That hit
+// the unconditional process.exit(1) below and killed the entire backend mid
+// request (confirmed in the field: crashes inside registerSystemRoutes,
+// updateProduct, getStockValuation, auth routes - the DB write had already
+// succeeded, only the follow-up log line brought the whole server down).
+// Swallowing the stream-level error here stops it from ever reaching
+// uncaughtException in the first place.
+process.stdout.on('error', (err: NodeJS.ErrnoException) => {
+  if (err.code !== 'EPIPE') throw err;
+});
+process.stderr.on('error', (err: NodeJS.ErrnoException) => {
+  if (err.code !== 'EPIPE') throw err;
+});
+
 process.on('uncaughtException', (err) => {
   log(`CRITICAL: Uncaught Exception: ${err.message}\n${err.stack}`);
   process.exit(1);
@@ -102,15 +120,30 @@ async function start() {
     log(`Scheduler Error: ${err}`);
   }
 
-  try {
-    log(`Attempting to listen on port ${env.port}...`);
-    await app.listen({ port: env.port, host: '0.0.0.0' });
-    log(`LocalBridge listening on http://localhost:${env.port}`);
-    app.log.info(`LocalBridge listening on http://localhost:${env.port}`);
-  } catch (err) {
-    log(`CRITICAL ERROR during startup: ${err}`);
-    app.log.error(err);
-    process.exit(1);
+  // A quick relaunch (app closed and reopened right away) can start this
+  // sidecar before the OS has released the previous instance's hold on
+  // 8787 - that used to be a hard, immediate crash (EADDRINUSE), confirmed
+  // in the field, requiring the user to notice and relaunch a second time.
+  // Retry a few times with a short backoff instead of giving up instantly.
+  const maxListenAttempts = 5;
+  for (let attempt = 1; attempt <= maxListenAttempts; attempt++) {
+    try {
+      log(`Attempting to listen on port ${env.port} (attempt ${attempt}/${maxListenAttempts})...`);
+      await app.listen({ port: env.port, host: '0.0.0.0' });
+      log(`LocalBridge listening on http://localhost:${env.port}`);
+      app.log.info(`LocalBridge listening on http://localhost:${env.port}`);
+      return;
+    } catch (err: any) {
+      const isPortConflict = err?.code === 'EADDRINUSE';
+      if (isPortConflict && attempt < maxListenAttempts) {
+        log(`Port ${env.port} still in use (previous instance shutting down?), retrying in 1s...`);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        continue;
+      }
+      log(`CRITICAL ERROR during startup: ${err}`);
+      app.log.error(err);
+      process.exit(1);
+    }
   }
 }
 
