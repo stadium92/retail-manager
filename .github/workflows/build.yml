@@ -78,6 +78,11 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Presence of these two triggers Tauri's bundler (createUpdaterArtifacts
+          # is on in tauri.conf.json) to also emit a signed .sig file next to
+          # the installer - required for the auto-updater to trust it.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_UPDATER_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_UPDATER_PRIVATE_KEY_PASSWORD }}
         with:
           # No tagName/release* fields on purpose: the actual distribution
           # point for this app is stadium94/app-releases, published by the
@@ -126,8 +131,37 @@ jobs:
           $version = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
           $exe = $files | Where-Object { $_.Extension -eq ".exe" } | Select-Object -First 1
           $msi = $files | Where-Object { $_.Extension -eq ".msi" } | Select-Object -First 1
-          if ($exe) { Copy-Item $exe.FullName -Destination (Join-Path $publishDir "retail-manager-setup-$version.exe") }
+          $exeDestName = "retail-manager-setup-$version.exe"
+          if ($exe) { Copy-Item $exe.FullName -Destination (Join-Path $publishDir $exeDestName) }
           if ($msi) { Copy-Item $msi.FullName -Destination (Join-Path $publishDir "retail-manager-installer-$version.msi") }
+
+          # Auto-updater manifest: the app (tauri-plugin-updater) polls this
+          # exact file (see the "endpoints" entry in tauri.conf.json) to learn
+          # a new version exists, and needs the .sig Tauri generated next to
+          # the .exe (createUpdaterArtifacts + TAURI_SIGNING_PRIVATE_KEY in
+          # the build step above) to verify the download before installing.
+          if ($exe) {
+            $sigPath = "$($exe.FullName).sig"
+            if (Test-Path $sigPath) {
+              $signature = Get-Content $sigPath -Raw
+              $pubDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+              $rawUrl = "https://raw.githubusercontent.com/stadium94/app-releases/$branch/$exeDestName"
+              $manifest = @{
+                version = $version
+                notes = "Automated build from ${{ github.repository }} @ ${{ github.sha }}"
+                pub_date = $pubDate
+                platforms = @{
+                  "windows-x86_64" = @{
+                    signature = $signature.Trim()
+                    url = $rawUrl
+                  }
+                }
+              }
+              $manifest | ConvertTo-Json -Depth 5 | Set-Content -Path (Join-Path $publishDir "latest.json") -NoNewline
+            } else {
+              Write-Warning "No .sig file found next to the installer - latest.json will NOT be updated, so auto-update stays on the previous version until this is fixed."
+            }
+          }
 
           Push-Location $publishDir
           git config user.email "ci@retail-manager.local"
