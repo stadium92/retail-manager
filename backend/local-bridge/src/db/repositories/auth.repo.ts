@@ -105,12 +105,19 @@ export const createAuthRepo = (db: Database.Database) => ({
   },
 
   updateSessionTokens(sessionId: string, accessToken: string, refreshToken: string, expiresAt: number) {
+    // created_at deliberately NOT touched here - it's the session's
+    // original creation time, used as the absolute-lifetime anchor in
+    // /auth/refresh (see ABSOLUTE_SESSION_MAX_SECONDS). It used to get
+    // overwritten on every single refresh, making a rolling-refreshed
+    // session's true age unrecoverable - functionally identical to a
+    // JWT that never expires as long as the app keeps refreshing it
+    // before each 15-minute access token lapses, which it always does.
     db.prepare(`
         UPDATE sessions
-        SET access_token = ?, refresh_token = ?, expires_at = ?, created_at = ?
+        SET access_token = ?, refresh_token = ?, expires_at = ?
         WHERE id = ?
       `)
-      .run(accessToken, refreshToken, expiresAt, new Date().toISOString(), sessionId);
+      .run(accessToken, refreshToken, expiresAt, sessionId);
   },
 
   deleteSession(sessionId: string) {

@@ -682,7 +682,12 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       });
 
       const matchedClient = currentSession.clientId ? clients.find(c => c.id === currentSession.clientId) : undefined;
+      const saleId = currentSession.pendingSaleId || crypto.randomUUID();
+      if (!currentSession.pendingSaleId) {
+        updateSession(mode, { pendingSaleId: saleId });
+      }
       const { error } = await OfflineSalesService.createSaleWithItems({
+        id: saleId,
         store_id: storeId,
         worker_id: user?.id || '',
         client_id: currentSession.clientId || undefined,
@@ -702,10 +707,10 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       if (error) throw error;
       toast.success(t('worker.sales.saleRecorded'));
       window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'sale' } }));
-      updateSession(mode, { lineItems: [], customerCode: '', customerName: '', customerAddress: '', orderRef: '', invoiceNumber: generateInvoiceNumber() });
+      updateSession(mode, { lineItems: [], customerCode: '', customerName: '', customerAddress: '', orderRef: '', invoiceNumber: generateInvoiceNumber(), pendingSaleId: undefined });
       setSelectedIndex(-1);
     } catch (error) { console.error('[SalesModule] Sale recording failed:', error); toast.error(explainSaleError(error), { duration: 10000 }); }
-  }, [lineItems, storeId, user, netTotal, mode, customerName, currentSession.clientId, clients, customerAddress, invoiceNumber, orderRef, currentSession.clientDiscount, updateSession, t]);
+  }, [lineItems, storeId, user, netTotal, mode, customerName, currentSession.clientId, clients, customerAddress, invoiceNumber, orderRef, currentSession.clientDiscount, currentSession.pendingSaleId, updateSession, t]);
 
   const handleSaveProforma = useCallback(async () => {
     if (lineItems.length === 0) return;
@@ -725,7 +730,12 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         };
       });
       const matchedClient = currentSession.clientId ? clients.find(c => c.id === currentSession.clientId) : undefined;
+      const saleId = currentSession.pendingSaleId || crypto.randomUUID();
+      if (!currentSession.pendingSaleId) {
+        updateSession(mode, { pendingSaleId: saleId });
+      }
       const { error } = await OfflineSalesService.createSaleWithItems({
+        id: saleId,
         store_id: storeId,
         worker_id: user?.id || '',
         client_id: currentSession.clientId || undefined,
@@ -744,10 +754,10 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       if (error) throw error;
       toast.success(t('menu.program.saveSuccess'));
       window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { type: 'sale' } }));
-      updateSession(mode, { lineItems: [], customerCode: '', customerName: '', customerAddress: '', orderRef: '', invoiceNumber: generateInvoiceNumber() });
+      updateSession(mode, { lineItems: [], customerCode: '', customerName: '', customerAddress: '', orderRef: '', invoiceNumber: generateInvoiceNumber(), pendingSaleId: undefined });
       setSelectedIndex(-1);
     } catch (error) { console.error('[SalesModule] Sale recording failed:', error); toast.error(explainSaleError(error), { duration: 10000 }); }
-  }, [lineItems, storeId, user, netTotal, mode, customerName, currentSession.clientId, clients, customerAddress, invoiceNumber, orderRef, currentSession.clientDiscount, updateSession, t]);
+  }, [lineItems, storeId, user, netTotal, mode, customerName, currentSession.clientId, clients, customerAddress, invoiceNumber, orderRef, currentSession.clientDiscount, currentSession.pendingSaleId, updateSession, t]);
 
   const openPaymentRef = useRef(openPayment);
   const handleSaveProformaRef = useRef(handleSaveProforma);

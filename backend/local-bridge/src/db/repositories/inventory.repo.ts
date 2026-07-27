@@ -2,6 +2,10 @@ import Database from 'better-sqlite3';
 import { LocalInventoryMovement } from '../types.js';
 
 export const createInventoryRepo = (db: Database.Database) => ({
+  getInventoryMovementById(id: string): LocalInventoryMovement | undefined {
+    return db.prepare('SELECT * FROM inventory_movements WHERE id = ?').get(id) as LocalInventoryMovement | undefined;
+  },
+
   listInventoryMovements(storeId?: string, limit?: number): LocalInventoryMovement[] {
     if (storeId) {
       const rows = db

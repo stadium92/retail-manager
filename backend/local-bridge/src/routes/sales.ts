@@ -124,7 +124,22 @@ export async function registerSalesRoutes(app: FastifyInstance) {
 
     const now = new Date().toISOString();
     const saleId = parsed.data.id || crypto.randomUUID();
-    
+
+    // Idempotency guard: if the caller retries a checkout with the SAME
+    // sale id (e.g. after a client-side timeout that fired even though
+    // this had already committed), return the existing sale instead of
+    // creating a second, fully independent one. sale_items_ai fires per
+    // row on INSERT with no duplicate-detection of its own, so a repeat
+    // submission with a fresh id would silently double-deduct stock with
+    // no DB error - this is the confirmed mechanism behind inventory
+    // "resetting" by a line item's quantity with no matching transaction.
+    if (parsed.data.id) {
+      const existingSale = db.getSaleById(parsed.data.id);
+      if (existingSale) {
+        return reply.status(200).send(existingSale);
+      }
+    }
+
     const saleData = {
       id: saleId,
       store_id: storeId,

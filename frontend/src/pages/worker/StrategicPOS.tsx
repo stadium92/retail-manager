@@ -21,17 +21,19 @@ export default function StrategicPOS() {
   const { t, i18n } = useTranslation();
   const { formatCurrency } = useFormatters();
   const { user } = useAuth();
-  const { 
-    cart, 
+  const {
+    cart,
     clearCart,
     completeTransaction,
+    confirmTransaction,
   } = usePOSStore();
-  
+
   const [products, setProducts] = useState<InventoryItem[]>([]);
   const [storeId, setStoreId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isScanning, setIsScanning] = useState(false);
   const [selectedItem, setSelectedItem] = useState<CartItem | null>(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const { isLocalFirst, localBridgeBaseUrl } = getDataClient();
   const useLocalBridge = isLocalFirst;
 
@@ -93,45 +95,60 @@ export default function StrategicPOS() {
   }, [storeId, localBridgeBaseUrl, useLocalBridge]);
 
   const handlePayment = useCallback(async () => {
+    // completeTransaction() no longer clears the cart itself - it used to,
+    // synchronously, before this network call even started, so a failed/
+    // timed-out attempt left no safe way to retry: the cashier re-ringing
+    // the same items from scratch created a fully independent second sale
+    // (new id, no DB error) that double-deducted stock. The cart (and the
+    // transaction's id) now only clears via confirmTransaction() below,
+    // once the sale is actually confirmed created.
+    if (isProcessingPayment) return;
     const transaction = completeTransaction('cash');
     if (!transaction) return;
 
-    const saleData = {
-      store_id: storeId,
-      worker_id: user?.id,
-      customer_name: transaction.customerName,
-      customer_phone: transaction.customerPhone,
-      sale_type: 'detail' as const,
-      total_price: transaction.grandTotal,
-      payment_method: 'cash',
-      payment_status: 'paid' as const,
-    };
+    setIsProcessingPayment(true);
+    try {
+      const saleData = {
+        id: transaction.id,
+        store_id: storeId,
+        worker_id: user?.id,
+        customer_name: transaction.customerName,
+        customer_phone: transaction.customerPhone,
+        sale_type: 'detail' as const,
+        total_price: transaction.grandTotal,
+        payment_method: 'cash',
+        payment_status: 'paid' as const,
+      };
 
-    const saleItems = transaction.items.map(item => ({
-      product_id: item.product.id,
-      product_name: item.product.name,
-      quantity: item.quantity,
-      unit_price: item.unitPrice,
-      total: item.lineTotal,
-    }));
+      const saleItems = transaction.items.map(item => ({
+        product_id: item.product.id,
+        product_name: item.product.name,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        total: item.lineTotal,
+      }));
 
-    const { error } = await OfflineSalesService.createSaleWithItems(saleData, saleItems);
+      const { error } = await OfflineSalesService.createSaleWithItems(saleData, saleItems);
 
-    if (error) {
-      console.error('[StrategicPOS] Sale recording failed:', error);
+      if (error) {
+        console.error('[StrategicPOS] Sale recording failed:', error);
+        toast({
+          title: t('worker.sales.errorRecording'),
+          description: explainSaleError(error),
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      confirmTransaction();
       toast({
-        title: t('worker.sales.errorRecording'),
-        description: explainSaleError(error),
-        variant: 'destructive'
+        title: t('worker.sales.saleRecorded'),
+        description: `${t('worker.sales.total')}: ${formatCurrency(transaction.grandTotal)}`
       });
-      return;
+    } finally {
+      setIsProcessingPayment(false);
     }
-    
-    toast({ 
-      title: t('worker.sales.saleRecorded'), 
-      description: `${t('worker.sales.total')}: ${formatCurrency(transaction.grandTotal)}` 
-    });
-  }, [completeTransaction, storeId, user?.id, t, i18n.language]);
+  }, [completeTransaction, confirmTransaction, isProcessingPayment, storeId, user?.id, t, i18n.language]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

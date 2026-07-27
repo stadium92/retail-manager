@@ -13,6 +13,7 @@ export interface CartItem {
 
 export interface POSState {
   cart: CartItem[];
+  pendingSaleId: string | null;
   activeRow: number;
   selectedRowIndex: number;
   isScanning: boolean;
@@ -45,11 +46,31 @@ export interface POSState {
   setSaleType: (type: 'detail' | 'gros') => void;
   setPaymentModalOpen: (open: boolean) => void;
   completeTransaction: (paymentMethod: string) => {
+    id: string;
     items: CartItem[];
     grandTotal: number;
     customerName: string;
     customerPhone: string;
   } | null;
+  /**
+   * Confirms a transaction actually succeeded server-side - only NOW is
+   * the cart cleared. completeTransaction() used to clear the cart itself,
+   * synchronously, BEFORE the network call even started: if that call then
+   * failed or timed out, the cart was already gone with no way to safely
+   * retry the exact same sale, so a cashier re-ringing the same items from
+   * scratch created a fully independent second sale (a new id, no DB error,
+   * silently double-deducting stock - the "inventory drops by ~20/~40 with
+   * no matching transaction" bug reports).
+   */
+  confirmTransaction: () => void;
+  /**
+   * For checkout flows that don't go through completeTransaction() (e.g.
+   * a modal-based checkout that only clears the cart itself on success
+   * already) - still gives them a stable id to submit with, so a manual
+   * retry of the SAME still-populated cart hits the backend's idempotency
+   * check instead of minting a new sale.
+   */
+  getOrCreatePendingSaleId: () => string;
 
   // Computed
   getTotal: () => number;
@@ -69,6 +90,7 @@ export const usePOSStore = create<POSState>()(
   persist(
     (set, get) => ({
       cart: [],
+      pendingSaleId: null,
       activeRow: -1,
       selectedRowIndex: -1,
       isScanning: true,
@@ -265,6 +287,7 @@ export const usePOSStore = create<POSState>()(
 
       clearCart: () => set({
         cart: [],
+        pendingSaleId: null,
         activeRow: -1,
         selectedRowIndex: -1,
         customerId: undefined,
@@ -323,19 +346,36 @@ export const usePOSStore = create<POSState>()(
       }),
 
       completeTransaction: (paymentMethod) => {
-        const { cart, grandTotal, customerName, customerPhone, clearCart } = get();
+        const { cart, grandTotal, customerName, customerPhone, pendingSaleId } = get();
         if (cart.length === 0) return null;
 
-        const result = {
+        // Stable across repeat calls for the SAME uncleared cart (a retry
+        // after a failed/timed-out attempt reuses it instead of minting a
+        // fresh one) - the backend now treats a repeat POST /rest/v1/sales
+        // with the same id as a no-op instead of creating a second sale.
+        const id = pendingSaleId || crypto.randomUUID();
+        if (!pendingSaleId) set({ pendingSaleId: id });
+
+        return {
+          id,
           items: [...cart],
           grandTotal,
           customerName,
           customerPhone,
           paymentMethod,
         };
+      },
 
-        clearCart();
-        return result;
+      confirmTransaction: () => {
+        get().clearCart();
+      },
+
+      getOrCreatePendingSaleId: () => {
+        const { pendingSaleId } = get();
+        if (pendingSaleId) return pendingSaleId;
+        const id = crypto.randomUUID();
+        set({ pendingSaleId: id });
+        return id;
       },
 
       getTotal: () => {
@@ -347,6 +387,7 @@ export const usePOSStore = create<POSState>()(
       name: 'pos-storage',
       partialize: (state) => ({
         cart: state.cart,
+        pendingSaleId: state.pendingSaleId,
         customerId: state.customerId,
         customerName: state.customerName,
         customerPhone: state.customerPhone,

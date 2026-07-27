@@ -676,6 +676,17 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
 
     console.log(`[Purchasing] Receiving order ${orderId} with ${itemsPayload.data.items.length} items`);
 
+    // Snapshot quantity_received BEFORE applying this call's payload, so a
+    // repeat call (double-click, retried POST, or /receive called again
+    // after the order was already marked 'received') only applies the
+    // INCREMENTAL delta to stock/supplier balance, not the full absolute
+    // amount a second time. Without this, calling /receive twice with the
+    // same payload silently double-added stock and double-credited the
+    // supplier balance - no DB error, since quantity_received itself is a
+    // plain SET, not additive.
+    const itemsBeforeUpdate = db.listPurchaseItems(orderId);
+    const priorReceivedById = new Map(itemsBeforeUpdate.map((item) => [item.id, item.quantity_received ?? 0]));
+
     let newTotalAmount = 0;
     itemsPayload.data.items.forEach((item) => {
       const updated = db.updatePurchaseItem(item.id, {
@@ -693,36 +704,43 @@ export async function registerPurchasingRoutes(app: FastifyInstance) {
     console.log(`  - Calculated new total: ${newTotalAmount}`);
 
     const updatedItems = db.listPurchaseItems(orderId);
+    let deltaTotalAmount = 0;
     updatedItems.forEach((item) => {
       const received = itemsPayload.data.items.find((payload) => payload.id === item.id);
       if (received) {
-        updateProductInventory(
-          item.product_id, 
-          received.quantity_received, 
-          received.unit_cost, 
-          order.store_id, 
-          claims.sub, 
-          order.id, 
-          order.supplier_id
-        );
+        const priorQty = priorReceivedById.get(item.id) ?? 0;
+        const deltaQty = received.quantity_received - priorQty;
+        if (deltaQty !== 0) {
+          updateProductInventory(
+            item.product_id,
+            deltaQty,
+            received.unit_cost,
+            order.store_id,
+            claims.sub,
+            order.id,
+            order.supplier_id
+          );
+          deltaTotalAmount += deltaQty * received.unit_cost;
+        }
       }
     });
 
     const allReceived = updatedItems.every((item) => item.quantity_received >= item.quantity_ordered);
     const status = allReceived ? 'received' : 'partial';
-    
+
     // Update order with actual received total
-    db.updatePurchaseOrder(orderId, { 
-      status, 
+    db.updatePurchaseOrder(orderId, {
+      status,
       total_amount: newTotalAmount,
-      updated_at: new Date().toISOString() 
+      updated_at: new Date().toISOString()
     });
 
-    // Update supplier balance based on actual received total
+    // Update supplier balance by the INCREMENTAL amount only (see delta
+    // note above) - was previously the full newTotalAmount every call.
     const supplier = db.getSupplierById(order.supplier_id);
-    if (supplier) {
+    if (supplier && deltaTotalAmount !== 0) {
       db.updateSupplier(order.supplier_id, {
-        balance: (supplier.balance || 0) + newTotalAmount,
+        balance: (supplier.balance || 0) + deltaTotalAmount,
         updated_at: new Date().toISOString()
       });
     }

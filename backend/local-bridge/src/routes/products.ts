@@ -267,6 +267,7 @@ export async function registerProductRoutes(app: FastifyInstance) {
 
     const parsed = z
       .object({
+        id: z.string().optional(),
         store_id: z.string().optional(),
         product_id: z.string().min(1),
         product_name: z.string().nullable().optional(),
@@ -286,6 +287,19 @@ export async function registerProductRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'StoreRequired', message: 'Store is required.' });
     }
 
+    // Idempotency guard, same pattern as POST /rest/v1/sales - if the
+    // caller supplies a stable id and retries (timeout, double-click),
+    // return the already-recorded movement instead of applying the
+    // quantity delta a second time. No frontend caller passes an id yet
+    // (this endpoint is a manual staff action, lower automatic-retry risk
+    // than checkout), but the guard is safe and ready for one to.
+    if (parsed.data.id) {
+      const existingMovement = db.getInventoryMovementById(parsed.data.id);
+      if (existingMovement) {
+        return reply.status(200).send({ id: existingMovement.id });
+      }
+    }
+
     const product = db.getProductById(parsed.data.product_id);
     if (!product) {
       return reply.status(404).send({ error: 'NotFound', message: 'Product not found.' });
@@ -294,7 +308,7 @@ export async function registerProductRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'InvalidStore', message: 'Product does not belong to this store.' });
     }
 
-    const movementId = crypto.randomUUID();
+    const movementId = parsed.data.id || crypto.randomUUID();
     const now = new Date().toISOString();
     const appliedQuantityDelta = parsed.data.movement_type === 'in'
       ? parsed.data.quantity
