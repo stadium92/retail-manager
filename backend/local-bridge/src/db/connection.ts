@@ -61,6 +61,61 @@ const emergencyLog = (msg: string) => {
   }
 };
 
+// Snapshot the database BEFORE opening it. This app had no backup of any kind:
+// the shop's entire trading history lived in exactly one file, with no second
+// copy anywhere, so any corruption meant permanent loss and any attempt to fix
+// a broken install risked destroying the only copy. Taken pre-open, while no
+// connection is held, so the files are quiescent - and all three parts are
+// copied together, because with WAL enabled recent transactions live in
+// -wal and a lone .sqlite would silently miss them.
+//
+// This is deliberately a plain file copy rather than SQLite's online backup
+// API: it must also work when the database is too damaged to open, which is
+// precisely the case where the copy matters most.
+const BACKUPS_TO_KEEP = 5;
+const backupDir = path.join(env.dataDir, 'backups');
+
+const snapshotDatabase = () => {
+  if (!fs.existsSync(dbPath)) return; // first ever run, nothing to protect yet
+  try {
+    if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    for (const suffix of ['', '-wal', '-shm']) {
+      const src = `${dbPath}${suffix}`;
+      if (fs.existsSync(src)) {
+        fs.copyFileSync(src, path.join(backupDir, `localbridge-${stamp}.sqlite${suffix}`));
+      }
+    }
+
+    // Keep only the newest few sets so this can't grow without bound on a
+    // machine that gets restarted many times a day.
+    const sets = Array.from(
+      new Set(
+        fs
+          .readdirSync(backupDir)
+          .filter((f) => f.startsWith('localbridge-'))
+          .map((f) => f.replace(/\.sqlite(-wal|-shm)?$/, ''))
+      )
+    ).sort();
+
+    for (const stale of sets.slice(0, Math.max(0, sets.length - BACKUPS_TO_KEEP))) {
+      for (const suffix of ['', '-wal', '-shm']) {
+        try {
+          fs.unlinkSync(path.join(backupDir, `${stale}.sqlite${suffix}`));
+        } catch {
+          /* already gone */
+        }
+      }
+    }
+  } catch (err) {
+    // A backup that fails must never stop the shop from trading.
+    emergencyLog(`WARNING: could not snapshot the database before opening it: ${err}`);
+  }
+};
+
+snapshotDatabase();
+
 let db: Database.Database;
 try {
   db = new Database(dbPath, options);
@@ -70,7 +125,9 @@ try {
       `  This happens before any error handling is installed, so the process ` +
       `will exit immediately. Usual causes: the file is corrupt, it is locked ` +
       `by another running copy of the backend, a stale -wal/-shm pair is next ` +
-      `to it, or better_sqlite3.node was removed by antivirus.`
+      `to it, or better_sqlite3.node was removed by antivirus.\n` +
+      `  The database has NOT been modified or deleted. A copy taken just now ` +
+      `is in ${backupDir} - preserve that folder before attempting any repair.`
   );
   throw err;
 }
