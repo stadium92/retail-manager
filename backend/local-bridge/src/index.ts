@@ -93,10 +93,38 @@ async function start() {
     });
   });
 
-  app.get('/health', async () => ({
-    status: 'ok',
-    dataPath: db.dbFile,
-  }));
+  app.get('/health', async () => {
+    // isBootstrapped tells the frontend whether this install has ever had a
+    // master account created on it. AuthContext polls THIS endpoint and reads
+    // exactly this field (setIsBootstrapped(data.isBootstrapped !== false)),
+    // but it was never actually sent - so it read `undefined`, which is
+    // `!== false`, so isBootstrapped was pinned to true forever. That made
+    // the entire first-run activation UI in AuthPage unreachable dead code:
+    // the "Activation de Compte / Internet Requis" header, the "Configuration
+    // de Premier Démarrage" panel and the "Activer & Synchroniser" button all
+    // render only under `!isBootstrapped`, and signIn()'s
+    // runCloudBootstrapFlow() branch is likewise gated on it. Net effect on a
+    // fresh install with no local master: the user is shown a plain login
+    // form for an account that does not exist locally yet, and the only way
+    // it can still work is the online-only cloud fallback - so with Supabase
+    // unreachable there is no path at all to a working login, which is
+    // exactly the "cannot connect to Supabase OR use the local password"
+    // report from the field.
+    let isBootstrapped = true;
+    try {
+      isBootstrapped = !!db.getMasterUser();
+    } catch (err) {
+      // Keep the previous (always-true) behaviour if the DB can't be read,
+      // rather than falsely prompting an activated install to re-activate.
+      log(`/health: could not determine bootstrap state: ${err}`);
+    }
+
+    return {
+      status: 'ok',
+      dataPath: db.dbFile,
+      isBootstrapped,
+    };
+  });
 
   await registerAuthRoutes(app);
   await registerProductRoutes(app);

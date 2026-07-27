@@ -702,6 +702,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(result.user);
       setSession(result.session);
 
+      // A successful sign in proves this install now has an account, so stop
+      // treating it as un-activated. The /health poll that seeds this flag
+      // stops as soon as the backend answers and never runs again, so without
+      // this a user who activates and then signs out (without restarting the
+      // app) would be sent back through the activation flow - which demands
+      // internet - even though they can now sign in perfectly well offline.
+      setIsBootstrapped(true);
+
       // Sync with global Supabase client in cloud mode. A placeholder offline
       // token would leave the client anonymous and make RLS reject writes, so
       // only push a real JWT; warn otherwise instead of failing silently.
