@@ -12,6 +12,12 @@ export interface SalesSessionState {
   invoiceNumber: string; // Persisted invoice number
   clientId?: string;       // FK to clients table
   clientDiscount?: number; // auto-applied discount % from client group
+  // Stable across a retry of the same still-populated sale (e.g. after a
+  // timeout that fired even though the sale had already committed) -
+  // cleared only once the sale actually succeeds. Lets the backend treat
+  // a repeat POST /rest/v1/sales as a no-op instead of creating a second,
+  // fully independent sale that double-deducts stock on retry.
+  pendingSaleId?: string;
   // Metadata for restoration
   lastUpdated: number;
 }

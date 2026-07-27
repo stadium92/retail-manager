@@ -159,6 +159,12 @@ const workerProvisionSchema = z.object({
 
 const ACCESS_TOKEN_TTL_SECONDS = 60 * 15;
 const REFRESH_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;
+// A session can otherwise roll-refresh forever (each refresh extends
+// expires_at another 30 days, and the app always refreshes before that
+// lapses) - functionally a session that never expires on an always-on
+// device, even though no single JWT itself has an infinite expiresIn.
+// This forces a genuine re-login after 90 days regardless of activity.
+const ABSOLUTE_SESSION_MAX_SECONDS = 60 * 60 * 24 * 90;
 
 const issueAccessToken = (userId: string, email: string, role: string, storeId: string | null) =>
   jwt.sign(
@@ -349,6 +355,15 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       return reply.status(401).send({
         error: 'InvalidRefreshToken',
         message: 'Refresh token is invalid or expired.',
+      });
+    }
+
+    const sessionAgeSeconds = Math.floor(Date.now() / 1000) - Math.floor(new Date(session.created_at).getTime() / 1000);
+    if (sessionAgeSeconds > ABSOLUTE_SESSION_MAX_SECONDS) {
+      db.deleteSession(session.id);
+      return reply.status(401).send({
+        error: 'SessionExpired',
+        message: 'Session has reached its maximum lifetime. Please sign in again.',
       });
     }
 
