@@ -516,4 +516,17 @@ export const initializeSchema = (db: Database.Database) => {
 
   ensureColumn('stores', 'version', `ALTER TABLE stores ADD COLUMN version INTEGER NOT NULL DEFAULT 1`);
   ensureColumn('stores', 'deleted_at', `ALTER TABLE stores ADD COLUMN deleted_at TEXT`);
+
+  // cash_closings predates the Fermeture de Caisse work: an older schema
+  // already shipped this table (id, store_id, worker_id, opening_balance,
+  // expected_balance, actual_balance, difference, bill_details_json,
+  // observations, status, created_at, updated_at). The CREATE TABLE above
+  // says IF NOT EXISTS, so on any install that already had it the new
+  // cashier_name/total_sales columns were never added - and
+  // createCashClosingsRepo() prepares an INSERT naming them at import time,
+  // which threw SqliteError before any error handling existed and killed the
+  // backend on startup with an empty log. Confirmed from a real client
+  // database: "table cash_closings has no column named cashier_name".
+  ensureColumn('cash_closings', 'cashier_name', `ALTER TABLE cash_closings ADD COLUMN cashier_name TEXT`);
+  ensureColumn('cash_closings', 'total_sales', `ALTER TABLE cash_closings ADD COLUMN total_sales REAL NOT NULL DEFAULT 0`);
 };
