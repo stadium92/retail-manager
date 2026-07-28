@@ -313,16 +313,28 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       updates.clientId = matchedClient.id;
 
       const service = services.find(s => s.id === matchedClient!.service_id);
-      const groupDiscount = service?.default_discount_percent || 0;
+      const groupDiscountPercent = service?.default_discount_percent || 0;
 
-      if (groupDiscount > 0) {
-        toast.info(t('menu.program.autoDiscount', { amount: groupDiscount }));
+      if (groupDiscountPercent > 0) {
+        toast.info(t('menu.program.autoDiscount', { amount: groupDiscountPercent }));
         if (lineItems.length > 0) {
-          const updatedItems = lineItems.map(item => ({
-            ...item,
-            discountAmount: groupDiscount,
-            lineTotal: calculateLineTotal(Number(item.unitPrice), Number(item.quantity), groupDiscount, item.isBox, item.conditionnement),
-          }));
+          // default_discount_percent is a PERCENT, but calculateLineTotal's
+          // third argument is an absolute CFA amount - the percent used to be
+          // passed straight in, so a client tier configured at 10% took 10 CFA
+          // off the line instead of 10%. On a 200 000 CFA wholesale line that
+          // overcharged the customer by ~19 990 CFA, while the toast above
+          // cheerfully announced "10%" to the cashier. Convert per line, since
+          // the amount depends on that line's price, quantity and pack size.
+          const updatedItems = lineItems.map(item => {
+            const multiplier = item.isBox ? (Number(item.conditionnement) || 1) : 1;
+            const lineSubtotal = (Number(item.unitPrice) || 0) * (Number(item.quantity) || 0) * multiplier;
+            const discountAmount = Math.round(lineSubtotal * (groupDiscountPercent / 100));
+            return {
+              ...item,
+              discountAmount,
+              lineTotal: calculateLineTotal(Number(item.unitPrice), Number(item.quantity), discountAmount, item.isBox, item.conditionnement),
+            };
+          });
           updates.lineItems = updatedItems;
         }
       }
@@ -383,7 +395,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
               unitPrice: unitPrice,
               basePrice: basePrice,
               quantity: Number(item.quantity || 1),
-              discountPercent: Number(item.discount || 0),
+              discountAmount: Number(item.discount || 0),
               lineTotal: Number(item.total || (unitPrice * Number(item.quantity || 1))),
               isBox: !!(item.is_box || (packSize > 1 && unitPrice > (basePrice + 1))),
               unit_type: p.unit_type || 'Piece',
@@ -407,7 +419,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
           unitPrice: '',
           basePrice: 0,
           quantity: '',
-          discountPercent: '',
+          discountAmount: 0,
           lineTotal: 0,
           isBox: false,
           priceTiers: { 1: 0, 2: 0, 3: 0, 4: 0 }
@@ -508,7 +520,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     newItems[index] = {
       ...item,
       unitPrice,
-      lineTotal: calculateLineTotal(numPrice, Number(item.quantity) || 0, Number(item.discountPercent) || 0, item.isBox, item.conditionnement),
+      lineTotal: calculateLineTotal(numPrice, Number(item.quantity) || 0, Number(item.discountAmount) || 0, item.isBox, item.conditionnement),
     };
     updateSession(mode, { lineItems: newItems });
   }, [lineItems, mode, updateSession]);
@@ -533,7 +545,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     newItems[index] = {
       ...item,
       quantity,
-      lineTotal: calculateLineTotal(Number(item.unitPrice) || 0, numQty, Number(item.discountPercent) || 0, item.isBox, item.conditionnement),
+      lineTotal: calculateLineTotal(Number(item.unitPrice) || 0, numQty, Number(item.discountAmount) || 0, item.isBox, item.conditionnement),
     };
     updateSession(mode, { lineItems: newItems });
   }, [lineItems, mode, updateSession, t]);
@@ -594,7 +606,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
             basePrice: 0,
             unitPrice: 0,
             quantity: 1,
-            discountPercent: 0,
+            discountAmount: 0,
             lineTotal: 0,
             priceTiers: { 1: 0, 2: 0, 3: 0, 4: 0 }
         };
@@ -624,7 +636,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     newItems[index] = {
       ...item,
       isBox: newIsBox,
-      lineTotal: calculateLineTotal(Number(item.unitPrice), Number(item.quantity), Number(item.discountPercent || 0), newIsBox, item.conditionnement)
+      lineTotal: calculateLineTotal(Number(item.unitPrice), Number(item.quantity), Number(item.discountAmount || 0), newIsBox, item.conditionnement)
     };
     updateSession(mode, { lineItems: newItems });
   }, [lineItems, mode, updateSession, t]);
@@ -637,7 +649,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
         return {
             ...item,
             unitPrice: newUnitPrice,
-            lineTotal: calculateLineTotal(Number(newUnitPrice), Number(item.quantity), Number(item.discountPercent || 0), item.isBox, item.conditionnement)
+            lineTotal: calculateLineTotal(Number(newUnitPrice), Number(item.quantity), Number(item.discountAmount || 0), item.isBox, item.conditionnement)
         };
     });
     updateSession(mode, { lineItems: newItems });
@@ -652,7 +664,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
     newItems[index] = {
         ...item,
         unitPrice: newUnitPrice,
-        lineTotal: calculateLineTotal(Number(newUnitPrice), Number(item.quantity), Number(item.discountPercent || 0), item.isBox, item.conditionnement)
+        lineTotal: calculateLineTotal(Number(newUnitPrice), Number(item.quantity), Number(item.discountAmount || 0), item.isBox, item.conditionnement)
     };
     updateSession(mode, { lineItems: newItems });
   }, [lineItems, mode, updateSession]);
@@ -822,7 +834,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
               store.setMode('hover');
               return;
           }
-          const newItem = { id: crypto.randomUUID(), lineNumber: lineItems.length + 1, designation: '', code: '', conditionnement: 1, stock: 0, unitPrice: '', basePrice: 0, quantity: '', discountPercent: '', lineTotal: 0, isBox: false, priceTiers: { 1: 0, 2: 0, 3: 0, 4: 0 } };
+          const newItem = { id: crypto.randomUUID(), lineNumber: lineItems.length + 1, designation: '', code: '', conditionnement: 1, stock: 0, unitPrice: '', basePrice: 0, quantity: '', discountAmount: 0, lineTotal: 0, isBox: false, priceTiers: { 1: 0, 2: 0, 3: 0, 4: 0 } };
           updateSession(mode, { lineItems: [...lineItems, newItem] });
           setTimeout(() => { store.setActiveCell({ row: lineItems.length, col: 0 }); store.setMode('hover'); }, 50);
       } else {
@@ -881,7 +893,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
   useEffect(() => {
     if (isLoading) return;
     if (!lineItems.some(i => !i.productId)) {
-      const newItem = { id: crypto.randomUUID(), lineNumber: lineItems.length + 1, designation: '', code: '', conditionnement: 1, stock: 0, unitPrice: '', basePrice: 0, quantity: '', discountPercent: '', lineTotal: 0, isBox: false, priceTiers: { 1: 0, 2: 0, 3: 0, 4: 0 } };
+      const newItem = { id: crypto.randomUUID(), lineNumber: lineItems.length + 1, designation: '', code: '', conditionnement: 1, stock: 0, unitPrice: '', basePrice: 0, quantity: '', discountAmount: 0, lineTotal: 0, isBox: false, priceTiers: { 1: 0, 2: 0, 3: 0, 4: 0 } };
       updateSession(mode, { lineItems: [...lineItems, newItem] });
     }
   }, [lineItems, mode, updateSession, isLoading]);

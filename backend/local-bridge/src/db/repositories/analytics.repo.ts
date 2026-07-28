@@ -1,11 +1,28 @@
 import Database from 'better-sqlite3';
 
+// Every analytics query must exclude these, and none of them did.
+//
+// - A proforma is a QUOTE, not a sale. The schema's own stock trigger already
+//   refuses to deduct inventory for one (schema.ts: sale_items_ai has
+//   `WHEN ... sale_type != 'proforma'`), and every frontend fallback path
+//   filters it out - but in local-first mode the bridge answers first, so the
+//   fallback never runs and the bridge's own numbers were the ones on screen.
+//   A shop that issues quotes routinely had its revenue, top products and
+//   worker rankings inflated by the full value of every quote ever saved,
+//   and a worker could climb the leaderboard purely by saving proformas.
+// - deleted_at is part of the sync model, but no query honoured it, so a
+//   voided sale counted toward revenue forever and takings could never be
+//   corrected downward.
+const EXCLUDE_NON_SALES = `AND sale_type != 'proforma' AND deleted_at IS NULL`;
+const EXCLUDE_NON_SALES_S = `AND s.sale_type != 'proforma' AND s.deleted_at IS NULL`;
+
 export const createAnalyticsRepo = (db: Database.Database) => ({
   getDailyRevenue(storeId: string, from?: string, to?: string): number {
     let sql = `
         SELECT SUM(COALESCE(CAST(total_price AS REAL), 0)) as total
         FROM sales
         WHERE (? = '' OR store_id = ?)
+        ${EXCLUDE_NON_SALES}
     `;
     const params: any[] = [storeId, storeId];
 
@@ -25,6 +42,7 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
         SELECT date(created_at) as date, SUM(COALESCE(CAST(total_price AS REAL), 0)) as revenue
         FROM sales
         WHERE (? = '' OR store_id = ?)
+        ${EXCLUDE_NON_SALES}
     `;
     const params: any[] = [storeId, storeId];
 
@@ -50,6 +68,8 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
         FROM sale_items si
         JOIN sales s ON s.id = si.sale_id
         WHERE (? = '' OR s.store_id = ?)
+        ${EXCLUDE_NON_SALES_S}
+        AND si.deleted_at IS NULL
     `;
     const params: any[] = [storeId, storeId];
 
@@ -59,7 +79,7 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
     }
 
     sql += `
-        GROUP BY si.product_name
+        GROUP BY COALESCE(si.product_id, si.product_name)
         ORDER BY quantity DESC
         LIMIT ?
     `;
@@ -72,12 +92,13 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
   getTopWorkers(storeId: string, limit = 5, from?: string, to?: string): { name: string; sales_count: number; revenue: number }[] {
     let sql = `
         SELECT 
-          u.full_name as name, 
+          COALESCE(u.full_name, 'Inconnu') as name, 
           COUNT(s.id) as sales_count, 
           SUM(COALESCE(CAST(s.total_price AS REAL), 0)) as revenue
         FROM sales s
         LEFT JOIN users u ON s.worker_id = u.id
         WHERE (? = '' OR s.store_id = ?)
+        ${EXCLUDE_NON_SALES_S}
     `;
     const params: any[] = [storeId, storeId];
 
@@ -87,7 +108,7 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
     }
 
     sql += `
-        GROUP BY u.full_name
+        GROUP BY s.worker_id
         ORDER BY revenue DESC
         LIMIT ?
     `;
