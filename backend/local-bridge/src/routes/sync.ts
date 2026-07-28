@@ -234,7 +234,19 @@ export async function registerSyncRoutes(app: FastifyInstance) {
     // those repositories were written, but until this fix nothing ever read
     // it back out - it was a dead letter queue. This loop is what actually
     // makes that data reach Supabase. ---
-    const outboxBatch = db.listPendingOutboxAll(MAX_OUTBOX_PUSH_PER_CALL);
+    // Drain in repeated batches under a wall-clock budget rather than stopping
+    // dead at one batch. A real install was found holding 3,919 entries going
+    // back five months (the push endpoint used to 403 every caller, so the
+    // queue only ever grew). At one 300-entry batch per launch that backlog
+    // needs ~13 restarts before the phone/cloud shows current data, which in
+    // practice means it never catches up. Looping until the queue is empty or
+    // the budget expires clears it in a launch or two, while the budget still
+    // protects against a single request running for minutes.
+    const OUTBOX_DRAIN_BUDGET_MS = 60_000;
+    const drainStartedAt = Date.now();
+    let outboxBatch = db.listPendingOutboxAll(MAX_OUTBOX_PUSH_PER_CALL);
+
+    while (outboxBatch.length > 0) {
     for (const entry of outboxBatch) {
       const table = getSupabaseTableForEntity(entry.entity_type);
       if (!table) {
@@ -291,6 +303,16 @@ export async function registerSyncRoutes(app: FastifyInstance) {
           db.incrementOutboxRetry(entry.id, message.slice(0, 2000));
         }
       }
+    }
+
+      if (Date.now() - drainStartedAt > OUTBOX_DRAIN_BUDGET_MS) {
+        // Out of time for this request - whatever is left stays pending and
+        // the next push picks it up. Never an error, just a partial drain.
+        break;
+      }
+      // Only entries still 'pending' come back, so anything acked or failed
+      // above drops out and this cannot spin on the same rows forever.
+      outboxBatch = db.listPendingOutboxAll(MAX_OUTBOX_PUSH_PER_CALL);
     }
 
     const remainingPendingMutations = db.listPendingMutations('pending').length;

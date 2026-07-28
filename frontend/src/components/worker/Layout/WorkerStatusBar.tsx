@@ -103,24 +103,32 @@ export function WorkerStatusBar({ storeName, userEmail, activeModule, onLogout, 
 
   return (
     <footer className="h-8 bg-[hsl(180,80%,40%)] dark:bg-card/80 border-t border-primary/30 flex items-center px-2 text-xs shrink-0">
-      {/* Store Name */}
-      <div className="flex items-center gap-2 min-w-[200px]">
-        <HardDrive className="h-3.5 w-3.5 text-primary-foreground/70 dark:text-primary" />
+      {/* Store Name - min-w-0 so it can actually shrink. It used to be
+          min-w-[200px], which on a narrow screen refused to give up space and
+          pushed the right-hand controls (Logout last of all) off the edge. */}
+      <div className="flex items-center gap-2 min-w-0 shrink">
+        <HardDrive className="h-3.5 w-3.5 shrink-0 text-primary-foreground/70 dark:text-primary" />
         <span className="font-medium text-primary-foreground dark:text-foreground truncate">
           {storeName || t('index.title')}
           <span className="font-mono opacity-50 ml-2 text-[10px]">v{import.meta.env.VITE_APP_VERSION || 'dev'}</span>
         </span>
       </div>
 
-      {/* Keyboard Shortcuts */}
-      <div className="flex-1 text-center">
-        <span className="font-mono text-primary-foreground/90 dark:text-muted-foreground">
+      {/* Keyboard Shortcuts - purely informational, so it is the first thing
+          to go when width is tight rather than something the user needs. */}
+      <div className="hidden lg:block flex-1 min-w-0 text-center">
+        <span className="font-mono text-primary-foreground/90 dark:text-muted-foreground truncate">
           {shortcutHints[activeModule] || t('common.loading')}
         </span>
       </div>
 
-      {/* Right Section */}
-      <div className="flex items-center gap-3">
+      {/* Spacer for narrow screens, where the hints above are hidden */}
+      <div className="flex-1 lg:hidden" />
+
+      {/* Right Section - shrink-0 so these controls are never squeezed out.
+          Logout lives at the end of this row, so without it a narrow window
+          silently removed the only way for the cashier to sign out. */}
+      <div className="flex items-center gap-3 shrink-0">
         <HardwareStatus />
         
         {/* Manual Sync Button */}
@@ -165,30 +173,37 @@ export function WorkerStatusBar({ storeName, userEmail, activeModule, onLogout, 
           )}
         </div>
 
+        {/* Everything from here down to Logout is progressively dropped as the
+            window narrows, in order of how little the cashier needs it. Logout
+            itself is never hidden - on a narrow screen it was being pushed out
+            of view entirely, leaving no way to sign out. */}
+
         {/* User */}
-        <span className="text-primary-foreground/80 dark:text-muted-foreground truncate max-w-[150px]">
+        <span className="hidden xl:inline text-primary-foreground/80 dark:text-muted-foreground truncate max-w-[150px]">
           {userEmail}
         </span>
 
-        {/* Date/Time */}
-        <div className="flex items-center gap-2 font-mono text-primary-foreground dark:text-foreground">
+        {/* Date/Time - the clock is the least critical, so it goes first */}
+        <div className="hidden lg:flex items-center gap-2 font-mono text-primary-foreground dark:text-foreground">
           <span>{formatDate(currentTime)}</span>
           <span className="text-primary-foreground/60 dark:text-muted-foreground">•</span>
           <span>{formatTime(currentTime)}</span>
         </div>
 
         {/* Language & Currency Switcher */}
-        <div className="flex items-center gap-2 h-6 scale-75 origin-right">
+        <div className="hidden md:flex items-center gap-2 h-6 scale-75 origin-right">
           <CurrencySwitcher />
           <LanguageSwitcher />
         </div>
 
-        {/* Logout */}
+        {/* Logout - always visible, at every width */}
         <Button
           variant="ghost"
           size="sm"
           onClick={onLogout}
-          className="h-6 px-2 text-primary-foreground hover:bg-primary-foreground/10 dark:text-foreground dark:hover:bg-muted"
+          title={t('common.logout', 'Logout')}
+          aria-label={t('common.logout', 'Logout')}
+          className="h-6 px-2 shrink-0 text-primary-foreground hover:bg-primary-foreground/10 dark:text-foreground dark:hover:bg-muted"
         >
           <LogOut className="h-3.5 w-3.5" />
         </Button>
