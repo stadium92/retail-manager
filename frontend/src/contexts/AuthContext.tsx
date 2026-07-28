@@ -42,6 +42,29 @@ function isJwt(token?: string | null): boolean {
   return typeof token === 'string' && token.split('.').length === 3;
 }
 
+/** Roles the app understands, highest privilege first. */
+const ROLE_PRIORITY_ORDER: AppRole[] = ['master', 'worker', 'deliverer', 'customer'];
+
+/**
+ * SECURITY: the default role for an *unresolved* identity is the LEAST
+ * privileged one, never 'master'.
+ *
+ * Any path that cannot positively establish a role — a user_roles read that
+ * failed or was denied by RLS, missing auth metadata, a transient outage —
+ * must land here. Those failures are indistinguishable from "this account has
+ * no roles", so if the fallback were 'master' a mere network blip would
+ * silently promote any authenticated user to full store owner. Do not
+ * "helpfully" change this back to 'master'.
+ */
+const LEAST_PRIVILEGED_ROLE: AppRole = 'customer';
+
+/** Narrow untrusted metadata to a known AppRole, or null if it is not one. */
+function asAppRole(value: unknown): AppRole | null {
+  return typeof value === 'string' && (ROLE_PRIORITY_ORDER as string[]).includes(value)
+    ? (value as AppRole)
+    : null;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const dataClient = getDataClient();
   console.log('ðŸ” AuthProvider Init - Mode:', dataClient.mode, 'isLocalFirst:', dataClient.isLocalFirst);
@@ -508,7 +531,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       console.log('🔄 [AuthContext] Supabase onAuthStateChange event:', event);
       if (currentSession && currentSession.user) {
-        const role = currentSession.user.user_metadata?.role || 'master';
+        // SECURITY: saveOfflineSession() below PERSISTS this role into the local
+        // roles store, so a fail-open default here would durably grant owner
+        // rights on nothing more than a token refresh for a user whose metadata
+        // happens to carry no role. Prefer metadata (authoritative for existing
+        // installs), then the role already cached for this user (so an
+        // established account never has a new row invented for it), then the
+        // least privilege. See LEAST_PRIVILEGED_ROLE.
+        let role: AppRole | null = asAppRole(currentSession.user.user_metadata?.role);
+        if (!role) {
+          try {
+            const cachedRoles = await LocalDatabase.getRolesByUserId(currentSession.user.id);
+            role = ROLE_PRIORITY_ORDER.find(p => cachedRoles.some(c => c.role === p)) || null;
+          } catch (e) {
+            console.warn('[AuthContext][roles] Could not read cached roles during token refresh:', e);
+          }
+        }
+        if (!role) {
+          console.warn(
+            '[AuthContext][roles] Token refresh for a user with no metadata role and no cached role — caching least privilege:',
+            LEAST_PRIVILEGED_ROLE
+          );
+          role = LEAST_PRIVILEGED_ROLE;
+        }
         const storeId = currentSession.user.user_metadata?.store_id || '';
         const fullName = currentSession.user.user_metadata?.full_name || 'Cloud User';
         const subRole = currentSession.user.user_metadata?.sub_role || null;
@@ -553,10 +598,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // 2. Fetch cloud user roles
-      const { data: rolesData } = await supabase
+      const { data: rolesData, error: rolesError } = await supabase
         .from('user_roles')
         .select('*')
         .eq('user_id', data.user.id);
+
+      if (rolesError) {
+        // A failure to READ roles is NOT the same as "this user has no roles".
+        // Surface it loudly so an RLS denial or a transient outage is never
+        // silently mistaken for a legitimately role-less account.
+        console.error('[AuthContext][roles] user_roles query FAILED — cannot resolve role from the database:', rolesError);
+      }
 
       const metadata = data.user.user_metadata || {};
       const fullName = metadata.full_name || 'Cloud User';
@@ -573,8 +625,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const primaryRecord = rolesData.find((r: any) => r.role === role && r.store_id) || rolesData.find((r: any) => r.store_id);
         storeId = primaryRecord ? primaryRecord.store_id : null;
       } else {
-        // Fallback to metadata
-        role = metadata.role || 'master';
+        // Fallback to auth metadata. This is REQUIRED: existing installs have
+        // no user_roles rows yet and carry role/store_id only in metadata, so
+        // a present, recognised metadata role must keep working.
+        const metaRole = asAppRole(metadata.role);
+        if (metaRole) {
+          role = metaRole;
+        } else {
+          // Nothing could establish a role — either the query above failed or
+          // the account genuinely has none. Fail CLOSED, not open. See
+          // LEAST_PRIVILEGED_ROLE. A login is still granted (rather than
+          // refused) so a transient outage cannot lock the owner out; the
+          // storeId guard below rejects the session anyway when no store can
+          // be resolved, and a least-privileged session grants nothing.
+          role = LEAST_PRIVILEGED_ROLE;
+          console.warn(
+            '[AuthContext][roles] No role from user_roles and none in metadata — defaulting to least privilege:',
+            LEAST_PRIVILEGED_ROLE,
+            rolesError ? '(caused by the user_roles query failure above)' : '(account has no roles)'
+          );
+        }
         storeId = metadata.store_id;
       }
 
@@ -654,10 +724,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           result = { error: 'Retrieval of user session failed.' };
         } else {
           // Fetch cloud user roles
-          const { data: rolesData } = await supabase
+          const { data: rolesData, error: rolesError } = await supabase
             .from('user_roles')
             .select('*')
             .eq('user_id', data.user.id);
+
+          if (rolesError) {
+            // Fails closed already (an empty roles array grants nothing), but a
+            // read failure must never be mistaken for "this user has no roles".
+            console.error('[AuthContext][roles] user_roles query FAILED on cloud sign in — session will start with no roles:', rolesError);
+          }
 
           result = {
             user: data.user,
