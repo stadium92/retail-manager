@@ -57,7 +57,37 @@ export async function registerSyncRoutes(app: FastifyInstance) {
   // used to poll a path that was never registered here, so the indicator
   // always read OFFLINE regardless of the bridge's real state.
   app.get('/sync/health', async (_request, reply) => {
-    return reply.send({ status: 'ONLINE', message: 'Connected to local sync bridge' });
+    // Answering this request at all already proves the local bridge itself
+    // is up - the frontend's fetch would fail/throw before ever getting
+    // here otherwise. What this endpoint used to NOT check is the actual
+    // Supabase leg: env.supabaseUrl/env.supabaseServiceKey being wrong, DNS,
+    // firewall, or real internet being down would all fail silently in
+    // /sync/push and /sync/pull while this kept reporting ONLINE, since
+    // nothing here ever made an outbound call. Ping Supabase itself so
+    // "bridge is up but can't reach Supabase" is a distinct, visible state
+    // instead of indistinguishable from "everything is fine".
+    if (!env.supabaseUrl || !env.supabaseServiceKey) {
+      return reply.send({
+        status: 'OFFLINE',
+        message: 'Supabase non configuré sur cette installation (URL ou clé manquante).',
+      });
+    }
+
+    try {
+      const res = await fetch(`${env.supabaseUrl}/rest/v1/`, {
+        headers: { apikey: env.supabaseServiceKey },
+      });
+      // Anything outside 2xx (not just 5xx) means the same call /sync/push
+      // and /sync/pull make would also fail - notably 401/403, which is
+      // exactly what a wrong or revoked service key looks like here.
+      if (!res.ok) {
+        return reply.send({ status: 'OFFLINE', message: `Supabase injoignable (HTTP ${res.status}).` });
+      }
+      return reply.send({ status: 'ONLINE', message: 'Connected to local sync bridge' });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return reply.send({ status: 'OFFLINE', message: `Supabase injoignable: ${message}` });
+    }
   });
 
   // Minimal SSE stream so the frontend's EventSource actually connects -
