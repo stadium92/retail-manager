@@ -119,11 +119,34 @@ export function MobileSalesModule({ mode, onBack }: { mode: 'vente-detail' | 'fa
             const { error } = await OfflineSalesService.createSale({
                 store_id: sid,
                 worker_id: userId,
-                items: lineItems.map(item => ({
-                    product: item.product,
-                    quantity: item.quantity,
-                    price: item.unitPrice,
-                })),
+                // Two bugs lived in this map, both silent:
+                //
+                // 1. `quantity` sent the raw line quantity even for a box/pack
+                //    line, while the total above multiplies by conditionnement.
+                //    Selling 3 cartons of 12 charged for 36 pieces but the
+                //    sale_items_ai trigger deducted only 3 units, so stock
+                //    drifted UPWARD by (packSize-1)x qty on every mobile box
+                //    sale - phantom inventory and missed reorders. The desktop
+                //    path already converts to units before submitting.
+                // 2. The key was `price`, but OfflineSalesService's mapper
+                //    reads unit_price/unitPrice and total/lineTotal. Neither
+                //    matched, so every mobile line item persisted at 0 CFA -
+                //    the sale header total looked right while item-level
+                //    reports, reprinted invoices and top-product revenue all
+                //    read zero.
+                items: lineItems.map(item => {
+                    const multiplier = item.isBox ? (Number(item.conditionnement) || 1) : 1;
+                    const unitPrice = Number(item.unitPrice) || 0;
+                    const qtyUnits = (Number(item.quantity) || 0) * multiplier;
+                    const discount = Number(item.discountAmount) || 0;
+                    return {
+                        product: item.product,
+                        quantity: qtyUnits,
+                        unit_price: unitPrice,
+                        discount,
+                        total: Math.round(unitPrice * qtyUnits - discount),
+                    };
+                }),
                 total_price: total,
                 payment_method: paymentMethod,
                 sale_type: saleType,

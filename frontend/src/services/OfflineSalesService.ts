@@ -21,9 +21,21 @@ export const OfflineSalesService = {
             product_id: item.product_id || item.productId || item.product?.id || null,
             product_name: item.product_name || item.productName || item.designation || item.product?.name || 'Unknown',
             quantity: Number(item.quantity) || 0,
-            unit_price: Number(item.unit_price ?? item.unitPrice ?? 0),
-            discount: Number(item.discount ?? item.discountPercent ?? 0),
-            total: Number(item.total ?? item.lineTotal ?? 0),
+            // `price` and `discountAmount` are accepted as aliases because
+            // callers really do send those names (the mobile sales module
+            // sent `price`, matched nothing here, and silently persisted
+            // every line item at 0 CFA). Falling back to unitPrice*quantity
+            // for `total` means a caller that omits the line total can no
+            // longer write a zero-value item either - a 0 here is invisible
+            // on the sale header but corrupts item-level reporting,
+            // reprinted invoices and top-product revenue.
+            unit_price: Number(item.unit_price ?? item.unitPrice ?? item.price ?? 0),
+            discount: Number(item.discount ?? item.discountAmount ?? 0),
+            total: Number(
+                item.total ??
+                item.lineTotal ??
+                ((Number(item.unit_price ?? item.unitPrice ?? item.price ?? 0)) * (Number(item.quantity) || 0))
+            ),
         }));
 
         let localResult: any = null;
