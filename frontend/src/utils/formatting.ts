@@ -28,18 +28,43 @@ export function useFormatters() {
     return formatDate(date, 'PPpp');
   };
 
-  const formatNumber = (num: number, decimals: number = 2) => {
+  const formatNumber = (num: number | null | undefined, decimals: number = 2) => {
     const locale = i18n.language === 'fr' ? 'fr-FR' : 'en-US';
+    // Same reasoning as formatCurrency: never surface "NaN" to a user.
+    const safeNum = Number(num);
     return new Intl.NumberFormat(locale, {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
-    }).format(num);
+    }).format(Number.isFinite(safeNum) ? safeNum : 0);
   };
 
-  const formatCurrency = (amount: number, overrideCurrency?: string) => {
+  const formatCurrency = (amount: number | null | undefined, overrideCurrency?: string) => {
     const locale = i18n.language === 'fr' ? 'fr-FR' : 'en-US';
     const currencyCode = overrideCurrency || currency || DEFAULT_CURRENCY;
-    
+
+    // Money must never render as "NaN" on a till screen - a cashier cannot
+    // tell whether that means zero, an error, or a real figure that failed to
+    // load, and it appeared on live screens (VALEUR GROS / VALEUR REVENDEUR
+    // on Valorisation de stock) simply because the API omitted two fields the
+    // component read, making them undefined. Individual callers are still
+    // fixed at the source, but this is the last line of defence so no future
+    // missing/renamed field can put NaN in front of a user again.
+    //
+    // Deliberately NOT silent: a value that should have been a number and
+    // wasn't is a bug, so it is logged once here while the UI degrades to 0.
+    const safeAmount = Number(amount);
+    if (!Number.isFinite(safeAmount)) {
+      if (amount !== null && amount !== undefined) {
+        console.warn('[formatCurrency] received a non-numeric amount:', amount);
+      }
+      return new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency: currencyCode,
+        minimumFractionDigits: ['XOF', 'XAF'].includes(currencyCode) ? 0 : 2,
+        maximumFractionDigits: ['XOF', 'XAF'].includes(currencyCode) ? 0 : 2,
+      }).format(0);
+    }
+
     // Determine decimals: 0 for CFA (XOF/XAF), 2 for others (USD, EUR, GHS)
     const isCFA = ['XOF', 'XAF'].includes(currencyCode);
     const decimals = isCFA ? 0 : 2;
@@ -50,20 +75,25 @@ export function useFormatters() {
         currency: currencyCode,
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
-      }).format(amount);
+      }).format(safeAmount);
     } catch (error) {
       console.error('Currency formatting error:', error);
-      return `${amount} ${currencyCode}`; // Fallback
+      return `${safeAmount} ${currencyCode}`; // Fallback
     }
   };
 
-  const formatPercent = (value: number, decimals: number = 1) => {
+  const formatPercent = (value: number | null | undefined, decimals: number = 1) => {
     const locale = i18n.language === 'fr' ? 'fr-FR' : 'en-US';
+    // Percentages are the most NaN-prone figures in the app because they are
+    // nearly always a ratio, and margin/growth denominators (cost, previous
+    // period revenue) are legitimately 0 on a new product or a first day of
+    // trading - which yields NaN or Infinity, both meaningless on screen.
+    const safeValue = Number(value);
     return new Intl.NumberFormat(locale, {
       style: 'percent',
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
-    }).format(value / 100);
+    }).format((Number.isFinite(safeValue) ? safeValue : 0) / 100);
   };
 
   return { formatDate, formatDateTime, formatNumber, formatCurrency, formatPercent };

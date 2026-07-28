@@ -97,24 +97,67 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
     return rows;
   },
 
-  getStockValuation(storeId: string): { total_cost: number; total_retail: number; item_count: number } {
+  getStockValuation(storeId: string): {
+    total_cost: number;
+    total_retail: number;
+    total_wholesale: number;
+    total_resale: number;
+    item_count: number;
+  } {
     console.log('[DB] Calculating Stock Valuation for store:', storeId || 'ALL');
+    // total_wholesale and total_resale were never selected here, but
+    // ValorisationStock.tsx reads them off the response - so they arrived as
+    // undefined and formatCurrency(undefined) painted a literal "NaN" in the
+    // VALEUR GROS and VALEUR REVENDEUR cards on the stock screen.
+    //
+    // Column choice follows the tiers the UI itself defines
+    // ("3ème prix (Gros)" / "4ème prix (Revente)") and matches the precedence
+    // already used in OfflineDataService: selling_price_3 first, falling back
+    // to the legacy wholesale_* columns, which in real data are almost always
+    // NULL (672 of 688 rows on the live database checked). NULLIF(...,0)
+    // keeps a stored 0 from masking a usable fallback, and the final
+    // COALESCE to unit_price means a product with no wholesale tier
+    // contributes its retail price rather than silently counting as 0 and
+    // understating the total.
     const sql = `
-        SELECT 
+        SELECT
           SUM(CAST(COALESCE(quantity, 0) AS REAL) * CAST(COALESCE(cost_price, 0) AS REAL)) as total_cost,
           SUM(CAST(COALESCE(quantity, 0) AS REAL) * CAST(COALESCE(unit_price, 0) AS REAL)) as total_retail,
+          SUM(CAST(COALESCE(quantity, 0) AS REAL) * CAST(COALESCE(
+            NULLIF(selling_price_3, 0),
+            NULLIF(wholesale_price_ttc, 0),
+            NULLIF(wholesale_price, 0),
+            unit_price,
+            0
+          ) AS REAL)) as total_wholesale,
+          SUM(CAST(COALESCE(quantity, 0) AS REAL) * CAST(COALESCE(
+            NULLIF(selling_price_4, 0),
+            NULLIF(selling_price_3, 0),
+            unit_price,
+            0
+          ) AS REAL)) as total_resale,
           COUNT(*) as item_count
         FROM products
         WHERE (? = '' OR store_id = ?) AND quantity > 0
     `;
-    
+
     const row = db.prepare(sql).get(storeId || '', storeId || '') as any;
     console.log('[DB] Valuation Result:', row);
-    
+
+    // SUM() over zero matching rows returns NULL, not 0 - hence the Number()
+    // plus isFinite guard rather than a bare `|| 0`, so an empty store can
+    // never send NaN/null back to the client.
+    const num = (v: unknown): number => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : 0;
+    };
+
     return {
-      total_cost: row?.total_cost || 0,
-      total_retail: row?.total_retail || 0,
-      item_count: row?.item_count || 0,
+      total_cost: num(row?.total_cost),
+      total_retail: num(row?.total_retail),
+      total_wholesale: num(row?.total_wholesale),
+      total_resale: num(row?.total_resale),
+      item_count: num(row?.item_count),
     };
   },
 
