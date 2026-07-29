@@ -65,25 +65,30 @@ export const createSuppliersRepo = (db: Database.Database) => ({
       return row as LocalSupplier | undefined;
     }
 
+    // Pre-change snapshot for the journal - see products.repo.updateProduct.
+    const before = db.prepare('SELECT * FROM suppliers WHERE id = ? LIMIT 1').get(supplierId) as
+      | Record<string, unknown>
+      | undefined;
+
     const assignments = normalizedEntries.map(([key]) => `${key} = @${key}`).join(', ');
     db.prepare(`UPDATE suppliers SET ${assignments}, version = version + 1 WHERE id = @id`).run({
       id: supplierId,
       ...Object.fromEntries(normalizedEntries),
     });
-    
+
     const row = db.prepare('SELECT * FROM suppliers WHERE id = ? LIMIT 1').get(supplierId);
     const updated = row as LocalSupplier | undefined;
     if (updated) {
-      emitOutbox(db, updated.store_id, 'supplier', supplierId, 'update', updated as any, (updated as any).version - 1);
+      emitOutbox(db, updated.store_id, 'supplier', supplierId, 'update', updated as any, (updated as any).version - 1, { before: before ?? null });
     }
     return updated;
   },
 
   deleteSupplier(supplierId: string) {
-    const existing = db.prepare('SELECT store_id FROM suppliers WHERE id = ?').get(supplierId) as any;
+    const existing = db.prepare('SELECT * FROM suppliers WHERE id = ?').get(supplierId) as any;
     db.prepare('DELETE FROM suppliers WHERE id = ?').run(supplierId);
     if (existing) {
-      emitOutbox(db, existing.store_id, 'supplier', supplierId, 'delete', { id: supplierId });
+      emitOutbox(db, existing.store_id, 'supplier', supplierId, 'delete', { id: supplierId }, existing.version ?? null, { before: existing });
     }
   },
 });

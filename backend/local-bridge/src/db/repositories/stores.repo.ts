@@ -74,6 +74,11 @@ export const createStoresRepo = (db: Database.Database) => ({
       const row = db.prepare('SELECT * FROM stores WHERE id = ? LIMIT 1').get(storeId);
       return row as LocalStore | undefined;
     }
+    // Pre-change snapshot for the journal - see products.repo.updateProduct.
+    const before = db.prepare('SELECT * FROM stores WHERE id = ? LIMIT 1').get(storeId) as
+      | Record<string, unknown>
+      | undefined;
+
     const assignments = normalizedEntries.map(([key]) => `${key} = @${key}`).join(', ');
     db.prepare(`UPDATE stores SET ${assignments}, version = version + 1 WHERE id = @id`).run({
       id: storeId,
@@ -83,13 +88,16 @@ export const createStoresRepo = (db: Database.Database) => ({
     const row = db.prepare('SELECT * FROM stores WHERE id = ? LIMIT 1').get(storeId);
     const updated = row as LocalStore | undefined;
     if (updated) {
-      emitOutbox(db, storeId, 'store', storeId, 'update', updated as unknown as Record<string, unknown>, (updated as any).version - 1);
+      emitOutbox(db, storeId, 'store', storeId, 'update', updated as unknown as Record<string, unknown>, (updated as any).version - 1, { before: before ?? null });
     }
     return updated;
   },
 
   deleteStore(storeId: string) {
+    const existing = db.prepare('SELECT * FROM stores WHERE id = ? LIMIT 1').get(storeId) as
+      | (Record<string, unknown> & { version?: number })
+      | undefined;
     db.prepare('DELETE FROM stores WHERE id = ?').run(storeId);
-    emitOutbox(db, storeId, 'store', storeId, 'delete', { id: storeId });
+    emitOutbox(db, storeId, 'store', storeId, 'delete', { id: storeId }, existing?.version ?? null, { before: existing ?? null });
   },
 });

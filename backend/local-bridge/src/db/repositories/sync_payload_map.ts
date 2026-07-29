@@ -44,6 +44,19 @@ export const SUPABASE_TABLE_MAP: Record<string, string> = {
   supplier: 'suppliers',
   purchase_order: 'purchase_orders',
   purchase_item: 'purchase_items',
+  // inventory_movement has been emitted to the outbox by the purchase
+  // receiving path since it was written, and by the sale_items_ai trigger's
+  // ledger rows since the conflict work - but it had no entry here at all, so
+  // every one of those entries died on "No Supabase table mapping" and was
+  // parked as permanently failed (22 of them on the reference install).
+  //
+  // The Supabase table does not exist yet either; it is created by
+  // 20260729120000_sync_conflict_journal.sql. Mapping it now means these
+  // entries start flowing the moment that migration is applied, and until
+  // then they are parked with an explicit TABLE_MISSING error that the
+  // existing "Retry failed" button releases - rather than being silently
+  // dropped for a reason nobody can see.
+  inventory_movement: 'inventory_movements',
 };
 
 type PayloadBuilder = (raw: Record<string, unknown>) => Record<string, unknown>;
@@ -153,6 +166,18 @@ const PAYLOAD_BUILDERS: Record<string, PayloadBuilder> = {
   purchase_item: (raw) => pick(raw, [
     'id', 'order_id', 'product_id', 'quantity_ordered', 'quantity_received',
     'unit_cost', 'created_at',
+  ]),
+
+  // Column list matches the CREATE TABLE in
+  // 20260729120000_sync_conflict_journal.sql. created_by is deliberately
+  // omitted: like sales.worker_id it holds a local-bridge user id that does
+  // not exist in auth.users, and the cloud column is a plain uuid with no FK
+  // precisely so the id can be carried - but only once local users are
+  // provisioned. Until then it would be a dangling reference presented as a
+  // real one, which is worse than absent.
+  inventory_movement: (raw) => pick(raw, [
+    'id', 'store_id', 'product_id', 'product_name', 'movement_type',
+    'quantity', 'reason', 'source', 'created_at',
   ]),
 };
 

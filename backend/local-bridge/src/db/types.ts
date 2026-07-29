@@ -301,10 +301,21 @@ export interface SyncOutboxEntry {
   payload_json: string;
   base_version: number | null;
   created_at: string;
-  status: 'pending' | 'sent' | 'acked' | 'failed';
+  /**
+   * 'conflict' is a terminal state distinct from 'failed'. A failed entry
+   * could not be delivered and should be retried; a conflicted entry was
+   * delivered, refused by its own precondition, and must NOT be retried -
+   * retrying it would either keep failing or, worse, eventually succeed
+   * against a version it was never checked against. It is released only by an
+   * explicit human decision (see requeueOutboxEntry).
+   */
+  status: 'pending' | 'sent' | 'acked' | 'failed' | 'conflict';
   retry_count: number;
   last_error: string | null;
   idempotency_key: string;
+  /** The installation that produced this entry. Backfilled on upgrade. */
+  device_id?: string | null;
+  last_attempt_at?: string | null;
 }
 
 export interface SyncState {

@@ -96,6 +96,20 @@ export const createOutboxBackfillRepo = (db: Database.Database) => ({
       (row) => row.store_id
     );
 
+    // Stock ledger. These rows are written by the sale_items_ai trigger and by
+    // purchase receiving; a trigger cannot call emitOutbox(), so this sweep is
+    // the mechanism that gets them into the queue. It is the same idempotent
+    // "has this record ever been queued?" check as every other entity, so a
+    // movement is enqueued exactly once no matter how often the sweep runs.
+    //
+    // Note on volume: this queues one entry per stock movement from here on,
+    // roughly one per sold line item (~400/month on the reference install).
+    // Historical sales are NOT retro-fitted with movements - inventing ledger
+    // rows for five months of sales that were never recorded would produce a
+    // ledger that disagrees with the very quantities it is supposed to
+    // explain. The cutover anchor is documented in the migration.
+    sweep('inventory_movement', 'SELECT * FROM inventory_movements', (row) => row.store_id);
+
     let totalScanned = 0;
     let totalQueued = 0;
     for (const key of Object.keys(perEntity)) {

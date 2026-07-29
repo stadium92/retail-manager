@@ -209,20 +209,34 @@ export const createProductsRepo = (db: Database.Database) => {
       return row as LocalProduct | undefined;
     }
 
+    // Snapshot the row BEFORE changing it. One extra indexed point-read per
+    // product edit, and it is what turns a conflict report from "these two
+    // numbers disagree" into "the till went 55 → 12 while the cloud went
+    // 55 → 40", which is the difference between a guess and a decision.
+    const before = db.prepare('SELECT * FROM products WHERE id = ? LIMIT 1').get(productId) as
+      | Record<string, unknown>
+      | undefined;
+
     const assignments = normalizedEntries.map(([key]) => `${key} = @${key}`).join(', ');
     const statement = db.prepare(`UPDATE products SET ${assignments}, version = version + 1 WHERE id = @id`);
     statement.run({ id: productId, ...Object.fromEntries(normalizedEntries) });
     const row = db.prepare('SELECT * FROM products WHERE id = ? LIMIT 1').get(productId);
     const updated = row as LocalProduct | undefined;
     if (updated) {
-      emitOutbox(db, updated.store_id, 'product', productId, 'update', updated as unknown as Record<string, unknown>, (updated as any).version - 1);
+      emitOutbox(db, updated.store_id, 'product', productId, 'update', updated as unknown as Record<string, unknown>, (updated as any).version - 1, { before: before ?? null });
     }
     return updated;
   },
 
   deleteProduct(productId: string) {
-    const existing = db.prepare('SELECT store_id FROM products WHERE id = ? LIMIT 1').get(productId) as { store_id: string } | undefined;
-    
+    // `version` is read alongside store_id so the delete can be sent with a
+    // precondition. Deleting a row another writer has just edited destroys
+    // strictly more than overwriting it does, and leaves nothing behind to
+    // notice the loss with.
+    const existing = db.prepare('SELECT * FROM products WHERE id = ? LIMIT 1').get(productId) as
+      | (Record<string, unknown> & { store_id: string; version?: number })
+      | undefined;
+
     const deleteTx = db.transaction(() => {
       // Nullify references in history tables (keep the record, lose the link)
       db.prepare('UPDATE sale_items SET product_id = NULL WHERE product_id = ?').run(productId);
@@ -244,7 +258,7 @@ export const createProductsRepo = (db: Database.Database) => {
     deleteTx();
 
     if (existing) {
-      emitOutbox(db, existing.store_id, 'product', productId, 'delete', { id: productId });
+      emitOutbox(db, existing.store_id, 'product', productId, 'delete', { id: productId }, existing.version ?? null, { before: existing });
     }
   },
 
