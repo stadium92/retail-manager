@@ -338,7 +338,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
           updates.lineItems = updatedItems;
         }
       }
-      updates.clientDiscount = groupDiscount;
+      updates.clientDiscount = groupDiscountPercent;
     } else {
       if (field === 'code' && !value) {
         updates.clientId = undefined;

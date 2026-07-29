@@ -24,6 +24,8 @@ import { createSyncOutboxRepo } from './repositories/sync_outbox.repo.js';
 import { createCashRepo } from './repositories/cash.repo.js';
 import { createCashClosingsRepo } from './repositories/cash_closings.repo.js';
 import { createOutboxBackfillRepo } from './repositories/outbox_backfill.repo.js';
+import { createDeviceRepo, ensureDeviceIdentity } from './repositories/device.repo.js';
+import { createSyncJournalRepo } from './repositories/sync_journal.repo.js';
 
 // Everything in this module runs at IMPORT time, which in ES modules means
 // before index.ts installs its uncaughtException handler and EPIPE guards.
@@ -46,6 +48,12 @@ let schemaInitFailed = false;
 try {
   initializeSchema(rawDb);
   runMigrations(rawDb);
+  // Must run inside this guarded block and immediately after the schema: it
+  // creates this installation's device_id and backfills it onto the existing
+  // sync_outbox backlog. Every outbox emit and every journal write reads it,
+  // so a failure here has to be reported with the same prominence as a
+  // failed ALTER TABLE rather than surfacing later as anonymous writes.
+  ensureDeviceIdentity(rawDb);
 } catch (e) {
   // This used to be console.error only, which on a packaged Windows build
   // goes to a stdout nobody captured - so a half-applied schema was completely
@@ -99,6 +107,8 @@ const buildRepos = () => ({
   ...createCashRepo(rawDb),
   ...createCashClosingsRepo(rawDb),
   ...createOutboxBackfillRepo(rawDb),
+  ...createDeviceRepo(rawDb),
+  ...createSyncJournalRepo(rawDb),
 });
 
 let db: ReturnType<typeof buildRepos>;

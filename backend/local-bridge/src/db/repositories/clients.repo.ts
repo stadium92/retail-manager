@@ -87,29 +87,46 @@ export const createClientsRepo = (db: Database.Database) => {
       return row as LocalClient | undefined;
     }
 
+    // Pre-change snapshot for the journal - see products.repo.updateProduct.
+    const before = db.prepare('SELECT * FROM clients WHERE id = ? LIMIT 1').get(clientId) as
+      | Record<string, unknown>
+      | undefined;
+
     const assignments = normalizedEntries.map(([key]) => `${key} = @${key}`).join(', ');
     db.prepare(`UPDATE clients SET ${assignments}, version = version + 1 WHERE id = @id`).run({
       id: clientId,
       ...Object.fromEntries(normalizedEntries),
     });
-    
+
     const row = db.prepare('SELECT * FROM clients WHERE id = ? LIMIT 1').get(clientId);
     const updated = row as LocalClient | undefined;
     if (updated) {
-      emitOutbox(db, updated.store_id, 'client', clientId, 'update', updated as unknown as Record<string, unknown>, (updated as any).version - 1);
+      emitOutbox(db, updated.store_id, 'client', clientId, 'update', updated as unknown as Record<string, unknown>, (updated as any).version - 1, { before: before ?? null });
     }
     return updated;
   },
 
   deleteClient(clientId: string) {
-    const existing = db.prepare('SELECT store_id FROM clients WHERE id = ? LIMIT 1').get(clientId) as { store_id: string } | undefined;
+    const existing = db.prepare('SELECT * FROM clients WHERE id = ? LIMIT 1').get(clientId) as
+      | (Record<string, unknown> & { store_id: string; version?: number })
+      | undefined;
     db.prepare('DELETE FROM clients WHERE id = ?').run(clientId);
     if (existing) {
-      emitOutbox(db, existing.store_id, 'client', clientId, 'delete', { id: clientId });
+      emitOutbox(db, existing.store_id, 'client', clientId, 'delete', { id: clientId }, existing.version ?? null, { before: existing });
     }
   },
 
   updateClientBalance(clientId: string, amount: number) {
+    // current_balance is a COUNTER, not a value: this statement adds a delta
+    // locally, but the outbox below ships the resulting absolute. With one
+    // writer that is fine; with two it has the same defect as
+    // products.quantity (see sync/entity_policy.ts - COUNTER_FIELDS). The
+    // before-snapshot is captured so the size of any divergence stays
+    // measurable from the journal rather than being lost.
+    const before = db.prepare('SELECT * FROM clients WHERE id = ? LIMIT 1').get(clientId) as
+      | Record<string, unknown>
+      | undefined;
+
     db.prepare(`
       UPDATE clients
       SET current_balance = current_balance + ?, updated_at = ?, version = version + 1
@@ -123,7 +140,7 @@ export const createClientsRepo = (db: Database.Database) => {
     const row = db.prepare('SELECT * FROM clients WHERE id = ? LIMIT 1').get(clientId);
     const updated = row as LocalClient | undefined;
     if (updated) {
-      emitOutbox(db, updated.store_id, 'client', clientId, 'update', updated as unknown as Record<string, unknown>, (updated as any).version - 1);
+      emitOutbox(db, updated.store_id, 'client', clientId, 'update', updated as unknown as Record<string, unknown>, (updated as any).version - 1, { before: before ?? null });
     }
   },
 

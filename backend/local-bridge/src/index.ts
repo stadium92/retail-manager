@@ -19,6 +19,8 @@ import { registerCashRoutes } from './routes/cash.js';
 import { registerSystemRoutes } from './routes/system.js';
 import { db } from './db/index.js';
 import { runScheduler } from './scheduler.js';
+import jwt from 'jsonwebtoken';
+import { runWithActor } from './sync/actor_context.js';
 
 // Emergency logging
 const logDir = path.join(process.env.LOCALAPPDATA || '', 'retail-manager-logs');
@@ -74,6 +76,45 @@ async function start() {
     origin: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     credentials: true
+  });
+
+  // Actor context for the change journal.
+  //
+  // The journal has to record WHO made each change, but mutations are emitted
+  // deep in the repository layer, which never sees the caller. Rather than
+  // thread an actor argument through forty repository methods and every call
+  // site - a large mechanical change to code that currently works - the
+  // authenticated caller is stashed in an AsyncLocalStorage for the duration
+  // of the request and read by emitOutbox().
+  //
+  // This hook is deliberately NON-ENFORCING: it never rejects, never replies,
+  // and swallows every error. Authorisation stays exactly where it is, in
+  // each route's authenticateRequest() call. If this decode fails for any
+  // reason the request proceeds untouched and the journal simply records a
+  // NULL actor, which is honest. Making it enforcing would put a brand new
+  // failure mode in front of every endpoint in the app.
+  app.addHook('onRequest', (request, _reply, done) => {
+    let actor: { user_id: string | null; role?: string | null; store_id?: string | null } = {
+      user_id: null,
+    };
+    try {
+      const header = request.headers.authorization;
+      if (header && header.startsWith('Bearer ')) {
+        const payload = jwt.verify(header.slice('Bearer '.length), env.jwtSecret) as {
+          sub?: string;
+          role?: string;
+          store_id?: string | null;
+        };
+        actor = {
+          user_id: payload?.sub ?? null,
+          role: payload?.role ?? null,
+          store_id: payload?.store_id ?? null,
+        };
+      }
+    } catch {
+      /* unauthenticated or bad token - the route will deal with it */
+    }
+    runWithActor(actor, done);
   });
 
   // Centralized Error Handler
