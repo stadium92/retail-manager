@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { resolveFamilyName } from '@/lib/familyName';
 import { usePOSStore } from '@/stores/usePOSStore';
 import { useTranslation } from 'react-i18next';
 import { useFormatters } from '@/utils/formatting';
@@ -193,7 +194,7 @@ export function MobilePOS({ onBack, tabBar }: MobilePOSProps) {
                         >
                             <div className="flex flex-col">
                                 <span className="font-semibold text-rs-on-surface text-rs-body-base">{product.name}</span>
-                                <span className="text-rs-helper-xs text-rs-on-surface-variant uppercase tracking-wide">{product.category || product.category_name || 'Général'}</span>
+                                <span className="text-rs-helper-xs text-rs-on-surface-variant uppercase tracking-wide">{resolveFamilyName(product as any, undefined, 'Général')}</span>
                             </div>
                             <div className="flex flex-col items-end">
                                 <span className="text-rs-surface-tint font-mono font-bold text-rs-body-base">{formatCurrency(product.unit_price ?? 0)}</span>

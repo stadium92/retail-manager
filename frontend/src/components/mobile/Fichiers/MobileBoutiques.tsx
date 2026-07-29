@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { resolveFamilyName } from '@/lib/familyName';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
 import { useFormatters } from '@/utils/formatting';
@@ -364,7 +365,7 @@ export function MobileBoutiques({ onBack }: MobileBoutiquesProps) {
                             <div>
                               <p className="text-sm font-semibold text-white">{item.name}</p>
                               <p className="text-[10px] text-rs-on-surface-variant uppercase tracking-wider mt-0.5">
-                                {item.category || 'Général'} {item.sku && `• SKU: ${item.sku}`}
+                                {resolveFamilyName(item as any, undefined, 'Général')} {item.sku && `• SKU: ${item.sku}`}
                               </p>
                             </div>
                             <div className="text-right">

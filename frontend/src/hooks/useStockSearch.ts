@@ -90,6 +90,7 @@ export function useStockSearch(storeId: string, enabled: boolean = true) {
                 packaging: p.packaging || '1',
                 unit_type: p.unit_type || 'Piece',
                 category_id: p.category || p.category_id,
+                category_name: p.category_name ?? null,
                 store_id: p.store_id
             }));
 
@@ -152,6 +153,7 @@ export function useStockSearch(storeId: string, enabled: boolean = true) {
           packaging: p.packaging || '1',
           unit_type: p.unit_type || 'Piece',
           category_id: p.category || p.category_id,
+          category_name: p.category_name ?? null,
           store_id: p.store_id
         }));
 

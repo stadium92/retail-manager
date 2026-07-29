@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { resolveFamilyName } from '@/lib/familyName';
 import { Input } from '@/components/ui/input';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Button } from '@/components/ui/button';
@@ -338,7 +339,7 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
                           <TableCell className="text-xs font-mono">{p.sku || '—'}</TableCell>
                           <TableCell className="text-xs text-center">{p.unit_type || 'Pc'}</TableCell>
                           <TableCell className="text-xs text-center">{p.packaging || '1'}</TableCell>
-                          <TableCell className="text-xs">{p.category || '—'}</TableCell>
+                          <TableCell className="text-xs">{resolveFamilyName(p as any, families)}</TableCell>
                           <TableCell className={cn("text-xs text-center font-bold", p.quantity <= 0 ? 'text-danger' : p.quantity <= (p.min_quantity || 10) ? 'text-warning' : '')}>{p.quantity}</TableCell>
                           <TableCell className="text-xs text-right">{formatCurrency(unitPrice)}</TableCell>
                           <TableCell className="text-xs text-right">{formatCurrency(p.wholesale_price_ttc || 0)}</TableCell>

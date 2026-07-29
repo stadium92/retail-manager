@@ -51,7 +51,10 @@ export interface Product {
   description?: string;
   sku?: string;
   barcode?: string;
+  /** FK to product_families.id (despite the name) — a UUID, never display it directly. */
   category?: string;
+  /** Human-readable family name resolved by the backend LEFT JOIN. Display this. */
+  category_name?: string | null;
   unit_price: number;
   wholesale_price?: number;
   wholesale_price_ht?: number;
@@ -94,7 +97,10 @@ export interface InventoryItem {
   cost?: number;
   quantity: number;
   low_stock_threshold?: number;
+  /** FK to product_families.id — a UUID, never display it directly. */
   category_id?: string;
+  /** Human-readable family name resolved by the backend LEFT JOIN. Display this. */
+  category_name?: string | null;
   store_id: string;
   image_url?: string;
   // New fields

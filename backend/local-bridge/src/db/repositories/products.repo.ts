@@ -22,8 +22,18 @@ export const createProductsRepo = (db: Database.Database) => {
   },
 
   listAllProducts(): LocalProduct[] {
-    const rows = db.prepare('SELECT * FROM products ORDER BY name ASC').all();
-    return rows as LocalProduct[];
+    const rows = db
+      .prepare(`
+        SELECT p.*, pf.name as category_name
+        FROM products p
+        LEFT JOIN product_families pf ON p.category = pf.id
+        ORDER BY p.name ASC
+      `)
+      .all();
+    return rows.map((row: any) => ({
+      ...row,
+      category_name: row.category_name || null,
+    })) as LocalProduct[];
   },
 
   searchProducts(
@@ -43,8 +53,20 @@ export const createProductsRepo = (db: Database.Database) => {
       else if (filter === 'low_stock') filterClause = 'AND quantity > 0 AND quantity <= COALESCE(min_quantity, 10)';
 
       const total = (db.prepare(`SELECT COUNT(*) as count FROM products WHERE store_id = ? ${filterClause}`).get(storeId) as any).count;
-      const rows = db.prepare(`SELECT * FROM products WHERE store_id = ? ${filterClause} ORDER BY name ASC LIMIT ? OFFSET ?`).all(storeId, limit, offset);
-      return { data: rows as LocalProduct[], total };
+      const rows = db
+        .prepare(`
+          SELECT p.*, pf.name as category_name
+          FROM products p
+          LEFT JOIN product_families pf ON p.category = pf.id
+          WHERE p.store_id = ? ${filterClause ? filterClause.replace(/\b(quantity|min_quantity)\b/g, 'p.$1') : ''}
+          ORDER BY p.name ASC LIMIT ? OFFSET ?
+        `)
+        .all(storeId, limit, offset);
+      const mapped = rows.map((row: any) => ({
+        ...row,
+        category_name: row.category_name || null,
+      }));
+      return { data: mapped as LocalProduct[], total };
     }
 
     // FTS5 MATCH pattern (prefix search for each word)
@@ -96,8 +118,16 @@ export const createProductsRepo = (db: Database.Database) => {
   },
 
   getProductById(productId: string): LocalProduct | undefined {
-    const row = db.prepare('SELECT * FROM products WHERE id = ? LIMIT 1').get(productId);
-    return row as LocalProduct | undefined;
+    const row: any = db
+      .prepare(`
+        SELECT p.*, pf.name as category_name
+        FROM products p
+        LEFT JOIN product_families pf ON p.category = pf.id
+        WHERE p.id = ? LIMIT 1
+      `)
+      .get(productId);
+    if (!row) return undefined;
+    return { ...row, category_name: row.category_name || null } as LocalProduct;
   },
 
   insertProduct(product: LocalProduct) {
@@ -203,7 +233,11 @@ export const createProductsRepo = (db: Database.Database) => {
     if (updates.barcode) updates.barcode = sanitizeString(updates.barcode);
     if (updates.description) updates.description = sanitizeString(updates.description);
 
-    const normalizedEntries = Object.entries(updates).filter(([, value]) => value !== undefined);
+    // `category_name` is a read-only projection from the product_families LEFT JOIN,
+    // not a real column on `products`. Never let it reach the UPDATE statement.
+    const normalizedEntries = Object.entries(updates).filter(
+      ([key, value]) => value !== undefined && key !== 'category_name'
+    );
     if (normalizedEntries.length === 0) {
       const row = db.prepare('SELECT * FROM products WHERE id = ? LIMIT 1').get(productId);
       return row as LocalProduct | undefined;

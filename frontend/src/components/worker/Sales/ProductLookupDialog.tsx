@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { resolveFamilyName } from '@/lib/familyName';
 import { Product } from '@/types';
 import { useProductSearch } from '@/hooks/useProductSearch';
 import { useTranslation } from 'react-i18next';
@@ -37,7 +38,7 @@ export function ProductLookupDialog({
   initialSearch
 }: ProductLookupDialogProps) {
   const { t, i18n } = useTranslation();
-  const { stores } = useMasterDataStore();
+  const { stores, families } = useMasterDataStore();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const selectedRowRef = useRef<HTMLDivElement>(null);
   const { search, setSearch, results = [], isLoading, refetch } = useProductSearch(storeId, open);
@@ -191,7 +192,7 @@ export function ProductLookupDialog({
                     <div className="font-bold uppercase truncate">{product.name}</div>
                     <div className="text-center text-[10px] opacity-60">{product.sku || '—'}</div>
                     <div className="text-center text-[10px] font-black uppercase tracking-tighter opacity-60 truncate">
-                        {product.category_id || '—'}
+                        {resolveFamilyName(product, families)}
                     </div>
                     <div className="text-center text-[10px] font-bold uppercase truncate opacity-60">
                         {getStoreName(product.store_id)}

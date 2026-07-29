@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { resolveFamilyName } from '@/lib/familyName';
 import { usePurchasingStore } from '@/stores/usePurchasingStore';
 import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
@@ -362,7 +363,7 @@ export function CommandeAutoModule({ storeId }: CommandeAutoModuleProps) {
                   </TableHeader>
                   <TableBody>
                     {lowStockOnly.map(product => {
-                      const categoryName = categories.find(c => c.id === product.category || c.name === product.category)?.name || product.category;
+                      const categoryName = resolveFamilyName(product as any, categories, '');
                       return (
                       <TableRow key={product.id} className="h-10">
                         <TableCell className="p-2">

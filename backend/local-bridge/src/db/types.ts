@@ -83,6 +83,8 @@ export interface LocalProduct {
   low_stock_threshold?: number;
   quantity?: number;
   category?: string | null;
+  /** Resolved from product_families.name via LEFT JOIN on products.category (which is an FK to product_families.id). Read-only, never persisted. */
+  category_name?: string | null;
   image_url?: string | null;
   aisle?: string | null;
   brand?: string | null;

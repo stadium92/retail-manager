@@ -76,6 +76,7 @@ export default function StrategicPOS() {
               quantity: item.quantity,
               low_stock_threshold: item.min_quantity || undefined,
               category_id: item.category || undefined,
+              category_name: (item as any).category_name ?? null,
               store_id: item.store_id,
               image_url: item.image_url || undefined,
               created_at: item.created_at,

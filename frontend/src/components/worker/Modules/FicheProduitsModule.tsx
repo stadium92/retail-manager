@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { resolveFamilyName } from '@/lib/familyName';
 import { getDataClient } from '@/lib/dataClient';
 import { OfflineAuthService } from '@/services/OfflineAuthService';
 import { OfflineInventoryService } from '@/services/OfflineInventoryService';
@@ -60,6 +61,7 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
           current_stock: item.quantity,
           unit_type: item.unit_type || 'Pièce',
           family_id: item.category_id,
+          category_name: (item as any).category_name ?? null,
           brand: item.brand || '',
           packaging: item.packaging || '',
           aisle: item.aisle || '',
@@ -211,7 +213,7 @@ export function FicheProduitsModule({ storeId }: FicheProduitsModuleProps) {
                   </div>
                   <div className="space-y-1">
                     <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">{t('inventory.fields.category')}</Label>
-                    <div className="font-semibold text-lg">{currentProduct.family_id || t('common.unknown')}</div>
+                    <div className="font-semibold text-lg">{resolveFamilyName(currentProduct as any, undefined, t('common.unknown'))}</div>
                   </div>
                </div>
             </div>

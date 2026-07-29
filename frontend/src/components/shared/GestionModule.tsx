@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { resolveFamilyName } from '@/lib/familyName';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -330,7 +331,7 @@ if (e.detail?.type !== 'sales' && e.detail?.type !== 'sale' && e.detail?.type !=
     sales.forEach(sale => {
 const items = (sale.items?.length ? sale.items : (sale.sale_items?.length ? sale.sale_items : []));
             items.forEach((item: any) => {
-              const cat = item.category_name || item.category || t('common.other');
+              const cat = resolveFamilyName(item, undefined, t('common.other'));
               categories[cat] = (categories[cat] || 0) + (item.total || item.lineTotal || 0);
       });
     });
