@@ -12,6 +12,8 @@ export class LocalBridgeSyncService {
   private static currentStoreId: string | null = null;
   private static pushIntervalId: ReturnType<typeof setInterval> | null = null;
   private static healthIntervalId: ReturnType<typeof setInterval> | null = null;
+  // Flush the moment connectivity returns - see the comment in start().
+  private static onlineHandler: (() => void) | null = null;
 
   // Diagnostics & Health State
   private static currentHealth: NetworkHealthStatus = 'ONLINE';
@@ -80,6 +82,16 @@ export class LocalBridgeSyncService {
       void this.checkNetworkHealth();
     }, HEALTH_INTERVAL_MS);
 
+    // Connectivity coming back is the single best moment to flush - it is
+    // exactly when a backlog accumulated offline can finally move, and waiting
+    // out the rest of the interval keeps the queue stale for no reason.
+    this.onlineHandler = () => {
+      if (!this.running || !this.currentStoreId) return;
+      console.log('[LocalBridgeSyncService] Back online - flushing pending mutations.');
+      void this.pushPendingMutations(this.currentStoreId);
+    };
+    window.addEventListener('online', this.onlineHandler);
+
     // Setup Server-Sent Events (SSE) listener
     const dataClient = getDataClient();
     try {
@@ -122,6 +134,11 @@ export class LocalBridgeSyncService {
   static stop(): void {
     if (!this.running) return;
     this.running = false;
+
+    if (this.onlineHandler) {
+      window.removeEventListener('online', this.onlineHandler);
+      this.onlineHandler = null;
+    }
 
     if (this.eventSource) {
       this.eventSource.close();

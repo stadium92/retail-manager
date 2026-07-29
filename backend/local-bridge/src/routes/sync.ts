@@ -234,8 +234,38 @@ export async function registerSyncRoutes(app: FastifyInstance) {
     // those repositories were written, but until this fix nothing ever read
     // it back out - it was a dead letter queue. This loop is what actually
     // makes that data reach Supabase. ---
-    const outboxBatch = db.listPendingOutboxAll(MAX_OUTBOX_PUSH_PER_CALL);
+    // Drain in repeated batches under a wall-clock budget rather than stopping
+    // dead at one batch. A real install was found holding 3,919 entries going
+    // back five months (the push endpoint used to 403 every caller, so the
+    // queue only ever grew). At one 300-entry batch per launch that backlog
+    // needs ~13 restarts before the phone/cloud shows current data, which in
+    // practice means it never catches up. Looping until the queue is empty or
+    // the budget expires clears it in a launch or two, while the budget still
+    // protects against a single request running for minutes.
+    const OUTBOX_DRAIN_BUDGET_MS = 60_000;
+    const drainStartedAt = Date.now();
+    let outboxBatch = db.listPendingOutboxAll(MAX_OUTBOX_PUSH_PER_CALL);
+
+    // A retried entry stays status='pending' (see incrementOutboxRetry), so
+    // re-selecting "pending" hands back the SAME rows the batch just failed on.
+    // An earlier comment here claimed that could not happen - it was wrong, and
+    // the consequence is severe: one brief connectivity drop mid-drain would
+    // fail the head of the queue, immediately re-select it, and burn all
+    // MAX_OUTBOX_RETRIES attempts within a single request, parking up to 300
+    // real sales as permanently 'failed' in a few seconds. Recovering them then
+    // needs manual intervention.
+    //
+    // Two guards: never look at the same entry twice in one call, and stop
+    // entirely once a whole batch produced no successes - if nothing is getting
+    // through, the far end is down and continuing only destroys retry budget
+    // that a later, healthier call would have used.
+    const attemptedThisCall = new Set<string>();
+
+    while (outboxBatch.length > 0) {
+    const pushedBeforeBatch = pushed;
     for (const entry of outboxBatch) {
+      if (attemptedThisCall.has(entry.id)) continue;
+      attemptedThisCall.add(entry.id);
       const table = getSupabaseTableForEntity(entry.entity_type);
       if (!table) {
         // Unknown entity_type - nothing we can map it to. Don't retry.
@@ -290,6 +320,29 @@ export async function registerSyncRoutes(app: FastifyInstance) {
         } else {
           db.incrementOutboxRetry(entry.id, message.slice(0, 2000));
         }
+      }
+    }
+
+      if (Date.now() - drainStartedAt > OUTBOX_DRAIN_BUDGET_MS) {
+        // Out of time for this request - whatever is left stays pending and
+        // the next push picks it up. Never an error, just a partial drain.
+        break;
+      }
+      if (pushed === pushedBeforeBatch) {
+        // A full batch with zero successes means the far end is unreachable or
+        // rejecting everything. Keep going and we would simply walk the queue
+        // exhausting each entry's retry budget against a server that is down.
+        // Stop; the entries stay pending and a later call retries them intact.
+        break;
+      }
+      // Re-select excludes acked/failed rows, but NOT rows that were retried
+      // (those stay pending by design) - attemptedThisCall is what stops those
+      // being re-processed inside this same request.
+      outboxBatch = db.listPendingOutboxAll(MAX_OUTBOX_PUSH_PER_CALL);
+      if (outboxBatch.every((e) => attemptedThisCall.has(e.id))) {
+        // Everything the query can still return has already been tried this
+        // call - nothing further to do without re-attacking the same rows.
+        break;
       }
     }
 
