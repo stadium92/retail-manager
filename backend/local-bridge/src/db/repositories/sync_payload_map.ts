@@ -62,7 +62,22 @@ const PAYLOAD_BUILDERS: Record<string, PayloadBuilder> = {
       'id', 'store_id', 'customer_name', 'customer_phone', 'sale_type',
       'total_price', 'discount', 'tax', 'payment_method', 'payment_status',
       'notes', 'invoice_number', 'created_at', 'updated_at',
+      // amount_paid was dropped, and it is the credit ledger. Supabase's
+      // sales.amount_paid exists (NUMERIC, verified against the live schema)
+      // and the outbox payload already carried the value - it was simply not
+      // in this list. Consequence on a real shop: 527 of 615 sales carry a
+      // non-zero amount_paid locally, so 3 065 500 FCFA of outstanding
+      // customer credit read as 0 in the cloud, and every "Restant" on the
+      // phone showed the full invoice as still owed.
+      'amount_paid',
     ]),
+    // sale_date is NOT NULL with DEFAULT now() in Supabase and was never sent,
+    // so every synced sale was stamped with the moment it happened to sync
+    // rather than when it was made. Draining a five-month backlog therefore
+    // dated all of it to today, and sale_date is the column the cloud reports
+    // index on - so every web/mobile revenue chart was fiction. Anchor it to
+    // the row's real creation time.
+    sale_date: raw.created_at ?? undefined,
     // worker_id / client_id intentionally omitted: worker_id references
     // auth.users (local worker ids never exist there); client_id has no
     // matching column in Supabase's sales table.
@@ -107,13 +122,22 @@ const PAYLOAD_BUILDERS: Record<string, PayloadBuilder> = {
       'unit_price', 'wholesale_price', 'cost_price', 'quantity',
       'min_quantity', 'image_url', 'expiry_date', 'created_at', 'updated_at',
     ]),
-    // category omitted defensively: Supabase's products.category is a FK to
-    // product_families(id), and local product_families rows are not
-    // currently synced at all, so forwarding it risks an FK failure on
-    // every categorized product. Fine-grained price tiers / aisle / brand /
-    // packaging / low_stock_threshold / reorder_quantity / created_by /
-    // updated_by are local-only extensions with no Supabase column.
-    category: null,
+    // category IS forwarded. The previous comment here claimed Supabase's
+    // products.category is an FK to product_families(id) and nulled it
+    // "defensively" - that premise is false. Checked against the live
+    // PostgREST schema: products.category is plain `text` with no foreign-key
+    // annotation, while products.store_id in the same table carries an
+    // explicit "This is a Foreign Key to stores.id" note. So nothing would
+    // ever have failed, and 776 of 777 products had their family erased in
+    // the cloud for no reason - worse, because the outbox replays snapshots
+    // with an upsert, a category fixed by hand on the web dashboard was
+    // re-nulled on the next drain.
+    //
+    // Fine-grained price tiers / aisle / brand / packaging /
+    // low_stock_threshold / reorder_quantity / created_by / updated_by remain
+    // dropped - those genuinely have no Supabase column and need a migration,
+    // not a payload change.
+    ...pick(raw, ['category']),
   }),
 
   supplier: (raw) => pick(raw, [
