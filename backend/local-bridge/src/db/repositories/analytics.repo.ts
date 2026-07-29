@@ -16,6 +16,59 @@ import Database from 'better-sqlite3';
 const EXCLUDE_NON_SALES = `AND sale_type != 'proforma' AND deleted_at IS NULL`;
 const EXCLUDE_NON_SALES_S = `AND s.sale_type != 'proforma' AND s.deleted_at IS NULL`;
 
+// How many times a product's own retail price a wholesale/resale tier may reach
+// before we stop believing it was typed on purpose.
+//
+// A tier price is a DISCOUNT off retail, so the honest range is at or below 1x.
+// Measured over the 687 priced in-stock rows of a real client database, the
+// ratio tier/retail is: min 0.067, p25 0.688, median 0.750, p90 0.900,
+// p95 0.920 - and then 8 rows above 1.0. Those 8 are not "expensive products",
+// they are a single missing zero in unit_price: Boumer-TTD-2810 is stored with
+// cost 55 000 and retail 6 000 but tiers 57 500 / 56 000 / 56 000, which is the
+// normal descending ladder against a true retail of 60 000. Their tier prices
+// are the CORRECT figures and must be kept, which is why the bound cannot sit
+// at 1x, or anywhere at or below the ~9.3x such a dropped digit produces.
+//
+// Above that cluster the distribution is empty for three orders of magnitude
+// until a lone row - "ventilateur noir 2pcs", retail 15 000, selling_price_3
+// 115 001 010 - at 7 667x. Fifteen units of it contributed 1.7 BILLION CFA, 98%
+// of the wholesale total, which is the whole reason this screen read 44x higher
+// for wholesale than for retail.
+//
+// 20x is picked inside that empty gap: a little over 2x above the largest ratio
+// a single dropped digit can create (so a legitimate ladder never trips it),
+// and far enough below 100x that a two-digit fat-finger is still caught rather
+// than quietly summed. Anything from ~10x to ~1000x yields identical totals on
+// the real data, so the exact figure is not load-bearing - the margin is.
+const SUSPICIOUS_TIER_RATIO = 20;
+
+const exceedsTierBound = (col: string) =>
+  `COALESCE(${col}, 0) > COALESCE(unit_price, 0) * ${SUSPICIOUS_TIER_RATIO}`;
+
+// The value of `col`, or NULL when it is absent, zero, or implausible. NULL is
+// deliberate: it lets the existing COALESCE chain fall through to the next
+// candidate exactly as it does for a tier that was never filled in. The product
+// keeps contributing to the total at the best price we still trust - it is
+// never dropped from the valuation, which would understate it instead.
+const plausibleTier = (col: string) => `
+            CASE
+              WHEN COALESCE(unit_price, 0) > 0 AND ${exceedsTierBound(col)} THEN NULL
+              ELSE NULLIF(${col}, 0)
+            END`;
+
+// Only the tiers that actually feed total_wholesale / total_resale are counted
+// as suspicious. selling_price_2 has outliers too, but flagging a price that
+// changes nothing on this screen would be noise the owner cannot act on.
+// unit_price > 0 is required because with no retail reference there is nothing
+// to judge a tier against, and a guess would be worse than trusting the data.
+const SUSPICIOUS_TIER_ROW = `(
+      COALESCE(unit_price, 0) > 0 AND (
+        ${['selling_price_3', 'selling_price_4', 'wholesale_price_ttc', 'wholesale_price']
+          .map(exceedsTierBound)
+          .join('\n        OR ')}
+      )
+    )`;
+
 export const createAnalyticsRepo = (db: Database.Database) => ({
   getDailyRevenue(storeId: string, from?: string, to?: string): number {
     let sql = `
@@ -124,6 +177,14 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
     total_wholesale: number;
     total_resale: number;
     item_count: number;
+    suspicious_count: number;
+    suspicious_items: {
+      id: string;
+      name: string;
+      quantity: number;
+      unit_price: number;
+      suspect_price: number;
+    }[];
   } {
     console.log('[DB] Calculating Stock Valuation for store:', storeId || 'ALL');
     // total_wholesale and total_resale were never selected here, but
@@ -140,24 +201,34 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
     // COALESCE to unit_price means a product with no wholesale tier
     // contributes its retail price rather than silently counting as 0 and
     // understating the total.
+    //
+    // plausibleTier() then wraps each candidate so that a mistyped tier is
+    // skipped like a missing one instead of being trusted (see
+    // SUSPICIOUS_TIER_RATIO). Note this runs per CANDIDATE, not per row: the
+    // "ventilateur noir 2pcs" row whose selling_price_3 is 115 001 010 still
+    // carries a real wholesale_price_ttc of 10 500, so it falls through to that
+    // rather than all the way to retail. The rejected rows are counted and
+    // listed back to the caller - a number this large must be visible and
+    // fixable, not silently swallowed.
     const sql = `
         SELECT
           SUM(CAST(COALESCE(quantity, 0) AS REAL) * CAST(COALESCE(cost_price, 0) AS REAL)) as total_cost,
           SUM(CAST(COALESCE(quantity, 0) AS REAL) * CAST(COALESCE(unit_price, 0) AS REAL)) as total_retail,
           SUM(CAST(COALESCE(quantity, 0) AS REAL) * CAST(COALESCE(
-            NULLIF(selling_price_3, 0),
-            NULLIF(wholesale_price_ttc, 0),
-            NULLIF(wholesale_price, 0),
+            ${plausibleTier('selling_price_3')},
+            ${plausibleTier('wholesale_price_ttc')},
+            ${plausibleTier('wholesale_price')},
             unit_price,
             0
           ) AS REAL)) as total_wholesale,
           SUM(CAST(COALESCE(quantity, 0) AS REAL) * CAST(COALESCE(
-            NULLIF(selling_price_4, 0),
-            NULLIF(selling_price_3, 0),
+            ${plausibleTier('selling_price_4')},
+            ${plausibleTier('selling_price_3')},
             unit_price,
             0
           ) AS REAL)) as total_resale,
-          COUNT(*) as item_count
+          COUNT(*) as item_count,
+          SUM(CASE WHEN ${SUSPICIOUS_TIER_ROW} THEN 1 ELSE 0 END) as suspicious_count
         FROM products
         WHERE (? = '' OR store_id = ?) AND quantity > 0
     `;
@@ -173,12 +244,47 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
       return Number.isFinite(n) ? n : 0;
     };
 
+    // The offenders themselves, worst first, so the warning on the stock screen
+    // can name the products to correct instead of just stating a count. Ordered
+    // by the damage the bad price would have done (quantity x the offending
+    // amount) and capped, because the banner is a to-do list, not a report -
+    // suspicious_count above still carries the true total.
+    const suspiciousRows = db
+      .prepare(
+        `
+        SELECT
+          id,
+          name,
+          COALESCE(quantity, 0) as quantity,
+          COALESCE(unit_price, 0) as unit_price,
+          max(
+            COALESCE(selling_price_3, 0),
+            COALESCE(selling_price_4, 0),
+            COALESCE(wholesale_price_ttc, 0),
+            COALESCE(wholesale_price, 0)
+          ) as suspect_price
+        FROM products
+        WHERE (? = '' OR store_id = ?) AND quantity > 0 AND ${SUSPICIOUS_TIER_ROW}
+        ORDER BY COALESCE(quantity, 0) * suspect_price DESC
+        LIMIT 20
+    `
+      )
+      .all(storeId || '', storeId || '') as any[];
+
     return {
       total_cost: num(row?.total_cost),
       total_retail: num(row?.total_retail),
       total_wholesale: num(row?.total_wholesale),
       total_resale: num(row?.total_resale),
       item_count: num(row?.item_count),
+      suspicious_count: num(row?.suspicious_count),
+      suspicious_items: suspiciousRows.map((r) => ({
+        id: String(r.id),
+        name: String(r.name ?? ''),
+        quantity: num(r.quantity),
+        unit_price: num(r.unit_price),
+        suspect_price: num(r.suspect_price),
+      })),
     };
   },
 
