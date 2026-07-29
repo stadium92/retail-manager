@@ -1,4 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+/* Djati brand colour system. Additive; the remap it contains is inert until
+   <html data-djati> is set. See the header of that file. */
+@import './styles/djati-palette.css';
 
 @tailwind base;
 @tailwind components;
