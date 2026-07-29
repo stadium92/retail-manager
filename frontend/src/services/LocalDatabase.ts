@@ -102,7 +102,10 @@ export interface LocalInventory {
   selling_price_3?: number;
   selling_price_4?: number;
   cost?: number;
+  /** FK to product_families.id — a UUID, never display it directly. */
   category?: string;
+  /** Cached human-readable family name (from the backend join) so offline reads can display a name. */
+  category_name?: string | null;
   aisle?: string;
   brand?: string;
   unit_type?: string;

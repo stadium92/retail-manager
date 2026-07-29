@@ -159,6 +159,7 @@ export const usePOSStore = create<POSState>()(
           sku: product.sku,
           barcode: product.barcode,
           category: product.category || product.category_id,
+          category_name: product.category_name ?? null,
           unit_price: product.unit_price ?? product.price ?? 0,
           wholesale_price: product.wholesale_price,
           // The tier columns must survive normalization or the gros-price

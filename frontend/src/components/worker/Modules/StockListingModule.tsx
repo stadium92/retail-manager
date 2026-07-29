@@ -66,6 +66,7 @@ export function StockListingModule({ storeId }: StockListingModuleProps) {
           packaging: item.packaging || '1',
           unit_type: item.unit_type || 'Piece',
           category: item.category_id || '',
+          category_name: (item as any).category_name ?? null,
           image_url: item.image_url,
           created_at: item.created_at || '',
           updated_at: item.updated_at || '',

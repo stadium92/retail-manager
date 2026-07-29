@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { resolveFamilyName } from '@/lib/familyName';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -408,7 +409,10 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
       reorder_quantity: isBox ? (p.current_stock / packSize) : p.current_stock,
       min_stock_alert: isBox ? ((p.min_stock_alert || 0) / packSize) : (p.min_stock_alert || 0),
       unit_type: p.unit_type || 'Pièce',
-      family_id: p.family_id || '', brand: p.brand || '', aisle: p.aisle || '',
+      // Seed the datalist with the human-readable family NAME (save-time reconciliation at
+      // handleSave accepts either id or name). Falls back to the raw id rather than '' so a
+      // failed lookup can never silently clear the product's family on save.
+      family_id: resolveFamilyName(p as any, families, p.family_id || ''), brand: p.brand || '', aisle: p.aisle || '',
       packaging: p.packaging || '1',
       expiry_date: p.expiry_date || '', image_url: p.image_url || '',
     });
@@ -439,7 +443,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
         selling_price_ht: product.wholesale_price_ht || 0,
         selling_price_ttc: product.wholesale_price_ttc || 0,
         unit_type: product.unit_type || 'Pièce',
-        family_id: product.category_id || '',
+        family_id: resolveFamilyName(product as any, families, product.category_id || ''),
         packaging: product.packaging || '1',
     };
 
