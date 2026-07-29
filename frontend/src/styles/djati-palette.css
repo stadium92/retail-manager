@@ -1,0 +1,308 @@
+/* =============================================================================
+   DJATI — BRAND COLOUR SYSTEM
+   Derived from public/logo.png. Proposal layer: additive and INERT by default.
+   -----------------------------------------------------------------------------
+   HOW THIS FILE IS SAFE TO MERGE
+   1. The `--djati-*` / `--module-*` tokens below are a NEW namespace. They
+      collide with nothing and change nothing on their own.
+   2. The remap block at the bottom rewires the existing shadcn tokens
+      (--background, --primary, --card, ...) onto the Djati tokens, but it is
+      scoped to `:root[data-djati]`. Until someone adds `data-djati` to the
+      <html> element, this file has ZERO visual effect.
+
+   TO PREVIEW THE WHOLE APP IN THE NEW SYSTEM
+      index.html:  <html lang="fr" data-djati>
+      or in devtools:  document.documentElement.dataset.djati = ''
+   TO REVERT
+      remove that one attribute.
+
+   Every value below was checked against WCAG 2.1 with a computed contrast
+   ratio; the number in each comment is the measured ratio against the WORST
+   surface it is allowed to sit on. Nothing here was eyeballed.
+   ========================================================================== */
+
+:root {
+  /* ---------------------------------------------------------------------
+     0. BRAND INK — the literal colours sampled out of logo.png.
+     These are the source of truth for print, the splash screen, the app
+     icon and the PDF ticket header. They are DELIBERATELY NOT used for UI
+     text: several of them fail AA on our surfaces. The UI ramps in
+     sections 2-4 keep their hue and move only lightness/saturation.
+     --------------------------------------------------------------------- */
+  --brand-gold:       39 50% 57%;   /* #C8A259  the D, the frame, the field  */
+  --brand-terracotta: 14 55% 46%;   /* #B45335  the chevron blocks           */
+  --brand-navy:       217 46% 25%;  /* #22385B  the swoosh                   */
+  --brand-cobalt:     229 54% 34%;  /* #283A87  the lower $                  */
+  --brand-brown:      18 41% 19%;   /* #43281C  the upper $ / outline        */
+  --brand-brown-mid:  28 42% 35%;   /* #805734  the hairline ring            */
+  --brand-cream:      45 47% 93%;   /* #F6F2E6  the card                     */
+
+  /* ---------------------------------------------------------------------
+     1. SURFACE RAMP — LIGHT. Cream-tinted, not blue-grey. Steps are ~3-4%
+     lightness apart: enough to separate a card from its page under bad
+     fluorescent light, not so much that a dense table looks striped.
+     --------------------------------------------------------------------- */
+  --djati-bg:             45 30% 97%;  /* #FAF8F5 */
+  --djati-surface:         0  0% 100%; /* #FFFFFF  cards, table body        */
+  --djati-surface-2:      44 24% 94%;  /* #F3F1EC  table header, toolbars   */
+  --djati-surface-3:      42 20% 90%;  /* #EBE8E0  pressed / nested         */
+  --djati-border:         40 16% 85%;  /* #DFDBD3  hairlines, dividers      */
+  --djati-border-strong:  36 14% 52%;  /* #968873  3.46:1 on white — this is
+                                          the ONLY border allowed to carry
+                                          meaning (focus, input outline).   */
+
+  /* 2. TEXT RAMP — LIGHT. Three steps, all AA on every surface above.
+        There is no fourth, lighter step on purpose: cheap panels under shop
+        lighting eat it. If text is too unimportant for --fg-subtle, it is
+        too unimportant to render. */
+  --djati-fg:        24 28% 12%;  /* #271D16  16.49:1 on surface  */
+  --djati-fg-muted:  30 10% 36%;  /* #655C53   6.54:1 on surface  */
+  --djati-fg-subtle: 30  8% 42%;  /* #746B63   5.22:1 on surface  */
+
+  /* 3. ACCENT FAMILIES — LIGHT.
+        Only three families exist. See the ledger rule in section 5.
+        Each is AA (>=4.5:1) as TEXT on bg / surface / surface-2, and white
+        is AA on it as a fill. So one token covers both roles. */
+  --djati-gold:         38 62% 33%;  /* #886220  4.88:1 worst surface  */
+  --djati-gold-muted:   36 32% 38%;  /* #806742  4.73:1               */
+  --djati-cobalt:      222 58% 34%;  /* #244389  8.31:1               */
+  --djati-cobalt-muted:214 26% 36%;  /* #445974  6.36:1               */
+  --djati-clay:         28 18% 37%;  /* #6F5D4D  5.56:1               */
+
+  /* 4. RESERVED SEMANTICS — LIGHT.
+        These four values MAY NOT be used decoratively, ever. If a colour
+        here appears on screen it is a claim about state: this succeeded,
+        this needs attention, this is broken. There is no `info` colour —
+        see the note in section 6. */
+  --djati-success: 152 58% 26%;  /* #1C6945  5.90:1 worst surface */
+  --djati-warning:  24 90% 35%;  /* #AA4909  5.07:1               */
+  --djati-danger:  357 66% 41%;  /* #AE242A  6.03:1               */
+  --djati-on-fill:   0  0% 100%; /* text/icon colour on any solid accent */
+
+  /* Chart categoricals — the one place terracotta is allowed back in,
+     because a chart has a legend and no implied semantics. */
+  --djati-chart-1:  38 62% 33%;
+  --djati-chart-2: 222 58% 34%;
+  --djati-chart-3:  14 60% 40%;
+  --djati-chart-4:  28 18% 37%;
+  --djati-chart-5: 214 26% 36%;
+}
+
+.dark {
+  /* 1. SURFACE RAMP — DARK. Warm charcoal (hue 30, 8-12% sat), pulled from
+        the logo's brown outline. Deliberately NOT the indigo-navy of the old
+        theme: a blue-black background makes the cobalt supply-side accent
+        disappear into it. */
+  --djati-bg:            30 12%  7%;  /* #141210 */
+  --djati-surface:       30 10% 11%;  /* #1F1C19 */
+  --djati-surface-2:     30  9% 15%;  /* #2A2623 */
+  --djati-surface-3:     30  8% 19%;  /* #34302D */
+  --djati-border:        30  8% 24%;  /* #423D38 */
+  --djati-border-strong: 30  8% 46%;  /* #7F756C  3.77:1 on surface */
+
+  /* 2. TEXT RAMP — DARK */
+  --djati-fg:        40 25% 96%;  /* #F7F6F2  15.68:1 on surface */
+  --djati-fg-muted:  38 12% 72%;  /* #C0BAAF   8.79:1           */
+  --djati-fg-subtle: 36 10% 58%;  /* #9F9689   5.81:1           */
+
+  /* 3. ACCENT FAMILIES — DARK */
+  --djati-gold:         44 60% 60%;  /* #D6B65C  7.65:1 worst surface */
+  --djati-gold-muted:   42 34% 62%;  /* #BFAB7D  6.67:1              */
+  --djati-cobalt:      220 62% 64%;  /* #6A90DC  4.74:1              */
+  --djati-cobalt-muted:212 30% 66%;  /* #8EA7C2  6.04:1              */
+  --djati-clay:         30 16% 62%;  /* #AE9E8F  5.78:1              */
+
+  /* 4. RESERVED SEMANTICS — DARK */
+  --djati-success: 150 42% 52%;  /* #51B885  6.10:1 worst surface */
+  --djati-warning:  25 90% 57%;  /* #F4812F  5.73:1              */
+  --djati-danger:  357 74% 67%;  /* #E96D73  4.93:1              */
+  --djati-on-fill:  30 12%  7%;  /* ink, not white: white on gold is 1.86:1 */
+
+  --djati-chart-1:  44 60% 60%;
+  --djati-chart-2: 220 62% 64%;
+  --djati-chart-3:  14 68% 62%;
+  --djati-chart-4:  30 16% 62%;
+  --djati-chart-5: 212 30% 66%;
+}
+
+/* =============================================================================
+   5. MODULE ACCENTS — THE LEDGER RULE
+   -----------------------------------------------------------------------------
+   A module's accent is not a decoration, it is an answer to one question:
+
+        WHICH SIDE OF THE LEDGER IS THE USER STANDING ON?
+
+     GOLD    sell side. Money arriving. Customer-facing. The cash path:
+             quote -> sale -> invoice -> delivery -> payment received.
+     COBALT  supply side. Money and goods leaving or being held. The cost
+             path: order -> reception -> stock -> supplier settlement.
+     CLAY    reference data that serves BOTH sides and belongs to neither
+             (products, families, clients, suppliers, stores). Low chroma on
+             purpose: it must recede behind the two live paths.
+     NEUTRAL no accent at all. Two cases:
+             (a) modules that AGGREGATE other modules (dashboards, analyses,
+                 edition/printing) — if the frame is tinted, the tints of the
+                 data inside it stop meaning anything;
+             (b) modules that GOVERN the system (team, invitations, settings,
+                 program) — they are used monthly, not hourly, and do not
+                 deserve a share of the user's attention budget.
+
+   Within a side, pick the step by position in the flow:
+     FULL   the module a cashier is inside during a transaction.
+     MUTED  a supporting or periodic screen in the same domain.
+
+   Hues 350-20 (red) and 20-35 at high saturation (orange) are RESERVED for
+   --djati-danger and --djati-warning. No module may take them. That is the
+   reason the logo's terracotta appears in the UI only desaturated, as
+   --djati-clay: a full-chroma terracotta module accent would sit 16 degrees
+   from `danger`, and a red rail that sometimes means "purchases" and
+   sometimes means "this failed" is exactly the ambiguity we are removing.
+
+   ADDING A FUTURE MODULE: answer the ledger question, pick the step, done.
+   If the honest answer is "it aggregates or governs", it gets no colour.
+   ========================================================================== */
+:root, .dark {
+  /* ---- sell side ---------------------------------------------------- */
+  --module-ventes:       var(--djati-gold);          /* the till itself     */
+  --module-caisse:       var(--djati-gold);          /* same money, same colour */
+  --module-facturation:  var(--djati-gold);
+  --module-livraisons:   var(--djati-gold-muted);    /* downstream of a sale */
+  --module-livreurs:     var(--djati-gold-muted);    /* roster serving it    */
+
+  /* ---- supply side -------------------------------------------------- */
+  --module-achats:       var(--djati-cobalt);        /* money leaving       */
+  --module-stock:        var(--djati-cobalt);        /* goods held          */
+  --module-inventaire:   var(--djati-cobalt);
+  --module-fournisseurs: var(--djati-cobalt-muted);  /* periodic settlement */
+
+  /* ---- reference data, serves both ---------------------------------- */
+  --module-fichiers:     var(--djati-clay);
+  --module-magasins:     var(--djati-clay);
+  --module-clients:      var(--djati-clay);
+
+  /* ---- no accent: aggregates or governs ------------------------------ */
+  --module-dashboard:    var(--djati-fg-muted);
+  --module-analyses:     var(--djati-fg-muted);
+  --module-edition:      var(--djati-fg-muted);
+  --module-gestion:      var(--djati-fg-muted);
+  --module-equipe:       var(--djati-fg-muted);
+  --module-invitations:  var(--djati-fg-muted);
+  --module-programme:    var(--djati-fg-muted);
+  --module-systeme:      var(--djati-fg-muted);
+}
+
+/* =============================================================================
+   6. USAGE RULES — what may be tinted, what must stay neutral
+   -----------------------------------------------------------------------------
+   MODULE ACCENTS may only appear as:
+     - a 3px left rail on a card or an active nav row
+     - an icon tint in the nav and in module headers
+     - the module title
+     - the focus ring inside that module
+   Module accents MAY NOT appear as: a filled button, a filled table header,
+   a filled badge, a row background, a chart series, or a border on all four
+   sides. Restricting accents to RAILS AND INK, and semantics to FILLS AND
+   BADGES, is what keeps gold (module: Ventes) readable apart from warning
+   (state: attention) despite their 19 degrees of hue separation. Form does
+   the disambiguation that hue alone cannot.
+
+   SEMANTICS may only appear when attached to a shape and, wherever it fits,
+   a word or an icon — a filled badge, a status dot, a stock bar. Never a
+   bare coloured border, because a bare colour is unreadable to the ~4% of
+   male users here with a red-green deficiency, and unreadable to everyone
+   on a washed-out panel.
+
+   MUST STAY NEUTRAL, ALWAYS:
+     - table headers  (--djati-surface-2 + --djati-fg-muted, never a fill)
+     - table body rows, except selection (--djati-surface-3) and real state
+     - dialog chrome, toolbars, tab bars
+     - money figures. A number is not good or bad. Only a computed judgement
+       about it (margin sign, over/under budget) may take a semantic colour,
+       and then the colour goes on the badge, not the number.
+     - disabled controls (opacity only, never a colour change)
+
+   NO `info` COLOUR EXISTS. An app whose entire supply side is already blue
+   cannot afford a blue that means "note". Informational callouts get
+   --djati-surface-2, a --djati-border-strong hairline and an icon. This is a
+   deliberate removal, not an omission.
+   ========================================================================== */
+
+/* =============================================================================
+   7. REMAP — inert until <html data-djati>
+   Rewires the existing shadcn/RS token names so every component that already
+   uses semantic tokens inherits the brand with no component edits.
+   ========================================================================== */
+:root[data-djati] {
+  --background: var(--djati-bg);
+  --foreground: var(--djati-fg);
+  --card: var(--djati-surface);
+  --card-foreground: var(--djati-fg);
+  --popover: var(--djati-surface);
+  --popover-foreground: var(--djati-fg);
+
+  --primary: var(--djati-gold);
+  --primary-foreground: var(--djati-on-fill);
+  --primary-hover: 38 62% 27%;
+  --primary-glow: var(--djati-gold);          /* glows are removed; kept flat */
+
+  --secondary: var(--djati-surface-2);
+  --secondary-foreground: var(--djati-fg);
+
+  --muted: var(--djati-surface-2);
+  --muted-foreground: var(--djati-fg-muted);
+
+  /* shadcn's `accent` is the hover/selected surface, not a brand colour.
+     The old theme had it as electric indigo, which is why every hover in the
+     app flashed a colour that meant nothing. */
+  --accent: var(--djati-surface-3);
+  --accent-foreground: var(--djati-fg);
+  --accent-glow: var(--djati-surface-3);
+
+  --destructive: var(--djati-danger);
+  --destructive-foreground: var(--djati-on-fill);
+  --success: var(--djati-success);
+  --success-foreground: var(--djati-on-fill);
+  --success-glow: var(--djati-success);
+  --warning: var(--djati-warning);
+  --warning-foreground: var(--djati-on-fill);
+  --warning-glow: var(--djati-warning);
+  --danger: var(--djati-danger);
+  --danger-foreground: var(--djati-on-fill);
+  --danger-glow: var(--djati-danger);
+
+  --stock-ok: var(--djati-success);
+  --stock-low: var(--djati-warning);
+  --stock-rupture: var(--djati-danger);
+
+  --border: var(--djati-border);
+  --input: var(--djati-border-strong);
+  --ring: var(--djati-gold);
+
+  --chart-1: var(--djati-chart-1);
+  --chart-2: var(--djati-chart-2);
+  --chart-3: var(--djati-chart-3);
+  --chart-4: var(--djati-chart-4);
+  --chart-5: var(--djati-chart-5);
+
+  --sidebar-background: var(--djati-surface);
+  --sidebar-foreground: var(--djati-fg-muted);
+  --sidebar-primary: var(--djati-gold);
+  --sidebar-primary-foreground: var(--djati-on-fill);
+  --sidebar-accent: var(--djati-surface-3);
+  --sidebar-accent-foreground: var(--djati-fg);
+  --sidebar-border: var(--djati-border);
+  --sidebar-ring: var(--djati-gold);
+
+  --rs-surface-container: var(--djati-surface-2);
+  --rs-surface-container-low: var(--djati-surface);
+  --rs-surface-container-high: var(--djati-surface-3);
+  --rs-surface-container-highest: var(--djati-border);
+  --rs-error-container: 357 40% 92%;
+  --rs-on-error-container: var(--djati-danger);
+}
+
+:root[data-djati].dark {
+  --primary-hover: 44 60% 68%;
+  --rs-error-container: 357 30% 16%;
+  --rs-on-error-container: var(--djati-danger);
+}
