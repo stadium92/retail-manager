@@ -467,8 +467,25 @@ export class OfflineAuthService {
           }
         }
 
-        // Intercept register closures
-        if (path.startsWith('/rest/v1/cash_register_closures')) {
+        // Intercept register closures.
+        //
+        // Both path spellings are matched deliberately. The desktop Fermeture
+        // de Caisse and MobileFicheCaisse post to /rest/v1/cash_closings,
+        // while only the legacy /rest/v1/cash_register_closures was
+        // intercepted here - so on the web build the mobile closing fell
+        // straight through to PostgREST, where the table does not exist
+        // (PGRST205, "Could not find the table 'public.cash_closings'"), and
+        // the cashier's end-of-day count was silently thrown away with a
+        // success toast. On the desktop it worked, because local-bridge does
+        // have that table, which is why this only ever bit on the phone.
+        //
+        // Matching it here routes the mobile path through the same
+        // try-cloud-then-persist-locally fallback below, so the count
+        // survives even though the Supabase table is still missing.
+        if (
+          path.startsWith('/rest/v1/cash_register_closures') ||
+          path.startsWith('/rest/v1/cash_closings')
+        ) {
           if (init.method === 'POST') {
             const body = JSON.parse(init.body as string);
             // getSession() reads the cached session (no network round-trip),
