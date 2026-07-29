@@ -135,10 +135,31 @@ export class SyncService {
           // delete instead of upserting, or a sale deleted while offline
           // would get resurrected in Supabase by the upsert below.
           if ((sale as any).deleted_at) {
-            const { error: delErr } = await supabase.from('sales').delete().eq('id', sale.id);
-            if (delErr) throw delErr;
-            await LocalDatabase.markSaleSynced(sale.id);
-            success++;
+            // DISABLED - this issued a real, irreversible DELETE against
+            // production Supabase driven purely by browser IndexedDB state.
+            //
+            // syncAll() is called from AuthContext's `online` handler, which
+            // fires on any connectivity blip, tab wake or network change - on
+            // the WEB build too, where IndexedDB is just a browser store that
+            // can be stale, belong to a different session, or predate changes
+            // made elsewhere. Observed live: three real sales disappeared from
+            // production within a twenty-minute window with no corresponding
+            // entry in the desktop's outbox, i.e. nothing on the till asked
+            // for them to be deleted.
+            //
+            // The asymmetry is what makes it unacceptable: an upsert that is
+            // wrong can be corrected by the next sync, but a delete is gone.
+            // Until deletes are driven by the same audited outbox the desktop
+            // uses - with a device id and a journal entry saying who asked and
+            // when - a browser cache must not be able to destroy a sale.
+            //
+            // Left un-synced deliberately: NOT marking it synced means the row
+            // stays flagged, so a proper delete path can pick it up later
+            // rather than the intent being silently discarded.
+            console.warn(
+              '[SyncService] Refusing to delete sale from Supabase based on local IndexedDB state:',
+              sale.id
+            );
             continue;
           }
 
