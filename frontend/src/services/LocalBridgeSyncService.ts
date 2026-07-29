@@ -7,6 +7,11 @@ export class LocalBridgeSyncService {
   private static running = false;
   private static eventSource: EventSource | null = null;
   private static currentStoreId: string | null = null;
+  // Periodic outbox flush - see the comment in start(). Without these the only
+  // push in the entire app was a single call at login.
+  private static pushTimer: ReturnType<typeof setInterval> | null = null;
+  private static onlineHandler: (() => void) | null = null;
+  private static readonly PUSH_INTERVAL_MS = 60_000;
 
   // Diagnostics & Health State
   private static currentHealth: NetworkHealthStatus = 'ONLINE';
@@ -57,6 +62,30 @@ export class LocalBridgeSyncService {
     void this.pushPendingMutations(storeId);
     void this.pullData(storeId);
 
+    // Keep pushing on a timer. This used to be the ONLY push in the whole app -
+    // one call, at login, and nothing else: no interval, no online listener, no
+    // retry. A sale made after login therefore sat in the outbox until the next
+    // time the app was restarted, and a backlog could only shrink by roughly one
+    // drain per launch. A real install reached 3 919 queued rows spanning five
+    // months that way, and its owner's dashboard showed nothing recent because
+    // the queue had only drained as far as March.
+    //
+    // A push with an empty queue is cheap (the route returns immediately), so
+    // running it periodically costs nothing when there is nothing to send.
+    this.pushTimer = setInterval(() => {
+      if (!this.running || !this.currentStoreId) return;
+      void this.pushPendingMutations(this.currentStoreId);
+    }, this.PUSH_INTERVAL_MS);
+
+    // Connectivity coming back is the single best moment to flush - it is
+    // exactly when a backlog accumulated offline can finally move.
+    this.onlineHandler = () => {
+      if (!this.running || !this.currentStoreId) return;
+      console.log('[LocalBridgeSyncService] Back online - flushing pending mutations.');
+      void this.pushPendingMutations(this.currentStoreId);
+    };
+    window.addEventListener('online', this.onlineHandler);
+
     // Setup Server-Sent Events (SSE) listener
     const dataClient = getDataClient();
     try {
@@ -99,6 +128,15 @@ export class LocalBridgeSyncService {
   static stop(): void {
     if (!this.running) return;
     this.running = false;
+
+    if (this.pushTimer) {
+      clearInterval(this.pushTimer);
+      this.pushTimer = null;
+    }
+    if (this.onlineHandler) {
+      window.removeEventListener('online', this.onlineHandler);
+      this.onlineHandler = null;
+    }
 
     if (this.eventSource) {
       this.eventSource.close();
