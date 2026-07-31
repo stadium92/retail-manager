@@ -75,10 +75,34 @@ const emergencyLog = (msg: string) => {
 const BACKUPS_TO_KEEP = 5;
 const backupDir = path.join(env.dataDir, 'backups');
 
+// Snapshot at most this often. The snapshot used to run on EVERY boot, which
+// copies the full database + WAL synchronously before the server can start -
+// on the cheap eMMC drives these POS terminals ship with, with Windows
+// Defender scanning each new copy, that put multiple seconds of dead disk
+// I/O in front of every single launch. Machines at a till get restarted many
+// times a day; one snapshot per half-day still leaves BACKUPS_TO_KEEP=5 sets
+// spanning ~2.5 days of history, which is what the backups exist for.
+const SNAPSHOT_MIN_INTERVAL_MS = 12 * 60 * 60 * 1000;
+
+const newestSnapshotAgeMs = (): number => {
+  try {
+    const times = fs
+      .readdirSync(backupDir)
+      .filter((f) => f.startsWith('localbridge-') && f.endsWith('.sqlite'))
+      .map((f) => fs.statSync(path.join(backupDir, f)).mtimeMs);
+    if (times.length === 0) return Infinity;
+    return Date.now() - Math.max(...times);
+  } catch {
+    return Infinity; // no backup dir yet, or unreadable - snapshot to be safe
+  }
+};
+
 const snapshotDatabase = () => {
   if (!fs.existsSync(dbPath)) return; // first ever run, nothing to protect yet
   try {
     if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+
+    if (newestSnapshotAgeMs() < SNAPSHOT_MIN_INTERVAL_MS) return;
 
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
     for (const suffix of ['', '-wal', '-shm']) {

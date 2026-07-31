@@ -40,7 +40,27 @@ import NotFound from "./pages/NotFound";
 import { TermsOfServiceGate } from "@/components/license/TermsOfServiceGate";
 import { DeviceProvider } from "@/contexts/DeviceContext";
 
-const queryClient = new QueryClient();
+// Bare `new QueryClient()` shipped React Query's defaults, which are tuned
+// for a cloud SaaS, not a till on weak hardware:
+//   - refetchOnWindowFocus: true  -> EVERY alt-tab back to the app refired
+//     every active query on screen (dashboard analytics, product lists,
+//     search results) over HTTP to the bridge. A cashier switches windows
+//     constantly, so the app was re-fetching the same data all day.
+//   - retry: 3 with exponential backoff -> any query against a dead endpoint
+//     hammered it 4x before failing, multiplying work exactly when the
+//     machine is already struggling.
+// Data freshness is not the frontend's job here anyway: the bridge pushes
+// SSE 'localDbDataUpdated' events on real changes and 29 components already
+// listen for them.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      staleTime: 30_000,
+      retry: 1,
+    },
+  },
+});
 
 const App = () => (
   <ErrorBoundary>

@@ -20,7 +20,14 @@
     <meta name="twitter:image" content="https://retail-manager-mobile.vercel.app/og-image.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Anybody:wght@700;800&family=Hanken+Grotesk:wght@400;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
+    <!-- media="print" + onload swap makes this stylesheet NON-blocking: the
+         page paints immediately with fallback fonts and upgrades if/when the
+         fetch succeeds. The previous plain rel="stylesheet" (plus a CSS
+         @import in index.css) blocked first paint until Google Fonts
+         responded - which on an offline till means blocked until the network
+         stack gave up, at every launch. JetBrains Mono was dropped from the
+         list: zero references anywhere in src/. -->
+    <link href="https://fonts.googleapis.com/css2?family=Anybody:wght@700;800&family=Hanken+Grotesk:wght@400;600&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'"/>
   </head>
 
   <body>

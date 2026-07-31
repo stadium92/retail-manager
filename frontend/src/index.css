@@ -1,4 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+/* Space Grotesk used to be pulled here via a CSS
+   @import url(https://fonts.googleapis.com/...). A CSS @import is
+   RENDER-BLOCKING: on a till with no internet, WebView2 sits on a blank
+   screen until the connection attempt times out - at every single launch -
+   and on slow internet it stalls first paint for however long the fetch
+   takes. That is a direct offline-first violation on an app whose whole
+   premise is working without a network. The font now loads through the
+   non-blocking <link> in index.html; every rule that names it already has a
+   local fallback, so offline machines simply render the fallback instantly. */
 /* Djati brand colour system. Additive; the remap it contains is inert until
    <html data-djati> is set. See the header of that file. */
 @import './styles/djati-palette.css';
