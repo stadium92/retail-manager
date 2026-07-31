@@ -49,3 +49,4 @@ backend/local-bridge/retail-manager-logs/
 frontend/test-results/
 frontend/playwright-report/
 frontend/blob-report/
+.e2e-prod-data/
