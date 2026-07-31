@@ -219,7 +219,27 @@ export class LocalBridgeSyncService {
         throw new Error(`Data pull failed: HTTP ${response.status}`);
       }
 
-      return { pulled: 0 }; // Backend handles actual pull and SSE notifications
+      // The old code returned a hardcoded { pulled: 0 } and claimed the
+      // backend handled "SSE notifications" - it does not; /sync/events is a
+      // heartbeat with no broadcast. So a pull that genuinely hydrated
+      // hundreds of products reported zero and left every open screen showing
+      // stale data, which is indistinguishable from the pull being broken.
+      const result = await response.json().catch(() => null);
+      const pulled = Number(result?.pulled) || 0;
+
+      if (result?.tables?.length) {
+        console.info('[LocalBridgeSyncService] pull:', result.tables);
+      }
+      if (result?.ok === false) {
+        console.warn('[LocalBridgeSyncService] pull completed with failures:', result.tables?.filter((t: any) => t.error));
+      }
+
+      if (pulled > 0) {
+        // Same event the modules already listen for after a local write.
+        window.dispatchEvent(new CustomEvent('localDbDataUpdated', { detail: { source: 'pull', pulled } }));
+      }
+
+      return { pulled };
     } catch (err) {
       console.error('[LocalBridgeSyncService] pullData error:', err);
       return null;
