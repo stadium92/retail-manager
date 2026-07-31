@@ -6,6 +6,7 @@ import { db } from '../db/index.js';
 import { authenticateRequest } from './utils/auth.js';
 import { buildSupabasePayload, getSupabaseTableForEntity } from '../db/repositories/sync_payload_map.js';
 import { getWriteMode } from '../sync/entity_policy.js';
+import { pullAll } from '../sync/pull.js';
 import {
   mirrorJournalRows,
   writeOutboxEntry,
@@ -668,9 +669,12 @@ export async function registerSyncRoutes(app: FastifyInstance) {
     });
   });
 
-  app.get('/sync/pull', async (request, reply) => {
-    // Same fix as /sync/push above - 'supabase-sync' is not a role any
-    // real login ever has.
+  // Registered for BOTH methods on purpose. The desktop app has always sent
+  // POST here while this route was GET-only, so every pull 404'd and no
+  // installed client has ever hydrated from the cloud. Fixing only the
+  // frontend would leave every already-installed copy broken until its owner
+  // took an update by hand - so the backend accepts what the field sends.
+  const handlePull = async (request: any, reply: any) => {
     const claims = authenticateRequest(request, reply, ['any']);
     if (!claims) return;
 
@@ -678,43 +682,30 @@ export async function registerSyncRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: 'ConfigMissing', message: 'Supabase credentials not configured.' });
     }
 
-    const url = new URL(`${env.supabaseUrl}/rest/v1/products`);
-    const storeId = (request.query as { store_id?: string }).store_id;
-    if (storeId) {
-      url.searchParams.set('store_id', `eq.${storeId}`);
-    }
+    // Non-masters are pinned to their own store, same rule as the analytics
+    // and sales endpoints.
+    const requested = (request.query as { store_id?: string })?.store_id;
+    const storeId = claims.role === 'master' ? (requested ?? claims.store_id) : (claims.store_id ?? requested);
 
-    const res = await fetch(url.toString(), {
-      headers: buildSupabaseHeaders(),
+    const results = await pullAll(db.db, env.supabaseUrl, buildSupabaseHeaders(), storeId || undefined);
+
+    const written = results.reduce((n, r) => n + r.written, 0);
+    const fetched = results.reduce((n, r) => n + r.fetched, 0);
+    const failed = results.filter(r => r.error);
+    const absent = results.filter(r => r.absentInCloud).map(r => r.table);
+
+    // Report per-table detail rather than a bare count. A pull that quietly
+    // hydrates 0 rows because a table 404'd is precisely the kind of silent
+    // half-failure this codebase keeps getting bitten by.
+    return reply.send({
+      pulled: written,
+      fetched,
+      tables: results,
+      absent_in_cloud: absent,
+      ok: failed.length === 0,
     });
+  };
 
-    if (!res.ok) {
-      return reply.status(502).send({ error: 'SupabaseError', message: 'Failed to pull data.' });
-    }
-
-    const products = await res.json();
-    for (const product of products) {
-      db.insertProduct({
-        id: product.id,
-        store_id: product.store_id,
-        name: product.name,
-        description: product.description ?? null,
-        sku: product.sku ?? null,
-        barcode: product.barcode ?? null,
-        category: product.category ?? null,
-        cost_price: product.cost_price ?? null,
-        unit_price: product.unit_price ?? 0,
-        wholesale_price: product.wholesale_price ?? null,
-        min_quantity: product.min_quantity ?? 0,
-        quantity: product.quantity ?? 0,
-        image_url: product.image_url ?? null,
-        created_at: product.created_at ?? new Date().toISOString(),
-        updated_at: product.updated_at ?? new Date().toISOString(),
-        created_by: null,
-        updated_by: null,
-      });
-    }
-
-    return reply.send({ pulled: products.length });
-  });
+  app.get('/sync/pull', handlePull);
+  app.post('/sync/pull', handlePull);
 }
