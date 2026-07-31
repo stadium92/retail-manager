@@ -118,6 +118,41 @@ export const createAnalyticsRepo = (db: Database.Database) => ({
     return rows;
   },
 
+  // Real profit over a period: sum of (line total - qty x cost) across sold
+  // items. Exists because the dashboard's "Marge potentielle" was previously
+  // fabricated in the frontend as total_price * 0.25 - a hardcoded 25% that
+  // had no relationship to cost_price and could never show a loss, on the one
+  // tile a shop owner uses to judge the business.
+  //
+  // INNER JOIN products on purpose: an orphaned sale_item (its product was
+  // hard-deleted; 23 exist on a real client database) has no knowable cost,
+  // and COALESCE-ing it to 0 would book its entire revenue as pure profit.
+  // Excluding it understates slightly, which is the safer direction for a
+  // profit figure. Proformas and soft-deleted rows are excluded like every
+  // other query here.
+  getProfit(storeId: string, from?: string, to?: string): number {
+    let sql = `
+        SELECT SUM(
+          COALESCE(CAST(si.total AS REAL), 0) -
+          COALESCE(CAST(si.quantity AS REAL), 0) * COALESCE(CAST(p.cost_price AS REAL), 0)
+        ) as profit
+        FROM sale_items si
+        JOIN sales s ON s.id = si.sale_id
+        JOIN products p ON p.id = si.product_id
+        WHERE (? = '' OR s.store_id = ?)
+        ${EXCLUDE_NON_SALES_S}
+        AND si.deleted_at IS NULL
+    `;
+    const params: any[] = [storeId, storeId];
+    if (from && to) {
+      sql += ` AND s.created_at BETWEEN ? AND ? `;
+      params.push(from, to);
+    }
+    const row = db.prepare(sql).get(...params) as { profit: number | null };
+    const n = Number(row?.profit);
+    return Number.isFinite(n) ? n : 0;
+  },
+
   getStockValuation(storeId: string): {
     total_cost: number;
     total_retail: number;

@@ -297,7 +297,15 @@ class OfflineDataServiceClass {
         if (isLocalFirst) {
             return await OfflineAuthService.localBridgeRequest<any[]>(`/rest/v1/clients?store_id=${storeId}`, { method: 'GET' });
         }
-        return await LocalDatabase.getSuppliers(storeId);
+        // Cloud mode: read the real clients table. The previous fallback was a
+        // copy-paste from getSuppliers and returned SUPPLIERS as clients;
+        // LocalDatabase has no clients store, so Supabase is the source here.
+        const { data, error } = await supabase.from('clients').select('*').eq('store_id', storeId);
+        if (error) {
+            console.error('[OfflineDataService] getClients failed:', error);
+            return [];
+        }
+        return data || [];
     }
 
     async getSupplierPayments(storeId: string, from?: Date): Promise<any[]> {

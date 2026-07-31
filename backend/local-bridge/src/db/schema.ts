@@ -631,6 +631,10 @@ export const initializeSchema = (db: Database.Database) => {
   // database: "table cash_closings has no column named cashier_name".
   ensureColumn('cash_closings', 'cashier_name', `ALTER TABLE cash_closings ADD COLUMN cashier_name TEXT`);
   ensureColumn('cash_closings', 'total_sales', `ALTER TABLE cash_closings ADD COLUMN total_sales REAL NOT NULL DEFAULT 0`);
+  // The credit ledger. The whole chain above it (create schema, INSERT list,
+  // the /settle route) was missing, so this column never existed locally even
+  // though Supabase has carried it all along and the UI reads it everywhere.
+  ensureColumn('sales', 'amount_paid', `ALTER TABLE sales ADD COLUMN amount_paid REAL NOT NULL DEFAULT 0`);
 
   // ── Conflict-resolution / journal upgrade path ───────────────────────
   // sync_outbox predates device identity by thousands of rows on every

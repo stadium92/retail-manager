@@ -114,7 +114,13 @@ export const usePOSStore = create<POSState>()(
         
         let price = product.unit_price || 0;
         if (saleType === 'gros') {
-          price = product.wholesale_price || price;
+          // wholesale_price is the LEGACY column - NULL on ~97% of real
+          // products (672 of 688 on a live database). Resolving from it alone
+          // meant "gros" mode silently fell through to retail, so wholesale
+          // customers were charged full price while the UI said Gros. The
+          // canonical tier is selling_price_3 ("3eme prix (Gros)"), same
+          // precedence OfflineDataService and ExportService already use.
+          price = product.selling_price_3 || product.wholesale_price_ttc || product.wholesale_price || price;
         }
 
         // Logic for ALWAYS adding a new line (as requested by user "go to next line")
@@ -155,6 +161,13 @@ export const usePOSStore = create<POSState>()(
           category: product.category || product.category_id,
           unit_price: product.unit_price ?? product.price ?? 0,
           wholesale_price: product.wholesale_price,
+          // The tier columns must survive normalization or the gros-price
+          // resolution in addItem/setSaleType has nothing to read - dropping
+          // them here was the second half of the retail-price bug.
+          wholesale_price_ttc: (product as any).wholesale_price_ttc,
+          selling_price_2: (product as any).selling_price_2,
+          selling_price_3: (product as any).selling_price_3,
+          selling_price_4: (product as any).selling_price_4,
           cost_price: product.cost_price ?? product.cost,
           quantity: product.quantity,
           min_quantity: product.min_quantity ?? product.low_stock_threshold,
@@ -172,7 +185,8 @@ export const usePOSStore = create<POSState>()(
         const newCart = cart.map(item => {
           let price = item.product.unit_price || 0;
           if (type === 'gros') {
-            price = item.product.wholesale_price || price;
+            // Same legacy-column trap as addItem above - see that comment.
+            price = item.product.selling_price_3 || item.product.wholesale_price_ttc || item.product.wholesale_price || price;
           }
           const newLineTotal = calculateItemTotal(price, item.quantity, item.discount);
           return {

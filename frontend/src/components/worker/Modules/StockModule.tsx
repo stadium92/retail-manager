@@ -341,7 +341,7 @@ export function StockModule({ storeId, mode }: StockModuleProps) {
                           <TableCell className="text-xs">{p.category || '—'}</TableCell>
                           <TableCell className={cn("text-xs text-center font-bold", p.quantity <= 0 ? 'text-danger' : p.quantity <= (p.min_quantity || 10) ? 'text-warning' : '')}>{p.quantity}</TableCell>
                           <TableCell className="text-xs text-right">{formatCurrency(unitPrice)}</TableCell>
-                          <TableCell className="text-xs text-right">{formatCurrency(p.wholesale_price_ttc || 0)}</TableCell>
+                          <TableCell className="text-xs text-right">{formatCurrency(p.selling_price_3 || p.wholesale_price_ttc || p.wholesale_price || 0)}</TableCell>
                           <TableCell className="text-xs text-right font-medium">{formatCurrency(value)}</TableCell>
                           <TableCell className="text-center">{p.quantity <= 0 ? <XCircle className="h-4 w-4 text-danger inline" /> : p.quantity <= (p.min_quantity || 10) ? <AlertTriangle className="h-4 w-4 text-warning inline" /> : <CheckCircle className="h-4 w-4 text-success inline" />}</TableCell>
                           <TableCell className="text-xs text-right font-bold text-success">{margin}%</TableCell>
