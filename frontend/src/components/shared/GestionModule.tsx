@@ -70,6 +70,9 @@ interface DashboardAnalytics {
   top_products: { name: string; quantity: number; revenue: number }[];
   top_workers: { name: string; sales_count: number; revenue: number }[];
   stock_health?: { ok: number; low: number; out: number };
+  // Real profit computed by the backend (sale_items joined to product cost).
+  // Optional: an older backend that predates the field simply omits it.
+  total_profit?: number;
 }
 
 export function GestionModule({ storeId, mode }: GestionModuleProps) {
@@ -197,13 +200,17 @@ if (e.detail?.type !== 'sales' && e.detail?.type !== 'sale' && e.detail?.type !=
       // Fetch Supplier Payments (Out)
       const payments = await OfflineDataService.getSupplierPayments(storeId, from);
       payments.forEach(payment => {
-        if (new Date(payment.date) <= to) {
+        // Rows carry created_at, not .date - the old comparison was always
+        // against Invalid Date, always false, so every supplier payment was
+        // silently missing from the journal.
+        const paidAt = payment.created_at ?? payment.date;
+        if (paidAt && new Date(paidAt) <= to) {
           entries.push({
             id: payment.id,
             type: 'out',
             description: `Paiement ${payment.supplier_name}`,
             amount: payment.amount,
-            date: payment.date,
+            date: paidAt,
             category: t('menu.program.supplierPayment'),
           });
         }
@@ -212,13 +219,16 @@ if (e.detail?.type !== 'sales' && e.detail?.type !== 'sale' && e.detail?.type !=
       // Fetch Petty Cash Transactions
       const cashTxs = await OfflineDataService.getCashTransactions(storeId, from);
       cashTxs.forEach(tx => {
-        if (new Date(tx.date) <= to) {
+        // Same dead .date read as supplier payments above - petty cash never
+        // appeared in the journal either.
+        const txAt = tx.created_at ?? tx.date;
+        if (txAt && new Date(txAt) <= to) {
           entries.push({
             id: tx.id,
             type: tx.type,
             description: tx.description,
             amount: tx.amount,
-            date: tx.date,
+            date: txAt,
             category: tx.category,
           });
         }
@@ -304,13 +314,14 @@ if (e.detail?.type !== 'sales' && e.detail?.type !== 'sale' && e.detail?.type !=
     const netCash = totalRevenue - totalExpenses;
     const orderCount = sales.length;
     
-    // Profit based on price - cost
-    const totalProfit = sales.reduce((sum, sale) => {
-      const saleItems = (sale.items?.length ? sale.items : sale.sale_items) || [];
-      // This is an estimate as items might not have cost_price directly
-      // In a full implementation, we'd join with products table or look up cost
-      return sum + (sale.total_price * 0.25); // Default 25% margin estimate
-    }, 0);
+    // Real profit comes from the backend: sale_items joined to product cost,
+    // proformas and deleted rows excluded. The previous figure here was
+    // total_price * 0.25 - a hardcoded 25% with no relationship to cost that
+    // could never show a loss, on the tile an owner judges the business by.
+    // null (not 0) when the backend doesn't provide it, so the UI can say
+    // "unknown" instead of quietly rendering a wrong zero.
+    const totalProfit =
+      typeof analytics?.total_profit === 'number' ? analytics.total_profit : null;
 
     return { 
       totalRevenue, 

@@ -117,7 +117,9 @@ return (
                     </div>
                     <div>
                       <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t('menu.program.potentialMargin')}</p>
-                      <p className="text-lg font-bold text-success">+{formatCurrency(kpis.totalProfit)}</p>
+                      <p className={`text-lg font-bold ${kpis.totalProfit == null ? 'text-muted-foreground' : kpis.totalProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {kpis.totalProfit == null ? '—' : `${kpis.totalProfit >= 0 ? '+' : ''}${formatCurrency(kpis.totalProfit)}`}
+                      </p>
                     </div>
                   </div>
                 </CardContent>

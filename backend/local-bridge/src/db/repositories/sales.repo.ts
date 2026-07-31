@@ -9,11 +9,11 @@ export const createSalesRepo = (db: Database.Database) => {
       INSERT INTO sales (
         id, store_id, worker_id, client_id, customer_name, customer_phone,
         sale_type, total_price, discount, tax, payment_method,
-        payment_status, notes, invoice_number, created_at, updated_at
+        payment_status, amount_paid, notes, invoice_number, created_at, updated_at
       ) VALUES (
         @id, @store_id, @worker_id, @client_id, @customer_name, @customer_phone,
         @sale_type, @total_price, @discount, @tax, @payment_method,
-        @payment_status, @notes, @invoice_number, @created_at, @updated_at
+        @payment_status, @amount_paid, @notes, @invoice_number, @created_at, @updated_at
       )
     `),
     insertItem: db.prepare(`
@@ -87,6 +87,7 @@ export const createSalesRepo = (db: Database.Database) => {
       client_id: (sale as any).client_id ?? null,
       customer_name: sale.customer_name ?? null,
       customer_phone: sale.customer_phone ?? null,
+      amount_paid: sale.amount_paid ?? (sale.payment_method === 'credit' ? 0 : sale.total_price ?? 0),
       discount: sale.discount ?? 0,
       tax: sale.tax ?? 0,
       payment_method: sale.payment_method ?? 'cash',
@@ -109,6 +110,7 @@ export const createSalesRepo = (db: Database.Database) => {
         client_id: (saleData as any).client_id ?? null,
         customer_name: saleData.customer_name ?? null,
         customer_phone: saleData.customer_phone ?? null,
+        amount_paid: saleData.amount_paid ?? (saleData.payment_method === 'credit' ? 0 : saleData.total_price ?? 0),
         discount: saleData.discount ?? 0,
         tax: saleData.tax ?? 0,
         payment_method: saleData.payment_method ?? 'cash',

@@ -57,7 +57,10 @@ export function StockListingModule({ storeId }: StockListingModuleProps) {
           barcode: item.barcode || item.sku || '',
           unit_price: item.price || 0,
           cost_price: item.cost || 0,
-          wholesale_price_ttc: item.wholesale_price_ttc || 0,
+          // Legacy column is NULL on ~97% of real products; the populated tier is
+          // selling_price_3 ("3eme prix (Gros)"). Without this fallback the
+          // Prix Gros column showed 0 CFA for essentially the whole catalogue.
+          wholesale_price_ttc: item.selling_price_3 || item.wholesale_price_ttc || item.wholesale_price || 0,
           quantity: item.quantity,
           min_quantity: item.low_stock_threshold || 10,
           packaging: item.packaging || '1',

@@ -22,6 +22,12 @@ interface CheckoutModalProps {
     onOpenChange: (open: boolean) => void;
     onConfirm: (data: CheckoutData) => Promise<void>;
     isLoading?: boolean;
+    // Cart-level remise in CFA, subtracted from the per-line total. Optional
+    // because desktop callers have no global-discount concept; without this
+    // prop the mobile "Remise Globale" was pure theatre - the dialog stored
+    // the amount, the footer drew a strike-through, and both checkout paths
+    // charged the full price anyway.
+    discount?: number;
 }
 
 export interface CheckoutData {
@@ -36,12 +42,12 @@ export interface CheckoutData {
     };
 }
 
-export function CheckoutModal({ open, onOpenChange, onConfirm, isLoading }: CheckoutModalProps) {
+export function CheckoutModal({ open, onOpenChange, onConfirm, isLoading, discount }: CheckoutModalProps) {
     const { t, i18n } = useTranslation();
     const { formatCurrency } = useFormatters();
     const { currency } = useSettingsStore();
     const { getTotal, saleType: storeSaleType, setSaleType: setStoreSaleType } = usePOSStore();
-    const total = getTotal();
+    const total = Math.max(0, getTotal() - (discount ?? 0));
 
     const [currentSaleType, setCurrentSaleType] = useState<'detail' | 'gros' | 'proforma'>(storeSaleType);
     const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'credit'>('cash');

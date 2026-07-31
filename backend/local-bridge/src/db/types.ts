@@ -229,6 +229,7 @@ export interface LocalSale {
   tax?: number | null;
   payment_method?: string | null;
   payment_status?: string | null;
+  amount_paid?: number | null;
   notes?: string | null;
   invoice_number?: string | null;
   created_at: string;
