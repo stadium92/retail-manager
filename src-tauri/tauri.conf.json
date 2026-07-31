@@ -36,10 +36,19 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "createUpdaterArtifacts": true,
     "windows": {
       "nsis": {
         "installerIcon": "icons/icon.ico"
       }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEY4REQwNDlCOTBFMTYyNzMKUldSell1R1Ftd1RkK09KdGRaMWVKVWJ0Wis5Uzc2RkV2Und6TTVpTUlGSitHWEZyZzJpaVBXeG4K",
+      "endpoints": [
+        "https://raw.githubusercontent.com/stadium94/app-releases/main-stihl-dibidani/latest.json"
+      ]
     }
   }
 }
