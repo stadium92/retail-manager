@@ -38,7 +38,7 @@ export const InvoiceA4Template = forwardRef<HTMLDivElement, { data: InvoiceData 
                     </p>
                     <div className="text-sm font-semibold text-gray-800 leading-snug">
                         <p>TEL: <span className="text-green-700">+223 77 77 90 60 / 20 22 26 45 / 79 45 49 46</span></p>
-                        <p className="text-blue-800">madjoulalasylla@gmail.com &nbsp;|&nbsp; <span className="text-gray-600">Face à Djoliba, près du Trésor</span></p>
+                        <p className="text-blue-800">madjoulalasylla@gmail.com &nbsp;|&nbsp; <span className="text-gray-600">Dibidani, Face à Djoliba, près du Trésor</span></p>
                     </div>
                 </div>
 

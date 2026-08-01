@@ -72,7 +72,7 @@ export function InvoiceDetailsDialog({ sale, onClose }: InvoiceDetailsDialogProp
     invoice_number: sale.invoice_number || sale.id.slice(0, 8),
     order_ref: sale.order_ref || undefined,
     storeName: 'Quincaillerie De La Paix',
-    storeAddress: 'Face à Djoliba, près du Trésor',
+    storeAddress: 'Dibidani, Face à Djoliba, près du Trésor',
     workerName: undefined,
     customerName: sale.customer_name || undefined,
     customerPhone: sale.customer_phone || undefined,

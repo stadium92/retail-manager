@@ -277,7 +277,7 @@ export function SalesModule({ storeId, mode }: SalesModuleProps) {
       invoice_number: invoiceNumber,
       order_ref: currentSession.orderRef || undefined,
       storeName: store?.name || 'Quincaillerie De La Paix',
-      storeAddress: store?.address || 'Face à Djoliba, près du Trésor',
+      storeAddress: store?.address || 'Dibidani, Face à Djoliba, près du Trésor',
       workerName: user?.user_metadata?.full_name || user?.email || t('edition.seller'),
       customerName: currentSession.customerName || undefined,
       customerPhone: undefined, // customerPhone not stored in session; use address only
