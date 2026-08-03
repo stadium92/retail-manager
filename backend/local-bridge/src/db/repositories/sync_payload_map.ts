@@ -146,11 +146,26 @@ const PAYLOAD_BUILDERS: Record<string, PayloadBuilder> = {
     // with an upsert, a category fixed by hand on the web dashboard was
     // re-nulled on the next drain.
     //
-    // Fine-grained price tiers / aisle / brand / packaging /
-    // low_stock_threshold / reorder_quantity / created_by / updated_by remain
-    // dropped - those genuinely have no Supabase column and need a migration,
-    // not a payload change.
     ...pick(raw, ['category']),
+    // Price tiers and merchandising fields are now NAMED here rather than
+    // dropped. They used to be omitted because "those genuinely have no
+    // Supabase column" - true of one project, false of another, and the cost
+    // of that omission was severe: the shop's wholesale prices existed only in
+    // the local SQLite on a single computer, with no copy anywhere, so a dead
+    // disk meant 776 gros prices gone for good.
+    //
+    // Sending a column the target lacks would make PostgREST reject the whole
+    // row, so supabase_writer probes each cloud table's real column set and
+    // filters this payload down to it. A project that has the columns receives
+    // the data immediately; one that does not receives exactly what it did
+    // before, and starts receiving the rest the moment the migration is
+    // applied - no code change, no redeploy.
+    ...pick(raw, [
+      'wholesale_price_ht', 'wholesale_price_ttc',
+      'selling_price_2', 'selling_price_3', 'selling_price_4',
+      'low_stock_threshold', 'reorder_quantity',
+      'aisle', 'brand', 'unit_type', 'packaging',
+    ]),
   }),
 
   supplier: (raw) => pick(raw, [

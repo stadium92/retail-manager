@@ -142,6 +142,78 @@ export const __setVersionSupport = (table: string, supported: boolean) => {
   versionSupport.set(table, { supported, checkedAt: Date.now() });
 };
 
+/**
+ * Columns each cloud table actually has, read once from PostgREST's OpenAPI
+ * document and cached.
+ *
+ * Why this exists: the local schema is a SUPERSET of the cloud's, and the two
+ * drift per project. The local products table carries the shop's price tiers
+ * (selling_price_2/3/4, wholesale_price_ttc) plus merchandising fields; one
+ * cloud project has them, another does not. Sending a column the target lacks
+ * makes PostgREST reject the WHOLE row, so a single schema gap would stop that
+ * record syncing entirely.
+ *
+ * Previously the payload map dodged this by hardcoding a list that omitted
+ * every tier column - which is precisely why the shop's wholesale prices were
+ * never backed up anywhere. Probing instead means the payload can name every
+ * column it would like to send, and each project receives exactly the subset
+ * it can store. The day the missing columns are added by migration, the data
+ * starts flowing on the next push with no code change and no redeploy.
+ *
+ * The OpenAPI document is used rather than sampling a row because it is
+ * authoritative for empty tables too.
+ */
+const columnCache = new Map<string, { columns: Set<string>; checkedAt: number }>();
+
+export const cloudColumnsFor = async (table: string): Promise<Set<string> | null> => {
+  const cached = columnCache.get(table);
+  if (cached && Date.now() - cached.checkedAt < PROBE_TTL_MS) return cached.columns;
+  try {
+    const res = await fetch(`${env.supabaseUrl}/rest/v1/`, { headers: baseHeaders() });
+    if (!res.ok) {
+      await res.text().catch(() => '');
+      return null;
+    }
+    const spec = (await res.json()) as {
+      definitions?: Record<string, { properties?: Record<string, unknown> }>;
+    };
+    const props = spec?.definitions?.[table]?.properties;
+    if (!props) return null;
+    const columns = new Set(Object.keys(props));
+    columnCache.set(table, { columns, checkedAt: Date.now() });
+    return columns;
+  } catch {
+    // Unknown (offline, or an unexpected response shape) - callers send the
+    // payload unchanged rather than guessing a subset and silently dropping
+    // fields the cloud may well accept.
+    return null;
+  }
+};
+
+/**
+ * Drop keys the target table cannot store. A null probe result means "unknown",
+ * in which case nothing is filtered.
+ */
+export const filterToCloudColumns = async (
+  table: string,
+  payload: Record<string, unknown>
+): Promise<Record<string, unknown>> => {
+  const columns = await cloudColumnsFor(table);
+  if (!columns) return payload;
+  const filtered: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(payload)) {
+    if (columns.has(k)) filtered[k] = v;
+  }
+  // Never send an empty object - if the probe disagrees this badly with the
+  // payload, something is wrong with the probe, not the data.
+  return Object.keys(filtered).length > 0 ? filtered : payload;
+};
+
+/** Test seam. */
+export const __setCloudColumns = (table: string, columns: string[]) => {
+  columnCache.set(table, { columns: new Set(columns), checkedAt: Date.now() });
+};
+
 const isMissingTable = (status: number, body: string): boolean =>
   status === 404 ||
   body.includes('PGRST205') ||
@@ -181,10 +253,12 @@ export const upsertUnconditional = async (
   outcomeWhenApplied: JournalOutcome
 ): Promise<SupabaseWriteResult> => {
   try {
+    // Send only columns this cloud table actually has - see cloudColumnsFor.
+    const safePayload = await filterToCloudColumns(table, payload);
     const res = await fetch(`${env.supabaseUrl}/rest/v1/${table}`, {
       method: 'POST',
       headers: upsertHeaders(),
-      body: JSON.stringify([payload]),
+      body: JSON.stringify([safePayload]),
     });
     const serverTs = serverTimeOf(res);
     if (res.ok) {
@@ -239,10 +313,11 @@ export const insertIfAbsent = async (
   payload: Record<string, unknown>
 ): Promise<SupabaseWriteResult> => {
   try {
+    const safePayload = await filterToCloudColumns(table, payload);
     const res = await fetch(`${env.supabaseUrl}/rest/v1/${table}`, {
       method: 'POST',
       headers: representationHeaders(),
-      body: JSON.stringify([payload]),
+      body: JSON.stringify([safePayload]),
     });
     const serverTs = serverTimeOf(res);
     if (res.ok) {
