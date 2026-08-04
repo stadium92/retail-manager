@@ -264,11 +264,19 @@ export async function registerSalesRoutes(app: FastifyInstance) {
       db.insertCashTransaction({
         id: crypto.randomUUID(),
         store_id: existing.store_id,
+        worker_id: claims.sub,
         type: 'in',
         amount,
         category: 'client_payment',
         description: `Règlement vente ${existing.invoice_number || saleId.slice(0, 8)}`,
-        reference: saleId,
+        // MUST be the client id, not the sale id. listClientTransactions()
+        // builds a client's statement with
+        //   WHERE category = 'client_payment' AND reference = <clientId>
+        // so a row keyed by sale id is invisible there: the statement showed
+        // the original credit SALE as a debit while the payment that cleared
+        // it never appeared, making a settled invoice look permanently
+        // outstanding. The sale is still identifiable from the description.
+        reference: existing.client_id ?? saleId,
         created_at: now,
         updated_at: now,
       } as any);
@@ -277,6 +285,11 @@ export async function registerSalesRoutes(app: FastifyInstance) {
         // Payment reduces what the client owes.
         db.updateClientBalance(existing.client_id, -amount);
       }
+      // NOTE: a credit sale recorded against a walk-in (customer_name filled
+      // in, client_id NULL) has no balance to reduce. amount_paid on the sale
+      // is still updated, so "Restant" is correct on the invoice itself; there
+      // simply is no client account to credit. Worth surfacing in the UI at
+      // some point - silently doing nothing is how the earlier bugs hid.
     });
 
     try {
