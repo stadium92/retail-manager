@@ -82,6 +82,14 @@ jobs:
           # is on in tauri.conf.json) to also emit a signed .sig file next to
           # the installer - required for the auto-updater to trust it.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_UPDATER_PRIVATE_KEY }}
+          # Crash reporting. Read at COMPILE time by option_env! in
+          # src-tauri/src/lib.rs (to hand to the sidecar) and inlined by Vite
+          # into the frontend bundle. Absent secret => monitoring simply off,
+          # which is why nothing here has a fallback value.
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          CLIENT_ID: niamana-dubai
+          VITE_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          VITE_CLIENT_ID: niamana-dubai
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_UPDATER_PRIVATE_KEY_PASSWORD }}
         with:
           # No tagName/release* fields on purpose: the actual distribution

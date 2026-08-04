@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import fs from 'fs';
@@ -54,13 +55,70 @@ process.stderr.on('error', (err: NodeJS.ErrnoException) => {
   if (err.code !== 'EPIPE') throw err;
 });
 
+// Crash reporting for the backend.
+//
+// This is the layer that has actually hurt this product: the bridge has died
+// mid-request leaving an EMPTY log file, and a five-month sync outage went
+// unnoticed because nothing off the machine ever heard about it. The frontend
+// has had Sentry for a while; the process that does the real work had none, so
+// the failures that matter most were the ones nobody could see.
+//
+// Initialised before anything else can throw. No hardcoded DSN: monitoring is
+// opt-in per install via SENTRY_DSN, and a bridge with no DSN behaves exactly
+// as it does today.
+const sentryDsn = env.sentryDsn;
+if (sentryDsn) {
+  Sentry.init({
+    dsn: sentryDsn,
+    environment: process.env.NODE_ENV || 'production',
+    release: `djati-bridge@${process.env.APP_VERSION || 'unknown'}`,
+    // A till spends hours offline; traces would be noise and quota burn.
+    tracesSampleRate: 0,
+    sendDefaultPii: false,
+    beforeSend(event) {
+      // The bridge handles real invoices. Never ship a customer's identity.
+      const strip = (o: any, d = 0): any => {
+        if (d > 6 || o == null || typeof o !== 'object') return o;
+        if (Array.isArray(o)) return o.map(v => strip(v, d + 1));
+        const out: any = {};
+        for (const [k, v] of Object.entries(o)) {
+          out[k] = /customer|client_name|phone|email|address|password|token|apikey|authorization/i.test(k)
+            ? '[redacted]'
+            : strip(v, d + 1);
+        }
+        return out;
+      };
+      if (event.extra) event.extra = strip(event.extra);
+      if (event.contexts) event.contexts = strip(event.contexts);
+      if (event.request) event.request = strip(event.request);
+      return event;
+    },
+  });
+  Sentry.setTags({
+    surface: 'local-bridge',
+    client: env.clientId,
+  });
+  log('Sentry initialised for the backend.');
+}
+
 process.on('uncaughtException', (err) => {
   log(`CRITICAL: Uncaught Exception: ${err.message}\n${err.stack}`);
+  // Report BEFORE exiting, and give the transport a moment to flush - an
+  // exit(1) a millisecond later would discard the very event that explains
+  // the crash. Bounded so a dead network cannot hang the shutdown.
+  if (sentryDsn) {
+    Sentry.captureException(err, { tags: { fatal: 'true' } });
+    void Sentry.close(2000).finally(() => process.exit(1));
+    return;
+  }
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   log(`CRITICAL: Unhandled Rejection at: ${promise} reason: ${reason}`);
+  if (sentryDsn) {
+    Sentry.captureException(reason instanceof Error ? reason : new Error(String(reason)));
+  }
 });
 
 log('Backend starting...');

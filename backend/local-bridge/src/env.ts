@@ -33,4 +33,11 @@ export const env = {
   supabaseUrl: process.env.SUPABASE_URL || FALLBACK_SUPABASE_URL,
   supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY || '',
 
+  // Crash reporting. Empty means monitoring is off and the bridge behaves
+  // exactly as it always has - there is deliberately no fallback DSN in
+  // source. Supplied by the Tauri shell when it spawns this sidecar (see
+  // src-tauri/src/lib.rs), or from a .env for local development.
+  sentryDsn: process.env.SENTRY_DSN || '',
+  clientId: process.env.CLIENT_ID || 'unknown',
+
 };

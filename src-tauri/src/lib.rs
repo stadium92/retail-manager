@@ -76,6 +76,25 @@ pub fn run() {
 
       match shell.sidecar("local-bridge") {
         Ok(sidecar_command) => {
+          // Hand the backend its crash-reporting config.
+          //
+          // The sidecar is compiled with plain tsc (no bundler define step)
+          // and Tauri spawns it with no environment of its own, so there was
+          // previously no way for the bridge to learn a DSN at all. It reads
+          // SENTRY_DSN from its environment; this is the only place that can
+          // supply it on a real install.
+          //
+          // option_env! resolves at COMPILE time: when CI builds with
+          // SENTRY_DSN set the value is baked in, and when it is not the
+          // backend simply runs unmonitored exactly as it does today. No
+          // DSN is committed to the repository.
+          let sidecar_command = match option_env!("SENTRY_DSN") {
+            Some(dsn) if !dsn.is_empty() => sidecar_command
+              .env("SENTRY_DSN", dsn)
+              .env("APP_VERSION", env!("CARGO_PKG_VERSION"))
+              .env("CLIENT_ID", option_env!("CLIENT_ID").unwrap_or("unknown")),
+            _ => sidecar_command,
+          };
           match sidecar_command.spawn() {
             Ok((mut rx, _child)) => {
               let _ = writeln!(file, "Sidecar spawn command successful.");
