@@ -340,7 +340,7 @@ export function ReplenishmentNeeds({ storeId }: Props) {
                             variant="outline"
                             size="sm"
                             disabled={!item.packSize || item.packSize <= 1}
-                            className={cn("h-7 px-3 font-black text-[9px] tracking-widest border-2", item.isBox && "bg-primary text-white border-primary shadow-lg shadow-primary/20", (!item.packSize || item.packSize <= 1) && "opacity-50 cursor-not-allowed")}
+                            className={cn("h-7 px-3 font-black text-[9px] tracking-widest border-2", item.isBox && "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20", (!item.packSize || item.packSize <= 1) && "opacity-50 cursor-not-allowed")}
                             onClick={() => toggleOrderUnit(item.product_id)}
                         >
                           {item.isBox ? item.unit_type?.toUpperCase() || 'UNIT' : t('inventory.unitPiece')}

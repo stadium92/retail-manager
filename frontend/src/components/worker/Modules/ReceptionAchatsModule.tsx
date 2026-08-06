@@ -340,7 +340,7 @@ export function ReceptionAchatsModule({ storeId }: ReceptionAchatsModuleProps) {
                           <Button 
                                                       variant="outline" 
                                                       size="sm" 
-                                                      className={cn("h-7 px-2 font-black text-[10px]", item.isBox && "bg-primary text-white border-primary")}
+                                                      className={cn("h-7 px-2 font-black text-[10px]", item.isBox && "bg-primary text-primary-foreground border-primary")}
                                                       onClick={() => handleToggleUnit(index)}
                                                     >
                                                       {item.isBox ? item.unit_type?.toUpperCase() || 'BOX' : t('inventory.unitPiece')}

@@ -512,7 +512,7 @@ export function FichiersProduitsModule({ storeId, isMasterView }: FichiersProdui
                     <Search className="h-5 w-5 text-muted-foreground" />
                     <span className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground">{t('inventory.importFromExisting')}</span>
                 </div>
-                <Button variant="outline" size="sm" type="button" onClick={() => { setLookupTargetIndex(index ?? null); setIsLookupOpen(true); }} className="h-8 uppercase font-black text-[10px] tracking-widest px-4 border-primary/20 hover:bg-primary hover:text-white">Choisir l'article</Button>
+                <Button variant="outline" size="sm" type="button" onClick={() => { setLookupTargetIndex(index ?? null); setIsLookupOpen(true); }} className="h-8 uppercase font-black text-[10px] tracking-widest px-4 border-primary/20 hover:bg-primary hover:text-primary-foreground">Choisir l'article</Button>
             </div>
 
             <div className="space-y-6 border-r pr-6">
