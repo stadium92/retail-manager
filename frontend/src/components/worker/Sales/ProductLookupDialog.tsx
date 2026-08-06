@@ -140,7 +140,7 @@ export function ProductLookupDialog({
 
         <ScrollArea className="flex-1">
           <div className="p-4 pt-0 min-w-[900px]">
-            <div className="grid grid-cols-[40px_minmax(150px,1fr)_100px_minmax(100px,120px)_100px_90px_90px_80px_100px_80px] font-black uppercase tracking-widest text-[9px] bg-primary text-white py-3 px-4 rounded-t-xl sticky top-0 z-10 shadow-md">
+            <div className="grid grid-cols-[40px_minmax(150px,1fr)_100px_minmax(100px,120px)_100px_90px_90px_80px_100px_80px] font-black uppercase tracking-widest text-[9px] bg-primary text-primary-foreground py-3 px-4 rounded-t-xl sticky top-0 z-10 shadow-md">
               <div className="text-center">#</div>
               <div>{t('pos.grid.headers.designation')}</div>
               <div className="text-center">{t('pos.grid.headers.sku')}</div>
@@ -185,7 +185,7 @@ export function ProductLookupDialog({
                     className={cn(
                       'grid grid-cols-[40px_minmax(150px,1fr)_100px_minmax(100px,120px)_100px_90px_90px_80px_100px_80px] font-mono text-xs py-3 px-4 cursor-pointer border-b transition-all items-center',
                       isSelected
-                        ? 'bg-primary text-white scale-[1.01] rounded-lg shadow-lg z-20 relative'
+                        ? 'bg-primary text-primary-foreground scale-[1.01] rounded-lg shadow-lg z-20 relative'
                         : 'bg-white hover:bg-muted/50 text-black border-muted'
                     )}                  >
                     <div className="text-center text-[10px] opacity-40 font-black">{index + 1}</div>

@@ -252,7 +252,7 @@ export function CashierCreditsModule({ storeId }: CashierCreditsModuleProps) {
               <Button
                 type="submit"
                 disabled={isSaving || !clientName.trim() || amount <= 0}
-                className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest"
+                className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest"
               >
                 {isSaving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                 {t('common.save') || 'Enregistrer'}
@@ -291,7 +291,7 @@ export function CashierCreditsModule({ storeId }: CashierCreditsModuleProps) {
               variant={statusFilter === 'all' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setStatusFilter('all')}
-              className={cn("h-8 text-xs font-bold uppercase px-3", statusFilter === 'all' && "bg-primary text-white shadow-sm")}
+              className={cn("h-8 text-xs font-bold uppercase px-3", statusFilter === 'all' && "bg-primary text-primary-foreground shadow-sm")}
             >
               {t('common.all') || 'Tout'}
             </Button>

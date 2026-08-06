@@ -206,7 +206,7 @@ export function RegularisationStock({ storeId }: RegularisationStockProps) {
                         variant="outline" 
                         onClick={() => setIsBox(!isBox)}
                         disabled={!regProduct.packaging || parseInt(regProduct.packaging) <= 1}
-                        className={cn("w-full h-10 border-2 font-bold uppercase", isBox && "bg-primary text-white border-primary")}
+                        className={cn("w-full h-10 border-2 font-bold uppercase", isBox && "bg-primary text-primary-foreground border-primary")}
                       >
                         {isBox ? `BOX (${regProduct.packaging})` : `PIECE (${t('inventory.unitPiece')})`}
                       </Button>
@@ -291,7 +291,7 @@ export function RegularisationStock({ storeId }: RegularisationStockProps) {
                     <Button 
                       onClick={handleRegularisation} 
                       disabled={isSaving || (regAdjustmentType === 'delta' && regQuantity === 0) || !regReason}
-                      className="flex-[2] h-11 bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest"
+                      className="flex-[2] h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest"
                     >
                       {isSaving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                       {t('menu.program.applyRegularization')}

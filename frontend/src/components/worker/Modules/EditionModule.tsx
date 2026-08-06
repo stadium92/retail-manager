@@ -1078,7 +1078,7 @@ export function EditionModule({ storeId, mode }: EditionModuleProps) {
         </div>
         <div className="flex items-center gap-2">
           <Select onValueChange={(v) => handleExport(v as any)}>
-            <SelectTrigger className="h-8 w-32 bg-primary text-white border-none font-bold text-[10px] uppercase">
+            <SelectTrigger className="h-8 w-32 bg-primary text-primary-foreground border-none font-bold text-[10px] uppercase">
               <Download className="h-3 w-3 mr-2" />
               <SelectValue placeholder={t('export.title')} />
             </SelectTrigger>

@@ -477,7 +477,7 @@ export function ReglementsFournisseursModule({ storeId, isMasterView }: Reglemen
             <Button 
               onClick={submitPayment} 
               disabled={loading || paymentAmount <= 0}
-              className="bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest"
             >
               {t('menu.program.confirmPayment')}
             </Button>
