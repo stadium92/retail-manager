@@ -149,6 +149,40 @@ const seedFamiliesAndProducts = (storeId: string) => {
   });
 };
 
+// Fixtures for the Playwright E2E suite (frontend/e2e) - gated behind
+// SEED_E2E=1 so normal dev seeding is untouched. Creates a worker account
+// directly in SQLite rather than via POST /auth/workers, which needs a real
+// Supabase service key to provision; these exist for tests that need a
+// pre-existing worker, not to test provisioning itself.
+const E2E_WORKER_PASSWORD = 'Password123!';
+const e2eWorkers = [{ email: 'worker.gate@e2e.local', name: 'Worker Gate' }];
+
+const seedE2EFixtures = (primaryStoreId: string) => {
+  for (const w of e2eWorkers) {
+    if (db.getUserByEmail(w.email)) continue;
+    const userId = crypto.randomUUID();
+    db.insertUser({
+      id: userId,
+      email: w.email,
+      password_hash: bcrypt.hashSync(E2E_WORKER_PASSWORD, 10),
+      full_name: w.name,
+      phone: null,
+      created_at: now,
+      updated_at: now,
+      role: 'worker',
+    });
+    db.insertRole({
+      id: crypto.randomUUID(),
+      user_id: userId,
+      role: 'worker',
+      store_id: primaryStoreId,
+      created_at: now,
+    });
+  }
+
+  console.log(`Seeded E2E fixtures: ${e2eWorkers.length} worker(s).`);
+};
+
 const run = () => {
   const { storeId, created } = ensureMasterAndStore();
   const existingProducts = db.listProducts(storeId);
@@ -156,17 +190,22 @@ const run = () => {
 
   if (!forceSeed && (existingProducts.length > 0 || existingFamilies.length > 0)) {
     console.log('Seed skipped: existing data detected. Set SEED_FORCE=1 to override.');
-    return;
+  } else {
+    seedFamiliesAndProducts(storeId);
+
+    if (created) {
+      console.log('Seeded LocalBridge with demo master account and data.');
+      console.log(`Email: ${seedConfig.masterEmail}`);
+      console.log(`Password: ${seedConfig.masterPassword}`);
+    } else {
+      console.log('Seeded LocalBridge with demo data.');
+    }
   }
 
-  seedFamiliesAndProducts(storeId);
-
-  if (created) {
-    console.log('Seeded LocalBridge with demo master account and data.');
-    console.log(`Email: ${seedConfig.masterEmail}`);
-    console.log(`Password: ${seedConfig.masterPassword}`);
-  } else {
-    console.log('Seeded LocalBridge with demo data.');
+  // Runs even when the product seed was skipped - the E2E worker is
+  // independent of whether demo products already exist.
+  if (process.env.SEED_E2E === '1') {
+    seedE2EFixtures(storeId);
   }
 };
 

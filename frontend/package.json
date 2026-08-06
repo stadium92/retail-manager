@@ -13,7 +13,8 @@
     "gen:sqlite": "tsx ../scripts/gen_sqlite_schema.ts",
     "check:sqlite": "tsx ../scripts/check_sqlite_schema.ts",
     "backend:dev": "cd ../backend/local-bridge && npm run dev",
-    "backend:seed": "cd ../backend/local-bridge && npm run seed"
+    "backend:seed": "cd ../backend/local-bridge && npm run seed",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -92,6 +93,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/typography": "^0.5.16",
     "@tauri-apps/cli": "^2.9.6",
     "@types/node": "^22.16.5",
